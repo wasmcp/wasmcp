@@ -21,8 +21,11 @@ jobs:
       with:
         targets: wasm32-wasip1
     
+    - name: Install cargo-binstall
+      uses: cargo-bins/cargo-binstall@main
+    
     - name: Install cargo-component
-      run: cargo install cargo-component --locked
+      run: cargo binstall cargo-component --no-confirm
     
     - name: Cache Cargo dependencies
       uses: actions/cache@v4

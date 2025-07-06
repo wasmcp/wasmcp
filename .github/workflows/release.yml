@@ -27,10 +27,12 @@ jobs:
         node-version: '20'
         registry-url: 'https://registry.npmjs.org'
     
+    - name: Install cargo-binstall
+      uses: cargo-bins/cargo-binstall@main
+    
     - name: Install tools
       run: |
-        cargo install cargo-component --locked
-        cargo install wkg --locked
+        cargo binstall cargo-component wkg --no-confirm
     
     - name: Cache Cargo dependencies
       uses: actions/cache@v4
