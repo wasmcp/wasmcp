@@ -1,0 +1,7 @@
+package component:mcp@0.1.0;
+
+// World for the HTTP API component that imports the MCP handler
+world mcp-http-api {
+    // Import the MCP handler interface
+    import handler;
+}

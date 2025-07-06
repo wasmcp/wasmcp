@@ -1,0 +1,82 @@
+package component:mcp@0.1.0;
+
+/// MCP handler interface
+interface handler {
+    /// Tool definition
+    record tool {
+        name: string,
+        description: string,
+        input-schema: string, // JSON Schema as string
+    }
+    
+    /// Resource definition
+    record resource-info {
+        uri: string,
+        name: string,
+        description: option<string>,
+        mime-type: option<string>,
+    }
+    
+    /// Resource contents
+    record resource-contents {
+        uri: string,
+        mime-type: option<string>,
+        text: option<string>,
+        blob: option<list<u8>>,
+    }
+    
+    /// Prompt definition
+    record prompt {
+        name: string,
+        description: option<string>,
+        arguments: list<prompt-argument>,
+    }
+    
+    record prompt-argument {
+        name: string,
+        description: option<string>,
+        required: bool,
+    }
+    
+    /// Prompt message
+    record prompt-message {
+        role: string,
+        content: string,
+    }
+    
+    /// Error type
+    record error {
+        code: s32,
+        message: string,
+        data: option<string>,
+    }
+    
+    /// Tool call result
+    variant tool-result {
+        text(string),
+        error(error),
+    }
+    
+    /// List available tools
+    list-tools: func() -> list<tool>;
+    
+    /// Call a tool
+    call-tool: func(name: string, arguments: string) -> tool-result;
+    
+    /// List available resources
+    list-resources: func() -> list<resource-info>;
+    
+    /// Read a resource
+    read-resource: func(uri: string) -> result<resource-contents, error>;
+    
+    /// List available prompts
+    list-prompts: func() -> list<prompt>;
+    
+    /// Get a prompt
+    get-prompt: func(name: string, arguments: string) -> result<list<prompt-message>, error>;
+}
+
+// World for MCP handler components (libraries)
+world mcp-handler {
+    export handler;
+}

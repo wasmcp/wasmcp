@@ -1,0 +1,25 @@
+[package]
+name = "mcp-http-component"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+spin-sdk = "3.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+wit-bindgen = "0.16.0"
+base64 = "0.21"
+
+[package.metadata.component]
+package = "component:mcp-gateway"
+
+[package.metadata.component.target]
+path = "./wit"
+world = "mcp-http-api"
+
+
+[workspace]

@@ -1,0 +1,13 @@
+[package]
+name = "ftl-sdk"
+version = "0.2.0"
+edition = "2021"
+description = "Rust SDK for building MCP components with FTL"
+license = "MIT"
+repository = "https://github.com/fastertools/ftl-cli"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
