@@ -1,60 +1,130 @@
+//! Rust SDK for building MCP (Model Context Protocol) WebAssembly components
+//!
+//! This crate provides the core traits and macros for implementing MCP handlers in Rust.
+
+#![warn(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo,
+    missing_docs,
+    missing_debug_implementations,
+    rust_2018_idioms
+)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc
+)]
+
 use serde_json::Value;
 
-// Core traits that define MCP capabilities
-// Using traits allows for zero-cost abstractions and compile-time polymorphism
-
+/// Trait for implementing MCP tools.
+///
+/// Tools are functions that can be called by MCP clients to perform specific actions.
 pub trait ToolHandler: Sized {
+    /// The name of the tool as it will appear to MCP clients.
     const NAME: &'static str;
+
+    /// A human-readable description of what the tool does.
     const DESCRIPTION: &'static str;
-    
+
+    /// Returns the JSON schema describing the tool's input parameters.
     fn input_schema() -> Value;
+
+    /// Executes the tool with the given arguments.
     fn execute(args: Value) -> Result<String, String>;
 }
 
+/// Trait for implementing MCP resources.
+///
+/// Resources are data sources that can be read by MCP clients.
 pub trait ResourceHandler: Sized {
+    /// The URI that uniquely identifies this resource.
     const URI: &'static str;
+
+    /// The human-readable name of the resource.
     const NAME: &'static str;
+
+    /// Optional description of the resource.
     const DESCRIPTION: Option<&'static str> = None;
+
+    /// Optional MIME type of the resource content.
     const MIME_TYPE: Option<&'static str> = None;
-    
+
+    /// Reads and returns the resource content.
     fn read() -> Result<String, String>;
 }
 
+/// Trait for implementing MCP prompts.
+///
+/// Prompts are templates that can be resolved with arguments to produce messages.
 pub trait PromptHandler: Sized {
+    /// The name of the prompt as it will appear to MCP clients.
     const NAME: &'static str;
+
+    /// Optional description of what the prompt does.
     const DESCRIPTION: Option<&'static str> = None;
-    
+
+    /// The type that defines the prompt's arguments.
     type Arguments: PromptArguments;
-    
+
+    /// Resolves the prompt with the given arguments to produce messages.
     fn resolve(args: Value) -> Result<Vec<PromptMessage>, String>;
 }
 
-// Trait for prompt arguments - allows compile-time validation
+/// Trait for defining prompt arguments.
+///
+/// This allows compile-time validation of prompt parameters.
 pub trait PromptArguments {
+    /// Returns the schema defining the prompt's arguments.
     fn schema() -> Vec<PromptArgument>;
 }
 
-// Types
-#[derive(Clone)]
+/// Represents a single argument for a prompt.
+#[derive(Clone, Debug)]
 pub struct PromptArgument {
+    /// The name of the argument.
     pub name: &'static str,
+    /// Optional description of what the argument is for.
     pub description: Option<&'static str>,
+    /// Whether this argument is required or optional.
     pub required: bool,
 }
 
-#[derive(Clone)]
+/// Represents a message in a prompt conversation.
+#[derive(Clone, Debug)]
 pub struct PromptMessage {
+    /// The role of the message sender.
     pub role: PromptRole,
+    /// The content of the message.
     pub content: String,
 }
 
-#[derive(Clone, Copy)]
+/// The role of a participant in a prompt conversation.
+#[derive(Clone, Copy, Debug)]
 pub enum PromptRole {
+    /// A user message.
     User,
+    /// An assistant/AI message.
     Assistant,
 }
 
-// Macro for implementing handlers with zero runtime overhead
+/// Macro for generating MCP handler implementations.
+///
+/// This macro generates the necessary WebAssembly bindings and handler logic
+/// with zero runtime overhead.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// wasmcp::create_handler!(
+///     tools: [EchoTool, CalculatorTool],
+///     resources: [ConfigResource],
+///     prompts: [GreetingPrompt],
+/// );
+/// ```
 #[macro_export]
 macro_rules! create_handler {
     (
@@ -91,7 +161,7 @@ macro_rules! create_handler {
                     )*)?
                 ]
             }
-            
+
             fn call_tool(name: String, arguments: String) -> ToolResult {
                 let args = match serde_json::from_str(&arguments) {
                     Ok(v) => v,
@@ -101,7 +171,7 @@ macro_rules! create_handler {
                         data: None,
                     }),
                 };
-                
+
                 // Compile-time dispatch - no vtables, no dynamic dispatch
                 $($(
                     if name == <$tool as $crate::ToolHandler>::NAME {
@@ -115,14 +185,14 @@ macro_rules! create_handler {
                         };
                     }
                 )*)?
-                
+
                 ToolResult::Error(WitError {
                     code: -32601,
                     message: format!("Unknown tool: {}", name),
                     data: None,
                 })
             }
-            
+
             fn list_resources() -> Vec<WitResourceInfo> {
                 vec![
                     $($(
@@ -135,7 +205,7 @@ macro_rules! create_handler {
                     )*)?
                 ]
             }
-            
+
             fn read_resource(uri: String) -> Result<WitResourceContents, WitError> {
                 $($(
                     if uri == <$resource as $crate::ResourceHandler>::URI {
@@ -154,14 +224,14 @@ macro_rules! create_handler {
                         };
                     }
                 )*)?
-                
+
                 Err(WitError {
                     code: -32601,
                     message: format!("Resource not found: {}", uri),
                     data: None,
                 })
             }
-            
+
             fn list_prompts() -> Vec<WitPrompt> {
                 vec![
                     $($(
@@ -180,7 +250,7 @@ macro_rules! create_handler {
                     )*)?
                 ]
             }
-            
+
             fn get_prompt(name: String, arguments: String) -> Result<Vec<WitPromptMessage>, WitError> {
                 let args = if arguments.is_empty() {
                     serde_json::Value::Object(serde_json::Map::new())
@@ -194,7 +264,7 @@ macro_rules! create_handler {
                         }),
                     }
                 };
-                
+
                 $($(
                     if name == <$prompt as $crate::PromptHandler>::NAME {
                         return match <$prompt as $crate::PromptHandler>::resolve(args) {
@@ -215,7 +285,7 @@ macro_rules! create_handler {
                         };
                     }
                 )*)?
-                
+
                 Err(WitError {
                     code: -32601,
                     message: format!("Prompt not found: {}", name),
@@ -223,13 +293,15 @@ macro_rules! create_handler {
                 })
             }
         }
-        
+
         bindings::export!(Component with_types_in bindings);
     };
 }
 
-// Re-export for convenience
-pub use serde_json::{json, Value as Json};
+/// Re-export of `serde_json`'s `json!` macro for convenience.
+pub use serde_json::json;
+/// Re-export of `serde_json::Value` as `Json` for convenience.
+pub use serde_json::Value as Json;
 
 // Derive macro for easy argument schemas (could be in separate crate)
 // Example usage:

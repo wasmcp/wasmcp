@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tools } from '../src/features';
+import { tools, echoTool } from '../src/index';
 
 describe('{{project-name}} MCP Handler', () => {
     describe('Tools', () => {
@@ -10,30 +10,33 @@ describe('{{project-name}} MCP Handler', () => {
         });
 
         it('should have the echo tool', () => {
-            const echoTool = tools.find(t => t.name === 'echo');
-            expect(echoTool).toBeDefined();
-            expect(echoTool?.description).toBe('Echo a message back to the user');
+            const tool = tools.find(t => t.name === 'echo');
+            expect(tool).toBeDefined();
+            expect(tool).toBe(echoTool);
+        });
+
+        it('should have correct tool configuration', () => {
+            expect(echoTool.name).toBe('echo');
+            expect(echoTool.description).toBe('Echo a message back to the user');
         });
 
         it('should handle valid input for echo tool', async () => {
-            const echoTool = tools.find(t => t.name === 'echo');
-            expect(echoTool).toBeDefined();
-            expect(echoTool?.execute).toBeDefined();
-            
-            const result = await echoTool?.execute({ message: 'test input' });
-            expect(result).toBeDefined();
-            expect(typeof result).toBe('string');
-            expect(result).toContain('test input');
+            const result = await echoTool.execute({ message: 'test input' });
+            expect(result).toBe('Echo: test input');
         });
 
-        it('should handle missing message with default', async () => {
-            const echoTool = tools.find(t => t.name === 'echo');
-            expect(echoTool).toBeDefined();
+        it('should validate input schema', () => {
+            // Test that the schema requires a message
+            const parseResult = echoTool.schema.safeParse({});
+            expect(parseResult.success).toBe(false);
             
-            const result = await echoTool?.execute({});
-            expect(result).toBeDefined();
-            expect(typeof result).toBe('string');
-            expect(result).toContain('Hello, world!');
+            const validParseResult = echoTool.schema.safeParse({ message: 'test' });
+            expect(validParseResult.success).toBe(true);
+        });
+
+        it('should reject empty messages', () => {
+            const parseResult = echoTool.schema.safeParse({ message: '' });
+            expect(parseResult.success).toBe(false);
         });
     });
 });

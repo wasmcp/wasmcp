@@ -181,6 +181,9 @@ make build-all
 # Run all tests
 make test-all
 
+# Fix all lint and formatting issues
+make lint-fix-all
+
 # Full CI pipeline (build + test)
 make ci
 ```

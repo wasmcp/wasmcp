@@ -146,15 +146,46 @@ install-ts-deps: ## Install TypeScript dependencies
 
 install-deps: install-rust-tools install-ts-deps ## Install all dependencies
 
+# Lint targets
+lint-rust: ## Run Rust linters (clippy and rustfmt check)
+	@echo "Running clippy..."
+	cd src/components/wasmcp-spin && cargo clippy -- -D warnings
+	cd src/sdk/wasmcp-rust && cargo clippy -- -D warnings
+	@echo "Checking rustfmt..."
+	cd src/components/wasmcp-spin && cargo fmt -- --check
+	cd src/sdk/wasmcp-rust && cargo fmt -- --check
+
+lint-rust-fix: ## Fix Rust lint issues
+	@echo "Running clippy with fixes..."
+	cd src/components/wasmcp-spin && cargo clippy --fix --allow-dirty --allow-staged
+	cd src/sdk/wasmcp-rust && cargo clippy --fix --allow-dirty --allow-staged
+	@echo "Running rustfmt..."
+	cd src/components/wasmcp-spin && cargo fmt
+	cd src/sdk/wasmcp-rust && cargo fmt
+
+lint-ts: ## Run TypeScript linter
+	cd src/sdk/wasmcp-typescript && npm run lint
+
+lint-ts-fix: ## Fix TypeScript lint issues
+	cd src/sdk/wasmcp-typescript && npm run lint:fix
+
+lint-all: lint-rust lint-ts ## Run all linters
+
+lint-fix-all: ## Fix all lint and formatting issues (Rust and TypeScript)
+	@echo "Fixing all lint and formatting issues..."
+	@$(MAKE) lint-rust-fix
+	@$(MAKE) lint-ts-fix
+	@echo "✅ All lint and formatting issues fixed!"
+
 # Build targets
 build-gateway: ## Build wasmcp-spin
-	cd src/components/wasmcp-spin && cargo component build --release
+	cd src/components/wasmcp-spin && cargo clippy -- -D warnings && cargo component build --release
 
 build-rust-sdk: ## Build wasmcp-rust
-	cd src/sdk/wasmcp-rust && cargo build --release
+	cd src/sdk/wasmcp-rust && cargo clippy -- -D warnings && cargo build --release
 
 build-ts-sdk: install-ts-deps ## Build wasmcp-typescript
-	cd src/sdk/wasmcp-typescript && npm run build
+	cd src/sdk/wasmcp-typescript && npm run lint && npm run build
 
 build-all: build-gateway build-rust-sdk build-ts-sdk ## Build all components
 
