@@ -154,7 +154,7 @@ build-rust-sdk: ## Build wasmcp-rust
 	cd src/sdk/wasmcp-rust && cargo build --release
 
 build-ts-sdk: install-ts-deps ## Build wasmcp-typescript
-	cd src/sdk/wasmcp-typescript && npm run build
+	cd src/sdk/wasmcp-typescript && npm run lint && npm run build
 
 build-all: build-gateway build-rust-sdk build-ts-sdk ## Build all components
 

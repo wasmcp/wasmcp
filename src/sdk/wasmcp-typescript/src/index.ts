@@ -34,22 +34,70 @@ export abstract class Prompt<TSchema extends z.ZodType = z.ZodAny> {
 
 // Handler creation with automatic validation
 export interface HandlerConfig {
-  tools?: Array<new () => Tool<any>>;
-  resources?: Array<new () => Resource>;
-  prompts?: Array<new () => Prompt<any>>;
+  tools?: Array<Tool<z.ZodType>>;
+  resources?: Array<Resource>;
+  prompts?: Array<Prompt<z.ZodType>>;
 }
 
-export function createHandler(config: HandlerConfig) {
-  const tools = config.tools?.map(T => new T()) || [];
-  const resources = config.resources?.map(R => new R()) || [];
-  const prompts = config.prompts?.map(P => new P()) || [];
+interface ToolInfo {
+  name: string;
+  description: string;
+  inputSchema?: string;
+}
+
+interface ResourceInfo {
+  uri: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+interface PromptInfo {
+  name: string;
+  description?: string;
+  arguments?: Array<{
+    name: string;
+    description?: string;
+    required: boolean;
+  }>;
+}
+
+interface ErrorResponse {
+  tag: 'error';
+  val: {
+    code: number;
+    message: string;
+    data?: unknown;
+  };
+}
+
+interface SuccessResponse<T> {
+  tag: 'ok';
+  val: T;
+}
+
+type HandlerResponse<T> = ErrorResponse | SuccessResponse<T>;
+
+interface Handler {
+  listTools(): ToolInfo[];
+  listResources(): ResourceInfo[];
+  listPrompts(): PromptInfo[];
+  callTool(name: string, argumentsStr: string): Promise<HandlerResponse<string>>;
+  readResource(uri: string): Promise<HandlerResponse<string>>;
+  getPrompt(name: string, argumentsStr: string): Promise<HandlerResponse<PromptMessage[]>>;
+}
+
+export function createHandler(config: HandlerConfig): Handler {
+  const tools = config.tools ?? [];
+  const resources = config.resources ?? [];
+  const prompts = config.prompts ?? [];
   
   const toolMap = new Map(tools.map(t => [t.name, t]));
   const resourceMap = new Map(resources.map(r => [r.uri, r]));
   const promptMap = new Map(prompts.map(p => [p.name, p]));
 
   return {
-    listTools() {
+    listTools(): ToolInfo[] {
       return tools.map(tool => ({
         name: tool.name,
         description: tool.description,
@@ -57,11 +105,11 @@ export function createHandler(config: HandlerConfig) {
       }));
     },
 
-    async callTool(name: string, argumentsStr: string) {
+    async callTool(name: string, argumentsStr: string): Promise<HandlerResponse<string>> {
       const tool = toolMap.get(name);
       if (!tool) {
         return {
-          tag: 'error' as const,
+          tag: 'error',
           val: {
             code: -32601,
             message: `Unknown tool: ${name}`,
@@ -70,52 +118,46 @@ export function createHandler(config: HandlerConfig) {
         };
       }
 
-      let args: unknown;
       try {
-        args = JSON.parse(argumentsStr);
+        // Parse the arguments
+        const args = JSON.parse(argumentsStr) as unknown;
+        
+        // Validate using the tool's schema
+        if (tool.schema !== undefined) {
+          const parsed = tool.schema.safeParse(args);
+          if (!parsed.success) {
+            return {
+              tag: 'error',
+              val: {
+                code: -32602,
+                message: formatZodError(parsed.error),
+                data: parsed.error.format()
+              }
+            };
+          }
+          
+          // Execute with validated arguments
+          const result = await tool.execute(parsed.data);
+          return { tag: 'ok', val: result };
+        } else {
+          // No schema, pass through
+          const result = await tool.execute(args as z.infer<typeof tool.schema>);
+          return { tag: 'ok', val: result };
+        }
       } catch (e) {
+        const error = e as Error;
         return {
-          tag: 'error' as const,
-          val: {
-            code: -32602,
-            message: `Invalid JSON: ${e}`,
-            data: undefined
-          }
-        };
-      }
-
-      // Validate args with Zod
-      const parsed = tool.schema.safeParse(args);
-      if (!parsed.success) {
-        return {
-          tag: 'error' as const,
-          val: {
-            code: -32602,
-            message: `Invalid arguments: ${z.prettifyError(parsed.error)}`,
-            data: JSON.stringify(parsed.error.issues)
-          }
-        };
-      }
-
-      try {
-        const result = await tool.execute(parsed.data);
-        return {
-          tag: 'text' as const,
-          val: result
-        };
-      } catch (e: any) {
-        return {
-          tag: 'error' as const,
+          tag: 'error',
           val: {
             code: -32603,
-            message: e.message || String(e),
+            message: error.message ?? String(error),
             data: undefined
           }
         };
       }
     },
 
-    listResources() {
+    listResources(): ResourceInfo[] {
       return resources.map(resource => ({
         uri: resource.uri,
         name: resource.name,
@@ -124,101 +166,102 @@ export function createHandler(config: HandlerConfig) {
       }));
     },
 
-    async readResource(uri: string) {
+    async readResource(uri: string): Promise<HandlerResponse<string>> {
       const resource = resourceMap.get(uri);
       if (!resource) {
-        throw {
-          code: -32601,
-          message: `Resource not found: ${uri}`,
-          data: undefined
+        return {
+          tag: 'error',
+          val: {
+            code: -32002,
+            message: `Resource not found: ${uri}`,
+            data: undefined
+          }
         };
       }
 
       try {
-        const contents = await resource.read();
+        const content = await resource.read();
+        return { tag: 'ok', val: content };
+      } catch (e) {
+        const error = e as Error;
         return {
-          contents,
-          mimeType: resource.mimeType
-        };
-      } catch (e: any) {
-        throw {
-          code: -32603,
-          message: e.message || String(e),
-          data: undefined
+          tag: 'error',
+          val: {
+            code: -32603,
+            message: error.message ?? String(error),
+            data: undefined
+          }
         };
       }
     },
 
-    listPrompts() {
+    listPrompts(): PromptInfo[] {
       return prompts.map(prompt => {
-        // Convert Zod schema to prompt arguments
-        const args = prompt.schema && z.toJSONSchema(prompt.schema);
-        const arguments_ = [];
+        let args: PromptInfo['arguments'];
         
-        if (args && typeof args === 'object' && 'properties' in args) {
-          const properties = args.properties as Record<string, any>;
-          const required = Array.isArray(args.required) ? args.required : [];
+        if (prompt.schema !== undefined && 'shape' in prompt.schema && prompt.schema.shape !== undefined) {
+          const shape = prompt.schema.shape as Record<string, z.ZodType>;
+          const schemaDef = prompt.schema._def as { required?: string[] } | undefined;
+          const requiredFields = schemaDef?.required ?? [];
           
-          for (const [key, value] of Object.entries(properties)) {
-            arguments_.push({
-              name: key,
-              description: value.description,
-              required: required.includes(key)
-            });
-          }
+          args = Object.entries(shape).map(([name, field]) => ({
+            name,
+            description: (field as z.ZodType & { description?: string }).description,
+            required: Array.isArray(requiredFields) ? requiredFields.includes(name) : false
+          }));
         }
-
+        
         return {
           name: prompt.name,
           description: prompt.description,
-          arguments: arguments_
+          arguments: args
         };
       });
     },
 
-    async getPrompt(name: string, argumentsStr: string) {
+    async getPrompt(name: string, argumentsStr: string): Promise<HandlerResponse<PromptMessage[]>> {
       const prompt = promptMap.get(name);
       if (!prompt) {
-        throw {
-          code: -32601,
-          message: `Prompt not found: ${name}`,
-          data: undefined
+        return {
+          tag: 'error',
+          val: {
+            code: -32002,
+            message: `Prompt not found: ${name}`,
+            data: undefined
+          }
         };
       }
 
-      let args: unknown = {};
-      if (argumentsStr) {
-        try {
-          args = JSON.parse(argumentsStr);
-        } catch (e) {
-          throw {
-            code: -32602,
-            message: `Invalid JSON: ${e}`,
-            data: undefined
-          };
-        }
-      }
-
-      if (prompt.schema) {
-        const parsed = prompt.schema.safeParse(args);
-        if (!parsed.success) {
-          throw {
-            code: -32602,
-            message: `Invalid arguments: ${z.prettifyError(parsed.error)}`,
-            data: JSON.stringify(parsed.error.issues)
-          };
-        }
-        args = parsed.data;
-      }
-
       try {
-        const messages = await prompt.resolve(args as any);
-        return messages;
-      } catch (e: any) {
-        throw {
-          code: -32603,
-          message: e.message || String(e),
-          data: undefined
+        const args = JSON.parse(argumentsStr) as unknown;
+        
+        if (prompt.schema !== undefined) {
+          const parsed = prompt.schema.safeParse(args);
+          if (!parsed.success) {
+            return {
+              tag: 'error',
+              val: {
+                code: -32602,
+                message: formatZodError(parsed.error),
+                data: parsed.error.format()
+              }
+            };
+          }
+          const messages = await prompt.resolve(parsed.data);
+          return { tag: 'ok', val: messages };
+        } else {
+          const messages = await prompt.resolve(args as z.infer<NonNullable<typeof prompt.schema>>);
+          return { tag: 'ok', val: messages };
+        }
+      } catch (e) {
+        const error = e as Error;
+        return {
+          tag: 'error',
+          val: {
+            code: -32603,
+            message: error.message ?? String(error),
+            data: undefined
+          }
         };
       }
     }
@@ -231,13 +274,13 @@ export function createTool<TSchema extends z.ZodType>(config: {
   description: string;
   schema: TSchema;
   execute: (args: z.infer<TSchema>) => string | Promise<string>;
-}): new () => Tool<TSchema> {
-  return class extends Tool<TSchema> {
+}): Tool<TSchema> {
+  return new (class extends Tool<TSchema> {
     readonly name = config.name;
     readonly description = config.description;
     readonly schema = config.schema;
     execute = config.execute;
-  };
+  })();
 }
 
 export function createResource(config: {
@@ -246,14 +289,14 @@ export function createResource(config: {
   description?: string;
   mimeType?: string;
   read: () => string | Promise<string>;
-}): new () => Resource {
-  return class extends Resource {
+}): Resource {
+  return new (class extends Resource {
     readonly uri = config.uri;
     readonly name = config.name;
     readonly description = config.description;
     readonly mimeType = config.mimeType;
     read = config.read;
-  };
+  })();
 }
 
 export function createPrompt<TSchema extends z.ZodType>(config: {
@@ -261,14 +304,23 @@ export function createPrompt<TSchema extends z.ZodType>(config: {
   description?: string;
   schema?: TSchema;
   resolve: (args: z.infer<TSchema>) => PromptMessage[] | Promise<PromptMessage[]>;
-}): new () => Prompt<TSchema> {
-  return class extends Prompt<TSchema> {
+}): Prompt<TSchema> {
+  return new (class extends Prompt<TSchema> {
     readonly name = config.name;
     readonly description = config.description;
     readonly schema = config.schema;
     resolve = config.resolve;
-  };
+  })();
+}
+
+// Helper to format Zod errors nicely
+function formatZodError(error: z.ZodError): string {
+  const issues = error.issues.map(issue => {
+    const path = issue.path.join('.');
+    return path ? `${path}: ${issue.message}` : issue.message;
+  });
+  return `Validation error: ${issues.join(', ')}`;
 }
 
 // Re-export zod for convenience
-export { z } from 'zod/v4';
+export { z };

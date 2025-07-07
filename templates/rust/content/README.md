@@ -4,92 +4,130 @@
 
 ## Structure
 
-This is an FTL tool that implements the Model Context Protocol (MCP) using WebAssembly components.
+This is a Spin application that implements the Model Context Protocol (MCP) using WebAssembly components.
 
 - `handler/` - The Rust implementation of your MCP handler
-- `ftl.toml` - FTL configuration file
 - `spin.toml` - Spin application manifest
+- `Makefile` - Build and development commands
 
 ## Development
 
 ### Prerequisites
 
 - Rust with `wasm32-wasip1` target
-- FTL CLI
+- Spin CLI
+- cargo-component (will be installed automatically by Makefile)
 
 ### Building
 
 ```bash
-ftl build
-# or
 make build
+# or
+spin build
 ```
 
 ### Testing
 
+The handler includes comprehensive unit tests for all tools:
+
 ```bash
-ftl test
-# or
 make test
 ```
+
+Tests cover:
+- Tool metadata (name, description)
+- Input schema validation
+- Successful execution paths
+- Error handling for invalid inputs
 
 ### Running Locally
 
 ```bash
-ftl serve
+spin up
 # or
-make serve
+make up
 ```
 
-The tool will be available at `http://localhost:3000/mcp`
+The MCP server will be available at `http://localhost:3000/mcp`
 
 ### Example Usage
 
 ```bash
+# List available tools
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/list",
+    "id": 1
+  }'
+
+# Call the echo tool
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "{{project-name | snake_case}}",
+      "name": "echo",
       "arguments": {
-        "input": "Hello, world!"
+        "message": "Hello, world!"
       }
     },
-    "id": 1
+    "id": 2
   }'
 ```
 
-## Deployment
+## Implementing Your Tools
 
-```bash
-ftl deploy
-# or
-make deploy
+Edit `handler/src/lib.rs` to add new tools:
+
+1. Define a new zero-sized struct for your tool
+2. Implement the `ToolHandler` trait
+3. Add your tool to the `create_handler!` macro
+
+Example:
+```rust
+struct MyTool;
+
+impl ToolHandler for MyTool {
+    const NAME: &'static str = "my_tool";
+    const DESCRIPTION: &'static str = "Description of my tool";
+    
+    fn input_schema() -> serde_json::Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "param": { "type": "string" }
+            },
+            "required": ["param"]
+        })
+    }
+    
+    fn execute(args: serde_json::Value) -> Result<String, String> {
+        // Your tool logic here
+        Ok("Result".to_string())
+    }
+}
+
+// Don't forget to add it to the handler
+wasmcp::create_handler!(
+    tools: [EchoTool, MyTool],
+);
 ```
-
-## Implementing Your Tool
-
-Edit `handler/src/lib.rs` to implement your tool's functionality:
-
-1. Modify `list_tools()` to define your tools
-2. Implement the tool logic in `call_tool()`
-3. Optionally implement resources and prompts
 
 ## Configuration
 
-### Memory Allocation
+### Spin Configuration
 
-The WebAssembly memory allocator size can be adjusted in `handler/src/lib.rs`:
+Edit `spin.toml` to configure:
+- Component source and version
+- Environment variables
+- Build commands
 
-```rust
-const ARENA_SIZE: usize = 1 * 1024 * 1024; // Default: 1MB
-```
+### Cargo Configuration
 
-### Runtime Configuration
-
-Edit `ftl.toml` to configure:
-- Allowed external hosts
-- Build optimization flags
-- Other runtime settings
+Edit `handler/Cargo.toml` to:
+- Add dependencies
+- Configure optimization settings
+- Update package metadata
