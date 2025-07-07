@@ -53,10 +53,6 @@ graph TB
     Handler --> Tools
     Handler --> Resources  
     Handler --> Prompts
-    
-    style Client fill:#e1f5e1
-    style Gateway fill:#e1e5f5
-    style Handler fill:#f5e1e1
 ```
 
 The architecture consists of three key layers:
