@@ -3,8 +3,10 @@ name = "wasmcp"
 version = "0.1.2"
 edition = "2021"
 description = "Rust SDK for building MCP (Model Context Protocol) WebAssembly components"
-license = "MIT"
+license = "Apache-2.0"
 repository = "https://github.com/fastertools/wasmcp"
+keywords = ["mcp", "wasm", "webassembly", "model-context-protocol", "components"]
+categories = ["wasm", "web-programming", "api-bindings"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

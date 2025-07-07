@@ -31,6 +31,8 @@ impl ToolHandler for EchoTool {
 // Add more tools here...
 
 // Generate the MCP handler implementation
+// This macro generates WebAssembly bindings, so it's only compiled for wasm targets
+#[cfg(target_arch = "wasm32")]
 wasmcp::create_handler!(
     tools: [EchoTool],
 );

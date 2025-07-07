@@ -1,0 +1,23 @@
+# Rustfmt configuration for wasmcp project
+
+# Basic settings
+edition = "2021"
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+newline_style = "Unix"
+
+# Import settings
+imports_granularity = "Module"
+group_imports = "StdExternalCrate"
+reorder_imports = true
+reorder_modules = true
+
+# Code formatting
+use_field_init_shorthand = true
+use_try_shorthand = true
+
+# Comments
+wrap_comments = true
+comment_width = 100
+normalize_comments = true

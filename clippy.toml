@@ -1,0 +1,19 @@
+# Clippy configuration for wasmcp project
+
+# Set the MSRV (Minimum Supported Rust Version)
+msrv = "1.70.0"
+
+# Deny dangerous lints
+avoid-breaking-exported-api = false
+
+# Configure complexity thresholds
+cognitive-complexity-threshold = 30
+too-many-arguments-threshold = 7
+type-complexity-threshold = 250
+too-many-lines-threshold = 400
+
+# Allow certain patterns common in macro-heavy code
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+allow-dbg-in-tests = true
+allow-print-in-tests = true
