@@ -1,20 +1,20 @@
-# Version management for ftl-components
+# Version management for wasmcp
 # This file is the single source of truth for all component versions
 
 [packages]
 # Core components
-mcp-http-component = "0.1.3"
-ftl-sdk-rust = "0.2.3"
-ftl-sdk-typescript = "0.1.3"
+wasmcp-spin = "0.0.1"
+wasmcp-rust = "0.0.1"
+wasmcp-typescript = "0.0.1"
 
 [wit]
 # WIT package versions - only change on breaking interface changes
-mcp = "0.1.0"
-mcp-gateway = "0.1.0"
+mcp = "0.0.1"
+wasmcp-spin-wit = "0.0.1"
 
 [registry]
 # Published package references for templates
 # Format: registry/namespace/package
-"ghcr.io/bowlofarugula/mcp-http-component" = "0.1.3"
-"crates.io/ftl-sdk" = "0.2.3"
-"npm/@fastertools/ftl-sdk" = "0.1.3"
+"ghcr.io/fastertools/wasmcp-spin" = "0.0.1"
+"crates.io/wasmcp" = "0.0.1"
+"npm/wasmcp" = "0.0.1"

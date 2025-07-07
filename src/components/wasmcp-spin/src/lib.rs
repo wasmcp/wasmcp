@@ -2,13 +2,11 @@ use spin_sdk::http::{IntoResponse, Request, Response};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-// Generate bindings for the MCP dependency
-wit_bindgen::generate!({
-    world: "mcp-http-api",
-    path: "./wit"
-});
+// cargo-component will generate bindings automatically
+#[allow(warnings)]
+mod bindings;
 
-use component::mcp::handler::{
+use bindings::wasmcp::mcp::handler::{
     list_tools, call_tool, list_resources, read_resource, list_prompts, get_prompt,
     ToolResult
 };

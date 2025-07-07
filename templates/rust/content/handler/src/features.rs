@@ -1,4 +1,4 @@
-use ftl_sdk::{create_tool, create_resource, create_prompt, json, Tool, Resource, Prompt, PromptMessage, PromptRole};
+use wasmcp::{create_tool, create_resource, create_prompt, json, Tool, Resource, Prompt, PromptMessage, PromptRole};
 
 // Define your tools
 pub fn tools() -> Vec<Tool> {

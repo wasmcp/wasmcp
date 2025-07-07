@@ -1,15 +1,15 @@
 [[trigger.http]]
 route = "{{route}}"
-component = "mcp-gateway-{{project-name | kebab_case}}"
+component = "wasmcp-spin-{{project-name | kebab_case}}"
 
-[component.mcp-gateway-{{project-name | kebab_case}}]
+[component.wasmcp-spin-{{project-name | kebab_case}}]
 # Using the published gateway component
-source = { registry = "ghcr.io", package = "bowlofarugula:mcp-gateway", version = "0.1.3" }
+source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.1" }
 
-[component.mcp-gateway-{{project-name | kebab_case}}.build]
+[component.wasmcp-spin-{{project-name | kebab_case}}.build]
 command = "cd {{project-name | kebab_case}} && make build"
-watch = ["{{project-name | kebab_case}}/handler/src/**/*.ts", "{{project-name | kebab_case}}/handler/package.json", "{{project-name | kebab_case}}/handler/tsconfig.json", "{{project-name | kebab_case}}/ftl.toml"]
+watch = ["{{project-name | kebab_case}}/handler/src/**/*.ts", "{{project-name | kebab_case}}/handler/package.json", "{{project-name | kebab_case}}/handler/tsconfig.json"]
 
-[component.mcp-gateway-{{project-name | kebab_case}}.dependencies]
+[component.wasmcp-spin-{{project-name | kebab_case}}.dependencies]
 # Link to the local handler component
-"component:mcp/handler@0.1.0" = { path = "{{project-name | kebab_case}}/handler/dist/handler.wasm" }
+"wasmcp:mcp/handler@0.0.1" = { path = "{{project-name | kebab_case}}/handler/dist/handler.wasm" }

@@ -7,9 +7,9 @@ The CI workflow runs on:
 - Every pull request targeting `main`
 
 It performs:
-1. Builds the mcp-http-component WebAssembly module
-2. Builds the ftl-sdk-rust library
-3. Builds the ftl-sdk-typescript package
+1. Builds the wasmcp-spin WebAssembly module
+2. Builds the wasmcp-rust library
+3. Builds the wasmcp-typescript package
 4. Runs available tests
 5. Uploads the built WASM artifact
 
@@ -23,13 +23,13 @@ git push origin v0.1.0
 ```
 
 It performs:
-1. Builds the mcp-http-component in release mode
+1. Builds the wasmcp-spin in release mode
 2. Extracts version from Cargo.toml
 3. Publishes to GitHub Container Registry at:
-   - `ghcr.io/bowlofarugula/mcp-http-component:<version>`
-   - `ghcr.io/bowlofarugula/mcp-http-component:latest`
-4. Publishes ftl-sdk-rust to crates.io
-5. Publishes @fastertools/ftl-sdk to npm
+   - `ghcr.io/fastertools/wasmcp-spin:<version>`
+   - `ghcr.io/fastertools/wasmcp-spin:latest`
+4. Publishes wasmcp-rust to crates.io
+5. Publishes wasmcp to npm
 6. Creates a GitHub release with the WASM artifact
 
 ## Required Secrets
@@ -52,20 +52,20 @@ To manually publish components:
 
 ### WebAssembly Component
 ```bash
-cd src/mcp-http-component
+cd src/components/wasmcp-spin
 cargo component build --release
-wkg oci push ghcr.io/bowlofarugula/mcp-http-component:0.1.0 \
-  target/wasm32-wasip1/release/mcp_http_component.wasm
+wkg oci push ghcr.io/fastertools/wasmcp-spin:0.1.0 \
+  target/wasm32-wasip1/release/wasmcp_spin.wasm
 ```
 
 ### Rust SDK
 ```bash
-cd src/ftl-sdk-rust
+cd src/sdk/wasmcp-rust
 cargo publish
 ```
 
 ### TypeScript SDK
 ```bash
-cd src/ftl-sdk-typescript
+cd src/sdk/wasmcp-typescript
 npm publish --access public
 ```

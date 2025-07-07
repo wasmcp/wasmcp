@@ -6,13 +6,13 @@ edition = "2021"
 [dependencies]
 serde = "1.0"
 serde_json = "1.0"
-wasmcp = "0.0.1"
+wasmcp = "0.2.3"
 
 [lib]
 crate-type = ["cdylib"]
 
 [package.metadata.component]
-package = "component:{{project-name | kebab_case}}"
+package = "component:{{project-name | kebab_case}}@0.1.0"
 
 [package.metadata.component.target]
 path = "wit"

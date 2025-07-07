@@ -1,21 +1,30 @@
-# FTL Components
+<div align="center">
 
-WebAssembly components for building and deploying MCP (Model Context Protocol) servers.
+# `wasmcp`
+
+WebAssembly components for building MCP (Model Context Protocol) servers
+</div>
 
 ## Overview
 
-This repository provides:
+This repository provides a way to compose MCP (Model Context Protocol) servers as WebAssembly components. These components can run on any WebAssembly runtime that supports the component model, including:
+
+- **Spin** - Fermyon's WebAssembly framework
+- **Wasmtime** - Bytecode Alliance's WebAssembly runtime
+- Any other WASI-compatible runtime
+
+### What's Included
 
 1. **wit** - Wasm Interface Types defining the MCP component interfaces
-2. **mcp-http-component** - A WebAssembly component that exposes an MCP server over Streamable HTTP, delegating business logic to a MCP handler component.
-3. **ftl-sdk-rust** - SDK for building MCP handler components in Rust
-4. **ftl-sdk-typescript** - SDK for building MCP handler components in TypeScript/JavaScript
+2. **wasmcp-spin** - A Spin-specific WebAssembly component that exposes an MCP server over HTTP, delegating business logic to a MCP handler component
+3. **wasmcp** (Rust) - SDK for building MCP handler components in Rust
+4. **wasmcp** (TypeScript) - SDK for building MCP handler components in TypeScript/JavaScript
 
 ## Architecture
 
 ```
 ┌─────────────────┐         ┌────────────────────┐
-│   HTTP Client   │ ──────> │ mcp-http-component │
+│   HTTP Client   │ ──────> │  wasmcp-spin  │
 └─────────────────┘         └────────────────────┘
                                      │
                                      │ imports
@@ -26,7 +35,7 @@ This repository provides:
                             └──────────────────┘
 ```
 
-The mcp-http-component acts as a gateway that:
+The wasmcp-spin component acts as a gateway that:
 - Receives HTTP requests following the MCP protocol
 - Calls into your MCP handler component
 - Returns responses over HTTP
@@ -37,7 +46,8 @@ The mcp-http-component acts as a gateway that:
 
 - Rust toolchain with `wasm32-wasip1` target
 - Node.js 20+
-- cargo-binstall (for faster tool installation)
+- cargo-component (`cargo install --locked cargo-component`)
+- wasm-tools (`cargo install --locked wasm-tools`)
 
 ### Common Commands
 
@@ -68,24 +78,37 @@ make ci
    cd my-handler
    ```
 
-2. Add the SDK and configure WIT dependencies in `Cargo.toml`:
+2. Add the SDK to `Cargo.toml`:
    ```toml
    [dependencies]
-   ftl-sdk = "0.2.1"
+   wasmcp = "0.0.1"
    
-   [package.metadata.component.target.dependencies]
-   "component:mcp" = { path = "../ftl-components/wit" }
+   [package.metadata.component]
+   package = "my:handler@0.1.0"
+   
+   [package.metadata.component.target]
+   path = "wit"
+   world = "my-handler"
    ```
 
-3. Implement your handler using the SDK types
-4. Build: `cargo component build --release`
+3. Reference the MCP interface in your `wit/world.wit`:
+   ```wit
+   package my:handler@0.1.0;
+   
+   world my-handler {
+       export wasmcp:mcp/handler@0.0.1;
+   }
+   ```
+
+4. Implement your handler using the SDK types
+5. Build: `cargo component build --release`
 
 ### Building a TypeScript MCP Handler
 
 1. Set up your project:
    ```bash
    npm init -y
-   npm install @fastertools/ftl-sdk
+   npm install wasmcp
    npm install -D @bytecodealliance/jco
    ```
 
@@ -98,13 +121,16 @@ make ci
 ```
 ftl-components/
 ├── wit/                    # Shared WIT interface definitions
-│   ├── mcp.wit            # MCP handler interface
-│   └── world.wit          # Component world definitions
+│   └── mcp.wit            # MCP handler interface and world
 ├── src/
-│   ├── mcp-http-component/ # HTTP gateway component
-│   ├── ftl-sdk-rust/      # Rust SDK
-│   └── ftl-sdk-typescript/ # TypeScript SDK
-└── examples/              # Example implementations
+│   ├── components/
+│   │   └── wasmcp-spin/  # Spin HTTP gateway component
+│   │       └── wit/           # Gateway-specific WIT files
+│   └── sdk/
+│       ├── wasmcp-rust/       # Rust SDK
+│       └── wasmcp-typescript/ # TypeScript SDK
+├── templates/             # Project templates
+└── scripts/               # Build and version management scripts
 ```
 
 ## Version Management
@@ -130,6 +156,12 @@ make bump-ts-patch       # Bump TypeScript SDK patch version
 
 # Ensure versions are in sync
 make sync-versions
+
+# Sync WIT files from root to templates
+make sync-wit
+
+# Validate WIT files are in sync
+make validate-wit
 ```
 
 ### How It Works
@@ -141,7 +173,7 @@ make sync-versions
    - Gateway component references
    - Documentation
 
-3. **CI Validation**: Pull requests are checked to ensure version consistency
+3. **CI Validation**: Pull requests are checked to ensure version and WIT file consistency
 
 ### Release Process
 
@@ -181,6 +213,6 @@ For more details, see [Version Management Scripts](./scripts/README.md).
 ## Documentation
 
 - [WIT Interface Documentation](./wit/README.md)
-- [Rust SDK Documentation](./src/ftl-sdk-rust/README.md)
-- [TypeScript SDK Documentation](./src/ftl-sdk-typescript/README.md)
-- [HTTP Gateway Documentation](./src/mcp-http-component/README.md)
+- [Rust SDK Documentation](./src/sdk/wasmcp-rust/README.md)
+- [TypeScript SDK Documentation](./src/sdk/wasmcp-typescript/README.md)
+- [Spin HTTP Gateway Documentation](./src/components/wasmcp-spin/README.md)

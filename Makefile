@@ -1,4 +1,4 @@
-.PHONY: help sync-versions validate-versions bump-all-patch bump-all-minor bump-all-major
+.PHONY: help sync-versions sync-wit validate-versions validate-wit bump-all-patch bump-all-minor bump-all-major
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -10,8 +10,12 @@ sync-versions: ## Sync versions across the repository
 	@echo "Syncing versions..."
 	@./scripts/sync-versions.sh
 
-sync-wit: ## Sync WIT files to mcp-http-component
-	@./scripts/sync-wit.sh
+sync-wit: ## Sync WIT files from root to all templates
+	@echo "Syncing WIT files to templates..."
+	@cp wit/mcp.wit templates/rust/content/handler/wit/mcp.wit
+	@cp wit/mcp.wit templates/javascript/content/handler/wit/mcp.wit
+	@cp wit/mcp.wit templates/typescript/content/handler/wit/mcp.wit
+	@echo "✅ WIT files synced to all templates"
 
 validate-versions: ## Check if versions are in sync
 	@echo "Validating versions..."
@@ -24,36 +28,59 @@ validate-versions: ## Check if versions are in sync
 		echo "✅ All versions are in sync!"; \
 	fi
 
+validate-wit: ## Check if WIT files are in sync
+	@echo "Validating WIT files..."
+	@$(MAKE) sync-wit > /dev/null 2>&1
+	@# Check only for modifications (M), not additions (A) or untracked (??)
+	@if [ -n "$$(git status --porcelain templates/*/content/handler/wit/mcp.wit | grep '^[[:space:]]*M')" ]; then \
+		echo "❌ WIT files are out of sync!"; \
+		git status --short templates/*/content/handler/wit/mcp.wit | grep '^[[:space:]]*M'; \
+		echo "Run 'make sync-wit' to fix"; \
+		exit 1; \
+	else \
+		echo "✅ All WIT files are in sync!"; \
+	fi
+
 # Individual component bumps
-bump-gateway-patch: ## Bump mcp-http-component patch version
-	@current=$$(grep 'mcp-http-component = ' versions.toml | cut -d'"' -f2); \
+bump-gateway-patch: ## Bump wasmcp-spin patch version
+	@current=$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2"."$$3+1}'); \
-	./scripts/bump-version.sh mcp-http-component $$new
+	./scripts/bump-version.sh wasmcp-spin $$new
 
-bump-gateway-minor: ## Bump mcp-http-component minor version
-	@current=$$(grep 'mcp-http-component = ' versions.toml | cut -d'"' -f2); \
+bump-gateway-minor: ## Bump wasmcp-spin minor version
+	@current=$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
-	./scripts/bump-version.sh mcp-http-component $$new
+	./scripts/bump-version.sh wasmcp-spin $$new
 
-bump-rust-patch: ## Bump ftl-sdk-rust patch version
-	@current=$$(grep 'ftl-sdk-rust = ' versions.toml | cut -d'"' -f2); \
+bump-rust-patch: ## Bump wasmcp-rust patch version
+	@current=$$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2"."$$3+1}'); \
-	./scripts/bump-version.sh ftl-sdk-rust $$new
+	./scripts/bump-version.sh wasmcp-rust $$new
 
-bump-rust-minor: ## Bump ftl-sdk-rust minor version
-	@current=$$(grep 'ftl-sdk-rust = ' versions.toml | cut -d'"' -f2); \
+bump-rust-minor: ## Bump wasmcp-rust minor version
+	@current=$$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
-	./scripts/bump-version.sh ftl-sdk-rust $$new
+	./scripts/bump-version.sh wasmcp-rust $$new
 
-bump-ts-patch: ## Bump ftl-sdk-typescript patch version
-	@current=$$(grep 'ftl-sdk-typescript = ' versions.toml | cut -d'"' -f2); \
+bump-ts-patch: ## Bump wasmcp-typescript patch version
+	@current=$$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2"."$$3+1}'); \
-	./scripts/bump-version.sh ftl-sdk-typescript $$new
+	./scripts/bump-version.sh wasmcp-typescript $$new
 
-bump-ts-minor: ## Bump ftl-sdk-typescript minor version
-	@current=$$(grep 'ftl-sdk-typescript = ' versions.toml | cut -d'"' -f2); \
+bump-ts-minor: ## Bump wasmcp-typescript minor version
+	@current=$$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
-	./scripts/bump-version.sh ftl-sdk-typescript $$new
+	./scripts/bump-version.sh wasmcp-typescript $$new
+
+bump-mcp-wit: ## Bump MCP WIT package version (breaking changes only)
+	@current=$$(grep '^mcp = ' versions.toml | cut -d'"' -f2); \
+	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
+	./scripts/bump-version.sh mcp $$new
+
+bump-gateway-wit: ## Bump MCP Gateway WIT package version (breaking changes only)
+	@current=$$(grep '^mcp-gateway = ' versions.toml | cut -d'"' -f2); \
+	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
+	./scripts/bump-version.sh mcp-gateway $$new
 
 # Bump all packages
 bump-all-patch: ## Bump all packages patch version
@@ -68,9 +95,9 @@ bump-all-patch: ## Bump all packages patch version
 	@echo "  1. Review changes: git diff"
 	@echo "  2. Commit: git commit -am 'chore: bump all packages patch version'"
 	@echo "  3. Create tags:"
-	@echo "     git tag mcp-http-component-v$$(grep 'mcp-http-component = ' versions.toml | cut -d'"' -f2)"
-	@echo "     git tag ftl-sdk-rust-v$$(grep 'ftl-sdk-rust = ' versions.toml | cut -d'"' -f2)"
-	@echo "     git tag ftl-sdk-typescript-v$$(grep 'ftl-sdk-typescript = ' versions.toml | cut -d'"' -f2)"
+	@echo "     git tag wasmcp-spin-v$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2)"
+	@echo "     git tag wasmcp-rust-v$$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2)"
+	@echo "     git tag wasmcp-typescript-v$$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2)"
 	@echo "  4. Push: git push origin main --tags"
 
 bump-all-minor: ## Bump all packages minor version
@@ -86,42 +113,58 @@ bump-all-minor: ## Bump all packages minor version
 
 # Install targets
 install-rust-tools: ## Install required Rust tools
-	@which cargo-component > /dev/null || cargo binstall cargo-component --no-confirm
-	@which wasm-tools > /dev/null || cargo binstall wasm-tools --no-confirm
+	@which cargo-component > /dev/null || { \
+		if command -v cargo-binstall >/dev/null 2>&1; then \
+			echo "Installing cargo-component with cargo-binstall..."; \
+			cargo binstall cargo-component --no-confirm; \
+		else \
+			echo "Installing cargo-component from source..."; \
+			cargo install --locked cargo-component; \
+		fi; \
+	}
+	@which wasm-tools > /dev/null || { \
+		if command -v cargo-binstall >/dev/null 2>&1; then \
+			echo "Installing wasm-tools with cargo-binstall..."; \
+			cargo binstall wasm-tools --no-confirm; \
+		else \
+			echo "Installing wasm-tools from source..."; \
+			cargo install --locked wasm-tools; \
+		fi; \
+	}
 
 install-ts-deps: ## Install TypeScript dependencies
-	cd src/ftl-sdk-typescript && npm ci
+	cd src/sdk/wasmcp-typescript && npm ci
 
 install-deps: install-rust-tools install-ts-deps ## Install all dependencies
 
 # Build targets
-build-gateway: ## Build mcp-http-component
-	cd src/mcp-http-component && cargo component build --release
+build-gateway: ## Build wasmcp-spin
+	cd src/components/wasmcp-spin && cargo component build --release
 
-build-rust-sdk: ## Build ftl-sdk-rust
-	cd src/ftl-sdk-rust && cargo build --release
+build-rust-sdk: ## Build wasmcp-rust
+	cd src/sdk/wasmcp-rust && cargo build --release
 
-build-ts-sdk: ## Build ftl-sdk-typescript
-	cd src/ftl-sdk-typescript && npm run build
+build-ts-sdk: ## Build wasmcp-typescript
+	cd src/sdk/wasmcp-typescript && npm run build
 
 build-all: build-gateway build-rust-sdk build-ts-sdk ## Build all components
 
 # Test targets
-test-gateway: ## Test mcp-http-component
-	cd src/mcp-http-component && cargo test
+test-gateway: ## Test wasmcp-spin
+	cd src/components/wasmcp-spin && cargo test
 
-test-rust-sdk: ## Test ftl-sdk-rust
-	cd src/ftl-sdk-rust && cargo test
+test-rust-sdk: ## Test wasmcp-rust
+	cd src/sdk/wasmcp-rust && cargo test
 
 test-rust: test-gateway test-rust-sdk ## Run all Rust tests
 
 test-ts: ## Run TypeScript tests
-	cd src/ftl-sdk-typescript && npm test
+	cd src/sdk/wasmcp-typescript && npm test
 
 test-all: test-rust test-ts ## Run all tests
 
 # CI targets
-ci-setup: install-deps sync-wit ## Setup CI environment
+ci-setup: install-deps ## Setup CI environment
 
 ci-build: ci-setup build-all ## CI build pipeline
 
@@ -131,60 +174,63 @@ ci: ci-build ci-test ## Run full CI pipeline
 
 # Clean targets
 clean: ## Clean all build artifacts
-	cd src/mcp-http-component && cargo clean
-	cd src/ftl-sdk-rust && cargo clean
-	cd src/ftl-sdk-typescript && rm -rf dist node_modules
+	cd src/components/wasmcp-spin && cargo clean
+	cd src/sdk/wasmcp-rust && cargo clean
+	cd src/sdk/wasmcp-typescript && rm -rf dist node_modules
 
 # Release helper
 show-versions: ## Show current versions
 	@echo "Current versions:"
-	@echo "  mcp-http-component: $$(grep 'mcp-http-component = ' versions.toml | cut -d'"' -f2)"
-	@echo "  ftl-sdk-rust:       $$(grep 'ftl-sdk-rust = ' versions.toml | cut -d'"' -f2)"
-	@echo "  ftl-sdk-typescript: $$(grep 'ftl-sdk-typescript = ' versions.toml | cut -d'"' -f2)"
-	@echo "  WIT package:        $$(grep '^mcp = ' versions.toml | cut -d'"' -f2)"
+	@echo "  wasmcp-spin:  $$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2)"
+	@echo "  wasmcp-rust:       $$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2)"
+	@echo "  wasmcp-typescript: $$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2)"
+	@echo ""
+	@echo "WIT packages:"
+	@echo "  mcp:                $$(grep '^mcp = ' versions.toml | cut -d'"' -f2)"
+	@echo "  mcp-gateway:        $$(grep '^mcp-gateway = ' versions.toml | cut -d'"' -f2)"
 
-get-gateway-version: ## Get mcp-http-component version
-	@grep 'mcp-http-component = ' versions.toml | cut -d'"' -f2
+get-gateway-version: ## Get wasmcp-spin version
+	@grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2
 
-get-rust-sdk-version: ## Get ftl-sdk-rust version
-	@grep 'ftl-sdk-rust = ' versions.toml | cut -d'"' -f2
+get-rust-sdk-version: ## Get wasmcp-rust version
+	@grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2
 
-get-ts-sdk-version: ## Get ftl-sdk-typescript version
-	@grep 'ftl-sdk-typescript = ' versions.toml | cut -d'"' -f2
+get-ts-sdk-version: ## Get wasmcp-typescript version
+	@grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2
 
 # Publishing targets
-publish-gateway: ## Publish mcp-http-component to ghcr.io
-	@echo "Publishing mcp-http-component..."
+publish-gateway: ## Publish wasmcp-spin to ghcr.io
+	@echo "Publishing wasmcp-spin..."
 	@version=$$(make get-gateway-version); \
-	cd src/mcp-http-component && \
-	wkg oci push ghcr.io/bowlofarugula/mcp-http-component:$$version \
-		target/wasm32-wasip1/release/mcp_http_component.wasm && \
-	wkg oci push ghcr.io/bowlofarugula/mcp-http-component:latest \
-		target/wasm32-wasip1/release/mcp_http_component.wasm
-	@echo "✅ Published mcp-http-component v$$(make get-gateway-version)"
+	cd src/components/wasmcp-spin && \
+	wkg oci push ghcr.io/fastertools/wasmcp-spin:$$version \
+		target/wasm32-wasip1/release/wasmcp_spin.wasm && \
+	wkg oci push ghcr.io/fastertools/wasmcp-spin:latest \
+		target/wasm32-wasip1/release/wasmcp_spin.wasm
+	@echo "✅ Published wasmcp-spin v$$(make get-gateway-version)"
 
-publish-rust-sdk: ## Publish ftl-sdk-rust to crates.io
-	@echo "Publishing ftl-sdk-rust to crates.io..."
-	cd src/ftl-sdk-rust && cargo publish
-	@echo "✅ Published ftl-sdk v$$(make get-rust-sdk-version)"
+publish-rust-sdk: ## Publish wasmcp-rust to crates.io
+	@echo "Publishing wasmcp-rust to crates.io..."
+	cd src/sdk/wasmcp-rust && cargo publish
+	@echo "✅ Published wasmcp v$$(make get-rust-sdk-version)"
 
-publish-rust-sdk-dry: ## Dry run publish ftl-sdk-rust
-	cd src/ftl-sdk-rust && cargo publish --dry-run
+publish-rust-sdk-dry: ## Dry run publish wasmcp-rust
+	cd src/sdk/wasmcp-rust && cargo publish --dry-run
 
-publish-ts-sdk: ## Publish ftl-sdk-typescript to npm
-	@echo "Publishing @fastertools/ftl-sdk to npm..."
-	cd src/ftl-sdk-typescript && npm publish --access public
-	@echo "✅ Published @fastertools/ftl-sdk v$$(make get-ts-sdk-version)"
+publish-ts-sdk: ## Publish wasmcp-typescript to npm
+	@echo "Publishing wasmcp to npm..."
+	cd src/sdk/wasmcp-typescript && npm publish --access public
+	@echo "✅ Published wasmcp v$$(make get-ts-sdk-version)"
 
-publish-ts-sdk-dry: ## Dry run publish ftl-sdk-typescript
-	cd src/ftl-sdk-typescript && npm publish --dry-run --access public
+publish-ts-sdk-dry: ## Dry run publish wasmcp-typescript
+	cd src/sdk/wasmcp-typescript && npm publish --dry-run --access public
 
 publish-all: ## Publish all packages (use with caution!)
 	@echo "⚠️  Publishing all packages..."
 	@echo "This will publish:"
-	@echo "  - mcp-http-component v$$(make get-gateway-version) to ghcr.io"
-	@echo "  - ftl-sdk v$$(make get-rust-sdk-version) to crates.io"
-	@echo "  - @fastertools/ftl-sdk v$$(make get-ts-sdk-version) to npm"
+	@echo "  - wasmcp-spin v$$(make get-gateway-version) to ghcr.io"
+	@echo "  - wasmcp v$$(make get-rust-sdk-version) to crates.io"
+	@echo "  - wasmcp v$$(make get-ts-sdk-version) to npm"
 	@echo ""
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
@@ -197,13 +243,13 @@ publish-all: ## Publish all packages (use with caution!)
 publish-dry-run: ## Dry run all publishes
 	@echo "Dry run for all packages:"
 	@echo ""
-	@echo "=== mcp-http-component ==="
+	@echo "=== wasmcp-spin ==="
 	@echo "Would publish v$$(make get-gateway-version) to ghcr.io"
 	@echo ""
-	@echo "=== ftl-sdk-rust ==="
+	@echo "=== wasmcp-rust ==="
 	@$(MAKE) publish-rust-sdk-dry
 	@echo ""
-	@echo "=== ftl-sdk-typescript ==="
+	@echo "=== wasmcp-typescript ==="
 	@$(MAKE) publish-ts-sdk-dry
 
 # Release workflow targets
@@ -215,9 +261,9 @@ release-patch: ## Full release workflow for patch version
 	@echo "1. Review: git diff"
 	@echo "2. Commit: git commit -am 'chore: release patch version'"
 	@echo "3. Tag and push:"
-	@echo "   git tag mcp-http-component-v$$(make get-gateway-version)"
-	@echo "   git tag ftl-sdk-rust-v$$(make get-rust-sdk-version)"
-	@echo "   git tag ftl-sdk-typescript-v$$(make get-ts-sdk-version)"
+	@echo "   git tag wasmcp-spin-v$$(make get-gateway-version)"
+	@echo "   git tag wasmcp-rust-v$$(make get-rust-sdk-version)"
+	@echo "   git tag wasmcp-typescript-v$$(make get-ts-sdk-version)"
 	@echo "   git push origin main --tags"
 	@echo ""
 	@echo "GitHub Actions will handle publishing when tags are pushed."

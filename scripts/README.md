@@ -34,8 +34,11 @@ Examples:
 # Bump TypeScript SDK to 0.2.0
 ./scripts/bump-version.sh ftl-sdk-typescript 0.2.0
 
-# Bump WIT interface version (only on breaking changes!)
-./scripts/bump-version.sh wit 0.2.0
+# Bump MCP WIT interface version (only on breaking changes!)
+./scripts/bump-version.sh mcp 0.2.0
+
+# Bump MCP Gateway WIT interface version
+./scripts/bump-version.sh mcp-gateway 0.2.0
 ```
 
 ## Version Management Strategy

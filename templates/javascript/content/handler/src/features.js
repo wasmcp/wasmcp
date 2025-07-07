@@ -1,4 +1,4 @@
-import { createTool, createResource, createPrompt } from '@fastertools/ftl-sdk';
+import { createTool, createResource, createPrompt } from 'wasmcp';
 
 // Define your tools
 export const tools = [

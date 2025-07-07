@@ -1,11 +1,11 @@
-# FTL TypeScript SDK
+# wasmcp TypeScript SDK
 
 SDK for building MCP (Model Context Protocol) handler components in TypeScript/JavaScript.
 
 ## Installation
 
 ```bash
-npm install @fastertools/ftl-sdk
+npm install wasmcp
 ```
 
 ## Usage
@@ -18,7 +18,7 @@ This SDK provides types and utilities to help you implement MCP handlers that ca
 mkdir my-mcp-handler
 cd my-mcp-handler
 npm init -y
-npm install @fastertools/ftl-sdk
+npm install wasmcp
 npm install -D @bytecodealliance/jco typescript
 ```
 
@@ -54,12 +54,12 @@ Add to `package.json`:
 
 ### 3. Copy WIT files
 
-Copy the MCP WIT files from the ftl-components repository to your project's `wit` directory.
+Copy the MCP WIT files from the wasmcp repository to your project's `wit` directory.
 
 ### 4. Implement your handler
 
 ```typescript
-import { createHandler, createTool, Tool } from '@fastertools/ftl-sdk';
+import { createHandler, createTool, Tool } from 'wasmcp';
 
 const helloTool: Tool = createTool({
   name: 'hello',
@@ -99,7 +99,7 @@ export const {
 npm run build
 ```
 
-This will generate a `handler.wasm` file that can be used with the mcp-http-component gateway.
+This will generate a `handler.wasm` file that can be used with the wasmcp-spin gateway.
 
 ## Features
 

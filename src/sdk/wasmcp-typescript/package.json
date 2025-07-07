@@ -1,8 +1,8 @@
 {
-  "name": "@fastertools/ftl-sdk",
-  "version": "0.1.3",
+  "name": "wasmcp",
+  "version": "0.0.1",
   "type": "module",
-  "description": "TypeScript SDK for building MCP components with FTL",
+  "description": "TypeScript SDK for building MCP (Model Context Protocol) WebAssembly components",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

@@ -3,7 +3,7 @@
 //   * runtime_path: "wit_bindgen_rt"
 #[rustfmt::skip]
 #[allow(dead_code, clippy::all)]
-pub mod component {
+pub mod wasmcp {
     pub mod mcp {
         /// MCP handler interface
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
@@ -193,7 +193,7 @@ pub mod component {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "component:mcp/handler@0.1.0")]
+                    #[link(wasm_import_module = "wasmcp:mcp/handler@0.0.1")]
                     unsafe extern "C" {
                         #[link_name = "list-tools"]
                         fn wit_import1(_: *mut u8);
@@ -280,7 +280,7 @@ pub mod component {
                     let len1 = vec1.len();
                     let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "component:mcp/handler@0.1.0")]
+                    #[link(wasm_import_module = "wasmcp:mcp/handler@0.0.1")]
                     unsafe extern "C" {
                         #[link_name = "call-tool"]
                         fn wit_import3(
@@ -398,7 +398,7 @@ pub mod component {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "component:mcp/handler@0.1.0")]
+                    #[link(wasm_import_module = "wasmcp:mcp/handler@0.0.1")]
                     unsafe extern "C" {
                         #[link_name = "list-resources"]
                         fn wit_import1(_: *mut u8);
@@ -523,7 +523,7 @@ pub mod component {
                     let len0 = vec0.len();
                     let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "component:mcp/handler@0.1.0")]
+                    #[link(wasm_import_module = "wasmcp:mcp/handler@0.0.1")]
                     unsafe extern "C" {
                         #[link_name = "read-resource"]
                         fn wit_import2(_: *mut u8, _: usize, _: *mut u8);
@@ -704,7 +704,7 @@ pub mod component {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "component:mcp/handler@0.1.0")]
+                    #[link(wasm_import_module = "wasmcp:mcp/handler@0.0.1")]
                     unsafe extern "C" {
                         #[link_name = "list-prompts"]
                         fn wit_import1(_: *mut u8);
@@ -867,7 +867,7 @@ pub mod component {
                     let len1 = vec1.len();
                     let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "component:mcp/handler@0.1.0")]
+                    #[link(wasm_import_module = "wasmcp:mcp/handler@0.0.1")]
                     unsafe extern "C" {
                         #[link_name = "get-prompt"]
                         fn wit_import3(
@@ -1047,12 +1047,12 @@ mod _rt {
 }
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:component:mcp@0.1.0:mcp-http-api:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:spin:mcp-spin-api:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 777] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x86\x05\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 766] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xfb\x04\x01A\x02\x01\
 A\x02\x01B&\x01r\x03\x04names\x0bdescriptions\x0cinput-schemas\x04\0\x04tool\x03\
 \0\0\x01ks\x01r\x04\x03uris\x04names\x0bdescription\x02\x09mime-type\x02\x04\0\x0d\
 resource-info\x03\0\x03\x01p}\x01k\x05\x01r\x04\x03uris\x09mime-type\x02\x04text\
@@ -1066,10 +1066,9 @@ s\x04data\x02\x04\0\x05error\x03\0\x10\x01q\x02\x04text\x01s\0\x05error\x01\x11\
 \0\x17\x04\0\x0elist-resources\x01\x18\x01j\x01\x08\x01\x11\x01@\x01\x03uris\0\x19\
 \x04\0\x0dread-resource\x01\x1a\x01p\x0d\x01@\0\0\x1b\x04\0\x0clist-prompts\x01\x1c\
 \x01p\x0f\x01j\x01\x1d\x01\x11\x01@\x02\x04names\x09argumentss\0\x1e\x04\0\x0age\
-t-prompt\x01\x1f\x03\0\x1bcomponent:mcp/handler@0.1.0\x05\0\x04\0\x20component:m\
-cp/mcp-http-api@0.1.0\x04\0\x0b\x12\x01\0\x0cmcp-http-api\x03\0\0\0G\x09producer\
-s\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.4\
-1.0";
+t-prompt\x01\x1f\x03\0\x18wasmcp:mcp/handler@0.0.1\x05\0\x04\0\x18wasmcp:spin/mc\
+p-spin-api\x04\0\x0b\x12\x01\0\x0cmcp-spin-api\x03\0\0\0G\x09producers\x01\x0cpr\
+ocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

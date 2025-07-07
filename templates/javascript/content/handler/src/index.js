@@ -1,4 +1,4 @@
-import { createHandler } from '@fastertools/ftl-sdk';
+import { createHandler } from 'wasmcp';
 import { tools, resources, prompts } from './features.js';
 
 // Export the handler implementation for componentize-js

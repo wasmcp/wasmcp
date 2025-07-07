@@ -1,4 +1,4 @@
-# FTL Rust SDK
+# wasmcp Rust SDK
 
 SDK for building MCP (Model Context Protocol) handler components in Rust.
 
@@ -8,7 +8,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ftl-sdk = "0.2.1"
+wasmcp = "0.0.1"
 ```
 
 ## Usage
@@ -24,21 +24,21 @@ cd my-mcp-handler
 
 ### 2. Add the MCP WIT files
 
-Copy the WIT files from the ftl-components repository to your project's `wit` directory, or reference them in your `Cargo.toml`:
+Copy the WIT files from the wasmcp repository to your project's `wit` directory, or reference them in your `Cargo.toml`:
 
 ```toml
 [package.metadata.component.target.dependencies]
-"component:mcp" = { path = "../path/to/ftl-components/wit" }
+"wasmcp:mcp" = { path = "../path/to/wasmcp/wit" }
 ```
 
 ### 3. Implement your handler
 
 ```rust
-use ftl_sdk::{create_handler, json, Tool, Resource, Prompt};
+use wasmcp::{create_handler, json, Tool, Resource, Prompt};
 
 fn get_tools() -> Vec<Tool> {
     vec![
-        ftl_sdk::create_tool(
+        wasmcp::create_tool(
             "hello",
             "Says hello",
             json!({

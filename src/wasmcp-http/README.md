@@ -1,14 +1,14 @@
-# MCP Gateway Component
+# wasmcp HTTP Component
 
-This directory contains the source code for the MCP gateway component.
+This directory contains the source code for the wasmcp HTTP gateway component that bridges HTTP requests to MCP handlers.
 
 ## Using the Published Gateway
 
 Most users should use the pre-published gateway component:
 
 ```toml
-[component.mcp-gateway]
-source = { registry = "ghcr.io", package = "bowlofarugula:mcp-gateway", version = "0.1.0" }
+[component.wasmcp-http]
+source = { registry = "ghcr.io", package = "fastertools:wasmcp-http", version = "0.0.1" }
 ```
 
 ## Building a Custom Gateway
@@ -22,13 +22,13 @@ If you need to customize the gateway behavior:
    ```
 3. Publish to your registry:
    ```bash
-   wkg oci push ghcr.io/yourusername/custom-mcp-gateway:0.1.0 \
-     target/wasm32-wasip1/release/mcp_http_gateway.wasm
+   wkg oci push ghcr.io/fastertools/wasmcp-http:0.0.1 \
+     target/wasm32-wasip1/release/wasmcp_http.wasm
    ```
 4. Use your custom gateway in `spin.toml`:
    ```toml
-   [component.mcp-gateway]
-   source = { registry = "ghcr.io", package = "yourusername:custom-mcp-gateway", version = "0.1.0" }
+   [component.wasmcp-http]
+   source = { registry = "ghcr.io", package = "fastertools:wasmcp-http", version = "0.0.1" }
    ```
 
 ## Gateway Features
