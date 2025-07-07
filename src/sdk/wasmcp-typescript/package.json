@@ -1,6 +1,6 @@
 {
   "name": "wasmcp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "TypeScript SDK for building MCP (Model Context Protocol) WebAssembly components",
   "main": "./dist/index.js",
@@ -18,19 +18,19 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "test": "echo 'No tests configured yet'",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "prepublishOnly": "npm run lint && npm run build"
   },
   "dependencies": {
     "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.0.0",
-    "typescript": "^5.0.0"
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.0.0"
   },
   "engines": {
     "node": ">=20.0.0"
