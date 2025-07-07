@@ -204,8 +204,14 @@ publish-gateway: ## Publish wasmcp-spin to ghcr.io
 	@version=$$(make get-gateway-version); \
 	cd src/components/wasmcp-spin && \
 	wkg oci push ghcr.io/fastertools/wasmcp-spin:$$version \
+		--annotation "org.opencontainers.image.source=https://github.com/fastertools/wasmcp" \
+		--annotation "org.opencontainers.image.description=WebAssembly Component Protocol Gateway for Spin" \
+		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
 		target/wasm32-wasip1/release/wasmcp_spin.wasm && \
 	wkg oci push ghcr.io/fastertools/wasmcp-spin:latest \
+		--annotation "org.opencontainers.image.source=https://github.com/fastertools/wasmcp" \
+		--annotation "org.opencontainers.image.description=WebAssembly Component Protocol Gateway for Spin" \
+		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
 		target/wasm32-wasip1/release/wasmcp_spin.wasm
 	@echo "✅ Published wasmcp-spin v$$(make get-gateway-version)"
 
