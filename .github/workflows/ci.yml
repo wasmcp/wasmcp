@@ -17,21 +17,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Check version consistency
-      run: |
-        echo "Checking that all versions are in sync..."
-        ./scripts/sync-versions.sh
-        
-        # Check if any files were modified
-        if [[ -n $(git status --porcelain) ]]; then
-          echo "❌ Version inconsistency detected!"
-          echo "The following files have version mismatches:"
-          git diff --name-only
-          echo ""
-          echo "Run './scripts/sync-versions.sh' locally to fix versions"
-          exit 1
-        else
-          echo "✅ All versions are in sync!"
-        fi
+      run: make validate-versions
 
   build-and-test:
     name: Build and Test All Components
