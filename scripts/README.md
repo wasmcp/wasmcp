@@ -1,6 +1,6 @@
 # Version Management Scripts
 
-This directory contains scripts for managing versions across the ftl-components repository.
+This directory contains scripts for managing versions across the wasmcp repository.
 
 ## Scripts
 

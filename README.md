@@ -75,7 +75,7 @@ make ci
 First, install the wasmcp templates:
 
 ```bash
-spin templates install --git https://github.com/fastertools/ftl-components
+spin templates install --git https://github.com/fastertools/wasmcp
 ```
 
 This installs three templates:
@@ -161,7 +161,7 @@ This will automatically rebuild your MCP handler when you modify source files.
 ## Repository Structure
 
 ```
-ftl-components/
+wasmcp/
 ├── wit/                    # Shared WIT interface definitions
 │   └── mcp.wit            # MCP handler interface and world
 ├── src/
