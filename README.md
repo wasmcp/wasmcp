@@ -13,12 +13,13 @@ This repository provides a way to compose MCP (Model Context Protocol) servers a
 - **Wasmtime** - Bytecode Alliance's WebAssembly runtime
 - Any other WASI-compatible runtime
 
-### What's Included
+### Contents
 
 1. **wit** - Wasm Interface Types defining the MCP component interfaces
 2. **wasmcp-spin** - A Spin-specific WebAssembly component that exposes an MCP server over HTTP, delegating business logic to a MCP handler component
 3. **wasmcp** (Rust) - SDK for building MCP handler components in Rust
 4. **wasmcp** (TypeScript) - SDK for building MCP handler components in TypeScript/JavaScript
+5. **templates** - Spin templates for easily managing MCP projects
 
 ## Architecture
 
@@ -55,7 +56,7 @@ graph TB
     Handler --> Prompts
 ```
 
-The architecture consists of three key layers:
+The architecture consists of three layers:
 
 1. **Client Layer**: Any MCP-compatible client (Claude Desktop, IDE extensions, CLI tools)
 2. **Gateway Component** (`wasmcp-spin`): Handles HTTP transport and protocol translation
@@ -65,34 +66,6 @@ The gateway component:
 - Exposes an HTTP endpoint at `/mcp` for JSON-RPC requests
 - Translates between HTTP/JSON-RPC and WASI component calls
 - Manages request/response lifecycle and error handling
-
-## Development
-
-### Prerequisites
-
-- Rust toolchain with `wasm32-wasip1` target
-- Node.js 20+
-- cargo-component (`cargo install --locked cargo-component`)
-- wasm-tools (`cargo install --locked wasm-tools`)
-
-### Common Commands
-
-```bash
-# Show all available commands
-make help
-
-# Install dependencies and tools
-make install-deps
-
-# Build everything
-make build-all
-
-# Run all tests
-make test-all
-
-# Full CI pipeline (build + test)
-make ci
-```
 
 ## Quick Start with Spin
 
@@ -183,6 +156,34 @@ spin watch
 ```
 
 This will automatically rebuild your MCP handler when you modify source files.
+
+## Development
+
+### Prerequisites
+
+- Rust toolchain with `wasm32-wasip1` target
+- Node.js 20+
+- cargo-component (`cargo install --locked cargo-component`)
+- wasm-tools (`cargo install --locked wasm-tools`)
+
+### Common Commands
+
+```bash
+# Show all available commands
+make help
+
+# Install dependencies and tools
+make install-deps
+
+# Build everything
+make build-all
+
+# Run all tests
+make test-all
+
+# Full CI pipeline (build + test)
+make ci
+```
 
 ## Repository Structure
 
