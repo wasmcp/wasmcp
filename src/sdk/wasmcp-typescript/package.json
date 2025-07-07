@@ -1,6 +1,6 @@
 {
   "name": "wasmcp",
-  "version": "0.0.1",
+  "version": "0.1.1",
   "type": "module",
   "description": "TypeScript SDK for building MCP (Model Context Protocol) WebAssembly components",
   "main": "./dist/index.js",
@@ -19,6 +19,9 @@
     "clean": "rm -rf dist",
     "test": "echo 'No tests configured yet'",
     "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

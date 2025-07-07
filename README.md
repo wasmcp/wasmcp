@@ -68,53 +68,95 @@ make test-all
 make ci
 ```
 
-## Quick Start
+## Quick Start with Spin
 
-### Building a Rust MCP Handler
+### Installing Templates
 
-1. Create a new component:
+First, install the wasmcp templates:
+
+```bash
+spin templates install --git https://github.com/fastertools/ftl-components
+```
+
+This installs three templates:
+- `wasmcp-rust` - For building MCP handlers in Rust
+- `wasmcp-typescript` - For building MCP handlers in TypeScript
+- `wasmcp-javascript` - For building MCP handlers in JavaScript
+
+### Creating a New MCP Server
+
+1. **Create a new Spin application with an MCP handler:**
    ```bash
-   cargo component new my-handler --lib
-   cd my-handler
+   # Rust
+   spin new -t wasmcp-rust my-mcp-server
+   
+   # TypeScript
+   spin new -t wasmcp-typescript my-mcp-server
+   
+   # JavaScript  
+   spin new -t wasmcp-javascript my-mcp-server
    ```
 
-2. Add the SDK to `Cargo.toml`:
-   ```toml
-   [dependencies]
-   wasmcp = "0.0.1"
-   
-   [package.metadata.component]
-   package = "my:handler@0.1.0"
-   
-   [package.metadata.component.target]
-   path = "wit"
-   world = "my-handler"
-   ```
-
-3. Reference the MCP interface in your `wit/world.wit`:
-   ```wit
-   package my:handler@0.1.0;
-   
-   world my-handler {
-       export wasmcp:mcp/handler@0.0.1;
-   }
-   ```
-
-4. Implement your handler using the SDK types
-5. Build: `cargo component build --release`
-
-### Building a TypeScript MCP Handler
-
-1. Set up your project:
+2. **Build and run:**
    ```bash
-   npm init -y
-   npm install wasmcp
-   npm install -D @bytecodealliance/jco
+   cd my-mcp-server
+   spin build
+   spin up
    ```
 
-2. Copy the WIT files to your project
-3. Implement your handler using the SDK
-4. Build with jco: `jco componentize ...`
+3. **Test your MCP server:**
+   ```bash
+   # List available tools
+   curl -X POST http://localhost:3000/mcp \
+     -H "Content-Type: application/json" \
+     -d '{
+       "jsonrpc": "2.0",
+       "method": "tools/list",
+       "params": {},
+       "id": 1
+     }'
+   
+   # Call a tool
+   curl -X POST http://localhost:3000/mcp \
+     -H "Content-Type: application/json" \
+     -d '{
+       "jsonrpc": "2.0",
+       "method": "tools/call",
+       "params": {
+         "name": "echo",
+         "arguments": {
+           "message": "Hello, MCP!"
+         }
+       },
+       "id": 2
+     }'
+   ```
+
+### Adding MCP to an Existing Spin App
+
+If you already have a Spin application, you can add an MCP component:
+
+```bash
+# Add a TypeScript MCP handler
+spin add -t wasmcp-typescript my-handler
+
+# Add a Rust MCP handler  
+spin add -t wasmcp-rust my-handler
+
+# Then build and run as usual
+spin build
+spin up
+```
+
+### Development with File Watching
+
+Use `spin watch` for automatic rebuilds during development:
+
+```bash
+spin watch
+```
+
+This will automatically rebuild your MCP handler when you modify source files.
 
 ## Repository Structure
 

@@ -4,8 +4,8 @@
 [packages]
 # Core components
 wasmcp-spin = "0.0.1"
-wasmcp-rust = "0.0.1"
-wasmcp-typescript = "0.0.1"
+wasmcp-rust = "0.1.0"
+wasmcp-typescript = "0.1.1"
 
 [wit]
 # WIT package versions - only change on breaking interface changes
@@ -16,5 +16,5 @@ wasmcp-spin-wit = "0.0.1"
 # Published package references for templates
 # Format: registry/namespace/package
 "ghcr.io/fastertools/wasmcp-spin" = "0.0.1"
-"crates.io/wasmcp" = "0.0.1"
-"npm/wasmcp" = "0.0.1"
+"crates.io/wasmcp" = "0.1.0"
+"npm/wasmcp" = "0.1.1"

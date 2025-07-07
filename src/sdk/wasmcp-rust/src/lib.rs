@@ -1,67 +1,45 @@
 use serde_json::Value;
 
-// MCP Feature Types
+// Core traits that define MCP capabilities
+// Using traits allows for zero-cost abstractions and compile-time polymorphism
 
-pub struct Tool {
-    pub name: String,
-    pub description: String,
-    pub input_schema: Value,
-    pub execute: fn(Value) -> Result<String, String>,
+pub trait ToolHandler: Sized {
+    const NAME: &'static str;
+    const DESCRIPTION: &'static str;
+    
+    fn input_schema() -> Value;
+    fn execute(args: Value) -> Result<String, String>;
 }
 
-pub struct Resource {
-    pub uri: String,
-    pub name: String,
-    pub description: Option<String>,
-    pub mime_type: Option<String>,
-    pub read: fn() -> Result<String, String>,
+pub trait ResourceHandler: Sized {
+    const URI: &'static str;
+    const NAME: &'static str;
+    const DESCRIPTION: Option<&'static str> = None;
+    const MIME_TYPE: Option<&'static str> = None;
+    
+    fn read() -> Result<String, String>;
 }
 
-impl Resource {
-    pub fn with_description(mut self, description: impl Into<String>) -> Self {
-        self.description = Some(description.into());
-        self
-    }
-
-    pub fn with_mime_type(mut self, mime_type: impl Into<String>) -> Self {
-        self.mime_type = Some(mime_type.into());
-        self
-    }
+pub trait PromptHandler: Sized {
+    const NAME: &'static str;
+    const DESCRIPTION: Option<&'static str> = None;
+    
+    type Arguments: PromptArguments;
+    
+    fn resolve(args: Value) -> Result<Vec<PromptMessage>, String>;
 }
 
-pub struct Prompt {
-    pub name: String,
-    pub description: Option<String>,
-    pub arguments: Option<Vec<PromptArgument>>,
-    pub resolve: fn(Value) -> Result<Vec<PromptMessage>, String>,
+// Trait for prompt arguments - allows compile-time validation
+pub trait PromptArguments {
+    fn schema() -> Vec<PromptArgument>;
 }
 
-impl Prompt {
-    pub fn with_description(mut self, description: impl Into<String>) -> Self {
-        self.description = Some(description.into());
-        self
-    }
-
-    pub fn with_argument(mut self, name: impl Into<String>, description: impl Into<String>, required: bool) -> Self {
-        let arg = PromptArgument {
-            name: name.into(),
-            description: Some(description.into()),
-            required: Some(required),
-        };
-        if let Some(ref mut args) = self.arguments {
-            args.push(arg);
-        } else {
-            self.arguments = Some(vec![arg]);
-        }
-        self
-    }
-}
-
+// Types
 #[derive(Clone)]
 pub struct PromptArgument {
-    pub name: String,
-    pub description: Option<String>,
-    pub required: Option<bool>,
+    pub name: &'static str,
+    pub description: Option<&'static str>,
+    pub required: bool,
 }
 
 #[derive(Clone)]
@@ -70,101 +48,195 @@ pub struct PromptMessage {
     pub content: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum PromptRole {
     User,
     Assistant,
 }
 
-// Builder functions
+// Macro for implementing handlers with zero runtime overhead
+#[macro_export]
+macro_rules! create_handler {
+    (
+        $(tools: [$($tool:ty),* $(,)?],)?
+        $(resources: [$($resource:ty),* $(,)?],)?
+        $(prompts: [$($prompt:ty),* $(,)?])?
+    ) => {
+        #[allow(warnings)]
+        mod bindings;
 
-pub fn create_tool(
-    name: impl Into<String>,
-    description: impl Into<String>,
-    input_schema: Value,
-    execute: fn(Value) -> Result<String, String>,
-) -> Tool {
-    Tool {
-        name: name.into(),
-        description: description.into(),
-        input_schema,
-        execute,
-    }
-}
+        use bindings::exports::wasmcp::mcp::handler::Guest;
+        use bindings::exports::wasmcp::mcp::handler::{
+            Tool as WitTool,
+            ResourceInfo as WitResourceInfo,
+            ResourceContents as WitResourceContents,
+            Prompt as WitPrompt,
+            PromptMessage as WitPromptMessage,
+            PromptArgument as WitPromptArgument,
+            Error as WitError,
+            ToolResult,
+        };
 
-pub fn create_resource(
-    uri: impl Into<String>,
-    name: impl Into<String>,
-    read: fn() -> Result<String, String>,
-) -> Resource {
-    Resource {
-        uri: uri.into(),
-        name: name.into(),
-        description: None,
-        mime_type: None,
-        read,
-    }
-}
+        struct Component;
 
-pub fn create_prompt(
-    name: impl Into<String>,
-    resolve: fn(Value) -> Result<Vec<PromptMessage>, String>,
-) -> Prompt {
-    Prompt {
-        name: name.into(),
-        description: None,
-        arguments: None,
-        resolve,
-    }
+        impl Guest for Component {
+            fn list_tools() -> Vec<WitTool> {
+                vec![
+                    $($(
+                        WitTool {
+                            name: <$tool as $crate::ToolHandler>::NAME.to_string(),
+                            description: <$tool as $crate::ToolHandler>::DESCRIPTION.to_string(),
+                            input_schema: <$tool as $crate::ToolHandler>::input_schema().to_string(),
+                        },
+                    )*)?
+                ]
+            }
+            
+            fn call_tool(name: String, arguments: String) -> ToolResult {
+                let args = match serde_json::from_str(&arguments) {
+                    Ok(v) => v,
+                    Err(e) => return ToolResult::Error(WitError {
+                        code: -32602,
+                        message: format!("Invalid JSON arguments: {}", e),
+                        data: None,
+                    }),
+                };
+                
+                // Compile-time dispatch - no vtables, no dynamic dispatch
+                $($(
+                    if name == <$tool as $crate::ToolHandler>::NAME {
+                        return match <$tool as $crate::ToolHandler>::execute(args) {
+                            Ok(result) => ToolResult::Text(result),
+                            Err(e) => ToolResult::Error(WitError {
+                                code: -32603,
+                                message: e,
+                                data: None,
+                            }),
+                        };
+                    }
+                )*)?
+                
+                ToolResult::Error(WitError {
+                    code: -32601,
+                    message: format!("Unknown tool: {}", name),
+                    data: None,
+                })
+            }
+            
+            fn list_resources() -> Vec<WitResourceInfo> {
+                vec![
+                    $($(
+                        WitResourceInfo {
+                            uri: <$resource as $crate::ResourceHandler>::URI.to_string(),
+                            name: <$resource as $crate::ResourceHandler>::NAME.to_string(),
+                            description: <$resource as $crate::ResourceHandler>::DESCRIPTION.map(|s| s.to_string()),
+                            mime_type: <$resource as $crate::ResourceHandler>::MIME_TYPE.map(|s| s.to_string()),
+                        },
+                    )*)?
+                ]
+            }
+            
+            fn read_resource(uri: String) -> Result<WitResourceContents, WitError> {
+                $($(
+                    if uri == <$resource as $crate::ResourceHandler>::URI {
+                        return match <$resource as $crate::ResourceHandler>::read() {
+                            Ok(contents) => Ok(WitResourceContents {
+                                uri: <$resource as $crate::ResourceHandler>::URI.to_string(),
+                                mime_type: <$resource as $crate::ResourceHandler>::MIME_TYPE.map(|s| s.to_string()),
+                                text: Some(contents),
+                                blob: None,
+                            }),
+                            Err(e) => Err(WitError {
+                                code: -32603,
+                                message: e,
+                                data: None,
+                            }),
+                        };
+                    }
+                )*)?
+                
+                Err(WitError {
+                    code: -32601,
+                    message: format!("Resource not found: {}", uri),
+                    data: None,
+                })
+            }
+            
+            fn list_prompts() -> Vec<WitPrompt> {
+                vec![
+                    $($(
+                        WitPrompt {
+                            name: <$prompt as $crate::PromptHandler>::NAME.to_string(),
+                            description: <$prompt as $crate::PromptHandler>::DESCRIPTION.map(|s| s.to_string()),
+                            arguments: <<$prompt as $crate::PromptHandler>::Arguments as $crate::PromptArguments>::schema()
+                                .into_iter()
+                                .map(|arg| WitPromptArgument {
+                                    name: arg.name.to_string(),
+                                    description: arg.description.map(|s| s.to_string()),
+                                    required: arg.required,
+                                })
+                                .collect(),
+                        },
+                    )*)?
+                ]
+            }
+            
+            fn get_prompt(name: String, arguments: String) -> Result<Vec<WitPromptMessage>, WitError> {
+                let args = if arguments.is_empty() {
+                    serde_json::Value::Object(serde_json::Map::new())
+                } else {
+                    match serde_json::from_str(&arguments) {
+                        Ok(v) => v,
+                        Err(e) => return Err(WitError {
+                            code: -32602,
+                            message: format!("Invalid JSON arguments: {}", e),
+                            data: None,
+                        }),
+                    }
+                };
+                
+                $($(
+                    if name == <$prompt as $crate::PromptHandler>::NAME {
+                        return match <$prompt as $crate::PromptHandler>::resolve(args) {
+                            Ok(messages) => Ok(messages.into_iter()
+                                .map(|msg| WitPromptMessage {
+                                    role: match msg.role {
+                                        $crate::PromptRole::User => "user".to_string(),
+                                        $crate::PromptRole::Assistant => "assistant".to_string(),
+                                    },
+                                    content: msg.content,
+                                })
+                                .collect()),
+                            Err(e) => Err(WitError {
+                                code: -32603,
+                                message: e,
+                                data: None,
+                            }),
+                        };
+                    }
+                )*)?
+                
+                Err(WitError {
+                    code: -32601,
+                    message: format!("Prompt not found: {}", name),
+                    data: None,
+                })
+            }
+        }
+        
+        bindings::export!(Component with_types_in bindings);
+    };
 }
 
 // Re-export for convenience
-pub use serde_json::json;
+pub use serde_json::{json, Value as Json};
 
-// Handler creation helpers
-// 
-// Note: To create a component, you'll need to:
-// 1. Use cargo-component to set up your project
-// 2. Generate bindings with `cargo component bindings`
-// 3. Implement the generated Guest trait using these helper types
-//
-// Example implementation:
-//
-// ```rust
-// mod bindings;
-// use bindings::exports::component::mcp::handler::Guest;
-// 
-// struct Component;
-// 
-// impl Guest for Component {
-//     fn list_tools() -> Vec<Tool> {
-//         // Use ftl_sdk types to build your tools
-//     }
-//     // ... implement other methods
+// Derive macro for easy argument schemas (could be in separate crate)
+// Example usage:
+// #[derive(PromptArgs)]
+// struct GreetingArgs {
+//     #[arg(description = "Name to greet")]
+//     name: String,
+//     #[arg(description = "Use formal greeting", required = false)]
+//     formal: Option<bool>,
 // }
-// 
-// bindings::export!(Component with_types_in bindings);
-// ```
-
-// Macros for easier creation
-
-#[macro_export]
-macro_rules! tool {
-    ($name:expr, $desc:expr, $schema:expr, $execute:expr) => {
-        $crate::create_tool($name, $desc, $schema, $execute)
-    };
-}
-
-#[macro_export]
-macro_rules! resource {
-    ($uri:expr, $name:expr, $read:expr) => {
-        $crate::create_resource($uri, $name, $read)
-    };
-}
-
-#[macro_export]
-macro_rules! prompt {
-    ($name:expr, $resolve:expr) => {
-        $crate::create_prompt($name, $resolve)
-    };
-}

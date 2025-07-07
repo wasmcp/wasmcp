@@ -1,9 +1,20 @@
-import { createHandler } from 'wasmcp';
-import { tools, resources, prompts } from './features.js';
+import { createTool, createHandler, z } from 'wasmcp';
+
+// Define your tools using factory functions
+const echoTool = createTool({
+  name: 'echo',
+  description: 'Echo a message back to the user',
+  schema: z.object({
+    message: z.string().min(1).describe('Message to echo back')
+  }),
+  execute: async (args) => {
+    return `Echo: ${args.message}`;
+  }
+});
+
+// Add more tools here...
 
 // Export the handler implementation for componentize-js
 export const handler = createHandler({
-    tools,
-    resources,
-    prompts
+  tools: [echoTool]
 });

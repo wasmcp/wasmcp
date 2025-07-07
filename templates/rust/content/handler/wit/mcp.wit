@@ -80,4 +80,3 @@ interface handler {
 world mcp-handler {
     export handler;
 }
-EOF < /dev/null
