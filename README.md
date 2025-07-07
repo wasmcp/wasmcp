@@ -22,23 +22,53 @@ This repository provides a way to compose MCP (Model Context Protocol) servers a
 
 ## Architecture
 
-```
-┌─────────────────┐         ┌────────────────────┐
-│   HTTP Client   │ ──────> │  wasmcp-spin  │
-└─────────────────┘         └────────────────────┘
-                                     │
-                                     │ imports
-                                     ▼
-                            ┌──────────────────┐
-                            │   MCP Handler    │
-                            │   (Your Code)    │
-                            └──────────────────┘
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        Client[MCP Client<br/>Claude/IDE/CLI]
+    end
+    
+    subgraph "HTTP Transport"
+        HTTP[HTTP/JSON-RPC]
+    end
+    
+    subgraph "Spin Runtime"
+        subgraph "wasmcp-spin Component"
+            Gateway[HTTP Gateway<br/>spin:http trigger]
+            Protocol[MCP Protocol Handler<br/>JSON-RPC → WASI]
+        end
+        
+        subgraph "Handler Component"
+            Handler[Your MCP Handler<br/>Rust/TS/JS]
+            Tools[Tool Implementations]
+            Resources[Resource Providers]
+            Prompts[Prompt Templates]
+        end
+    end
+    
+    Client -->|POST /mcp| HTTP
+    HTTP --> Gateway
+    Gateway --> Protocol
+    Protocol -->|wasmcp:mcp/handler| Handler
+    Handler --> Tools
+    Handler --> Resources  
+    Handler --> Prompts
+    
+    style Client fill:#e1f5e1
+    style Gateway fill:#e1e5f5
+    style Handler fill:#f5e1e1
 ```
 
-The wasmcp-spin component acts as a gateway that:
-- Receives HTTP requests following the MCP protocol
-- Calls into your MCP handler component
-- Returns responses over HTTP
+The architecture consists of three key layers:
+
+1. **Client Layer**: Any MCP-compatible client (Claude Desktop, IDE extensions, CLI tools)
+2. **Gateway Component** (`wasmcp-spin`): Handles HTTP transport and protocol translation
+3. **Handler Component**: Your business logic implementing MCP tools, resources, and prompts
+
+The gateway component:
+- Exposes an HTTP endpoint at `/mcp` for JSON-RPC requests
+- Translates between HTTP/JSON-RPC and WASI component calls
+- Manages request/response lifecycle and error handling
 
 ## Development
 
