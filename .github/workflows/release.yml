@@ -61,6 +61,8 @@ jobs:
         echo "${{ github.token }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
     
     - name: Publish wasmcp-spin to GitHub Container Registry
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
       run: make publish-gateway
     
     # Publish wasmcp-rust to crates.io
