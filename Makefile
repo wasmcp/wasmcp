@@ -144,7 +144,7 @@ build-gateway: ## Build wasmcp-spin
 build-rust-sdk: ## Build wasmcp-rust
 	cd src/sdk/wasmcp-rust && cargo build --release
 
-build-ts-sdk: ## Build wasmcp-typescript
+build-ts-sdk: install-ts-deps ## Build wasmcp-typescript
 	cd src/sdk/wasmcp-typescript && npm run build
 
 build-all: build-gateway build-rust-sdk build-ts-sdk ## Build all components
@@ -158,7 +158,7 @@ test-rust-sdk: ## Test wasmcp-rust
 
 test-rust: test-gateway test-rust-sdk ## Run all Rust tests
 
-test-ts: ## Run TypeScript tests
+test-ts: install-ts-deps ## Run TypeScript tests
 	cd src/sdk/wasmcp-typescript && npm test
 
 test-all: test-rust test-ts ## Run all tests
@@ -217,7 +217,7 @@ publish-rust-sdk: ## Publish wasmcp-rust to crates.io
 publish-rust-sdk-dry: ## Dry run publish wasmcp-rust
 	cd src/sdk/wasmcp-rust && cargo publish --dry-run
 
-publish-ts-sdk: ## Publish wasmcp-typescript to npm
+publish-ts-sdk: build-ts-sdk ## Publish wasmcp-typescript to npm
 	@echo "Publishing wasmcp to npm..."
 	cd src/sdk/wasmcp-typescript && npm publish --access public
 	@echo "✅ Published wasmcp v$$(make get-ts-sdk-version)"
