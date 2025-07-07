@@ -191,13 +191,13 @@ make ci
 ## Repository Structure
 
 ```
-ftl-components/
+wasmcp/
 ├── wit/                    # Shared WIT interface definitions
 │   └── mcp.wit            # MCP handler interface and world
 ├── src/
 │   ├── components/
 │   │   └── wasmcp-spin/  # Spin HTTP gateway component
-│   │       └── wit/           # Gateway-specific WIT files
+│   │       └── wit/           # Gateway-specific world
 │   └── sdk/
 │       ├── wasmcp-rust/       # Rust SDK
 │       └── wasmcp-typescript/ # TypeScript SDK
