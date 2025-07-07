@@ -12,7 +12,7 @@ component = "wasmcp-spin"
 
 [component.wasmcp-spin]
 # Using the published gateway component
-source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.1" }
+source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.2" }
 build.command = "make build"
 build.watch = ["handler/src/**/*.rs", "handler/Cargo.toml"]
 

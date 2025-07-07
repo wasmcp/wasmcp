@@ -9,11 +9,15 @@ REPO_ROOT="$SCRIPT_DIR/.."
 
 # Detect OS for sed compatibility
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    SED_INPLACE="sed -i ''"
+    # macOS - requires backup extension
+    sed_inplace() {
+        sed -i '' "$@"
+    }
 else
-    # Linux
-    SED_INPLACE="sed -i"
+    # Linux - no backup extension
+    sed_inplace() {
+        sed -i "$@"
+    }
 fi
 
 # Read versions from versions.toml
@@ -31,17 +35,17 @@ echo
 
 # Update Rust template
 echo "Updating Rust template..."
-$SED_INPLACE "s/wasmcp = \"[^\"]*\"/wasmcp = \"$WASMCP_RUST\"/" \
+sed_inplace "s/wasmcp = \"[^\"]*\"/wasmcp = \"$WASMCP_RUST\"/" \
     "$REPO_ROOT/templates/rust/content/handler/Cargo.toml"
 
 # Update JavaScript template
 echo "Updating JavaScript template..."
-$SED_INPLACE "s/\"wasmcp\": \"[^\"]*\"/\"wasmcp\": \"^$WASMCP_TYPESCRIPT\"/" \
+sed_inplace "s/\"wasmcp\": \"[^\"]*\"/\"wasmcp\": \"^$WASMCP_TYPESCRIPT\"/" \
     "$REPO_ROOT/templates/javascript/content/handler/package.json"
 
 # Update TypeScript template
 echo "Updating TypeScript template..."
-$SED_INPLACE "s/\"wasmcp\": \"[^\"]*\"/\"wasmcp\": \"^$WASMCP_TYPESCRIPT\"/" \
+sed_inplace "s/\"wasmcp\": \"[^\"]*\"/\"wasmcp\": \"^$WASMCP_TYPESCRIPT\"/" \
     "$REPO_ROOT/templates/typescript/content/handler/package.json"
 
 # Update spin.toml references in all templates
@@ -49,13 +53,13 @@ for template in rust javascript typescript; do
     echo "Updating $template spin.toml..."
     spin_toml="$REPO_ROOT/templates/$template/content/spin.toml"
     if [ -f "$spin_toml" ]; then
-        $SED_INPLACE "s/fastertools:wasmcp-spin\", version = \"[^\"]*\"/fastertools:wasmcp-spin\", version = \"$WASMCP_SPIN_REF\"/" "$spin_toml"
+        sed_inplace "s/fastertools:wasmcp-spin\", version = \"[^\"]*\"/fastertools:wasmcp-spin\", version = \"$WASMCP_SPIN_REF\"/" "$spin_toml"
     fi
     
     # Update snippet
     snippet="$REPO_ROOT/templates/$template/metadata/snippets/component.txt"
     if [ -f "$snippet" ]; then
-        $SED_INPLACE "s/fastertools:wasmcp-spin\", version = \"[^\"]*\"/fastertools:wasmcp-spin\", version = \"$WASMCP_SPIN_REF\"/" "$snippet"
+        sed_inplace "s/fastertools:wasmcp-spin\", version = \"[^\"]*\"/fastertools:wasmcp-spin\", version = \"$WASMCP_SPIN_REF\"/" "$snippet"
     fi
 done
 

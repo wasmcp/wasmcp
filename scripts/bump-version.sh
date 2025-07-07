@@ -5,11 +5,15 @@ set -euo pipefail
 
 # Detect OS for sed compatibility
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    SED_INPLACE="sed -i ''"
+    # macOS - requires backup extension
+    sed_inplace() {
+        sed -i '' "$@"
+    }
 else
-    # Linux
-    SED_INPLACE="sed -i"
+    # Linux - no backup extension
+    sed_inplace() {
+        sed -i "$@"
+    }
 fi
 
 if [ $# -lt 2 ]; then
@@ -36,43 +40,43 @@ VERSIONS_FILE="$SCRIPT_DIR/../versions.toml"
 # Update versions.toml
 case $COMPONENT in
     wasmcp-spin)
-        $SED_INPLACE "s/wasmcp-spin = \"[^\"]*\"/wasmcp-spin = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
-        $SED_INPLACE "s/ghcr.io\/fastertools\/wasmcp-spin\" = \"[^\"]*\"/ghcr.io\/fastertools\/wasmcp-spin\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        sed_inplace "s/wasmcp-spin = \"[^\"]*\"/wasmcp-spin = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        sed_inplace "s/ghcr.io\/fastertools\/wasmcp-spin\" = \"[^\"]*\"/ghcr.io\/fastertools\/wasmcp-spin\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
         
         # Also update the actual Cargo.toml (only the package version line)
-        $SED_INPLACE "/^\[package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" "$SCRIPT_DIR/../src/components/wasmcp-spin/Cargo.toml"
+        sed_inplace "/^\[package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" "$SCRIPT_DIR/../src/components/wasmcp-spin/Cargo.toml"
         
         # Update package.metadata.component version if wasmcp-spin-wit version changed
         WASMCP_SPIN_WIT_VERSION=$(grep '^wasmcp-spin-wit = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
-        $SED_INPLACE "s/package = \"wasmcp:spin@[^\"]*\"/package = \"wasmcp:spin@$WASMCP_SPIN_WIT_VERSION\"/" "$SCRIPT_DIR/../src/components/wasmcp-spin/Cargo.toml"
+        sed_inplace "s/package = \"wasmcp:spin@[^\"]*\"/package = \"wasmcp:spin@$WASMCP_SPIN_WIT_VERSION\"/" "$SCRIPT_DIR/../src/components/wasmcp-spin/Cargo.toml"
         ;;
     wasmcp-rust)
-        $SED_INPLACE "s/wasmcp-rust = \"[^\"]*\"/wasmcp-rust = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
-        $SED_INPLACE "s/crates.io\/wasmcp\" = \"[^\"]*\"/crates.io\/wasmcp\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        sed_inplace "s/wasmcp-rust = \"[^\"]*\"/wasmcp-rust = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        sed_inplace "s/crates.io\/wasmcp\" = \"[^\"]*\"/crates.io\/wasmcp\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
         
         # Also update the actual Cargo.toml (only the package version line)
-        $SED_INPLACE "/^\[package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" "$SCRIPT_DIR/../src/sdk/wasmcp-rust/Cargo.toml"
+        sed_inplace "/^\[package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" "$SCRIPT_DIR/../src/sdk/wasmcp-rust/Cargo.toml"
         ;;
     wasmcp-typescript)
-        $SED_INPLACE "s/wasmcp-typescript = \"[^\"]*\"/wasmcp-typescript = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
-        $SED_INPLACE "s/npm\/wasmcp\" = \"[^\"]*\"/npm\/wasmcp\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        sed_inplace "s/wasmcp-typescript = \"[^\"]*\"/wasmcp-typescript = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        sed_inplace "s/npm\/wasmcp\" = \"[^\"]*\"/npm\/wasmcp\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
         
         # Also update the actual package.json
         cd "$SCRIPT_DIR/../src/sdk/wasmcp-typescript"
         npm version "$NEW_VERSION" --no-git-tag-version
         ;;
     mcp)
-        $SED_INPLACE "s/mcp = \"[^\"]*\"/mcp = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        sed_inplace "s/mcp = \"[^\"]*\"/mcp = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
         
         # Also update WIT files
-        $SED_INPLACE "s/package wasmcp:mcp@[^;]*/package wasmcp:mcp@$NEW_VERSION/" "$SCRIPT_DIR/../wit/mcp.wit"
+        sed_inplace "s/package wasmcp:mcp@[^;]*/package wasmcp:mcp@$NEW_VERSION/" "$SCRIPT_DIR/../wit/mcp.wit"
         ;;
     wasmcp-spin-wit)
-        $SED_INPLACE "s/wasmcp-spin-wit = \"[^\"]*\"/wasmcp-spin-wit = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        sed_inplace "s/wasmcp-spin-wit = \"[^\"]*\"/wasmcp-spin-wit = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
         
         # Also update WIT files and Cargo.toml
-        $SED_INPLACE "s/package wasmcp:spin@[^;]*/package wasmcp:spin@$NEW_VERSION/" "$SCRIPT_DIR/../src/components/wasmcp-spin/wit/world.wit"
-        $SED_INPLACE "s/package = \"wasmcp:spin@[^\"]*\"/package = \"wasmcp:spin@$NEW_VERSION\"/" "$SCRIPT_DIR/../src/components/wasmcp-spin/Cargo.toml"
+        sed_inplace "s/package wasmcp:spin@[^;]*/package wasmcp:spin@$NEW_VERSION/" "$SCRIPT_DIR/../src/components/wasmcp-spin/wit/world.wit"
+        sed_inplace "s/package = \"wasmcp:spin@[^\"]*\"/package = \"wasmcp:spin@$NEW_VERSION\"/" "$SCRIPT_DIR/../src/components/wasmcp-spin/Cargo.toml"
         ;;
     *)
         echo "Unknown component: $COMPONENT"
