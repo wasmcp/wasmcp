@@ -68,10 +68,8 @@ jobs:
     # Publish wasmcp-rust to crates.io
     - name: Publish wasmcp-rust to crates.io
       env:
-        CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-      run: |
-        make publish-rust-sdk-dry
-        make publish-rust-sdk
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      run: make publish-rust-sdk
     
     # Publish wasmcp-typescript to npm
     - name: Setup TypeScript SDK
@@ -80,9 +78,7 @@ jobs:
     - name: Publish wasmcp-typescript to npm
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      run: |
-        make publish-ts-sdk-dry
-        make publish-ts-sdk
+      run: make publish-ts-sdk
     
     - name: Create Release
       uses: softprops/action-gh-release@v2
