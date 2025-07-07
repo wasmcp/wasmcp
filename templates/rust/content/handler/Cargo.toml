@@ -1,0 +1,26 @@
+[package]
+name = "{{project-name | snake_case}}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wasmcp = "0.1.0"
+wit-bindgen-rt = "0.43.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "{{project-name | kebab_case}}:handler"
+
+[package.metadata.component.target]
+path = "wit"
+world = "mcp-handler"
+
+[profile.release]
+# Optimize for small binary size
+opt-level = "s"
+lto = true
+strip = true
