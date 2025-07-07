@@ -39,20 +39,20 @@ export interface HandlerConfig {
   prompts?: Array<Prompt<z.ZodType>>;
 }
 
-interface ToolInfo {
+export interface ToolInfo {
   name: string;
   description: string;
   inputSchema?: string;
 }
 
-interface ResourceInfo {
+export interface ResourceInfo {
   uri: string;
   name: string;
   description?: string;
   mimeType?: string;
 }
 
-interface PromptInfo {
+export interface PromptInfo {
   name: string;
   description?: string;
   arguments?: Array<{
@@ -62,7 +62,7 @@ interface PromptInfo {
   }>;
 }
 
-interface ErrorResponse {
+export interface ErrorResponse {
   tag: 'error';
   val: {
     code: number;
@@ -71,14 +71,14 @@ interface ErrorResponse {
   };
 }
 
-interface SuccessResponse<T> {
+export interface SuccessResponse<T> {
   tag: 'ok';
   val: T;
 }
 
-type HandlerResponse<T> = ErrorResponse | SuccessResponse<T>;
+export type HandlerResponse<T> = ErrorResponse | SuccessResponse<T>;
 
-interface Handler {
+export interface Handler {
   listTools(): ToolInfo[];
   listResources(): ResourceInfo[];
   listPrompts(): PromptInfo[];
