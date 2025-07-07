@@ -28,7 +28,7 @@ This repository provides a way to compose MCP servers as WebAssembly components.
 First, install the wasmcp templates:
 
 ```bash
-spin templates install --git https://github.com/fastertools/ftl-components --upgrade
+spin templates install --git https://github.com/fastertools/wasmcp --upgrade
 ```
 
 This installs three templates:
