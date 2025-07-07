@@ -131,6 +131,15 @@ install-rust-tools: ## Install required Rust tools
 			cargo install --locked wasm-tools; \
 		fi; \
 	}
+	@which wkg > /dev/null || { \
+		if command -v cargo-binstall >/dev/null 2>&1; then \
+			echo "Installing wkg with cargo-binstall..."; \
+			cargo binstall wkg --no-confirm; \
+		else \
+			echo "Installing wkg from source..."; \
+			cargo install --locked wkg; \
+		fi; \
+	}
 
 install-ts-deps: ## Install TypeScript dependencies
 	cd src/sdk/wasmcp-typescript && npm ci

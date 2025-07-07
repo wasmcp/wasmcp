@@ -55,7 +55,7 @@ jobs:
     
     - name: Login to GitHub Container Registry
       run: |
-        echo "${{ github.token }}" | wkg login ghcr.io -u ${{ github.actor }} --password-stdin
+        echo "${{ github.token }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
     
     - name: Publish wasmcp-spin to GitHub Container Registry
       run: make publish-gateway
