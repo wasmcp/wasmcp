@@ -3,6 +3,15 @@
 
 set -euo pipefail
 
+# Detect OS for sed compatibility
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    SED_INPLACE="sed -i ''"
+else
+    # Linux
+    SED_INPLACE="sed -i"
+fi
+
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <component> <new-version>"
     echo ""
@@ -24,32 +33,32 @@ VERSIONS_FILE="$SCRIPT_DIR/../versions.toml"
 # Update versions.toml
 case $COMPONENT in
     mcp-http-component)
-        sed -i '' "s/mcp-http-component = \"[^\"]*\"/mcp-http-component = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
-        sed -i '' "s/ghcr.io\/bowlofarugula\/mcp-http-component\" = \"[^\"]*\"/ghcr.io\/bowlofarugula\/mcp-http-component\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        $SED_INPLACE "s/mcp-http-component = \"[^\"]*\"/mcp-http-component = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        $SED_INPLACE "s/ghcr.io\/bowlofarugula\/mcp-http-component\" = \"[^\"]*\"/ghcr.io\/bowlofarugula\/mcp-http-component\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
         
         # Also update the actual Cargo.toml (only the package version line)
-        sed -i '' "/^\[package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" "$SCRIPT_DIR/../src/mcp-http-component/Cargo.toml"
+        $SED_INPLACE "/^\[package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" "$SCRIPT_DIR/../src/mcp-http-component/Cargo.toml"
         ;;
     ftl-sdk-rust)
-        sed -i '' "s/ftl-sdk-rust = \"[^\"]*\"/ftl-sdk-rust = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
-        sed -i '' "s/crates.io\/ftl-sdk\" = \"[^\"]*\"/crates.io\/ftl-sdk\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        $SED_INPLACE "s/ftl-sdk-rust = \"[^\"]*\"/ftl-sdk-rust = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        $SED_INPLACE "s/crates.io\/ftl-sdk\" = \"[^\"]*\"/crates.io\/ftl-sdk\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
         
         # Also update the actual Cargo.toml (only the package version line)
-        sed -i '' "/^\[package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" "$SCRIPT_DIR/../src/ftl-sdk-rust/Cargo.toml"
+        $SED_INPLACE "/^\[package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" "$SCRIPT_DIR/../src/ftl-sdk-rust/Cargo.toml"
         ;;
     ftl-sdk-typescript)
-        sed -i '' "s/ftl-sdk-typescript = \"[^\"]*\"/ftl-sdk-typescript = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
-        sed -i '' "s/npm\/@fastertools\/ftl-sdk\" = \"[^\"]*\"/npm\/@fastertools\/ftl-sdk\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        $SED_INPLACE "s/ftl-sdk-typescript = \"[^\"]*\"/ftl-sdk-typescript = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        $SED_INPLACE "s/npm\/@fastertools\/ftl-sdk\" = \"[^\"]*\"/npm\/@fastertools\/ftl-sdk\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
         
         # Also update the actual package.json
         cd "$SCRIPT_DIR/../src/ftl-sdk-typescript"
         npm version "$NEW_VERSION" --no-git-tag-version
         ;;
     wit)
-        sed -i '' "s/mcp = \"[^\"]*\"/mcp = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        $SED_INPLACE "s/mcp = \"[^\"]*\"/mcp = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
         
         # Also update WIT files
-        sed -i '' "s/package component:mcp@[^;]*/package component:mcp@$NEW_VERSION/" "$SCRIPT_DIR/../wit/mcp.wit"
+        $SED_INPLACE "s/package component:mcp@[^;]*/package component:mcp@$NEW_VERSION/" "$SCRIPT_DIR/../wit/mcp.wit"
         ;;
     *)
         echo "Unknown component: $COMPONENT"

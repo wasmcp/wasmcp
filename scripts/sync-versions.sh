@@ -7,6 +7,15 @@ set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="$SCRIPT_DIR/.."
 
+# Detect OS for sed compatibility
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    SED_INPLACE="sed -i ''"
+else
+    # Linux
+    SED_INPLACE="sed -i"
+fi
+
 # Read versions from versions.toml
 VERSIONS_FILE="$REPO_ROOT/versions.toml"
 
@@ -22,17 +31,17 @@ echo
 
 # Update Rust template
 echo "Updating Rust template..."
-sed -i '' "s/ftl-sdk = \"[^\"]*\"/ftl-sdk = \"$FTL_SDK_RUST\"/" \
+$SED_INPLACE "s/ftl-sdk = \"[^\"]*\"/ftl-sdk = \"$FTL_SDK_RUST\"/" \
     "$REPO_ROOT/templates/rust/content/handler/Cargo.toml"
 
 # Update JavaScript template
 echo "Updating JavaScript template..."
-sed -i '' "s/\"@fastertools\/ftl-sdk\": \"[^\"]*\"/\"@fastertools\/ftl-sdk\": \"^$FTL_SDK_TYPESCRIPT\"/" \
+$SED_INPLACE "s/\"@fastertools\/ftl-sdk\": \"[^\"]*\"/\"@fastertools\/ftl-sdk\": \"^$FTL_SDK_TYPESCRIPT\"/" \
     "$REPO_ROOT/templates/javascript/content/handler/package.json"
 
 # Update TypeScript template
 echo "Updating TypeScript template..."
-sed -i '' "s/\"@fastertools\/ftl-sdk\": \"[^\"]*\"/\"@fastertools\/ftl-sdk\": \"^$FTL_SDK_TYPESCRIPT\"/" \
+$SED_INPLACE "s/\"@fastertools\/ftl-sdk\": \"[^\"]*\"/\"@fastertools\/ftl-sdk\": \"^$FTL_SDK_TYPESCRIPT\"/" \
     "$REPO_ROOT/templates/typescript/content/handler/package.json"
 
 # Update spin.toml references in all templates
@@ -40,13 +49,13 @@ for template in rust javascript typescript; do
     echo "Updating $template spin.toml..."
     spin_toml="$REPO_ROOT/templates/$template/content/spin.toml"
     if [ -f "$spin_toml" ]; then
-        sed -i '' "s/bowlofarugula:mcp-gateway\", version = \"[^\"]*\"/bowlofarugula:mcp-gateway\", version = \"$MCP_GATEWAY_REF\"/" "$spin_toml"
+        $SED_INPLACE "s/bowlofarugula:mcp-gateway\", version = \"[^\"]*\"/bowlofarugula:mcp-gateway\", version = \"$MCP_GATEWAY_REF\"/" "$spin_toml"
     fi
     
     # Update snippet
     snippet="$REPO_ROOT/templates/$template/metadata/snippets/component.txt"
     if [ -f "$snippet" ]; then
-        sed -i '' "s/bowlofarugula:mcp-gateway\", version = \"[^\"]*\"/bowlofarugula:mcp-gateway\", version = \"$MCP_GATEWAY_REF\"/" "$snippet"
+        $SED_INPLACE "s/bowlofarugula:mcp-gateway\", version = \"[^\"]*\"/bowlofarugula:mcp-gateway\", version = \"$MCP_GATEWAY_REF\"/" "$snippet"
     fi
 done
 

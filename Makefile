@@ -10,6 +10,9 @@ sync-versions: ## Sync versions across the repository
 	@echo "Syncing versions..."
 	@./scripts/sync-versions.sh
 
+sync-wit: ## Sync WIT files to mcp-http-component
+	@./scripts/sync-wit.sh
+
 validate-versions: ## Check if versions are in sync
 	@echo "Validating versions..."
 	@./scripts/sync-versions.sh
@@ -118,7 +121,7 @@ test-ts: ## Run TypeScript tests
 test-all: test-rust test-ts ## Run all tests
 
 # CI targets
-ci-setup: install-deps ## Setup CI environment
+ci-setup: install-deps sync-wit ## Setup CI environment
 
 ci-build: ci-setup build-all ## CI build pipeline
 

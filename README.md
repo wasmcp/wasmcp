@@ -6,17 +6,17 @@ WebAssembly components for building and deploying MCP (Model Context Protocol) s
 
 This repository provides:
 
-1. **mcp-http-component** - A WebAssembly gateway component that exposes MCP handlers over HTTP
-2. **ftl-sdk-rust** - SDK for building MCP handler components in Rust
-3. **ftl-sdk-typescript** - SDK for building MCP handler components in TypeScript/JavaScript
-4. **wit** - WebAssembly Interface Types defining the MCP component interfaces
+1. **wit** - Wasm Interface Types defining the MCP component interfaces
+2. **mcp-http-component** - A WebAssembly component that exposes an MCP server over Streamable HTTP, delegating business logic to a MCP handler component.
+3. **ftl-sdk-rust** - SDK for building MCP handler components in Rust
+4. **ftl-sdk-typescript** - SDK for building MCP handler components in TypeScript/JavaScript
 
 ## Architecture
 
 ```
-┌─────────────────┐         ┌──────────────────┐
-│   HTTP Client   │ ──────> │ mcp-http-gateway │
-└─────────────────┘         └──────────────────┘
+┌─────────────────┐         ┌────────────────────┐
+│   HTTP Client   │ ──────> │ mcp-http-component │
+└─────────────────┘         └────────────────────┘
                                      │
                                      │ imports
                                      ▼

@@ -21,8 +21,5 @@ package = "component:mcp-gateway"
 path = "wit"
 world = "mcp-http-api"
 
-[package.metadata.component.target.dependencies]
-"component:mcp" = { path = "../../wit" }
-
 
 [workspace]

@@ -6,6 +6,16 @@ This directory contains the WebAssembly Interface Types (WIT) definitions for th
 
 - `mcp.wit` - Defines the MCP handler interface and the `mcp-handler` world that components must implement
 
+## WIT File Synchronization
+
+The `mcp-http-component` needs a copy of the handler interface without the package declaration. This is handled automatically by:
+
+```bash
+make sync-wit
+```
+
+This command is run automatically during CI builds to ensure the files stay in sync.
+
 ## Using the Interface
 
 ### In Rust Components
