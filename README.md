@@ -9,8 +9,8 @@
 
 This repository provides a way to compose MCP servers as WebAssembly components. These components can run on any WebAssembly runtime that supports the component model, including:
 
-- **Spin** - Fermyon's WebAssembly framework
-- **Wasmtime** - Bytecode Alliance's WebAssembly runtime
+- **[Spin](https://github.com/spinframework/spin)** - Fermyon's WebAssembly framework
+- **[Wasmtime](https://github.com/bytecodealliance/wasmtime)** - Bytecode Alliance's WebAssembly runtime
 - Any other WASI-compatible runtime
 
 ### Contents
