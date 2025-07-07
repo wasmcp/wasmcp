@@ -1,0 +1,21 @@
+spin_manifest_version = 2
+
+[application]
+name = "{{project-name | kebab_case}}"
+version = "0.1.0"
+authors = ["{{authors}}"]
+description = "{{project-description}}"
+
+[[trigger.http]]
+route = "/mcp"
+component = "wasmcp-spin"
+
+[component.wasmcp-spin]
+# Using the published gateway component
+source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.1" }
+build.command = "make build"
+build.watch = ["handler/src/**/*.js", "handler/package.json"]
+
+[component.wasmcp-spin.dependencies]
+# Link to the local handler component
+"wasmcp:mcp/handler" = { path = "./handler/dist/handler.wasm" }
