@@ -1,6 +1,6 @@
 [package]
 name = "mcp-http-component"
-version = "0.1.0"
+version = "0.1.3"
 edition = "2021"
 
 [lib]
@@ -18,8 +18,11 @@ base64 = "0.21"
 package = "component:mcp-gateway"
 
 [package.metadata.component.target]
-path = "./wit"
+path = "wit"
 world = "mcp-http-api"
+
+[package.metadata.component.target.dependencies]
+"component:mcp" = { path = "../../wit" }
 
 
 [workspace]

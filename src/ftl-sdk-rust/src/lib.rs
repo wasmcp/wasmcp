@@ -121,169 +121,30 @@ pub fn create_prompt(
 // Re-export for convenience
 pub use serde_json::json;
 
-// Handler creation macro
-#[macro_export]
-macro_rules! create_handler {
-    (
-        tools: $tools:expr,
-        resources: $resources:expr,
-        prompts: $prompts:expr
-    ) => {
-        wit_bindgen::generate!({
-            world: "mcp-handler",
-            path: ".wit",
-            exports: {
-                "component:mcp/handler": McpComponent
-            }
-        });
-
-        use exports::component::mcp::handler::*;
-
-        struct McpComponent;
-
-        impl Guest for McpComponent {
-            fn list_tools() -> Vec<exports::component::mcp::handler::Tool> {
-                $tools()
-                    .into_iter()
-                    .map(|tool| exports::component::mcp::handler::Tool {
-                        name: tool.name,
-                        description: tool.description,
-                        input_schema: tool.input_schema.to_string(),
-                    })
-                    .collect()
-            }
-            
-            fn call_tool(name: String, arguments: String) -> ToolResult {
-                let args = match serde_json::from_str::<serde_json::Value>(&arguments) {
-                    Ok(v) => v,
-                    Err(e) => return ToolResult::Error(Error {
-                        code: -32602,
-                        message: format!("Invalid JSON arguments: {}", e),
-                        data: None,
-                    }),
-                };
-                
-                for tool in $tools() {
-                    if tool.name == name {
-                        match (tool.execute)(args) {
-                            Ok(result) => return ToolResult::Text(result),
-                            Err(e) => return ToolResult::Error(Error {
-                                code: -32603,
-                                message: e,
-                                data: None,
-                            }),
-                        }
-                    }
-                }
-                
-                ToolResult::Error(Error {
-                    code: -32601,
-                    message: format!("Unknown tool: {}", name),
-                    data: None,
-                })
-            }
-            
-            fn list_resources() -> Vec<ResourceInfo> {
-                $resources()
-                    .into_iter()
-                    .map(|resource| ResourceInfo {
-                        uri: resource.uri,
-                        name: resource.name,
-                        description: resource.description,
-                        mime_type: resource.mime_type,
-                    })
-                    .collect()
-            }
-            
-            fn read_resource(uri: String) -> Result<ResourceContents, Error> {
-                for resource in $resources() {
-                    if resource.uri == uri {
-                        match (resource.read)() {
-                            Ok(contents) => return Ok(ResourceContents {
-                                uri: resource.uri.clone(),
-                                mime_type: resource.mime_type,
-                                text: Some(contents),
-                                blob: None,
-                            }),
-                            Err(e) => return Err(Error {
-                                code: -32603,
-                                message: e,
-                                data: None,
-                            }),
-                        }
-                    }
-                }
-                
-                Err(Error {
-                    code: -32601,
-                    message: format!("Resource not found: {}", uri),
-                    data: None,
-                })
-            }
-            
-            fn list_prompts() -> Vec<Prompt> {
-                $prompts()
-                    .into_iter()
-                    .map(|prompt| Prompt {
-                        name: prompt.name,
-                        description: prompt.description,
-                        arguments: prompt.arguments.map(|args| {
-                            args.into_iter()
-                                .map(|arg| PromptArgument {
-                                    name: arg.name,
-                                    description: arg.description,
-                                    required: arg.required.unwrap_or(false),
-                                })
-                                .collect()
-                        }).unwrap_or_default(),
-                    })
-                    .collect()
-            }
-            
-            fn get_prompt(name: String, arguments: String) -> Result<Vec<PromptMessage>, Error> {
-                let args = if arguments.is_empty() {
-                    serde_json::Value::Object(serde_json::Map::new())
-                } else {
-                    match serde_json::from_str::<serde_json::Value>(&arguments) {
-                        Ok(v) => v,
-                        Err(e) => return Err(Error {
-                            code: -32602,
-                            message: format!("Invalid JSON arguments: {}", e),
-                            data: None,
-                        }),
-                    }
-                };
-                
-                for prompt in $prompts() {
-                    if prompt.name == name {
-                        match (prompt.resolve)(args) {
-                            Ok(messages) => return Ok(messages.into_iter()
-                                .map(|msg| PromptMessage {
-                                    role: match msg.role {
-                                        $crate::PromptRole::User => "user".to_string(),
-                                        $crate::PromptRole::Assistant => "assistant".to_string(),
-                                    },
-                                    content: msg.content,
-                                })
-                                .collect()),
-                            Err(e) => return Err(Error {
-                                code: -32603,
-                                message: e,
-                                data: None,
-                            }),
-                        }
-                    }
-                }
-                
-                Err(Error {
-                    code: -32601,
-                    message: format!("Prompt not found: {}", name),
-                    data: None,
-                })
-            }
-        }
-    };
-}
+// Handler creation helpers
+// 
+// Note: To create a component, you'll need to:
+// 1. Use cargo-component to set up your project
+// 2. Generate bindings with `cargo component bindings`
+// 3. Implement the generated Guest trait using these helper types
+//
+// Example implementation:
+//
+// ```rust
+// mod bindings;
+// use bindings::exports::component::mcp::handler::Guest;
+// 
+// struct Component;
+// 
+// impl Guest for Component {
+//     fn list_tools() -> Vec<Tool> {
+//         // Use ftl_sdk types to build your tools
+//     }
+//     // ... implement other methods
+// }
+// 
+// bindings::export!(Component with_types_in bindings);
+// ```
 
 // Macros for easier creation
 

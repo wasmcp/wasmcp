@@ -66,8 +66,8 @@ fn handle_request(req: Request) -> anyhow::Result<impl IntoResponse> {
                             "prompts": {}
                         },
                         "serverInfo": {
-                            "name": "spin-mcp-gateway",
-                            "version": "0.1.0"
+                            "name": "mcp-http-component",
+                            "version": "0.1.1"
                         }
                     }),
                 },

@@ -1,0 +1,13 @@
+manifest_version = "1"
+id = "ftl-rust"
+description = "FTL Rust MCP tool"
+tags = ["mcp", "http", "rust", "ftl"]
+
+[parameters]
+project-description = { type = "string", prompt = "Description", default = "An MCP tool written in Rust" }
+route = { type = "string", prompt = "HTTP route", default = "/mcp" }
+
+[add_component]
+skip_files = ["spin.toml", "README.md", ".gitignore", "ftl.toml"]
+[add_component.snippets]
+component = "component.txt"

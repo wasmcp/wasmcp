@@ -1,0 +1,13 @@
+manifest_version = "1"
+id = "ftl-typescript"
+description = "FTL TypeScript MCP tool"
+tags = ["mcp", "http", "typescript", "ftl"]
+
+[parameters]
+project-description = { type = "string", prompt = "Description", default = "An MCP tool written in TypeScript" }
+route = { type = "string", prompt = "HTTP route", default = "/mcp" }
+
+[add_component]
+skip_files = ["spin.toml", "README.md", ".gitignore", "ftl.toml"]
+[add_component.snippets]
+component = "component.txt"

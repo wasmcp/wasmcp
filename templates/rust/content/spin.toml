@@ -1,0 +1,20 @@
+spin_manifest_version = 2
+
+[application]
+name = "{{project-name | kebab_case}}"
+version = "0.1.0"
+authors = ["{{authors}}"]
+description = "{{project-description}}"
+
+[[trigger.http]]
+route = "/mcp"
+component = "mcp-gateway"
+
+[component.mcp-gateway]
+# Using the published gateway component
+source = { registry = "ghcr.io", package = "bowlofarugula:mcp-gateway", version = "0.1.3" }
+build.command = "make build"
+
+[component.mcp-gateway.dependencies]
+# Link to the local handler component
+"component:mcp/handler@0.1.0" = { path = "./handler/target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm" }

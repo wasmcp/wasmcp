@@ -1,6 +1,6 @@
 [package]
 name = "ftl-sdk"
-version = "0.2.0"
+version = "0.2.3"
 edition = "2021"
 description = "Rust SDK for building MCP components with FTL"
 license = "MIT"
