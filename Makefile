@@ -210,7 +210,7 @@ get-ts-sdk-version: ## Get wasmcp-typescript version
 # Publishing targets
 publish-gateway: ## Publish wasmcp-spin to ghcr.io
 	@echo "Publishing wasmcp-spin..."
-	@version=$$(make get-gateway-version); \
+	@version=$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2); \
 	cd src/components/wasmcp-spin && \
 	wkg oci push ghcr.io/fastertools/wasmcp-spin:$$version \
 		--annotation "org.opencontainers.image.source=https://github.com/fastertools/wasmcp" \
@@ -222,7 +222,7 @@ publish-gateway: ## Publish wasmcp-spin to ghcr.io
 		--annotation "org.opencontainers.image.description=WebAssembly server component for Spin" \
 		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
 		target/wasm32-wasip1/release/wasmcp_spin.wasm
-	@echo "✅ Published wasmcp-spin v$$(make get-gateway-version)"
+	@echo "✅ Published wasmcp-spin v$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2)"
 
 publish-rust-sdk: ## Publish wasmcp-rust to crates.io
 	@echo "Publishing wasmcp-rust to crates.io..."
