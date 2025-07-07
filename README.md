@@ -2,12 +2,12 @@
 
 # `wasmcp`
 
-WebAssembly components for building MCP (Model Context Protocol) servers
+[WebAssembly components](https://component-model.bytecodealliance.org/introduction.html) for building [MCP (Model Context Protocol)](https://modelcontextprotocol.io/introduction) servers
 </div>
 
 ## Overview
 
-This repository provides a way to compose MCP (Model Context Protocol) servers as WebAssembly components. These components can run on any WebAssembly runtime that supports the component model, including:
+This repository provides a way to compose MCP servers as WebAssembly components. These components can run on any WebAssembly runtime that supports the component model, including:
 
 - **Spin** - Fermyon's WebAssembly framework
 - **Wasmtime** - Bytecode Alliance's WebAssembly runtime
