@@ -31,8 +31,7 @@ jobs:
       uses: cargo-bins/cargo-binstall@main
     
     - name: Install tools
-      run: |
-        cargo binstall cargo-component wkg --no-confirm
+      run: make install-rust-tools
     
     - name: Cache Cargo dependencies
       uses: actions/cache@v4
@@ -43,57 +42,42 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     
-    # Build and publish mcp-http-component
-    - name: Build mcp-http-component
-      working-directory: src/mcp-http-component
-      run: cargo component build --release
+    # Build all components
+    - name: Build all components
+      run: make build-all
     
-    - name: Get version from Cargo.toml
-      id: version
-      working-directory: src/mcp-http-component
+    - name: Get versions
+      id: versions
       run: |
-        VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "gateway=$(make get-gateway-version)" >> $GITHUB_OUTPUT
+        echo "rust_sdk=$(make get-rust-sdk-version)" >> $GITHUB_OUTPUT
+        echo "ts_sdk=$(make get-ts-sdk-version)" >> $GITHUB_OUTPUT
     
     - name: Login to GitHub Container Registry
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | wkg login ghcr.io -u ${{ github.actor }} --password-stdin
     
     - name: Publish mcp-http-component to GitHub Container Registry
-      working-directory: src/mcp-http-component
-      run: |
-        wkg oci push ghcr.io/bowlofarugula/mcp-http-component:${{ steps.version.outputs.version }} \
-          target/wasm32-wasip1/release/mcp_http_component.wasm
-        
-        # Also push latest tag
-        wkg oci push ghcr.io/bowlofarugula/mcp-http-component:latest \
-          target/wasm32-wasip1/release/mcp_http_component.wasm
+      run: make publish-gateway
     
     # Publish ftl-sdk-rust to crates.io
     - name: Publish ftl-sdk-rust to crates.io
-      working-directory: src/ftl-sdk-rust
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
       run: |
-        cargo publish --dry-run
-        cargo publish
+        make publish-rust-sdk-dry
+        make publish-rust-sdk
     
     # Publish ftl-sdk-typescript to npm
-    - name: Install TypeScript SDK dependencies
-      working-directory: src/ftl-sdk-typescript
-      run: npm ci
-    
-    - name: Build TypeScript SDK
-      working-directory: src/ftl-sdk-typescript
-      run: npm run build
+    - name: Setup TypeScript SDK
+      run: make install-ts-deps
     
     - name: Publish ftl-sdk-typescript to npm
-      working-directory: src/ftl-sdk-typescript
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       run: |
-        npm publish --dry-run
-        npm publish --access public
+        make publish-ts-sdk-dry
+        make publish-ts-sdk
     
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -110,18 +94,18 @@ jobs:
           
           ```toml
           [component.mcp-gateway]
-          source = { registry = "ghcr.io", package = "bowlofarugula:mcp-http-component", version = "${{ steps.version.outputs.version }}" }
+          source = { registry = "ghcr.io", package = "bowlofarugula:mcp-http-component", version = "${{ steps.versions.outputs.gateway }}" }
           ```
           
           ### Rust SDK
           Add to your `Cargo.toml`:
           ```toml
           [dependencies]
-          ftl-sdk = "0.2.0"
+          ftl-sdk = "${{ steps.versions.outputs.rust_sdk }}"
           ```
           
           ### TypeScript SDK
           Install via npm:
           ```bash
-          npm install @fastertools/ftl-sdk
+          npm install @fastertools/ftl-sdk@${{ steps.versions.outputs.ts_sdk }}
           ```

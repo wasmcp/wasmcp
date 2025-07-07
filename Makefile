@@ -81,6 +81,16 @@ bump-all-minor: ## Bump all packages minor version
 	@echo "Note: Minor version bumps should include new features."
 	@echo "Make sure your changes warrant a minor version bump."
 
+# Install targets
+install-rust-tools: ## Install required Rust tools
+	@which cargo-component > /dev/null || cargo binstall cargo-component --no-confirm
+	@which wasm-tools > /dev/null || cargo binstall wasm-tools --no-confirm
+
+install-ts-deps: ## Install TypeScript dependencies
+	cd src/ftl-sdk-typescript && npm ci
+
+install-deps: install-rust-tools install-ts-deps ## Install all dependencies
+
 # Build targets
 build-gateway: ## Build mcp-http-component
 	cd src/mcp-http-component && cargo component build --release
@@ -94,14 +104,27 @@ build-ts-sdk: ## Build ftl-sdk-typescript
 build-all: build-gateway build-rust-sdk build-ts-sdk ## Build all components
 
 # Test targets
-test-rust: ## Run Rust tests
+test-gateway: ## Test mcp-http-component
 	cd src/mcp-http-component && cargo test
+
+test-rust-sdk: ## Test ftl-sdk-rust
 	cd src/ftl-sdk-rust && cargo test
+
+test-rust: test-gateway test-rust-sdk ## Run all Rust tests
 
 test-ts: ## Run TypeScript tests
 	cd src/ftl-sdk-typescript && npm test
 
 test-all: test-rust test-ts ## Run all tests
+
+# CI targets
+ci-setup: install-deps ## Setup CI environment
+
+ci-build: ci-setup build-all ## CI build pipeline
+
+ci-test: test-all ## CI test pipeline
+
+ci: ci-build ci-test ## Run full CI pipeline
 
 # Clean targets
 clean: ## Clean all build artifacts
@@ -116,3 +139,91 @@ show-versions: ## Show current versions
 	@echo "  ftl-sdk-rust:       $$(grep 'ftl-sdk-rust = ' versions.toml | cut -d'"' -f2)"
 	@echo "  ftl-sdk-typescript: $$(grep 'ftl-sdk-typescript = ' versions.toml | cut -d'"' -f2)"
 	@echo "  WIT package:        $$(grep '^mcp = ' versions.toml | cut -d'"' -f2)"
+
+get-gateway-version: ## Get mcp-http-component version
+	@grep 'mcp-http-component = ' versions.toml | cut -d'"' -f2
+
+get-rust-sdk-version: ## Get ftl-sdk-rust version
+	@grep 'ftl-sdk-rust = ' versions.toml | cut -d'"' -f2
+
+get-ts-sdk-version: ## Get ftl-sdk-typescript version
+	@grep 'ftl-sdk-typescript = ' versions.toml | cut -d'"' -f2
+
+# Publishing targets
+publish-gateway: ## Publish mcp-http-component to ghcr.io
+	@echo "Publishing mcp-http-component..."
+	@version=$$(make get-gateway-version); \
+	cd src/mcp-http-component && \
+	wkg oci push ghcr.io/bowlofarugula/mcp-http-component:$$version \
+		target/wasm32-wasip1/release/mcp_http_component.wasm && \
+	wkg oci push ghcr.io/bowlofarugula/mcp-http-component:latest \
+		target/wasm32-wasip1/release/mcp_http_component.wasm
+	@echo "✅ Published mcp-http-component v$$(make get-gateway-version)"
+
+publish-rust-sdk: ## Publish ftl-sdk-rust to crates.io
+	@echo "Publishing ftl-sdk-rust to crates.io..."
+	cd src/ftl-sdk-rust && cargo publish
+	@echo "✅ Published ftl-sdk v$$(make get-rust-sdk-version)"
+
+publish-rust-sdk-dry: ## Dry run publish ftl-sdk-rust
+	cd src/ftl-sdk-rust && cargo publish --dry-run
+
+publish-ts-sdk: ## Publish ftl-sdk-typescript to npm
+	@echo "Publishing @fastertools/ftl-sdk to npm..."
+	cd src/ftl-sdk-typescript && npm publish --access public
+	@echo "✅ Published @fastertools/ftl-sdk v$$(make get-ts-sdk-version)"
+
+publish-ts-sdk-dry: ## Dry run publish ftl-sdk-typescript
+	cd src/ftl-sdk-typescript && npm publish --dry-run --access public
+
+publish-all: ## Publish all packages (use with caution!)
+	@echo "⚠️  Publishing all packages..."
+	@echo "This will publish:"
+	@echo "  - mcp-http-component v$$(make get-gateway-version) to ghcr.io"
+	@echo "  - ftl-sdk v$$(make get-rust-sdk-version) to crates.io"
+	@echo "  - @fastertools/ftl-sdk v$$(make get-ts-sdk-version) to npm"
+	@echo ""
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read confirm
+	@$(MAKE) publish-gateway
+	@$(MAKE) publish-rust-sdk
+	@$(MAKE) publish-ts-sdk
+	@echo ""
+	@echo "🎉 All packages published!"
+
+publish-dry-run: ## Dry run all publishes
+	@echo "Dry run for all packages:"
+	@echo ""
+	@echo "=== mcp-http-component ==="
+	@echo "Would publish v$$(make get-gateway-version) to ghcr.io"
+	@echo ""
+	@echo "=== ftl-sdk-rust ==="
+	@$(MAKE) publish-rust-sdk-dry
+	@echo ""
+	@echo "=== ftl-sdk-typescript ==="
+	@$(MAKE) publish-ts-sdk-dry
+
+# Release workflow targets
+release-patch: ## Full release workflow for patch version
+	@echo "Starting patch release..."
+	@$(MAKE) bump-all-patch
+	@echo ""
+	@echo "Changes made. Please:"
+	@echo "1. Review: git diff"
+	@echo "2. Commit: git commit -am 'chore: release patch version'"
+	@echo "3. Tag and push:"
+	@echo "   git tag mcp-http-component-v$$(make get-gateway-version)"
+	@echo "   git tag ftl-sdk-rust-v$$(make get-rust-sdk-version)"
+	@echo "   git tag ftl-sdk-typescript-v$$(make get-ts-sdk-version)"
+	@echo "   git push origin main --tags"
+	@echo ""
+	@echo "GitHub Actions will handle publishing when tags are pushed."
+
+release-minor: ## Full release workflow for minor version
+	@echo "Starting minor release..."
+	@$(MAKE) bump-all-minor
+	@echo ""
+	@echo "Changes made. Please:"
+	@echo "1. Review: git diff"
+	@echo "2. Commit: git commit -am 'chore: release minor version'"
+	@echo "3. Tag and push (same as patch release)"

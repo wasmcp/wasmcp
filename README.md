@@ -31,6 +31,33 @@ The mcp-http-component acts as a gateway that:
 - Calls into your MCP handler component
 - Returns responses over HTTP
 
+## Development
+
+### Prerequisites
+
+- Rust toolchain with `wasm32-wasip1` target
+- Node.js 20+
+- cargo-binstall (for faster tool installation)
+
+### Common Commands
+
+```bash
+# Show all available commands
+make help
+
+# Install dependencies and tools
+make install-deps
+
+# Build everything
+make build-all
+
+# Run all tests
+make test-all
+
+# Full CI pipeline (build + test)
+make ci
+```
+
 ## Quick Start
 
 ### Building a Rust MCP Handler
@@ -118,16 +145,36 @@ make sync-versions
 
 ### Release Process
 
-1. Bump version: `make bump-all-patch`
-2. Review changes: `git diff`
-3. Commit: `git commit -am "chore: bump versions"`
-4. Create tags:
-   ```bash
-   git tag mcp-http-component-v0.1.3
-   git tag ftl-sdk-rust-v0.2.3
-   git tag ftl-sdk-typescript-v0.1.3
-   ```
-5. Push: `git push origin main --tags`
+#### Automated Release (Recommended)
+
+```bash
+# For patch release (bug fixes)
+make release-patch
+
+# For minor release (new features)
+make release-minor
+
+# Then follow the instructions printed by make
+```
+
+#### Manual Publishing
+
+If you need to publish packages manually:
+
+```bash
+# Dry run first to verify
+make publish-dry-run
+
+# Publish individual packages
+make publish-gateway      # Publish to ghcr.io
+make publish-rust-sdk    # Publish to crates.io  
+make publish-ts-sdk      # Publish to npm
+
+# Or publish everything at once (use with caution!)
+make publish-all
+```
+
+**Note**: The GitHub Actions workflow handles publishing automatically when you push version tags. Manual publishing is only needed for special cases.
 
 For more details, see [Version Management Scripts](./scripts/README.md).
 
