@@ -25,20 +25,15 @@ fn block_on_async<F: std::future::Future + Send>(future: F) -> F::Output
 where 
     F::Output: Send,
 {
-    if tokio::runtime::Handle::try_current().is_ok() {
-        // We're already in a tokio runtime, use spawn_blocking
-        std::thread::scope(|s| {
-            let (tx, rx) = std::sync::mpsc::channel();
-            s.spawn(move || {
-                let rt = tokio::runtime::Runtime::new().expect("Failed to create async runtime");
-                let result = rt.block_on(future);
-                tx.send(result).expect("Failed to send result");
-            });
-            rx.recv().expect("Failed to receive result")
-        })
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        // We're already in a tokio runtime, block on the current handle
+        handle.block_on(future)
     } else {
-        // No runtime context, create one
-        let rt = tokio::runtime::Runtime::new().expect("Failed to create async runtime");
+        // No runtime context, create a basic current thread runtime
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create async runtime");
         rt.block_on(future)
     }
 }
