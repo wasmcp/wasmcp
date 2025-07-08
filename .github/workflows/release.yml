@@ -3,16 +3,68 @@ name: Release
 on:
   push:
     tags:
-      - 'wasmcp*v*'
+      - 'wasmcp-spin-v*'
+      - 'wasmcp-rust-v*' 
+      - 'wasmcp-typescript-v*'
 
 permissions:
   contents: write
   packages: write
 
 jobs:
-  release:
-    name: Build and Release
+  # Detect all release components needed
+  setup:
+    name: Detect Release Components
     runs-on: ubuntu-latest
+    outputs:
+      should_release_spin: ${{ steps.detect.outputs.should_release_spin }}
+      should_release_rust: ${{ steps.detect.outputs.should_release_rust }}
+      should_release_typescript: ${{ steps.detect.outputs.should_release_typescript }}
+      spin_version: ${{ steps.detect.outputs.spin_version }}
+      rust_version: ${{ steps.detect.outputs.rust_version }}
+      typescript_version: ${{ steps.detect.outputs.typescript_version }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history to see all tags
+    
+    - name: Detect what to release
+      id: detect
+      run: |
+        # Get all tags from this push
+        CURRENT_COMMIT=$(git rev-parse HEAD)
+        ALL_TAGS=$(git tag --points-at $CURRENT_COMMIT)
+        
+        echo "Tags at current commit: $ALL_TAGS"
+        
+        # Initialize outputs
+        echo "should_release_spin=false" >> $GITHUB_OUTPUT
+        echo "should_release_rust=false" >> $GITHUB_OUTPUT  
+        echo "should_release_typescript=false" >> $GITHUB_OUTPUT
+        
+        # Check each tag and set appropriate flags
+        for tag in $ALL_TAGS; do
+          if [[ $tag == wasmcp-spin-v* ]]; then
+            echo "should_release_spin=true" >> $GITHUB_OUTPUT
+            echo "spin_version=${tag#wasmcp-spin-v}" >> $GITHUB_OUTPUT
+            echo "Found wasmcp-spin tag: $tag"
+          elif [[ $tag == wasmcp-rust-v* ]]; then
+            echo "should_release_rust=true" >> $GITHUB_OUTPUT
+            echo "rust_version=${tag#wasmcp-rust-v}" >> $GITHUB_OUTPUT
+            echo "Found wasmcp-rust tag: $tag"
+          elif [[ $tag == wasmcp-typescript-v* ]]; then
+            echo "should_release_typescript=true" >> $GITHUB_OUTPUT
+            echo "typescript_version=${tag#wasmcp-typescript-v}" >> $GITHUB_OUTPUT
+            echo "Found wasmcp-typescript tag: $tag"
+          fi
+        done
+
+  # Release wasmcp-spin component
+  release-spin:
+    name: Release wasmcp-spin
+    runs-on: ubuntu-latest
+    needs: setup
+    if: needs.setup.outputs.should_release_spin == 'true'
     permissions:
       contents: write
       packages: write
@@ -23,12 +75,6 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         targets: wasm32-wasip1
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        registry-url: 'https://registry.npmjs.org'
     
     - name: Install cargo-binstall
       uses: cargo-bins/cargo-binstall@main
@@ -43,18 +89,10 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cargo-spin-${{ hashFiles('**/Cargo.lock') }}
     
-    # Build all components
-    - name: Build all components
-      run: make build-all
-    
-    - name: Get versions
-      id: versions
-      run: |
-        echo "gateway=$(make get-gateway-version)" >> $GITHUB_OUTPUT
-        echo "rust_sdk=$(make get-rust-sdk-version)" >> $GITHUB_OUTPUT
-        echo "ts_sdk=$(make get-ts-sdk-version)" >> $GITHUB_OUTPUT
+    - name: Build wasmcp-spin component
+      run: make build-gateway
     
     - name: Login to GitHub Container Registry
       run: |
@@ -65,15 +103,112 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       run: make publish-gateway
     
-    # Publish wasmcp-rust to crates.io
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: wasmcp-spin-v${{ needs.setup.outputs.spin_version }}
+        name: wasmcp-spin ${{ needs.setup.outputs.spin_version }}
+        generate_release_notes: true
+        files: |
+          src/components/wasmcp-spin/target/wasm32-wasip1/release/wasmcp_spin.wasm
+        body: |
+          ## wasmcp-spin WebAssembly Component v${{ needs.setup.outputs.spin_version }}
+          
+          ### Usage
+          Add to your `spin.toml`:
+          
+          ```toml
+          [component.my-mcp-handler]
+          source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "${{ needs.setup.outputs.spin_version }}" }
+          
+          [component.my-mcp-handler.dependencies]
+          "wasmcp:mcp/handler" = { path = "path/to/your/handler.wasm" }
+          ```
+
+  # Release wasmcp-rust SDK
+  release-rust:
+    name: Release wasmcp-rust
+    runs-on: ubuntu-latest
+    needs: setup
+    if: needs.setup.outputs.should_release_rust == 'true'
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: wasm32-wasip1
+    
+    - name: Install cargo-binstall
+      uses: cargo-bins/cargo-binstall@main
+    
+    - name: Install tools
+      run: make install-rust-tools
+    
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-rust-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Build and test Rust SDK
+      run: make build-rust-sdk && make test-rust-sdk
+    
     - name: Publish wasmcp-rust to crates.io
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       run: make publish-rust-sdk
     
-    # Publish wasmcp-typescript to npm
-    - name: Setup TypeScript SDK
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: wasmcp-rust-v${{ needs.setup.outputs.rust_version }}
+        name: wasmcp-rust ${{ needs.setup.outputs.rust_version }}
+        generate_release_notes: true
+        body: |
+          ## wasmcp Rust SDK v${{ needs.setup.outputs.rust_version }}
+          
+          ### Installation
+          Add to your `Cargo.toml`:
+          
+          ```toml
+          [dependencies]
+          wasmcp = "${{ needs.setup.outputs.rust_version }}"
+          ```
+          
+          ### Features
+          - Sync and async trait implementations for MCP handlers
+          - Automatic bridging from async to sync for existing WIT interfaces
+          - Support for tools, resources, and prompts
+          - Comprehensive async examples and patterns
+
+  # Release wasmcp-typescript SDK
+  release-typescript:
+    name: Release wasmcp-typescript
+    runs-on: ubuntu-latest
+    needs: setup
+    if: needs.setup.outputs.should_release_typescript == 'true'
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        registry-url: 'https://registry.npmjs.org'
+    
+    - name: Install TypeScript SDK dependencies
       run: make install-ts-deps
+    
+    - name: Build and test TypeScript SDK
+      run: make build-ts-sdk && make test-ts-sdk
     
     - name: Publish wasmcp-typescript to npm
       env:
@@ -83,30 +218,23 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
-        name: Release ${{ github.ref_name }}
+        tag_name: wasmcp-typescript-v${{ needs.setup.outputs.typescript_version }}
+        name: wasmcp-typescript ${{ needs.setup.outputs.typescript_version }}
         generate_release_notes: true
-        files: |
-          src/components/wasmcp-spin/target/wasm32-wasip1/release/wasmcp_spin.wasm
         body: |
-          ## Published Packages
+          ## wasmcp TypeScript SDK v${{ needs.setup.outputs.typescript_version }}
           
-          ### WebAssembly Component
-          Use the published component in your `spin.toml`:
-          
-          ```toml
-          [component.wasmcp-spin]
-          source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "${{ steps.versions.outputs.gateway }}" }
-          ```
-          
-          ### Rust SDK
-          Add to your `Cargo.toml`:
-          ```toml
-          [dependencies]
-          wasmcp = "${{ steps.versions.outputs.rust_sdk }}"
-          ```
-          
-          ### TypeScript SDK
-          Install via npm:
+          ### Installation
           ```bash
-          npm install wasmcp@${{ steps.versions.outputs.ts_sdk }}
+          npm install wasmcp@${{ needs.setup.outputs.typescript_version }}
+          ```
+          
+          ### Usage
+          ```typescript
+          import { ToolHandler, ResourceHandler } from 'wasmcp';
+          
+          // Implement your MCP handlers
+          export class MyTool implements ToolHandler {
+            // ... implementation
+          }
           ```
