@@ -208,7 +208,7 @@ jobs:
       run: make install-ts-deps
     
     - name: Build and test TypeScript SDK
-      run: make build-ts-sdk && make test-ts-sdk
+      run: make build-ts-sdk && make test-ts
     
     - name: Publish wasmcp-typescript to npm
       env:
