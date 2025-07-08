@@ -20,24 +20,6 @@
 
 use serde_json::Value;
 
-// Helper for async bridging that handles both runtime and non-runtime contexts
-fn block_on_async<F: std::future::Future + Send>(future: F) -> F::Output 
-where 
-    F::Output: Send,
-{
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        // We're already in a tokio runtime, block on the current handle
-        handle.block_on(future)
-    } else {
-        // No runtime context, create a basic current thread runtime
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("Failed to create async runtime");
-        rt.block_on(future)
-    }
-}
-
 /// Trait for implementing MCP tools.
 ///
 /// Tools are functions that can be called by MCP clients to perform specific actions.
@@ -151,6 +133,7 @@ pub trait AsyncPromptHandler: Sized {
 
 /// Automatic bridging from async to sync for tools
 /// This allows async implementations to work with the sync WIT interface
+/// The async runtime is managed by the WASM component host (e.g., Spin)
 impl<T: AsyncToolHandler> ToolHandler for T {
     const NAME: &'static str = T::NAME;
     const DESCRIPTION: &'static str = T::DESCRIPTION;
@@ -160,12 +143,14 @@ impl<T: AsyncToolHandler> ToolHandler for T {
     }
 
     fn execute(args: Value) -> Result<String, String> {
-        block_on_async(T::execute_async(args))
+        // This will be handled by the async runtime provided by the component host
+        futures::executor::block_on(T::execute_async(args))
     }
 }
 
 /// Automatic bridging from async to sync for resources
 /// This allows async implementations to work with the sync WIT interface
+/// The async runtime is managed by the WASM component host (e.g., Spin)
 impl<T: AsyncResourceHandler> ResourceHandler for T {
     const URI: &'static str = T::URI;
     const NAME: &'static str = T::NAME;
@@ -173,19 +158,22 @@ impl<T: AsyncResourceHandler> ResourceHandler for T {
     const MIME_TYPE: Option<&'static str> = T::MIME_TYPE;
 
     fn read() -> Result<String, String> {
-        block_on_async(T::read_async())
+        // This will be handled by the async runtime provided by the component host
+        futures::executor::block_on(T::read_async())
     }
 }
 
 /// Automatic bridging from async to sync for prompts
 /// This allows async implementations to work with the sync WIT interface
+/// The async runtime is managed by the WASM component host (e.g., Spin)
 impl<T: AsyncPromptHandler> PromptHandler for T {
     const NAME: &'static str = T::NAME;
     const DESCRIPTION: Option<&'static str> = T::DESCRIPTION;
     type Arguments = T::Arguments;
 
     fn resolve(args: Value) -> Result<Vec<PromptMessage>, String> {
-        block_on_async(T::resolve_async(args))
+        // This will be handled by the async runtime provided by the component host
+        futures::executor::block_on(T::resolve_async(args))
     }
 }
 
