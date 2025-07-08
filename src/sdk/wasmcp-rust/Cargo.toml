@@ -1,6 +1,6 @@
 [package]
 name = "wasmcp"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "Rust SDK for building MCP (Model Context Protocol) WebAssembly components"
 license = "Apache-2.0"
