@@ -1,0 +1,16 @@
+spin_manifest_version = 2
+
+[application]
+name = "mcp-demo-simple"
+version = "0.1.0"
+description = "MCP server without authentication"
+
+[[trigger.http]]
+route = "/..."
+component = "gateway"
+
+[component.gateway]
+source = "../../src/components/wasmcp-spin/target/wasm32-wasip1/release/wasmcp_spin.wasm"
+
+[component.gateway.dependencies]
+"wasmcp:mcp/handler" = { path = "./handler/target/wasm32-wasip1/release/auth_demo_handler.wasm" }

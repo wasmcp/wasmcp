@@ -17,9 +17,10 @@ This repository provides a way to compose MCP servers as WebAssembly components.
 
 1. **wit** - Wasm Interface Types defining the MCP component interfaces
 2. **wasmcp-spin** - A Spin-specific WebAssembly component that exposes an MCP server over HTTP, delegating business logic to a MCP handler component
-3. **wasmcp** (Rust) - SDK for building MCP handler components in Rust
-4. **wasmcp** (TypeScript) - SDK for building MCP handler components in TypeScript/JavaScript
-5. **templates** - Spin templates for easily managing MCP projects
+3. **wasmcp-spin-authkit** - A Spin MCP gateway with built-in AuthKit/OAuth2 authentication
+4. **wasmcp** (Rust) - SDK for building MCP handler components in Rust
+5. **wasmcp** (TypeScript) - SDK for building MCP handler components in TypeScript/JavaScript
+6. **templates** - Spin templates for easily managing MCP projects
 
 ## Quick Start with Spin
 
@@ -204,6 +205,47 @@ wasmcp/
 ├── templates/             # Project templates
 └── scripts/               # Build and version management scripts
 ```
+
+## Authentication
+
+### Unauthenticated MCP Servers
+
+By default, MCP servers created with wasmcp templates use the standard `wasmcp-spin` gateway component, which provides no authentication. This is perfect for:
+- Development and testing
+- Internal services
+- Public tools that don't require user context
+
+### Authenticated MCP Servers with AuthKit
+
+For production MCP servers that require authentication, use `wasmcp-spin-authkit` - a gateway component with built-in OAuth2 authentication via WorkOS AuthKit.
+
+#### Features
+- OAuth2/OpenID Connect authentication
+- JWT token validation
+- User context in MCP responses
+- MCP-compliant OAuth metadata endpoints
+- Dynamic client registration support
+
+#### Usage
+
+Replace the standard gateway in your `spin.toml`:
+
+```toml
+[component.gateway]
+# Instead of wasmcp-spin:
+# source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.3" }
+
+# Use wasmcp-spin-authkit:
+source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin-authkit", version = "0.1.0" }
+allowed_outbound_hosts = ["https://*"]  # For JWKS fetching
+
+[component.gateway.variables]
+authkit_issuer = "https://your-company.authkit.app"
+authkit_jwks_uri = "https://your-company.authkit.app/oauth2/jwks"
+# authkit_audience = "your-audience"  # Optional
+```
+
+See the [auth-demo example](examples/auth-demo/) for a complete implementation.
 
 ## Version Management
 

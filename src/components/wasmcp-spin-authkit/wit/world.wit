@@ -1,0 +1,7 @@
+package wasmcp:spin-authkit;
+
+// World for the Spin API component with AuthKit that imports the MCP handler
+world mcp-spin-authkit {
+    // Import the MCP handler interface from the mcp package
+    import wasmcp:mcp/handler;
+}

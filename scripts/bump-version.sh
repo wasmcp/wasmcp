@@ -21,6 +21,7 @@ if [ $# -lt 2 ]; then
     echo ""
     echo "Components:"
     echo "  wasmcp-spin         - Spin gateway component"
+    echo "  wasmcp-spin-authkit - Spin AuthKit gateway component"
     echo "  wasmcp-rust         - Rust SDK"
     echo "  wasmcp-typescript   - TypeScript SDK"
     echo "  mcp                 - MCP WIT interface (breaking changes only)"
@@ -49,6 +50,17 @@ case $COMPONENT in
         # Update package.metadata.component version if wasmcp-spin-wit version changed
         WASMCP_SPIN_WIT_VERSION=$(grep '^wasmcp-spin-wit = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
         sed_inplace "s/package = \"wasmcp:spin@[^\"]*\"/package = \"wasmcp:spin@$WASMCP_SPIN_WIT_VERSION\"/" "$SCRIPT_DIR/../src/components/wasmcp-spin/Cargo.toml"
+        ;;
+    wasmcp-spin-authkit)
+        sed_inplace "s/wasmcp-spin-authkit = \"[^\"]*\"/wasmcp-spin-authkit = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        sed_inplace "s/ghcr.io\/fastertools\/wasmcp-spin-authkit\" = \"[^\"]*\"/ghcr.io\/fastertools\/wasmcp-spin-authkit\" = \"$NEW_VERSION\"/" "$VERSIONS_FILE"
+        
+        # Also update the actual Cargo.toml (only the package version line)
+        sed_inplace "/^\[package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" "$SCRIPT_DIR/../src/components/wasmcp-spin-authkit/Cargo.toml"
+        
+        # Update package.metadata.component version if wasmcp-spin-wit version changed
+        WASMCP_SPIN_WIT_VERSION=$(grep '^wasmcp-spin-wit = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
+        sed_inplace "s/package = \"wasmcp:spin@[^\"]*\"/package = \"wasmcp:spin@$WASMCP_SPIN_WIT_VERSION\"/" "$SCRIPT_DIR/../src/components/wasmcp-spin-authkit/Cargo.toml"
         ;;
     wasmcp-rust)
         sed_inplace "s/wasmcp-rust = \"[^\"]*\"/wasmcp-rust = \"$NEW_VERSION\"/" "$VERSIONS_FILE"

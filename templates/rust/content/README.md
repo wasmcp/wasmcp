@@ -125,6 +125,27 @@ Edit `spin.toml` to configure:
 - Environment variables
 - Build commands
 
+### Authentication (Optional)
+
+By default, this MCP server runs without authentication. To add OAuth2/AuthKit authentication:
+
+1. Replace the gateway component in `spin.toml`:
+   ```toml
+   [component.mcp-handler]
+   # Instead of wasmcp-spin:
+   # source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.3" }
+   
+   # Use wasmcp-spin-authkit:
+   source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin-authkit", version = "0.1.0" }
+   allowed_outbound_hosts = ["https://*"]  # Required for JWKS fetching
+   
+   [component.mcp-handler.variables]
+   authkit_issuer = "https://your-company.authkit.app"
+   authkit_jwks_uri = "https://your-company.authkit.app/oauth2/jwks"
+   ```
+
+2. All requests will now require a valid JWT token in the `Authorization: Bearer <token>` header
+
 ### Cargo Configuration
 
 Edit `handler/Cargo.toml` to:

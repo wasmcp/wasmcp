@@ -4,6 +4,7 @@
 [packages]
 # Core components
 wasmcp-spin = "0.0.3"
+wasmcp-spin-authkit = "0.1.0"
 wasmcp-rust = "0.1.4"
 wasmcp-typescript = "0.1.6"
 
@@ -16,5 +17,6 @@ wasmcp-spin-wit = "0.0.1"
 # Published package references for templates
 # Format: registry/namespace/package
 "ghcr.io/fastertools/wasmcp-spin" = "0.0.3"
+"ghcr.io/fastertools/wasmcp-spin-authkit" = "0.1.0"
 "crates.io/wasmcp" = "0.1.4"
 "npm/wasmcp" = "0.1.6"

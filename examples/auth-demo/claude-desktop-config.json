@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "auth-demo": {
+      "url": "http://localhost:3000",
+      "name": "MCP Auth Demo",
+      "description": "Example MCP server with OAuth2 authentication",
+      "auth": {
+        "type": "oauth2",
+        "authorization_url": "https://your-app.authkit.app/oauth2/authorize",
+        "token_url": "https://your-app.authkit.app/oauth2/token",
+        "client_id": "auto-register",
+        "scope": "openid profile email"
+      }
+    },
+    "auth-demo-simple": {
+      "url": "http://localhost:3000",
+      "name": "MCP Auth Demo (API Key)",
+      "description": "Same server but using API key auth",
+      "auth": {
+        "type": "header",
+        "header": "X-API-Key",
+        "value": "demo-key-123"
+      }
+    }
+  }
+}

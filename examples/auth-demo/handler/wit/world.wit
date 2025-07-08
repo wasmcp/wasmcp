@@ -1,0 +1,6 @@
+package auth-demo:handler;
+
+// The handler implements the MCP handler world
+world handler {
+    export wasmcp:mcp/handler;
+}

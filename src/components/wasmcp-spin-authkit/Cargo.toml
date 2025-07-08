@@ -1,0 +1,31 @@
+[package]
+name = "wasmcp-spin-authkit"
+version = "0.1.0"
+edition = "2021"
+description = "MCP HTTP/JSON-RPC gateway with AuthKit authentication for Spin"
+license = "Apache-2.0"
+repository = "https://github.com/fastertools/wasmcp"
+
+[dependencies]
+spin-sdk = "3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+http = "1"
+anyhow = "1"
+wit-bindgen-rt = "0.24"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+
+[package.metadata.component]
+package = "wasmcp:spin-authkit"
+
+[package.metadata.component.target.dependencies]
+"wasmcp:mcp" = { path = "../../../wit/mcp.wit" }

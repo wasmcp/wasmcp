@@ -60,3 +60,9 @@ jobs:
       with:
         name: wasmcp-spin
         path: src/components/wasmcp-spin/target/wasm32-wasip1/release/wasmcp_spin.wasm
+    
+    - name: Upload wasmcp-spin-authkit artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: wasmcp-spin-authkit
+        path: src/components/wasmcp-spin-authkit/target/wasm32-wasip1/release/wasmcp_spin_authkit.wasm

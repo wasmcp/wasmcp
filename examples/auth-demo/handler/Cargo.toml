@@ -1,0 +1,24 @@
+[package]
+name = "auth-demo-handler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wasmcp = { path = "../../../src/sdk/wasmcp-rust" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+wit-bindgen-rt = "0.24"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+
+[package.metadata.component]
+package = "auth-demo:handler"
+
+[package.metadata.component.target.dependencies]
+"wasmcp:mcp" = { path = "../../../wit/mcp.wit" }

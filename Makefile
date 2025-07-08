@@ -72,6 +72,16 @@ bump-ts-minor: ## Bump wasmcp-typescript minor version
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
 	./scripts/bump-version.sh wasmcp-typescript $$new
 
+bump-authkit-patch: ## Bump wasmcp-spin-authkit patch version
+	@current=$$(grep 'wasmcp-spin-authkit = ' versions.toml | cut -d'"' -f2); \
+	new=$$(echo $$current | awk -F. '{print $$1"."$$2"."$$3+1}'); \
+	./scripts/bump-version.sh wasmcp-spin-authkit $$new
+
+bump-authkit-minor: ## Bump wasmcp-spin-authkit minor version
+	@current=$$(grep 'wasmcp-spin-authkit = ' versions.toml | cut -d'"' -f2); \
+	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
+	./scripts/bump-version.sh wasmcp-spin-authkit $$new
+
 bump-mcp-wit: ## Bump MCP WIT package version (breaking changes only)
 	@current=$$(grep '^mcp = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
@@ -86,6 +96,7 @@ bump-gateway-wit: ## Bump MCP Gateway WIT package version (breaking changes only
 bump-all-patch: ## Bump all packages patch version
 	@echo "Bumping all packages (patch)..."
 	@$(MAKE) bump-gateway-patch
+	@$(MAKE) bump-authkit-patch
 	@$(MAKE) bump-rust-patch
 	@$(MAKE) bump-ts-patch
 	@echo ""
@@ -96,6 +107,7 @@ bump-all-patch: ## Bump all packages patch version
 	@echo "  2. Commit: git commit -am 'chore: bump all packages patch version'"
 	@echo "  3. Create tags:"
 	@echo "     git tag wasmcp-spin-v$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2)"
+	@echo "     git tag wasmcp-spin-authkit-v$$(grep 'wasmcp-spin-authkit = ' versions.toml | cut -d'"' -f2)"
 	@echo "     git tag wasmcp-rust-v$$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2)"
 	@echo "     git tag wasmcp-typescript-v$$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2)"
 	@echo "  4. Push: git push origin main --tags"
@@ -103,6 +115,7 @@ bump-all-patch: ## Bump all packages patch version
 bump-all-minor: ## Bump all packages minor version
 	@echo "Bumping all packages (minor)..."
 	@$(MAKE) bump-gateway-minor
+	@$(MAKE) bump-authkit-minor
 	@$(MAKE) bump-rust-minor
 	@$(MAKE) bump-ts-minor
 	@echo ""
@@ -150,17 +163,21 @@ install-deps: install-rust-tools install-ts-deps ## Install all dependencies
 lint-rust: ## Run Rust linters (clippy and rustfmt check)
 	@echo "Running clippy..."
 	cd src/components/wasmcp-spin && cargo clippy -- -D warnings
+	cd src/components/wasmcp-spin-authkit && cargo clippy -- -D warnings
 	cd src/sdk/wasmcp-rust && cargo clippy -- -D warnings
 	@echo "Checking rustfmt..."
 	cd src/components/wasmcp-spin && cargo fmt -- --check
+	cd src/components/wasmcp-spin-authkit && cargo fmt -- --check
 	cd src/sdk/wasmcp-rust && cargo fmt -- --check
 
 lint-rust-fix: ## Fix Rust lint issues
 	@echo "Running clippy with fixes..."
 	cd src/components/wasmcp-spin && cargo clippy --fix --allow-dirty --allow-staged
+	cd src/components/wasmcp-spin-authkit && cargo clippy --fix --allow-dirty --allow-staged
 	cd src/sdk/wasmcp-rust && cargo clippy --fix --allow-dirty --allow-staged
 	@echo "Running rustfmt..."
 	cd src/components/wasmcp-spin && cargo fmt
+	cd src/components/wasmcp-spin-authkit && cargo fmt
 	cd src/sdk/wasmcp-rust && cargo fmt
 
 lint-ts: ## Run TypeScript linter
@@ -181,22 +198,28 @@ lint-fix-all: ## Fix all lint and formatting issues (Rust and TypeScript)
 build-gateway: ## Build wasmcp-spin
 	cd src/components/wasmcp-spin && cargo clippy -- -D warnings && cargo component build --release
 
+build-authkit: ## Build wasmcp-spin-authkit
+	cd src/components/wasmcp-spin-authkit && cargo clippy -- -D warnings && cargo component build --release
+
 build-rust-sdk: ## Build wasmcp-rust
 	cd src/sdk/wasmcp-rust && cargo clippy -- -D warnings && cargo build --release
 
 build-ts-sdk: install-ts-deps ## Build wasmcp-typescript
 	cd src/sdk/wasmcp-typescript && npm run lint && npm run build
 
-build-all: build-gateway build-rust-sdk build-ts-sdk ## Build all components
+build-all: build-gateway build-authkit build-rust-sdk build-ts-sdk ## Build all components
 
 # Test targets
 test-gateway: ## Test wasmcp-spin
 	cd src/components/wasmcp-spin && cargo test
 
+test-authkit: ## Test wasmcp-spin-authkit
+	cd src/components/wasmcp-spin-authkit && cargo test
+
 test-rust-sdk: ## Test wasmcp-rust
 	cd src/sdk/wasmcp-rust && cargo test
 
-test-rust: test-gateway test-rust-sdk ## Run all Rust tests
+test-rust: test-gateway test-authkit test-rust-sdk ## Run all Rust tests
 
 test-ts: install-ts-deps ## Run TypeScript tests
 	cd src/sdk/wasmcp-typescript && npm test
@@ -215,15 +238,17 @@ ci: ci-build ci-test ## Run full CI pipeline
 # Clean targets
 clean: ## Clean all build artifacts
 	cd src/components/wasmcp-spin && cargo clean
+	cd src/components/wasmcp-spin-authkit && cargo clean
 	cd src/sdk/wasmcp-rust && cargo clean
 	cd src/sdk/wasmcp-typescript && rm -rf dist node_modules
 
 # Release helper
 show-versions: ## Show current versions
 	@echo "Current versions:"
-	@echo "  wasmcp-spin:  $$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2)"
-	@echo "  wasmcp-rust:       $$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2)"
-	@echo "  wasmcp-typescript: $$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2)"
+	@echo "  wasmcp-spin:        $$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2)"
+	@echo "  wasmcp-spin-authkit: $$(grep 'wasmcp-spin-authkit = ' versions.toml | cut -d'"' -f2)"
+	@echo "  wasmcp-rust:        $$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2)"
+	@echo "  wasmcp-typescript:  $$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2)"
 	@echo ""
 	@echo "WIT packages:"
 	@echo "  mcp:                $$(grep '^mcp = ' versions.toml | cut -d'"' -f2)"
@@ -237,6 +262,9 @@ get-rust-sdk-version: ## Get wasmcp-rust version
 
 get-ts-sdk-version: ## Get wasmcp-typescript version
 	@grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2
+
+get-authkit-version: ## Get wasmcp-spin-authkit version
+	@grep 'wasmcp-spin-authkit = ' versions.toml | cut -d'"' -f2
 
 # Publishing targets
 publish-gateway: ## Publish wasmcp-spin to ghcr.io
@@ -254,6 +282,22 @@ publish-gateway: ## Publish wasmcp-spin to ghcr.io
 		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
 		target/wasm32-wasip1/release/wasmcp_spin.wasm
 	@echo "✅ Published wasmcp-spin v$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2)"
+
+publish-authkit: ## Publish wasmcp-spin-authkit to ghcr.io
+	@echo "Publishing wasmcp-spin-authkit..."
+	@version=$$(grep 'wasmcp-spin-authkit = ' versions.toml | cut -d'"' -f2); \
+	cd src/components/wasmcp-spin-authkit && \
+	wkg oci push ghcr.io/fastertools/wasmcp-spin-authkit:$$version \
+		--annotation "org.opencontainers.image.source=https://github.com/fastertools/wasmcp" \
+		--annotation "org.opencontainers.image.description=WebAssembly server component for Spin with AuthKit authentication" \
+		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
+		target/wasm32-wasip1/release/wasmcp_spin_authkit.wasm && \
+	wkg oci push ghcr.io/fastertools/wasmcp-spin-authkit:latest \
+		--annotation "org.opencontainers.image.source=https://github.com/fastertools/wasmcp" \
+		--annotation "org.opencontainers.image.description=WebAssembly server component for Spin with AuthKit authentication" \
+		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
+		target/wasm32-wasip1/release/wasmcp_spin_authkit.wasm
+	@echo "✅ Published wasmcp-spin-authkit v$$(grep 'wasmcp-spin-authkit = ' versions.toml | cut -d'"' -f2)"
 
 publish-rust-sdk: ## Publish wasmcp-rust to crates.io
 	@echo "Publishing wasmcp-rust to crates.io..."
@@ -275,12 +319,14 @@ publish-all: ## Publish all packages (use with caution!)
 	@echo "⚠️  Publishing all packages..."
 	@echo "This will publish:"
 	@echo "  - wasmcp-spin v$$(make get-gateway-version) to ghcr.io"
+	@echo "  - wasmcp-spin-authkit v$$(make get-authkit-version) to ghcr.io"
 	@echo "  - wasmcp v$$(make get-rust-sdk-version) to crates.io"
 	@echo "  - wasmcp v$$(make get-ts-sdk-version) to npm"
 	@echo ""
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	@$(MAKE) publish-gateway
+	@$(MAKE) publish-authkit
 	@$(MAKE) publish-rust-sdk
 	@$(MAKE) publish-ts-sdk
 	@echo ""
@@ -291,6 +337,9 @@ publish-dry-run: ## Dry run all publishes
 	@echo ""
 	@echo "=== wasmcp-spin ==="
 	@echo "Would publish v$$(make get-gateway-version) to ghcr.io"
+	@echo ""
+	@echo "=== wasmcp-spin-authkit ==="
+	@echo "Would publish v$$(make get-authkit-version) to ghcr.io"
 	@echo ""
 	@echo "=== wasmcp-rust ==="
 	@$(MAKE) publish-rust-sdk-dry
@@ -308,6 +357,7 @@ release-patch: ## Full release workflow for patch version
 	@echo "2. Commit: git commit -am 'chore: release patch version'"
 	@echo "3. Tag and push:"
 	@echo "   git tag wasmcp-spin-v$$(make get-gateway-version)"
+	@echo "   git tag wasmcp-spin-authkit-v$$(make get-authkit-version)"
 	@echo "   git tag wasmcp-rust-v$$(make get-rust-sdk-version)"
 	@echo "   git tag wasmcp-typescript-v$$(make get-ts-sdk-version)"
 	@echo "   git push origin main --tags"

@@ -25,10 +25,12 @@ VERSIONS_FILE="$REPO_ROOT/versions.toml"
 
 # Extract versions using grep and sed
 WASMCP_SPIN=$(grep '^wasmcp-spin = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
+WASMCP_SPIN_AUTHKIT=$(grep '^wasmcp-spin-authkit = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
 WASMCP_RUST=$(grep '^wasmcp-rust = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
 WASMCP_TYPESCRIPT=$(grep '^wasmcp-typescript = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
 WIT_MCP=$(grep '^mcp = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
 WASMCP_SPIN_REF=$(grep '"ghcr.io/fastertools/wasmcp-spin" = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
+WASMCP_SPIN_AUTHKIT_REF=$(grep '"ghcr.io/fastertools/wasmcp-spin-authkit" = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
 
 echo "Synchronizing versions across wasmcp..."
 echo
@@ -68,7 +70,9 @@ echo "Version sync complete!"
 echo
 echo "Current versions:"
 echo "  wasmcp-spin: $WASMCP_SPIN"
+echo "  wasmcp-spin-authkit: $WASMCP_SPIN_AUTHKIT"
 echo "  wasmcp-rust: $WASMCP_RUST"
 echo "  wasmcp-typescript: $WASMCP_TYPESCRIPT"
 echo "  WIT package: $WIT_MCP"
 echo "  Gateway reference: $WASMCP_SPIN_REF"
+echo "  AuthKit reference: $WASMCP_SPIN_AUTHKIT_REF"
