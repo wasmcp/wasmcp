@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-wasmcp = "0.1.5"
+wasmcp = "0.1.6"
 wit-bindgen-rt = "0.43.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
