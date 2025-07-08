@@ -46,7 +46,7 @@ struct JsonRpcError {
 }
 
 #[spin_sdk::http_component]
-fn handle_request(req: Request) -> anyhow::Result<impl IntoResponse> {
+  async fn handle_request(req: Request) -> anyhow::Result<impl IntoResponse> {
     let body = req.body();
     let request: JsonRpcRequest = serde_json::from_slice(body)?;
 

@@ -20,6 +20,29 @@
 
 use serde_json::Value;
 
+// Helper for async bridging that handles both runtime and non-runtime contexts
+fn block_on_async<F: std::future::Future + Send>(future: F) -> F::Output 
+where 
+    F::Output: Send,
+{
+    if tokio::runtime::Handle::try_current().is_ok() {
+        // We're already in a tokio runtime, use spawn_blocking
+        std::thread::scope(|s| {
+            let (tx, rx) = std::sync::mpsc::channel();
+            s.spawn(move || {
+                let rt = tokio::runtime::Runtime::new().expect("Failed to create async runtime");
+                let result = rt.block_on(future);
+                tx.send(result).expect("Failed to send result");
+            });
+            rx.recv().expect("Failed to receive result")
+        })
+    } else {
+        // No runtime context, create one
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create async runtime");
+        rt.block_on(future)
+    }
+}
+
 /// Trait for implementing MCP tools.
 ///
 /// Tools are functions that can be called by MCP clients to perform specific actions.
@@ -72,6 +95,103 @@ pub trait PromptHandler: Sized {
 
     /// Resolves the prompt with the given arguments to produce messages.
     fn resolve(args: Value) -> Result<Vec<PromptMessage>, String>;
+}
+
+/// Async trait for implementing MCP tools.
+///
+/// Tools are functions that can be called by MCP clients to perform specific actions.
+/// This async version allows for non-blocking operations like network requests, file I/O, etc.
+pub trait AsyncToolHandler: Sized {
+    /// The name of the tool as it will appear to MCP clients.
+    const NAME: &'static str;
+
+    /// A human-readable description of what the tool does.
+    const DESCRIPTION: &'static str;
+
+    /// Returns the JSON schema describing the tool's input parameters.
+    fn input_schema() -> Value;
+
+    /// Executes the tool with the given arguments asynchronously.
+    fn execute_async(args: Value) -> impl std::future::Future<Output = Result<String, String>> + Send;
+}
+
+/// Async trait for implementing MCP resources.
+///
+/// Resources are data sources that can be read by MCP clients.
+/// This async version allows for non-blocking operations like database queries, file reads, etc.
+pub trait AsyncResourceHandler: Sized {
+    /// The URI that uniquely identifies this resource.
+    const URI: &'static str;
+
+    /// The human-readable name of the resource.
+    const NAME: &'static str;
+
+    /// Optional description of the resource.
+    const DESCRIPTION: Option<&'static str> = None;
+
+    /// Optional MIME type of the resource content.
+    const MIME_TYPE: Option<&'static str> = None;
+
+    /// Reads and returns the resource content asynchronously.
+    fn read_async() -> impl std::future::Future<Output = Result<String, String>> + Send;
+}
+
+/// Async trait for implementing MCP prompts.
+///
+/// Prompts are templates that can be resolved with arguments to produce messages.
+/// This async version allows for non-blocking operations like external API calls, etc.
+pub trait AsyncPromptHandler: Sized {
+    /// The name of the prompt as it will appear to MCP clients.
+    const NAME: &'static str;
+
+    /// Optional description of what the prompt does.
+    const DESCRIPTION: Option<&'static str> = None;
+
+    /// The type that defines the prompt's arguments.
+    type Arguments: PromptArguments;
+
+    /// Resolves the prompt with the given arguments to produce messages asynchronously.
+    fn resolve_async(args: Value) -> impl std::future::Future<Output = Result<Vec<PromptMessage>, String>> + Send;
+}
+
+/// Automatic bridging from async to sync for tools
+/// This allows async implementations to work with the sync WIT interface
+impl<T: AsyncToolHandler> ToolHandler for T {
+    const NAME: &'static str = T::NAME;
+    const DESCRIPTION: &'static str = T::DESCRIPTION;
+
+    fn input_schema() -> Value {
+        T::input_schema()
+    }
+
+    fn execute(args: Value) -> Result<String, String> {
+        block_on_async(T::execute_async(args))
+    }
+}
+
+/// Automatic bridging from async to sync for resources
+/// This allows async implementations to work with the sync WIT interface
+impl<T: AsyncResourceHandler> ResourceHandler for T {
+    const URI: &'static str = T::URI;
+    const NAME: &'static str = T::NAME;
+    const DESCRIPTION: Option<&'static str> = T::DESCRIPTION;
+    const MIME_TYPE: Option<&'static str> = T::MIME_TYPE;
+
+    fn read() -> Result<String, String> {
+        block_on_async(T::read_async())
+    }
+}
+
+/// Automatic bridging from async to sync for prompts
+/// This allows async implementations to work with the sync WIT interface
+impl<T: AsyncPromptHandler> PromptHandler for T {
+    const NAME: &'static str = T::NAME;
+    const DESCRIPTION: Option<&'static str> = T::DESCRIPTION;
+    type Arguments = T::Arguments;
+
+    fn resolve(args: Value) -> Result<Vec<PromptMessage>, String> {
+        block_on_async(T::resolve_async(args))
+    }
 }
 
 /// Trait for defining prompt arguments.
