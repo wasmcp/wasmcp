@@ -89,7 +89,7 @@ pub trait AsyncToolHandler: Sized {
     fn input_schema() -> Value;
 
     /// Executes the tool with the given arguments asynchronously.
-    fn execute_async(args: Value) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    fn execute_async(args: Value) -> impl std::future::Future<Output = Result<String, String>>;
 }
 
 /// Async trait for implementing MCP resources.
@@ -110,7 +110,7 @@ pub trait AsyncResourceHandler: Sized {
     const MIME_TYPE: Option<&'static str> = None;
 
     /// Reads and returns the resource content asynchronously.
-    fn read_async() -> impl std::future::Future<Output = Result<String, String>> + Send;
+    fn read_async() -> impl std::future::Future<Output = Result<String, String>>;
 }
 
 /// Async trait for implementing MCP prompts.
@@ -128,7 +128,7 @@ pub trait AsyncPromptHandler: Sized {
     type Arguments: PromptArguments;
 
     /// Resolves the prompt with the given arguments to produce messages asynchronously.
-    fn resolve_async(args: Value) -> impl std::future::Future<Output = Result<Vec<PromptMessage>, String>> + Send;
+    fn resolve_async(args: Value) -> impl std::future::Future<Output = Result<Vec<PromptMessage>, String>>;
 }
 
 /// Automatic bridging from async to sync for tools
