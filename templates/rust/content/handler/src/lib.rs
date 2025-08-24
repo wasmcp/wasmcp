@@ -1,6 +1,9 @@
 use wasmcp::{AsyncToolHandler, AsyncResourceHandler, json};
 use std::time::Duration;
 
+use bindings::wasi::http::outgoing_handler;
+use bindings::wasi::http::types::{Method, Scheme};
+
 // Define your tools as zero-sized types
 struct EchoTool;
 
@@ -59,22 +62,35 @@ impl AsyncToolHandler for HttpRequestTool {
     }
     
     async fn execute_async(args: serde_json::Value) -> Result<String, String> {
-        let url = args["url"]
-            .as_str()
-            .ok_or("Missing url field")?;
-        
-        let timeout = args["timeout_seconds"]
-            .as_u64()
-            .unwrap_or(30);
-        
-        // Simulate HTTP request with timeout
-        match tokio::time::timeout(
-            Duration::from_secs(timeout),
-            simulate_http_request(url)
-        ).await {
-            Ok(result) => result,
-            Err(_) => Err(format!("Request timed out after {} seconds", timeout))
+        let url = args["url"].as_str().ok_or("Missing url field")?;
+
+        let headers = outgoing_handler::new_fields(&[]);
+        let request = outgoing_handler::new_request(
+            &Method::Get,
+            Some(url),
+            &Scheme::Https, // Or parse from URL
+            None,
+            &headers,
+        ).map_err(|e| format!("Failed to create request: {}", e))?;
+
+        // `handle` is a non-blocking call that returns a future.
+        // .await yields control to the Spin runtime.
+        let response_future = outgoing_handler::handle(request, None);
+        let response = response_future.await
+            .map_err(|e| format!("Request failed: {:?}", e))? // Handle future error
+            .map_err(|e| format!("Request returned error code: {:?}", e))?; // Handle response error
+
+        let body_stream = response.body().map_err(|e| format!("Failed to get body: {}", e))?;
+        let mut body_bytes = Vec::new();
+        let mut stream = body_stream.stream().map_err(|e| format!("Failed to get stream: {}", e))?;
+
+        // Read the stream asynchronously
+        while let Some(chunk_result) = stream.read(u64::MAX).await {
+            let chunk = chunk_result.map_err(|e| format!("Stream read error: {}", e))?;
+            body_bytes.extend_from_slice(&chunk);
         }
+
+        String::from_utf8(body_bytes).map_err(|e| format!("Failed to parse body: {}", e))
     }
 }
 
