@@ -28,7 +28,7 @@ registry-push: build
 	@echo "Pushing to registry..."
 	@VERSION=$$(cd handler && cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version') && \
 	USERNAME=$$(git config user.name | tr '[:upper:]' '[:lower:]' | tr ' ' '-') && \
-	PROJECT=testding && \
+	PROJECT={{project-name | snake_case}} && \
 	echo "Pushing ghcr.io/$$USERNAME/$$PROJECT:$$VERSION" && \
 	wkg oci push ghcr.io/$$USERNAME/$$PROJECT:$$VERSION handler/target/wasm32-wasip2/release/$$PROJECT.wasm
 

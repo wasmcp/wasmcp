@@ -17,12 +17,9 @@ build.command = "make build"
 build.watch = ["handler/src/**/*.rs", "handler/Cargo.toml"]
 
 [component.wasmcp-spin.dependencies]
-# Link to the local handler component
 "wasmcp:mcp/handler" = { path = "./handler/target/wasm32-wasip2/release/{{project-name | snake_case}}.wasm" }
 
-# NEW SECTION: Define the handler as its own component
-#[component."{{project-name | snake_case}}"]
-#source = "handler/target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm"
-#build = { command = "cd handler && cargo component build --release" }
-# Grant permissions to the handler, NOT the gateway
-#allowed_outbound_hosts = ["https://*:*"]
+[component."{{project-name | snake_case}}"]
+source = "handler/target/wasm32-wasip2/release/{{project-name | snake_case}}.wasm"
+build = { command = "cd handler && cargo component build --release --target wasm32-wasip2" }
+allowed_outbound_hosts = ["https://*:*"]

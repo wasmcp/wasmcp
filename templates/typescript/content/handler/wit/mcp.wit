@@ -79,4 +79,6 @@ interface handler {
 // World for MCP handler components (libraries)
 world mcp-handler {
     export handler;
+
+    import wasi:http/types@0.2.0;
 }
