@@ -12,9 +12,9 @@ sync-versions: ## Sync versions across the repository
 
 sync-wit: ## Sync WIT files from root to all templates
 	@echo "Syncing WIT files to templates..."
-	@cp -r wit templates/rust/content/handler/wit/
-	@cp -r wit templates/javascript/content/handler/wit/
-	@cp -r wit templates/typescript/content/handler/wit/
+	@cp -r wit/* templates/rust/content/handler/wit/
+	@cp -r wit/* templates/javascript/content/handler/wit/
+	@cp -r wit/* templates/typescript/content/handler/wit/
 	@echo "✅ WIT files synced to all templates"
 
 validate-versions: ## Check if versions are in sync
