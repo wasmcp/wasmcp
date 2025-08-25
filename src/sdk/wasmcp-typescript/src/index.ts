@@ -1,4 +1,4 @@
-import * as z from 'zod/v4';
+import * as z from 'zod';
 
 // Core types
 export interface PromptMessage {
@@ -101,7 +101,7 @@ export function createHandler(config: HandlerConfig): Handler {
       return tools.map(tool => ({
         name: tool.name,
         description: tool.description,
-        inputSchema: tool.schema ? JSON.stringify(z.toJSONSchema(tool.schema)) : '{}'
+        inputSchema: tool.schema !== undefined ? JSON.stringify(z.toJSONSchema(tool.schema)) : '{}'
       }));
     },
 

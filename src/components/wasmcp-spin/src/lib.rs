@@ -8,8 +8,8 @@ mod bindings;
 
 use bindings::wasmcp::mcp::handler::{
     call_tool, get_prompt, list_prompts, list_resources, list_tools, read_resource,
+    ToolResult, ResourceResult, PromptResult,
 };
-use bindings::wasmcp::mcp::types::{ToolResult, ResourceResult, PromptResult};
 
 /// JSON-RPC request structure
 #[derive(Debug, Deserialize)]

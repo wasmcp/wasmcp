@@ -8,12 +8,12 @@
     "build": "npm run build:types && npm run build:bundle && npm run build:component",
     "build:types": "jco types ./wit -o dist/generated",
     "build:bundle": "esbuild src/index.js --bundle --format=esm --platform=node --outfile=dist/index.js",
-    "build:component": "jco componentize dist/index.js --wit ./wit --world-name mcp-handler --out dist/handler.wasm --disable all",
+    "build:component": "jco componentize dist/index.js --wit ./wit --world-name mcp-handler --out dist/handler.wasm",
     "test": "vitest run",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "wasmcp": "^0.1.6"
+    "wasmcp": "^0.1.9"
   },
   "devDependencies": {
     "@bytecodealliance/jco": "^1.8.1",

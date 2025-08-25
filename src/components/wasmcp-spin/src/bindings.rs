@@ -6,12 +6,11 @@
 pub mod wasmcp {
     pub mod mcp {
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod types {
+        pub mod handler {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            /// Tool descriptor
             #[derive(Clone)]
             pub struct Tool {
                 pub name: _rt::String,
@@ -30,47 +29,6 @@ pub mod wasmcp {
                         .finish()
                 }
             }
-            /// Error type
-            #[derive(Clone)]
-            pub struct Error {
-                pub code: i32,
-                pub message: _rt::String,
-                pub data: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for Error {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("Error")
-                        .field("code", &self.code)
-                        .field("message", &self.message)
-                        .field("data", &self.data)
-                        .finish()
-                }
-            }
-            /// Tool execution result
-            #[derive(Clone)]
-            pub enum ToolResult {
-                Text(_rt::String),
-                Error(Error),
-            }
-            impl ::core::fmt::Debug for ToolResult {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    match self {
-                        ToolResult::Text(e) => {
-                            f.debug_tuple("ToolResult::Text").field(e).finish()
-                        }
-                        ToolResult::Error(e) => {
-                            f.debug_tuple("ToolResult::Error").field(e).finish()
-                        }
-                    }
-                }
-            }
-            /// Resource descriptor
             #[derive(Clone)]
             pub struct ResourceInfo {
                 pub uri: _rt::String,
@@ -91,7 +49,6 @@ pub mod wasmcp {
                         .finish()
                 }
             }
-            /// Resource contents
             #[derive(Clone)]
             pub struct ResourceContents {
                 pub uri: _rt::String,
@@ -112,7 +69,96 @@ pub mod wasmcp {
                         .finish()
                 }
             }
-            /// Resource read result
+            #[derive(Clone)]
+            pub struct PromptArgument {
+                pub name: _rt::String,
+                pub description: Option<_rt::String>,
+                pub required: bool,
+            }
+            impl ::core::fmt::Debug for PromptArgument {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("PromptArgument")
+                        .field("name", &self.name)
+                        .field("description", &self.description)
+                        .field("required", &self.required)
+                        .finish()
+                }
+            }
+            #[derive(Clone)]
+            pub struct Prompt {
+                pub name: _rt::String,
+                pub description: Option<_rt::String>,
+                pub arguments: _rt::Vec<PromptArgument>,
+            }
+            impl ::core::fmt::Debug for Prompt {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("Prompt")
+                        .field("name", &self.name)
+                        .field("description", &self.description)
+                        .field("arguments", &self.arguments)
+                        .finish()
+                }
+            }
+            #[derive(Clone)]
+            pub struct PromptMessage {
+                pub role: _rt::String,
+                pub content: _rt::String,
+            }
+            impl ::core::fmt::Debug for PromptMessage {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("PromptMessage")
+                        .field("role", &self.role)
+                        .field("content", &self.content)
+                        .finish()
+                }
+            }
+            #[derive(Clone)]
+            pub struct Error {
+                pub code: i32,
+                pub message: _rt::String,
+                pub data: Option<_rt::String>,
+            }
+            impl ::core::fmt::Debug for Error {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("Error")
+                        .field("code", &self.code)
+                        .field("message", &self.message)
+                        .field("data", &self.data)
+                        .finish()
+                }
+            }
+            #[derive(Clone)]
+            pub enum ToolResult {
+                Text(_rt::String),
+                Error(Error),
+            }
+            impl ::core::fmt::Debug for ToolResult {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    match self {
+                        ToolResult::Text(e) => {
+                            f.debug_tuple("ToolResult::Text").field(e).finish()
+                        }
+                        ToolResult::Error(e) => {
+                            f.debug_tuple("ToolResult::Error").field(e).finish()
+                        }
+                    }
+                }
+            }
             #[derive(Clone)]
             pub enum ResourceResult {
                 Contents(ResourceContents),
@@ -133,62 +179,6 @@ pub mod wasmcp {
                     }
                 }
             }
-            /// Prompt argument
-            #[derive(Clone)]
-            pub struct PromptArgument {
-                pub name: _rt::String,
-                pub description: Option<_rt::String>,
-                pub required: bool,
-            }
-            impl ::core::fmt::Debug for PromptArgument {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("PromptArgument")
-                        .field("name", &self.name)
-                        .field("description", &self.description)
-                        .field("required", &self.required)
-                        .finish()
-                }
-            }
-            /// Prompt descriptor
-            #[derive(Clone)]
-            pub struct PromptDescriptor {
-                pub name: _rt::String,
-                pub description: Option<_rt::String>,
-                pub arguments: _rt::Vec<PromptArgument>,
-            }
-            impl ::core::fmt::Debug for PromptDescriptor {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("PromptDescriptor")
-                        .field("name", &self.name)
-                        .field("description", &self.description)
-                        .field("arguments", &self.arguments)
-                        .finish()
-                }
-            }
-            /// Prompt message
-            #[derive(Clone)]
-            pub struct PromptMessage {
-                pub role: _rt::String,
-                pub content: _rt::String,
-            }
-            impl ::core::fmt::Debug for PromptMessage {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("PromptMessage")
-                        .field("role", &self.role)
-                        .field("content", &self.content)
-                        .finish()
-                }
-            }
-            /// Prompt execution result
             #[derive(Clone)]
             pub enum PromptResult {
                 Messages(_rt::Vec<PromptMessage>),
@@ -209,21 +199,7 @@ pub mod wasmcp {
                     }
                 }
             }
-        }
-        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod handler {
-            #[used]
-            #[doc(hidden)]
-            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            pub type Tool = super::super::super::wasmcp::mcp::types::Tool;
-            pub type ToolResult = super::super::super::wasmcp::mcp::types::ToolResult;
-            pub type ResourceInfo = super::super::super::wasmcp::mcp::types::ResourceInfo;
-            pub type ResourceResult = super::super::super::wasmcp::mcp::types::ResourceResult;
-            pub type PromptDescriptor = super::super::super::wasmcp::mcp::types::PromptDescriptor;
-            pub type PromptResult = super::super::super::wasmcp::mcp::types::PromptResult;
             #[allow(unused_unsafe, clippy::all)]
-            /// List available tools - synchronous as it's just metadata
             pub fn list_tools() -> _rt::Vec<Tool> {
                 unsafe {
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
@@ -286,7 +262,7 @@ pub mod wasmcp {
                                 len12,
                                 len12,
                             );
-                            super::super::super::wasmcp::mcp::types::Tool {
+                            Tool {
                                 name: _rt::string_lift(bytes6),
                                 description: _rt::string_lift(bytes9),
                                 input_schema: _rt::string_lift(bytes12),
@@ -304,7 +280,6 @@ pub mod wasmcp {
                 }
             }
             #[allow(unused_unsafe, clippy::all)]
-            /// Call a tool - synchronous (ComponentizeJS will handle async-to-sync conversion)
             pub fn call_tool(name: &str, arguments: &str) -> ToolResult {
                 unsafe {
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
@@ -351,7 +326,6 @@ pub mod wasmcp {
                         wit_import3(ptr0.cast_mut(), len0, ptr1.cast_mut(), len1, ptr2)
                     };
                     let l4 = i32::from(*ptr2.add(0).cast::<u8>());
-                    use super::super::super::wasmcp::mcp::types::ToolResult as V16;
                     let v16 = match l4 {
                         0 => {
                             let e16 = {
@@ -369,7 +343,7 @@ pub mod wasmcp {
                                 );
                                 _rt::string_lift(bytes7)
                             };
-                            V16::Text(e16)
+                            ToolResult::Text(e16)
                         }
                         n => {
                             debug_assert_eq!(n, 1, "invalid enum discriminant");
@@ -394,7 +368,7 @@ pub mod wasmcp {
                                         .add(4 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::types::Error {
+                                Error {
                                     code: l8,
                                     message: _rt::string_lift(bytes11),
                                     data: match l12 {
@@ -421,7 +395,7 @@ pub mod wasmcp {
                                     },
                                 }
                             };
-                            V16::Error(e16)
+                            ToolResult::Error(e16)
                         }
                     };
                     let result17 = v16;
@@ -429,7 +403,6 @@ pub mod wasmcp {
                 }
             }
             #[allow(unused_unsafe, clippy::all)]
-            /// List available resources - synchronous
             pub fn list_resources() -> _rt::Vec<ResourceInfo> {
                 unsafe {
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
@@ -490,7 +463,7 @@ pub mod wasmcp {
                                     .add(7 * ::core::mem::size_of::<*const u8>())
                                     .cast::<u8>(),
                             );
-                            super::super::super::wasmcp::mcp::types::ResourceInfo {
+                            ResourceInfo {
                                 uri: _rt::string_lift(bytes6),
                                 name: _rt::string_lift(bytes9),
                                 description: match l10 {
@@ -551,7 +524,6 @@ pub mod wasmcp {
                 }
             }
             #[allow(unused_unsafe, clippy::all)]
-            /// Read a resource - synchronous (ComponentizeJS will handle async-to-sync conversion)
             pub fn read_resource(uri: &str) -> ResourceResult {
                 unsafe {
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
@@ -581,7 +553,6 @@ pub mod wasmcp {
                     }
                     unsafe { wit_import2(ptr0.cast_mut(), len0, ptr1) };
                     let l3 = i32::from(*ptr1.add(0).cast::<u8>());
-                    use super::super::super::wasmcp::mcp::types::ResourceResult as V27;
                     let v27 = match l3 {
                         0 => {
                             let e27 = {
@@ -612,7 +583,7 @@ pub mod wasmcp {
                                         .add(9 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::types::ResourceContents {
+                                ResourceContents {
                                     uri: _rt::string_lift(bytes6),
                                     mime_type: match l7 {
                                         0 => None,
@@ -677,7 +648,7 @@ pub mod wasmcp {
                                     },
                                 }
                             };
-                            V27::Contents(e27)
+                            ResourceResult::Contents(e27)
                         }
                         n => {
                             debug_assert_eq!(n, 1, "invalid enum discriminant");
@@ -702,7 +673,7 @@ pub mod wasmcp {
                                         .add(4 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::types::Error {
+                                Error {
                                     code: l19,
                                     message: _rt::string_lift(bytes22),
                                     data: match l23 {
@@ -729,7 +700,7 @@ pub mod wasmcp {
                                     },
                                 }
                             };
-                            V27::Error(e27)
+                            ResourceResult::Error(e27)
                         }
                     };
                     let result28 = v27;
@@ -737,8 +708,7 @@ pub mod wasmcp {
                 }
             }
             #[allow(unused_unsafe, clippy::all)]
-            /// List available prompts - synchronous
-            pub fn list_prompts() -> _rt::Vec<PromptDescriptor> {
+            pub fn list_prompts() -> _rt::Vec<Prompt> {
                 unsafe {
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                     #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
@@ -818,7 +788,7 @@ pub mod wasmcp {
                                             .add(5 * ::core::mem::size_of::<*const u8>())
                                             .cast::<u8>(),
                                     );
-                                    super::super::super::wasmcp::mcp::types::PromptArgument {
+                                    PromptArgument {
                                         name: _rt::string_lift(bytes15),
                                         description: match l16 {
                                             0 => None,
@@ -852,7 +822,7 @@ pub mod wasmcp {
                                 len21 * (6 * ::core::mem::size_of::<*const u8>()),
                                 ::core::mem::size_of::<*const u8>(),
                             );
-                            super::super::super::wasmcp::mcp::types::PromptDescriptor {
+                            Prompt {
                                 name: _rt::string_lift(bytes6),
                                 description: match l7 {
                                     0 => None,
@@ -891,7 +861,6 @@ pub mod wasmcp {
                 }
             }
             #[allow(unused_unsafe, clippy::all)]
-            /// Get a prompt - synchronous (ComponentizeJS will handle async-to-sync conversion)
             pub fn get_prompt(name: &str, arguments: &str) -> PromptResult {
                 unsafe {
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
@@ -938,7 +907,6 @@ pub mod wasmcp {
                         wit_import3(ptr0.cast_mut(), len0, ptr1.cast_mut(), len1, ptr2)
                     };
                     let l4 = i32::from(*ptr2.add(0).cast::<u8>());
-                    use super::super::super::wasmcp::mcp::types::PromptResult as V22;
                     let v22 = match l4 {
                         0 => {
                             let e22 = {
@@ -977,7 +945,7 @@ pub mod wasmcp {
                                             len12,
                                             len12,
                                         );
-                                        super::super::super::wasmcp::mcp::types::PromptMessage {
+                                        PromptMessage {
                                             role: _rt::string_lift(bytes9),
                                             content: _rt::string_lift(bytes12),
                                         }
@@ -991,7 +959,7 @@ pub mod wasmcp {
                                 );
                                 result13
                             };
-                            V22::Messages(e22)
+                            PromptResult::Messages(e22)
                         }
                         n => {
                             debug_assert_eq!(n, 1, "invalid enum discriminant");
@@ -1016,7 +984,7 @@ pub mod wasmcp {
                                         .add(4 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::types::Error {
+                                Error {
                                     code: l14,
                                     message: _rt::string_lift(bytes17),
                                     data: match l18 {
@@ -1043,7 +1011,7 @@ pub mod wasmcp {
                                     },
                                 }
                             };
-                            V22::Error(e22)
+                            PromptResult::Error(e22)
                         }
                     };
                     let result23 = v22;
@@ -1099,33 +1067,26 @@ mod _rt {
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1139] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xec\x07\x01A\x02\x01\
-A\x0a\x01B\x19\x01r\x03\x04names\x0bdescriptions\x0cinput-schemas\x04\0\x04tool\x03\
-\0\0\x01ks\x01r\x03\x04codez\x07messages\x04data\x02\x04\0\x05error\x03\0\x03\x01\
-q\x02\x04text\x01s\0\x05error\x01\x04\0\x04\0\x0btool-result\x03\0\x05\x01r\x04\x03\
-uris\x04names\x0bdescription\x02\x09mime-type\x02\x04\0\x0dresource-info\x03\0\x07\
-\x01p}\x01k\x09\x01r\x04\x03uris\x09mime-type\x02\x04text\x02\x04blob\x0a\x04\0\x11\
-resource-contents\x03\0\x0b\x01q\x02\x08contents\x01\x0c\0\x05error\x01\x04\0\x04\
-\0\x0fresource-result\x03\0\x0d\x01r\x03\x04names\x0bdescription\x02\x08required\
-\x7f\x04\0\x0fprompt-argument\x03\0\x0f\x01p\x10\x01r\x03\x04names\x0bdescriptio\
-n\x02\x09arguments\x11\x04\0\x11prompt-descriptor\x03\0\x12\x01r\x02\x04roles\x07\
-contents\x04\0\x0eprompt-message\x03\0\x14\x01p\x15\x01q\x02\x08messages\x01\x16\
-\0\x05error\x01\x04\0\x04\0\x0dprompt-result\x03\0\x17\x03\0\x16wasmcp:mcp/types\
-@0.1.0\x05\0\x02\x03\0\0\x04tool\x02\x03\0\0\x0btool-result\x02\x03\0\0\x0dresou\
-rce-info\x02\x03\0\0\x0fresource-result\x02\x03\0\0\x11prompt-descriptor\x02\x03\
-\0\0\x0dprompt-result\x01B\x1b\x02\x03\x02\x01\x01\x04\0\x04tool\x03\0\0\x02\x03\
-\x02\x01\x02\x04\0\x0btool-result\x03\0\x02\x02\x03\x02\x01\x03\x04\0\x0dresourc\
-e-info\x03\0\x04\x02\x03\x02\x01\x04\x04\0\x0fresource-result\x03\0\x06\x02\x03\x02\
-\x01\x05\x04\0\x11prompt-descriptor\x03\0\x08\x02\x03\x02\x01\x06\x04\0\x0dpromp\
-t-result\x03\0\x0a\x01p\x01\x01@\0\0\x0c\x04\0\x0alist-tools\x01\x0d\x01@\x02\x04\
-names\x09argumentss\0\x03\x04\0\x09call-tool\x01\x0e\x01p\x05\x01@\0\0\x0f\x04\0\
-\x0elist-resources\x01\x10\x01@\x01\x03uris\0\x07\x04\0\x0dread-resource\x01\x11\
-\x01p\x09\x01@\0\0\x12\x04\0\x0clist-prompts\x01\x13\x01@\x02\x04names\x09argume\
-ntss\0\x0b\x04\0\x0aget-prompt\x01\x14\x03\0\x18wasmcp:mcp/handler@0.1.0\x05\x07\
-\x04\0\"wasmcp:spin/mcp-spin-gateway@0.1.0\x04\0\x0b\x16\x01\0\x10mcp-spin-gatew\
-ay\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10\
-wit-bindgen-rust\x060.41.0";
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 856] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xd1\x05\x01A\x02\x01\
+A\x02\x01B(\x01r\x03\x04names\x0bdescriptions\x0cinput-schemas\x04\0\x04tool\x03\
+\0\0\x01ks\x01r\x04\x03uris\x04names\x0bdescription\x02\x09mime-type\x02\x04\0\x0d\
+resource-info\x03\0\x03\x01p}\x01k\x05\x01r\x04\x03uris\x09mime-type\x02\x04text\
+\x02\x04blob\x06\x04\0\x11resource-contents\x03\0\x07\x01r\x03\x04names\x0bdescr\
+iption\x02\x08required\x7f\x04\0\x0fprompt-argument\x03\0\x09\x01p\x0a\x01r\x03\x04\
+names\x0bdescription\x02\x09arguments\x0b\x04\0\x06prompt\x03\0\x0c\x01r\x02\x04\
+roles\x07contents\x04\0\x0eprompt-message\x03\0\x0e\x01r\x03\x04codez\x07message\
+s\x04data\x02\x04\0\x05error\x03\0\x10\x01q\x02\x04text\x01s\0\x05error\x01\x11\0\
+\x04\0\x0btool-result\x03\0\x12\x01q\x02\x08contents\x01\x08\0\x05error\x01\x11\0\
+\x04\0\x0fresource-result\x03\0\x14\x01p\x0f\x01q\x02\x08messages\x01\x16\0\x05e\
+rror\x01\x11\0\x04\0\x0dprompt-result\x03\0\x17\x01p\x01\x01@\0\0\x19\x04\0\x0al\
+ist-tools\x01\x1a\x01@\x02\x04names\x09argumentss\0\x13\x04\0\x09call-tool\x01\x1b\
+\x01p\x04\x01@\0\0\x1c\x04\0\x0elist-resources\x01\x1d\x01@\x01\x03uris\0\x15\x04\
+\0\x0dread-resource\x01\x1e\x01p\x0d\x01@\0\0\x1f\x04\0\x0clist-prompts\x01\x20\x01\
+@\x02\x04names\x09argumentss\0\x18\x04\0\x0aget-prompt\x01!\x03\0\x18wasmcp:mcp/\
+handler@0.1.0\x05\0\x04\0\"wasmcp:spin/mcp-spin-gateway@0.1.0\x04\0\x0b\x16\x01\0\
+\x10mcp-spin-gateway\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-comp\
+onent\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {
