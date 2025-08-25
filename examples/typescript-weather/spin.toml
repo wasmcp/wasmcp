@@ -4,7 +4,7 @@ spin_manifest_version = 2
 name = "typescript-weather"
 version = "0.1.0"
 authors = ["Ian McDonald <bowlofarugula@gmail.com>"]
-description = "An MCP tool written in TypeScript"
+description = "An MCP server written in TypeScript"
 
 [[trigger.http]]
 route = "/mcp"
