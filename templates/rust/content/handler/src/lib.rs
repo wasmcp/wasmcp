@@ -1,5 +1,7 @@
 use wasmcp::{AsyncToolHandler, AsyncResourceHandler, json};
-use std::time::Duration;
+use spin_sdk::http::{Method, Request, Response, send};
+use spin_sdk::key_value::Store;
+use serde::Deserialize;
 
 // Define your tools as zero-sized types
 struct EchoTool;
@@ -26,64 +28,161 @@ impl AsyncToolHandler for EchoTool {
             .as_str()
             .ok_or("Missing message field")?;
         
-        // Simulate async processing
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        
         Ok(format!("Echo: {}", message))
     }
 }
 
-// Example of async HTTP request tool
-struct HttpRequestTool;
+// Weather tool using real Open-Meteo API
+struct WeatherTool;
 
-impl AsyncToolHandler for HttpRequestTool {
-    const NAME: &'static str = "http_request";
-    const DESCRIPTION: &'static str = "Make an HTTP GET request to a URL";
+#[derive(Deserialize)]
+struct GeocodingResponse {
+    results: Option<Vec<GeocodingResult>>,
+}
+
+#[derive(Deserialize)]
+struct GeocodingResult {
+    latitude: f64,
+    longitude: f64,
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct WeatherResponse {
+    current: CurrentWeather,
+}
+
+#[derive(Deserialize)]
+struct CurrentWeather {
+    temperature_2m: f64,
+    apparent_temperature: f64,
+    relative_humidity_2m: f64,
+    wind_speed_10m: f64,
+    weather_code: i32,
+}
+
+fn get_weather_condition(code: i32) -> &'static str {
+    match code {
+        0 => "Clear sky",
+        1..=3 => "Partly cloudy",
+        45 | 48 => "Foggy",
+        51..=57 => "Drizzle",
+        61..=67 => "Rain",
+        71..=77 => "Snow",
+        80..=82 => "Rain showers",
+        85 | 86 => "Snow showers",
+        95..=99 => "Thunderstorm",
+        _ => "Unknown",
+    }
+}
+
+impl AsyncToolHandler for WeatherTool {
+    const NAME: &'static str = "weather";
+    const DESCRIPTION: &'static str = "Get current weather for any city using Open-Meteo API";
     
     fn input_schema() -> serde_json::Value {
         json!({
             "type": "object",
             "properties": {
-                "url": { 
+                "location": { 
                     "type": "string", 
-                    "description": "URL to make request to" 
-                },
-                "timeout_seconds": {
-                    "type": "number",
-                    "description": "Request timeout in seconds",
-                    "default": 30
+                    "description": "City name to get weather for" 
                 }
             },
-            "required": ["url"]
+            "required": ["location"]
         })
     }
     
     async fn execute_async(args: serde_json::Value) -> Result<String, String> {
-        let url = args["url"]
+        let location = args["location"]
             .as_str()
-            .ok_or("Missing url field")?;
+            .ok_or("Missing location field")?;
         
-        let timeout = args["timeout_seconds"]
-            .as_u64()
-            .unwrap_or(30);
+        // First, geocode the location
+        let geocoding_url = format!(
+            "https://geocoding-api.open-meteo.com/v1/search?name={}&count=1",
+            urlencoding::encode(location)
+        );
         
-        // Simulate HTTP request with timeout
-        match tokio::time::timeout(
-            Duration::from_secs(timeout),
-            simulate_http_request(url)
-        ).await {
-            Ok(result) => result,
-            Err(_) => Err(format!("Request timed out after {} seconds", timeout))
+        let geocoding_request = Request::builder()
+            .method(Method::Get)
+            .uri(geocoding_url)
+            .build();
+        
+        let geocoding_response: Response = send(geocoding_request).await
+            .map_err(|e| format!("Failed to fetch geocoding data: {}", e))?;
+        
+        if *geocoding_response.status() != 200 {
+            return Err(format!("Geocoding API returned status: {}", geocoding_response.status()));
         }
+        
+        let geocoding_data: GeocodingResponse = serde_json::from_slice(geocoding_response.body())
+            .map_err(|e| format!("Failed to parse geocoding response: {}", e))?;
+        
+        let geocoding_result = geocoding_data.results
+            .and_then(|r| r.into_iter().next())
+            .ok_or_else(|| format!("Location '{}' not found", location))?;
+        
+        // Now fetch the weather data
+        let weather_url = format!(
+            "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
+            geocoding_result.latitude,
+            geocoding_result.longitude
+        );
+        
+        let weather_request = Request::builder()
+            .method(Method::Get)
+            .uri(weather_url)
+            .build();
+        
+        let weather_response: Response = send(weather_request).await
+            .map_err(|e| format!("Failed to fetch weather data: {}", e))?;
+        
+        if *weather_response.status() != 200 {
+            return Err(format!("Weather API returned status: {}", weather_response.status()));
+        }
+        
+        let weather_data: WeatherResponse = serde_json::from_slice(weather_response.body())
+            .map_err(|e| format!("Failed to parse weather response: {}", e))?;
+        
+        let current = &weather_data.current;
+        let conditions = get_weather_condition(current.weather_code);
+        
+        Ok(format!(
+            "Weather in {}:\n\
+            Temperature: {:.1}°C (feels like {:.1}°C)\n\
+            Conditions: {}\n\
+            Humidity: {:.0}%\n\
+            Wind: {:.1} km/h",
+            geocoding_result.name,
+            current.temperature_2m,
+            current.apparent_temperature,
+            conditions,
+            current.relative_humidity_2m,
+            current.wind_speed_10m
+        ))
     }
 }
 
-// Example of async file operations tool
-struct FileOperationsTool;
+// Simple URL encoding helper
+mod urlencoding {
+    pub fn encode(s: &str) -> String {
+        s.chars()
+            .map(|c| match c {
+                'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => c.to_string(),
+                ' ' => "+".to_string(),
+                _ => format!("%{:02X}", c as u8),
+            })
+            .collect()
+    }
+}
 
-impl AsyncToolHandler for FileOperationsTool {
-    const NAME: &'static str = "file_operations";
-    const DESCRIPTION: &'static str = "Perform async file operations";
+// Example of key-value storage tool using Spin SDK
+struct KeyValueTool;
+
+impl AsyncToolHandler for KeyValueTool {
+    const NAME: &'static str = "key_value";
+    const DESCRIPTION: &'static str = "Store and retrieve data using Spin's key-value store";
     
     fn input_schema() -> serde_json::Value {
         json!({
@@ -91,19 +190,24 @@ impl AsyncToolHandler for FileOperationsTool {
             "properties": {
                 "operation": {
                     "type": "string",
-                    "enum": ["read", "write", "list"],
+                    "enum": ["get", "set", "delete", "exists", "list"],
                     "description": "Operation to perform"
                 },
-                "path": {
+                "key": {
                     "type": "string",
-                    "description": "File or directory path"
+                    "description": "Key to operate on"
                 },
-                "content": {
+                "value": {
                     "type": "string",
-                    "description": "Content to write (for write operation)"
+                    "description": "Value to store (for set operation)"
+                },
+                "store": {
+                    "type": "string",
+                    "description": "Name of the key-value store to use",
+                    "default": "default"
                 }
             },
-            "required": ["operation", "path"]
+            "required": ["operation"]
         })
     }
     
@@ -112,110 +216,121 @@ impl AsyncToolHandler for FileOperationsTool {
             .as_str()
             .ok_or("Missing operation field")?;
         
-        let path = args["path"]
+        let store_name = args["store"]
             .as_str()
-            .ok_or("Missing path field")?;
+            .unwrap_or("default");
+        
+        let store = Store::open(store_name)
+            .map_err(|e| format!("Failed to open store '{}': {}", store_name, e))?;
         
         match operation {
-            "read" => simulate_file_read(path).await,
-            "write" => {
-                let content = args["content"]
+            "get" => {
+                let key = args["key"]
                     .as_str()
-                    .ok_or("Missing content field for write operation")?;
-                simulate_file_write(path, content).await
+                    .ok_or("Missing key field")?;
+                
+                match store.get(key) {
+                    Ok(Some(value)) => {
+                        let value_str = String::from_utf8_lossy(&value);
+                        Ok(json!({
+                            "found": true,
+                            "value": value_str
+                        }).to_string())
+                    },
+                    Ok(None) => Ok(json!({
+                        "found": false,
+                        "message": format!("Key '{}' not found", key)
+                    }).to_string()),
+                    Err(e) => Err(format!("Failed to get key '{}': {}", key, e))
+                }
             },
-            "list" => simulate_directory_list(path).await,
+            "set" => {
+                let key = args["key"]
+                    .as_str()
+                    .ok_or("Missing key field")?;
+                let value = args["value"]
+                    .as_str()
+                    .ok_or("Missing value field")?;
+                
+                store.set(key, value.as_bytes())
+                    .map_err(|e| format!("Failed to set key '{}': {}", key, e))?;
+                
+                Ok(json!({
+                    "success": true,
+                    "message": format!("Set key '{}' to value", key)
+                }).to_string())
+            },
+            "delete" => {
+                let key = args["key"]
+                    .as_str()
+                    .ok_or("Missing key field")?;
+                
+                store.delete(key)
+                    .map_err(|e| format!("Failed to delete key '{}': {}", key, e))?;
+                
+                Ok(json!({
+                    "success": true,
+                    "message": format!("Deleted key '{}'", key)
+                }).to_string())
+            },
+            "exists" => {
+                let key = args["key"]
+                    .as_str()
+                    .ok_or("Missing key field")?;
+                
+                match store.exists(key) {
+                    Ok(exists) => Ok(json!({
+                        "exists": exists,
+                        "key": key
+                    }).to_string()),
+                    Err(e) => Err(format!("Failed to check key '{}': {}", key, e))
+                }
+            },
+            "list" => {
+                match store.get_keys() {
+                    Ok(keys) => Ok(json!({
+                        "keys": keys,
+                        "count": keys.len()
+                    }).to_string()),
+                    Err(e) => Err(format!("Failed to list keys: {}", e))
+                }
+            },
             _ => Err(format!("Unknown operation: {}", operation))
         }
     }
 }
 
-// Example async resource
-struct ConfigResource;
+// Example resource that provides system information
+struct SystemInfoResource;
 
-impl AsyncResourceHandler for ConfigResource {
-    const URI: &'static str = "config://app-config";
-    const NAME: &'static str = "Application Configuration";
-    const DESCRIPTION: Option<&'static str> = Some("Dynamic application configuration");
+impl AsyncResourceHandler for SystemInfoResource {
+    const URI: &'static str = "system://info";
+    const NAME: &'static str = "System Information";
+    const DESCRIPTION: Option<&'static str> = Some("Provides information about the MCP server");
     const MIME_TYPE: Option<&'static str> = Some("application/json");
     
     async fn read_async() -> Result<String, String> {
-        // Simulate async config loading
-        tokio::time::sleep(Duration::from_millis(50)).await;
-        
         Ok(json!({
-            "version": "1.0.0",
-            "environment": "production",
-            "features": {
-                "async_processing": true,
-                "http_requests": true,
-                "file_operations": true
-            },
-            "limits": {
-                "max_timeout": 300,
-                "max_file_size": 1048576
-            }
+            "version": "0.1.0",
+            "capabilities": [
+                "weather_api",
+                "key_value_storage",
+                "http_outbound"
+            ],
+            "supported_apis": [
+                "Open-Meteo Weather API",
+                "Open-Meteo Geocoding API"
+            ]
         }).to_string())
     }
 }
-
-// Helper functions to simulate async operations
-async fn simulate_http_request(url: &str) -> Result<String, String> {
-    // Simulate network delay
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    
-    // Simulate different responses based on URL
-    match url {
-        url if url.starts_with("https://") => {
-            Ok(json!({
-                "status": "success",
-                "url": url,
-                "response_time_ms": 100,
-                "body": "Simulated HTTP response"
-            }).to_string())
-        },
-        _ => Err("Invalid URL: must start with https://".to_string())
-    }
-}
-
-async fn simulate_file_read(path: &str) -> Result<String, String> {
-    tokio::time::sleep(Duration::from_millis(20)).await;
-    
-    match path {
-        "/etc/config.json" => Ok(json!({"config": "value"}).to_string()),
-        "/var/log/app.log" => Ok("2024-01-01 10:00:00 INFO Application started\n2024-01-01 10:00:01 INFO Ready to serve requests".to_string()),
-        _ => Err(format!("File not found: {}", path))
-    }
-}
-
-async fn simulate_file_write(path: &str, content: &str) -> Result<String, String> {
-    tokio::time::sleep(Duration::from_millis(30)).await;
-    
-    if path.starts_with("/tmp/") {
-        Ok(format!("Successfully wrote {} bytes to {}", content.len(), path))
-    } else {
-        Err("Write access denied: can only write to /tmp/".to_string())
-    }
-}
-
-async fn simulate_directory_list(path: &str) -> Result<String, String> {
-    tokio::time::sleep(Duration::from_millis(40)).await;
-    
-    match path {
-        "/tmp" => Ok(json!(["file1.txt", "file2.json", "subdir/"]).to_string()),
-        "/etc" => Ok(json!(["config.json", "hosts", "passwd"]).to_string()),
-        _ => Err(format!("Directory not found: {}", path))
-    }
-}
-
-// Add more tools here...
 
 // Generate the MCP handler implementation
 // This macro generates WebAssembly bindings, so it's only compiled for wasm targets
 #[cfg(target_arch = "wasm32")]
 wasmcp::create_handler!(
-    tools: [EchoTool, HttpRequestTool, FileOperationsTool],
-    resources: [ConfigResource],
+    tools: [EchoTool, WeatherTool, KeyValueTool],
+    resources: [SystemInfoResource],
 );
 
 #[cfg(test)]
@@ -224,173 +339,21 @@ mod tests {
     use serde_json::json;
     
     #[tokio::test]
-    async fn test_echo_tool_metadata() {
-        assert_eq!(EchoTool::NAME, "echo");
-        assert_eq!(EchoTool::DESCRIPTION, "Echo a message back to the user");
+    async fn test_echo_tool() {
+        let args = json!({
+            "message": "Hello, MCP!"
+        });
+        
+        let result = EchoTool::execute_async(args).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Echo: Hello, MCP!");
     }
     
     #[tokio::test]
-    async fn test_echo_tool_schema() {
-        let schema = EchoTool::input_schema();
-        
-        // Check that it's an object schema
+    async fn test_weather_tool_schema() {
+        let schema = WeatherTool::input_schema();
         assert_eq!(schema["type"], "object");
-        
-        // Check that message property exists
-        assert!(schema["properties"]["message"].is_object());
-        assert_eq!(schema["properties"]["message"]["type"], "string");
-        
-        // Check required fields
-        let required = schema["required"].as_array().unwrap();
-        assert!(required.contains(&json!("message")));
-    }
-    
-    #[tokio::test]
-    async fn test_echo_tool_execute_success() {
-        let args = json!({
-            "message": "Hello, world!"
-        });
-        
-        let result = EchoTool::execute_async(args).await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "Echo: Hello, world!");
-    }
-    
-    #[tokio::test]
-    async fn test_echo_tool_execute_missing_message() {
-        let args = json!({});
-        
-        let result = EchoTool::execute_async(args).await;
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Missing message field");
-    }
-    
-    #[tokio::test]
-    async fn test_http_request_tool_success() {
-        let args = json!({
-            "url": "https://api.example.com/data"
-        });
-        
-        let result = HttpRequestTool::execute_async(args).await;
-        assert!(result.is_ok());
-        
-        let response: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
-        assert_eq!(response["status"], "success");
-        assert_eq!(response["url"], "https://api.example.com/data");
-    }
-    
-    #[tokio::test]
-    async fn test_http_request_tool_invalid_url() {
-        let args = json!({
-            "url": "http://insecure.com"
-        });
-        
-        let result = HttpRequestTool::execute_async(args).await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("must start with https://"));
-    }
-    
-    #[tokio::test]
-    async fn test_http_request_tool_timeout() {
-        let args = json!({
-            "url": "https://slow-api.com",
-            "timeout_seconds": 0
-        });
-        
-        let result = HttpRequestTool::execute_async(args).await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("timed out"));
-    }
-    
-    #[tokio::test]
-    async fn test_file_operations_tool_read() {
-        let args = json!({
-            "operation": "read",
-            "path": "/etc/config.json"
-        });
-        
-        let result = FileOperationsTool::execute_async(args).await;
-        assert!(result.is_ok());
-        
-        let content: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
-        assert_eq!(content["config"], "value");
-    }
-    
-    #[tokio::test]
-    async fn test_file_operations_tool_write() {
-        let args = json!({
-            "operation": "write",
-            "path": "/tmp/test.txt",
-            "content": "Hello, world!"
-        });
-        
-        let result = FileOperationsTool::execute_async(args).await;
-        assert!(result.is_ok());
-        assert!(result.unwrap().contains("Successfully wrote 13 bytes"));
-    }
-    
-    #[tokio::test]
-    async fn test_file_operations_tool_write_denied() {
-        let args = json!({
-            "operation": "write",
-            "path": "/etc/passwd",
-            "content": "malicious content"
-        });
-        
-        let result = FileOperationsTool::execute_async(args).await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Write access denied"));
-    }
-    
-    #[tokio::test]
-    async fn test_file_operations_tool_list() {
-        let args = json!({
-            "operation": "list",
-            "path": "/tmp"
-        });
-        
-        let result = FileOperationsTool::execute_async(args).await;
-        assert!(result.is_ok());
-        
-        let files: Vec<String> = serde_json::from_str(&result.unwrap()).unwrap();
-        assert!(files.contains(&"file1.txt".to_string()));
-        assert!(files.contains(&"file2.json".to_string()));
-    }
-    
-    #[tokio::test]
-    async fn test_config_resource_read() {
-        let result = ConfigResource::read_async().await;
-        assert!(result.is_ok());
-        
-        let config: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
-        assert_eq!(config["version"], "1.0.0");
-        assert_eq!(config["environment"], "production");
-        assert!(config["features"]["async_processing"].as_bool().unwrap());
-    }
-    
-    #[tokio::test]
-    async fn test_concurrent_operations() {
-        use tokio::time::Instant;
-        
-        let start = Instant::now();
-        
-        // Execute multiple operations concurrently
-        let tasks = vec![
-            EchoTool::execute_async(json!({"message": "test1"})),
-            EchoTool::execute_async(json!({"message": "test2"})),
-            EchoTool::execute_async(json!({"message": "test3"})),
-        ];
-        
-        let results = futures::future::join_all(tasks).await;
-        let duration = start.elapsed();
-        
-        // All should succeed
-        for result in results {
-            assert!(result.is_ok());
-        }
-        
-        // Should complete faster than if run sequentially (3 * 10ms = 30ms)
-        // Due to concurrent execution, should be closer to 10ms
-        assert!(duration.as_millis() < 25);
+        assert!(schema["properties"]["location"].is_object());
+        assert!(schema["required"].as_array().unwrap().contains(&json!("location")));
     }
 }

@@ -1,6 +1,6 @@
-package wasmcp:mcp;
+package wasmcp:mcp@0.1.0;
 
-/// MCP handler interface
+/// MCP handler interface that components export and gateways import
 interface handler {
     /// Tool definition
     record tool {
@@ -76,7 +76,8 @@ interface handler {
     get-prompt: func(name: string, arguments: string) -> result<list<prompt-message>, error>;
 }
 
-// World for MCP handler components (libraries)
+/// World for MCP handler components (used by handler implementations)
 world mcp-handler {
+    /// Export the MCP handler interface
     export handler;
 }

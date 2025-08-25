@@ -143,8 +143,8 @@ impl<T: AsyncToolHandler> ToolHandler for T {
     }
 
     fn execute(args: Value) -> Result<String, String> {
-        // This will be handled by the async runtime provided by the component host
-        futures::executor::block_on(T::execute_async(args))
+        // Use spin_executor::run which is the WASM-compatible way to block on async operations
+        spin_executor::run(T::execute_async(args))
     }
 }
 
@@ -158,8 +158,8 @@ impl<T: AsyncResourceHandler> ResourceHandler for T {
     const MIME_TYPE: Option<&'static str> = T::MIME_TYPE;
 
     fn read() -> Result<String, String> {
-        // This will be handled by the async runtime provided by the component host
-        futures::executor::block_on(T::read_async())
+        // Use spin_executor::run which is the WASM-compatible way to block on async operations
+        spin_executor::run(T::read_async())
     }
 }
 
@@ -172,8 +172,8 @@ impl<T: AsyncPromptHandler> PromptHandler for T {
     type Arguments = T::Arguments;
 
     fn resolve(args: Value) -> Result<Vec<PromptMessage>, String> {
-        // This will be handled by the async runtime provided by the component host
-        futures::executor::block_on(T::resolve_async(args))
+        // Use spin_executor::run which is the WASM-compatible way to block on async operations
+        spin_executor::run(T::resolve_async(args))
     }
 }
 

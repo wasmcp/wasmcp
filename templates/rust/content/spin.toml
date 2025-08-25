@@ -13,9 +13,17 @@ component = "wasmcp-spin"
 [component.wasmcp-spin]
 # Using the published gateway component
 source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.3" }
-build.command = "make build"
-build.watch = ["handler/src/**/*.rs", "handler/Cargo.toml"]
+allowed_outbound_hosts = [
+    "https://geocoding-api.open-meteo.com",
+    "https://api.open-meteo.com"
+]
+dependencies_inherit_configuration = true
+key_value_stores = ["default"]
 
 [component.wasmcp-spin.dependencies]
 # Link to the local handler component
-"wasmcp:mcp/handler" = { path = "./handler/target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm" }
+"wasmcp:mcp/handler@0.1.0" = { path = "./handler/target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm" }
+
+[component.wasmcp-spin.build]
+command = "make build"
+watch = ["handler/src/**/*.rs", "handler/Cargo.toml", "handler/wit/*.wit"]

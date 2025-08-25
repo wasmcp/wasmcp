@@ -19,9 +19,9 @@ package = "wasmcp:spin"
 
 [package.metadata.component.target]
 path = "wit"
-world = "mcp-spin-api"
+world = "mcp-spin-gateway"
 
 [package.metadata.component.target.dependencies]
-"wasmcp:mcp" = { path = "../../../wit" }
+"wasmcp:mcp" = { path = "wit/deps/wasmcp/mcp@0.1.0" }
 
 [workspace]
