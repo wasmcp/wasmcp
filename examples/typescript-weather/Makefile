@@ -22,22 +22,7 @@ test: install ## Run tests
 clean: ## Clean build artifacts
 	cd handler && npm run clean
 	cd handler && rm -rf node_modules
-	rm -f $(GATEWAY_WASM) composed.wasm
-
-get-gateway: ## Download the gateway component
-	@if [ ! -f $(GATEWAY_WASM) ]; then \
-		if command -v wkg >/dev/null 2>&1; then \
-			echo "Downloading gateway component v$(GATEWAY_VERSION) with wkg..."; \
-			wkg get ghcr.io/fastertools:wasmcp-spin@$(GATEWAY_VERSION) -o $(GATEWAY_WASM); \
-		else \
-			echo "Note: wkg not found. For manual composition, download the gateway component:"; \
-			echo "  https://github.com/fastertools/wasmcp-spin/releases"; \
-			echo "Or simply use 'spin up' which handles dependencies automatically."; \
-			exit 1; \
-		fi \
-	else \
-		echo "Gateway component already exists at $(GATEWAY_WASM)"; \
-	fi
+	rm -f composed.wasm
 
 compose: build ## Compose handler with gateway using wac plug
 	@echo "Composing handler with gateway..."
@@ -48,7 +33,7 @@ run: build ## Run with Spin (handles dependencies automatically)
 	spin up
 
 run-wasmtime: compose ## Run with wasmtime (requires manual composition)
-	wasmtime serve -Scli -Shttp composed.wasm
+	wasmtime serve -Scli composed.wasm
 
 # Development targets
 dev: build compose ## Build and compose for development
@@ -56,23 +41,16 @@ dev: build compose ## Build and compose for development
 
 # Testing the composed component
 test-tools: ## Test tools/list endpoint
-	@curl -s -X POST http://localhost:8080/mcp \
+	@curl -s -X POST http://localhost:3000/mcp \
 		-H "Content-Type: application/json" \
 		-d '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}' | python3 -m json.tool
 
 test-echo: ## Test echo tool
-	@curl -s -X POST http://localhost:8080/mcp \
+	@curl -s -X POST http://localhost:3000/mcp \
 		-H "Content-Type: application/json" \
-		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":"{\"message\":\"Hello from MCP!\"}"},"id":1}' | python3 -m json.tool
+		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello from MCP!"}},"id":1}' | python3 -m json.tool
 
-# Advanced: build gateway locally (requires Rust)
-build-gateway-local: ## Build gateway from source
-	@echo "Building gateway from source..."
-	@if [ -d ../../../src/components/wasmcp-spin ]; then \
-		cd ../../../src/components/wasmcp-spin && cargo component build --release && \
-		cp target/wasm32-wasip1/release/wasmcp_spin.wasm $(OLDPWD)/$(GATEWAY_WASM); \
-		echo "✅ Built and copied gateway component"; \
-	else \
-		echo "❌ Gateway source not found. Use 'make get-gateway' instead"; \
-		exit 1; \
-	fi
+test-weather: ## Test weather tool
+	@curl -s -X POST http://localhost:3000/mcp \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"weather","arguments":{"location":"San Francisco"}},"id":1}' | python3 -m json.tool

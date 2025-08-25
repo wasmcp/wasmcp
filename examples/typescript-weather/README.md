@@ -1,112 +1,60 @@
-# mcp-weather-demo
+# TypeScript Weather Example
 
-An MCP tool written in TypeScript
+A TypeScript MCP handler that demonstrates:
+- Echo tool for basic testing
+- Weather tool with async HTTP requests using fetch
+- Works with both Spin and wasmtime runtimes
 
 ## Quick Start
 
-After creating this project with `spin new`, you can immediately run your MCP server:
-
 ```bash
-# First, build the handler component
-make build
+# Build and compose the component
+make compose
 
-# Then run with Spin (handles dependencies automatically)
+# Run with Spin
 spin up
 
-# Or run with wasmtime (requires manual composition)
-make run-wasmtime
+# OR run with wasmtime
+wasmtime serve -Scli composed.wasm
 ```
 
-## Available Commands
+## Testing the Tools
 
+Test the echo tool:
 ```bash
-make help           # Show all available commands
-make build          # Build the handler component
-make compose        # Compose handler with gateway
-make run            # Run with Spin
-make run-wasmtime   # Run with wasmtime
-make test-tools     # Test the tools/list endpoint
-make test-echo      # Test the echo tool
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "echo",
+      "arguments": {"message": "Hello!"}
+    }
+  }'
 ```
 
-## Project Structure
-
-```
-.
-├── handler/               # Your MCP handler implementation
-│   ├── src/
-│   │   └── index.ts      # Handler code with tools, resources, and prompts
-│   ├── wit/
-│   │   └── mcp.wit       # MCP interface definition
-│   └── package.json      # Node.js dependencies
-├── composed.wasm         # Final composed component (after `make compose`)
-└── Makefile             # Build and run commands
-```
-
-## Development Workflow
-
-1. **Edit your handler**: Modify `handler/src/index.ts` to add tools, resources, or prompts
-2. **Build and compose**: Run `make compose` to build and compose your component
-3. **Test locally**: Run `make run` to start the server
-4. **Test your tools**: Use `make test-tools` and `make test-echo` to test
-
-## Adding New Tools
-
-Edit `handler/src/index.ts`:
-
-```typescript
-import { createTool, z } from 'wasmcp';
-
-export const myTool = createTool({
-  name: 'my_tool',
-  description: 'Description of what my tool does',
-  schema: z.object({
-    param: z.string().describe('Parameter description')
-  }),
-  execute: async (args) => {
-    // Your tool implementation
-    return `Result: ${args.param}`;
-  }
-});
-
-// Don't forget to add it to the tools array
-export const tools = [echoTool, myTool];
-```
-
-## Testing Your MCP Server
-
-Once running, test your MCP server with curl:
-
+Test the weather tool:
 ```bash
-# List available tools
-curl -X POST http://localhost:8080/mcp \
+curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}'
-
-# Call a tool
-curl -X POST http://localhost:8080/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":"{\"message\":\"Hello!\"}"},"id":2}'
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "weather",
+      "arguments": {"location": "San Francisco"}
+    }
+  }'
 ```
 
-## Runtime Options
+## How It Works
 
-This MCP server can run on multiple runtimes:
+1. **Handler**: The TypeScript handler implements MCP tools using the `wasmcp` SDK
+2. **Gateway**: The pre-built gateway component (`wasmcp-spin.wasm`) handles HTTP and runtime integration
+3. **Composition**: `wac plug` combines the handler and gateway into a single component (`composed.wasm`)
+4. **Runtime**: The composed component runs on any WASI-compliant runtime (Spin, wasmtime, etc.)
 
-- **Spin**: Full-featured runtime with KV store support
-- **Wasmtime**: Lightweight WASI runtime
-- **Any WASI runtime**: The composed component is runtime-agnostic
-
-## Requirements
-
-- Node.js 20+
-- Spin CLI (for `spin up`)
-- wasmtime (for `wasmtime serve`)
-- wac (for component composition)
-- wkg (optional, for downloading gateway from registry)
-
-## Learn More
-
-- [MCP Documentation](https://modelcontextprotocol.io)
-- [WebAssembly Component Model](https://component-model.bytecodealliance.org)
-- [Spin Documentation](https://developer.fermyon.com/spin)
+The workflow is completely automated - no manual intervention needed between template and running server!

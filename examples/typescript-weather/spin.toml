@@ -1,7 +1,7 @@
 spin_manifest_version = 2
 
 [application]
-name = "mcp-weather-demo"
+name = "typescript-weather"
 version = "0.1.0"
 authors = ["Ian McDonald <bowlofarugula@gmail.com>"]
 description = "An MCP tool written in TypeScript"
@@ -11,12 +11,7 @@ route = "/mcp"
 component = "wasmcp-spin"
 
 [component.wasmcp-spin]
-# Using the published gateway component
-source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.5" }
+# Using the pre-composed component
+source = "composed.wasm"
+# Allow outbound HTTP requests for weather API
 allowed_outbound_hosts = ["https://geocoding-api.open-meteo.com", "https://api.open-meteo.com"]
-build.command = "make build"
-build.watch = ["handler/src/**/*.ts", "handler/package.json", "handler/tsconfig.json"]
-
-[component.wasmcp-spin.dependencies]
-# Link to the local handler component
-"wasmcp:mcp/handler" = { path = "./handler/dist/handler.wasm" }
