@@ -4,6 +4,7 @@ A TypeScript MCP handler that demonstrates:
 - Echo tool for basic testing
 - Weather tool with async HTTP requests using fetch
 - Works with both Spin and wasmtime runtimes
+- Clean project structure with WIT dependencies from npm
 
 ## Quick Start
 
@@ -58,3 +59,7 @@ curl -X POST http://localhost:3000/mcp \
 4. **Runtime**: The composed component runs on any WASI-compliant runtime (Spin, wasmtime, etc.)
 
 The workflow is completely automated - no manual intervention needed between template and running server!
+
+## Clean Project Structure
+
+This example uses `wasmcp@0.1.11` which bundles all WIT dependencies. You don't need to commit any WIT files - they're all pulled from the npm package during build.
