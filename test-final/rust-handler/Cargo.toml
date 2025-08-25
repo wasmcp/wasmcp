@@ -1,0 +1,22 @@
+[package]
+name = "rust-handler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wit-bindgen-rt = { version = "0.44.0", features = ["bitflags"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+wasi = "0.13"
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "wasmcp:mcp"
+
+[package.metadata.component.target]
+world = "mcp-handler"
+path = "wit/wasmcp"
+
+[package.metadata.component.dependencies]

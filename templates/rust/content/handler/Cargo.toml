@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 wasmcp = "0.1.7"
-wasmcp-wasi = "0.1.0"
+wasmcp-wasi = { version = "0.1.0", features = ["keyvalue-draft2"] }
 wit-bindgen-rt = "0.43.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

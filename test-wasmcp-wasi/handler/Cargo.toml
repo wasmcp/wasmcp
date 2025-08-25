@@ -1,11 +1,11 @@
 [package]
-name = "{{project-name | snake_case}}"
+name = "test_wasmcp_wasi"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 wasmcp = "0.1.7"
-wasmcp-wasi = { path = "../../../../../src/sdk/wasmcp-wasi" }
+wasmcp-wasi = { path = "../../src/sdk/wasmcp-wasi-rust", features = ["keyvalue-draft2"] }
 wit-bindgen-rt = "0.43.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -20,7 +20,7 @@ futures = "0.3"
 crate-type = ["cdylib"]
 
 [package.metadata.component]
-package = "{{project-name | kebab_case}}:handler"
+package = "test-wasmcp-wasi:handler"
 
 [package.metadata.component.target]
 path = "wit"
