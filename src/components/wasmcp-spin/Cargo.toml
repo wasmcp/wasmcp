@@ -22,6 +22,6 @@ path = "wit"
 world = "mcp-spin-gateway"
 
 [package.metadata.component.target.dependencies]
-"wasmcp:mcp" = { path = "wit/deps/wasmcp/mcp@0.1.0" }
+"wasmcp:mcp" = { path = "wit/deps/wasmcp" }
 
 [workspace]

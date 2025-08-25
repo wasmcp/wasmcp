@@ -1,0 +1,97 @@
+package wasmcp:mcp@0.1.0;
+
+interface types {
+    /// Tool descriptor
+    record tool {
+        name: string,
+        description: string,
+        input-schema: string,
+    }
+
+    /// Tool execution result
+    variant tool-result {
+        text(string),
+        error(error),
+    }
+
+    /// Error type
+    record error {
+        code: s32,
+        message: string,
+        data: option<string>,
+    }
+
+    /// Resource descriptor
+    record resource-info {
+        uri: string,
+        name: string,
+        description: option<string>,
+        mime-type: option<string>,
+    }
+
+    /// Resource contents
+    record resource-contents {
+        uri: string,
+        mime-type: option<string>,
+        text: option<string>,
+        blob: option<list<u8>>,
+    }
+
+    /// Resource read result
+    variant resource-result {
+        contents(resource-contents),
+        error(error),
+    }
+
+    /// Prompt descriptor
+    record prompt-descriptor {
+        name: string,
+        description: option<string>,
+        arguments: list<prompt-argument>,
+    }
+
+    /// Prompt argument
+    record prompt-argument {
+        name: string,
+        description: option<string>,
+        required: bool,
+    }
+
+    /// Prompt message
+    record prompt-message {
+        role: string,
+        content: string,
+    }
+
+    /// Prompt execution result
+    variant prompt-result {
+        messages(list<prompt-message>),
+        error(error),
+    }
+}
+
+interface handler {
+    use types.{
+        tool, tool-result,
+        resource-info, resource-result,
+        prompt-descriptor, prompt-result
+    };
+
+    /// List available tools - synchronous as it's just metadata
+    list-tools: func() -> list<tool>;
+
+    /// Call a tool - synchronous (ComponentizeJS will handle async-to-sync conversion)
+    call-tool: func(name: string, arguments: string) -> tool-result;
+
+    /// List available resources - synchronous
+    list-resources: func() -> list<resource-info>;
+
+    /// Read a resource - synchronous (ComponentizeJS will handle async-to-sync conversion)
+    read-resource: func(uri: string) -> resource-result;
+
+    /// List available prompts - synchronous
+    list-prompts: func() -> list<prompt-descriptor>;
+
+    /// Get a prompt - synchronous (ComponentizeJS will handle async-to-sync conversion)
+    get-prompt: func(name: string, arguments: string) -> prompt-result;
+}
