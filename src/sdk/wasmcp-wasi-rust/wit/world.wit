@@ -1,0 +1,30 @@
+package wasmcp:wasi@0.1.0;
+
+/// Minimal WASI world for MCP handlers
+/// Base world that works with wasmtime, with optional Spin KV support
+world mcp-wasi {
+    // Core WASI imports for async I/O
+    import wasi:io/poll@0.2.0;
+    import wasi:io/error@0.2.0;
+    import wasi:io/streams@0.2.0;
+    
+    // HTTP client for outbound requests  
+    import wasi:http/types@0.2.0;
+    import wasi:http/outgoing-handler@0.2.0;
+    
+    // Configuration
+    import wasi:config/store@0.2.0-draft-2024-09-27;
+    
+    // Basic CLI imports (for environment, stdio)
+    import wasi:cli/environment@0.2.0;
+    import wasi:cli/exit@0.2.0;
+    import wasi:cli/stdin@0.2.0;
+    import wasi:cli/stdout@0.2.0;
+    import wasi:cli/stderr@0.2.0;
+    
+    // Clocks for timestamps
+    import wasi:clocks/wall-clock@0.2.0;
+    
+    // Random for unique IDs
+    import wasi:random/random@0.2.0;
+}

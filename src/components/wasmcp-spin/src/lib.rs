@@ -7,7 +7,8 @@ use spin_sdk::http::{IntoResponse, Request, Response};
 mod bindings;
 
 use bindings::wasmcp::mcp::handler::{
-    call_tool, get_prompt, list_prompts, list_resources, list_tools, read_resource, ToolResult,
+    call_tool, get_prompt, list_prompts, list_resources, list_tools, read_resource,
+    ToolResult, ResourceResult, PromptResult,
 };
 
 /// JSON-RPC request structure
@@ -101,7 +102,12 @@ struct JsonRpcError {
         "tools/call" => {
             if let Some(params) = request.params {
                 let name = params["name"].as_str().unwrap_or("");
-                let arguments = params["arguments"].to_string();
+                // If arguments is already a string, use it directly; otherwise serialize it
+                let arguments = if params["arguments"].is_string() {
+                    params["arguments"].as_str().unwrap_or("{}").to_string()
+                } else {
+                    params["arguments"].to_string()
+                };
 
                 let result = call_tool(name, &arguments);
 
@@ -172,8 +178,9 @@ struct JsonRpcError {
             if let Some(params) = request.params {
                 let uri = params["uri"].as_str().unwrap_or("");
 
-                match read_resource(uri) {
-                    Ok(contents) => {
+                let result = read_resource(uri);
+                match result {
+                    ResourceResult::Contents(contents) => {
                         let contents_json = serde_json::json!([{
                             "uri": contents.uri,
                             "mimeType": contents.mime_type,
@@ -189,7 +196,7 @@ struct JsonRpcError {
                             id: request.id,
                         }
                     }
-                    Err(error) => JsonRpcResponse {
+                    ResourceResult::Error(error) => JsonRpcResponse {
                         jsonrpc: "2.0".to_string(),
                         result: JsonRpcResult::Error {
                             error: JsonRpcError {
@@ -249,11 +256,16 @@ struct JsonRpcError {
                 let name = params["name"].as_str().unwrap_or("");
                 let arguments = params
                     .get("arguments")
-                    .map(|a| a.to_string())
+                    .map(|a| if a.is_string() {
+                        a.as_str().unwrap_or("{}").to_string()
+                    } else {
+                        a.to_string()
+                    })
                     .unwrap_or_else(|| "{}".to_string());
 
-                match get_prompt(name, &arguments) {
-                    Ok(messages) => {
+                let result = get_prompt(name, &arguments);
+                match result {
+                    PromptResult::Messages(messages) => {
                         let messages_json: Vec<Value> = messages
                             .into_iter()
                             .map(|m| {
@@ -272,7 +284,7 @@ struct JsonRpcError {
                             id: request.id,
                         }
                     }
-                    Err(error) => JsonRpcResponse {
+                    PromptResult::Error(error) => JsonRpcResponse {
                         jsonrpc: "2.0".to_string(),
                         result: JsonRpcResult::Error {
                             error: JsonRpcError {

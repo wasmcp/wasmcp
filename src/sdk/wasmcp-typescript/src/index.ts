@@ -1,4 +1,4 @@
-import * as z from 'zod/v4';
+import * as z from 'zod';
 
 // Core types
 export interface PromptMessage {
@@ -72,7 +72,7 @@ export interface ErrorResponse {
 }
 
 export interface SuccessResponse<T> {
-  tag: 'ok';
+  tag: 'text';
   val: T;
 }
 
@@ -101,7 +101,7 @@ export function createHandler(config: HandlerConfig): Handler {
       return tools.map(tool => ({
         name: tool.name,
         description: tool.description,
-        inputSchema: JSON.stringify(z.toJSONSchema(tool.schema))
+        inputSchema: tool.schema !== undefined ? JSON.stringify(z.toJSONSchema(tool.schema)) : '{}'
       }));
     },
 
@@ -138,11 +138,11 @@ export function createHandler(config: HandlerConfig): Handler {
           
           // Execute with validated arguments
           const result = await tool.execute(parsed.data);
-          return { tag: 'ok', val: result };
+          return { tag: 'text', val: result };
         } else {
           // No schema, pass through
           const result = await tool.execute(args as z.infer<typeof tool.schema>);
-          return { tag: 'ok', val: result };
+          return { tag: 'text', val: result };
         }
       } catch (e) {
         const error = e as Error;
@@ -181,7 +181,7 @@ export function createHandler(config: HandlerConfig): Handler {
 
       try {
         const content = await resource.read();
-        return { tag: 'ok', val: content };
+        return { tag: 'text', val: content };
       } catch (e) {
         const error = e as Error;
         return {
@@ -248,10 +248,10 @@ export function createHandler(config: HandlerConfig): Handler {
             };
           }
           const messages = await prompt.resolve(parsed.data);
-          return { tag: 'ok', val: messages };
+          return { tag: 'text', val: messages };
         } else {
           const messages = await prompt.resolve(args as z.infer<NonNullable<typeof prompt.schema>>);
-          return { tag: 'ok', val: messages };
+          return { tag: 'text', val: messages };
         }
       } catch (e) {
         const error = e as Error;

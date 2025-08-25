@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-wasmcp = "0.1.6"
+wasmcp = "0.1.7"
+wasmcp-wasi = { version = "0.1.0", features = ["keyvalue-draft2"] }
 wit-bindgen-rt = "0.43.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+futures = "0.3"
 
 [dev-dependencies]
 serde_json = { version = "1.0", features = ["preserve_order"] }
@@ -23,6 +25,8 @@ package = "{{project-name | kebab_case}}:handler"
 [package.metadata.component.target]
 path = "wit"
 world = "mcp-handler"
+
+[package.metadata.component.target.dependencies]
 
 [profile.release]
 # Optimize for small binary size

@@ -1,36 +1,47 @@
-.PHONY: build test clean registry-push check-cargo-component
+.PHONY: build test clean compose run run-wasmtime help
 
-# Check if cargo-component is installed, install if not
-check-cargo-component:
-	@command -v cargo-component >/dev/null 2>&1 || { \
-		echo "cargo-component not found, installing..."; \
-		echo "This is required for building Rust WebAssembly components"; \
-		if command -v cargo-binstall >/dev/null 2>&1; then \
-			echo "Using cargo-binstall for faster installation"; \
-			cargo binstall cargo-component -y; \
-		else \
-			echo "cargo-binstall not found, installing from source (this may take a few minutes)"; \
-			cargo install cargo-component; \
-		fi; \
-		echo "cargo-component installed successfully!"; \
-	}
+# Default gateway version to use
+GATEWAY_VERSION ?= 0.0.5
+GATEWAY_WASM ?= wasmcp-spin.wasm
 
-build: check-cargo-component
-	cd handler && cargo component build --release --target wasm32-wasip1
+help: ## Show this help message
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-test:
+build: ## Build the handler component
+	cd handler && cargo component build --release
+
+test: ## Run tests
 	cd handler && cargo test
 
-clean:
+clean: ## Clean build artifacts
 	cd handler && cargo clean
+	rm -f composed.wasm
 
-registry-push: build
-	@echo "Pushing to registry..."
-	@VERSION=$$(cd handler && cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version') && \
-	USERNAME=$$(git config user.name | tr '[:upper:]' '[:lower:]' | tr ' ' '-') && \
-	PROJECT={{project-name | snake_case}} && \
-	echo "Pushing ghcr.io/$$USERNAME/$$PROJECT:$$VERSION" && \
-	wkg oci push ghcr.io/$$USERNAME/$$PROJECT:$$VERSION handler/target/wasm32-wasip1/release/$$PROJECT.wasm
+compose: build ## Compose handler with gateway using wac plug
+	@echo "Composing handler with gateway..."
+	wac plug wasmcp-spin.wasm --plug handler/target/wasm32-wasip1/release/{{project-name | snake_case}}_handler.wasm -o composed.wasm
+	@echo "✅ Created composed.wasm"
 
-up:
+run: build ## Run with Spin (handles dependencies automatically)
 	spin up
+
+run-wasmtime: compose ## Run with wasmtime (requires manual composition)
+	wasmtime serve -Scli -Skeyvalue composed.wasm
+
+# Development targets
+dev: build compose ## Build and compose for development
+	@echo "Ready to run: make run or make run-wasmtime"
+
+# Testing the composed component
+test-tools: ## Test tools/list endpoint
+	@curl -s -X POST http://localhost:3000/mcp \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}' | python3 -m json.tool
+
+test-echo: ## Test echo tool
+	@curl -s -X POST http://localhost:3000/mcp \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello from MCP!"}},"id":1}' | python3 -m json.tool

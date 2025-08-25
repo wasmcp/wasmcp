@@ -1,7 +1,8 @@
-package wasmcp:spin;
+package wasmcp:spin@0.1.0;
 
-// World for the Spin API component that imports the MCP handler
-world mcp-spin-api {
-    // Import the MCP handler interface from the mcp package
-    import wasmcp:mcp/handler;
+/// World for the Spin HTTP gateway component
+/// Imports the MCP handler interface which will be satisfied via component dependencies
+world mcp-spin-gateway {
+    /// Import the MCP handler interface
+    import wasmcp:mcp/handler@0.1.0;
 }

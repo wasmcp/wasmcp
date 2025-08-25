@@ -4,7 +4,7 @@ description = "Rust wasmcp handler component"
 tags = ["mcp", "http", "rust", "wasm", "component"]
 
 [parameters]
-project-description = { type = "string", prompt = "Description", default = "An MCP tool written in Rust" }
+project-description = { type = "string", prompt = "Description", default = "An MCP server written in Rust" }
 route = { type = "string", prompt = "HTTP route", default = "/mcp" }
 
 [add_component]
