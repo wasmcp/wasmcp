@@ -12,7 +12,7 @@ component = "wasmcp-spin"
 
 [component.wasmcp-spin]
 # Using the published gateway component
-source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.3" }
+source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.4" }
 allowed_outbound_hosts = [
     "https://geocoding-api.open-meteo.com",
     "https://api.open-meteo.com"
