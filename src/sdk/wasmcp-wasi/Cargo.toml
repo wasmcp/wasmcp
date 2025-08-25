@@ -6,6 +6,10 @@ description = "Minimal WASI SDK for MCP handlers - provides HTTP, KV, and Config
 license = "Apache-2.0"
 repository = "https://github.com/fastertools/wasmcp"
 
+[features]
+default = []
+keyvalue-draft2 = []  # Enable WASI key-value storage (wasi:keyvalue@0.2.0-draft2)
+
 [dependencies]
 wit-bindgen = "0.43.0"
 # Pin to the last version that targeted WASI 0.2.0
