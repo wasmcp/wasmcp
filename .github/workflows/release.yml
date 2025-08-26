@@ -110,7 +110,7 @@ jobs:
         name: wasmcp-server ${{ needs.setup.outputs.server_version }}
         generate_release_notes: true
         files: |
-          src/components/wasmcp-server/target/wasm32-wasip1/release/wasmcp_server.wasm
+          src/components/server/target/wasm32-wasip1/release/wasmcp_server.wasm
         body: |
           ## wasmcp-server WebAssembly Component v${{ needs.setup.outputs.server_version }}
           

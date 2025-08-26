@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/fastertools/wasmcp/src/sdk/wasmcp-go/wasmcp/mcp/handler"
+	"github.com/fastertools/wasmcp/src/sdk/go/wasmcp/mcp/handler"
 	"go.bytecodealliance.org/cm"
 	
 	// Enable WASI HTTP support for standard net/http package

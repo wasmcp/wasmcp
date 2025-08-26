@@ -4,7 +4,7 @@
 [packages]
 # Core components
 wasmcp-server = "0.1.0"
-wasmcp-rust = "0.1.6"
+wasmcp/rust = "0.1.6"
 wasmcp-typescript = "0.1.6"
 
 [wit]

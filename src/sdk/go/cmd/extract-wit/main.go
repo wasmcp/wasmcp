@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/fastertools/wasmcp/src/sdk/wasmcp-go/internal/assets"
+	"github.com/fastertools/wasmcp/src/sdk/go/internal/assets"
 )
 
 func main() {

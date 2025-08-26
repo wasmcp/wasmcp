@@ -12,7 +12,7 @@ help: ## Show this help message
 
 build: ## Build the handler component
 	@WIT_DIR=$$(mktemp -d) && \
-	go run github.com/fastertools/wasmcp/src/sdk/wasmcp-go/cmd/extract-wit@latest $$WIT_DIR && \
+	go run github.com/fastertools/wasmcp/src/sdk/go/cmd/extract-wit@latest $$WIT_DIR && \
 	echo '{"inherits":["wasip2"],"wit-package":"'$$WIT_DIR'","wit-world":"wasmcp:mcp/mcp-handler"}' > $$WIT_DIR/target.json && \
 	tinygo build -target=$$WIT_DIR/target.json -scheduler=asyncify -no-debug -o handler.wasm . ; \
 	EXIT_CODE=$$? ; \

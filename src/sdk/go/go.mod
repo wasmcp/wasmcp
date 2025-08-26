@@ -1,4 +1,4 @@
-module github.com/fastertools/wasmcp/src/sdk/wasmcp-go
+module github.com/fastertools/wasmcp/src/sdk/go
 
 go 1.23.0
 

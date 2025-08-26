@@ -5,11 +5,11 @@ Go SDK for building MCP (Model Context Protocol) handlers as WebAssembly compone
 ## Installation
 
 ```bash
-go get github.com/fastertools/wasmcp/src/sdk/wasmcp-go
+go get github.com/fastertools/wasmcp/src/sdk/go
 ```
 
 ```go
-import mcp "github.com/fastertools/wasmcp/src/sdk/wasmcp-go"
+import mcp "github.com/fastertools/wasmcp/src/sdk/go"
 ```
 
 ## Usage
@@ -21,7 +21,7 @@ package main
 
 import (
     "context"
-    mcp "github.com/fastertools/wasmcp/src/sdk/wasmcp-go"
+    mcp "github.com/fastertools/wasmcp/src/sdk/go"
 )
 
 func init() {
