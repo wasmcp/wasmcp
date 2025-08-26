@@ -1,4 +1,4 @@
-module go_weather
+module go_fresh
 
 go 1.23.0
 
