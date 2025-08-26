@@ -16,7 +16,7 @@ $(EXTRACT_WIT): go.mod
 	@mkdir -p .bin
 	@echo "Setting up build tools..."
 	@go mod tidy
-	@go build -o $(EXTRACT_WIT) github.com/fastertools/wasmcp/src/sdk/go/cmd/extract-wit
+	@go build -o $(EXTRACT_WIT) github.com/fastertools/wasmcp/sdk/go/cmd/extract-wit
 
 build: $(EXTRACT_WIT) ## Build the handler component
 	@WIT_DIR=$$(mktemp -d) && \

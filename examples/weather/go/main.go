@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	mcp "github.com/fastertools/wasmcp/src/sdk/go"
+	mcp "github.com/fastertools/wasmcp/sdk/go"
 )
 
 func init() {

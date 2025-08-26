@@ -140,7 +140,7 @@ export const handler = createHandler({
 ```go
 import (
     "context"
-    mcp "github.com/fastertools/wasmcp/src/sdk/go"
+    mcp "github.com/fastertools/wasmcp/sdk/go"
 )
 
 func init() {
@@ -237,17 +237,20 @@ make help
 
 ```
 wasmcp/
-├── examples/              # Complete example servers
-│   ├── rust-weather/     # Rust async weather server
-│   └── typescript-weather/ # TypeScript weather server
-├── src/
-│   ├── components/
-│   │   └── wasmcp-server/  # MCP server component
-│   └── sdk/
-│       ├── wasmcp-rust/  # Rust SDK (crates.io)
-│       └── wasmcp-typescript/ # TypeScript SDK (npm)
-├── templates/            # Spin templates
-└── wit/                  # Component interfaces
+├── components/           # WebAssembly components
+│   └── server/          # MCP server component
+├── examples/            # Complete example servers
+│   └── weather/         # Weather server implementations
+│       ├── go/         # Go with concurrent goroutines
+│       ├── rust/       # Rust with async HTTP
+│       └── typescript/ # TypeScript with fetch API
+├── sdk/                 # Language SDKs
+│   ├── go/             # Go SDK with generics API
+│   ├── rust/           # Rust SDK (crates.io)
+│   ├── rust-macros/    # Rust proc macros
+│   └── typescript/     # TypeScript SDK (npm)
+├── templates/          # Spin templates
+└── wit/                # Component interfaces
 ```
 
 ## License

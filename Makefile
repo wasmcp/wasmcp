@@ -142,32 +142,32 @@ install-rust-tools: ## Install required Rust tools
 	}
 
 install-ts-deps: ## Install TypeScript dependencies
-	cd src/sdk/wasmcp-typescript && npm ci
+	cd sdk/typescript && npm ci
 
 install-deps: install-rust-tools install-ts-deps ## Install all dependencies
 
 # Lint targets
 lint-rust: ## Run Rust linters (clippy and rustfmt check)
 	@echo "Running clippy..."
-	cd src/components/wasmcp-server && cargo clippy -- -D warnings
-	cd src/sdk/wasmcp-rust && cargo clippy -- -D warnings
+	cd components/server && cargo clippy -- -D warnings
+	cd sdk/rust && cargo clippy -- -D warnings
 	@echo "Checking rustfmt..."
-	cd src/components/wasmcp-server && cargo fmt -- --check
-	cd src/sdk/wasmcp-rust && cargo fmt -- --check
+	cd components/server && cargo fmt -- --check
+	cd sdk/rust && cargo fmt -- --check
 
 lint-rust-fix: ## Fix Rust lint issues
 	@echo "Running clippy with fixes..."
-	cd src/components/wasmcp-server && cargo clippy --fix --allow-dirty --allow-staged
-	cd src/sdk/wasmcp-rust && cargo clippy --fix --allow-dirty --allow-staged
+	cd components/server && cargo clippy --fix --allow-dirty --allow-staged
+	cd sdk/rust && cargo clippy --fix --allow-dirty --allow-staged
 	@echo "Running rustfmt..."
-	cd src/components/wasmcp-server && cargo fmt
-	cd src/sdk/wasmcp-rust && cargo fmt
+	cd components/server && cargo fmt
+	cd sdk/rust && cargo fmt
 
 lint-ts: ## Run TypeScript linter
-	cd src/sdk/wasmcp-typescript && npm run lint
+	cd sdk/typescript && npm run lint
 
 lint-ts-fix: ## Fix TypeScript lint issues
-	cd src/sdk/wasmcp-typescript && npm run lint:fix
+	cd sdk/typescript && npm run lint:fix
 
 lint-all: lint-rust lint-ts ## Run all linters
 
@@ -179,27 +179,27 @@ lint-fix-all: ## Fix all lint and formatting issues (Rust and TypeScript)
 
 # Build targets
 build-server: ## Build wasmcp-server
-	cd src/components/wasmcp-server && cargo clippy -- -D warnings && cargo component build --release
+	cd components/server && cargo clippy -- -D warnings && cargo component build --release
 
 build-rust-sdk: ## Build wasmcp-rust
-	cd src/sdk/wasmcp-rust && cargo clippy -- -D warnings && cargo build --release
+	cd sdk/rust && cargo clippy -- -D warnings && cargo build --release
 
 build-ts-sdk: install-ts-deps ## Build wasmcp-typescript
-	cd src/sdk/wasmcp-typescript && npm run lint && npm run build
+	cd sdk/typescript && npm run lint && npm run build
 
 build-all: build-server build-rust-sdk build-ts-sdk ## Build all components
 
 # Test targets
 test-server: ## Test wasmcp-server
-	cd src/components/wasmcp-server && cargo test
+	cd components/server && cargo test
 
 test-rust-sdk: ## Test wasmcp-rust
-	cd src/sdk/wasmcp-rust && cargo test
+	cd sdk/rust && cargo test
 
 test-rust: test-server test-rust-sdk ## Run all Rust tests
 
 test-ts: install-ts-deps ## Run TypeScript tests
-	cd src/sdk/wasmcp-typescript && npm test
+	cd sdk/typescript && npm test
 
 test-all: test-rust test-ts ## Run all tests
 
@@ -214,9 +214,9 @@ ci: ci-build ci-test ## Run full CI pipeline
 
 # Clean targets
 clean: ## Clean all build artifacts
-	cd src/components/wasmcp-server && cargo clean
-	cd src/sdk/wasmcp-rust && cargo clean
-	cd src/sdk/wasmcp-typescript && rm -rf dist node_modules
+	cd components/server && cargo clean
+	cd sdk/rust && cargo clean
+	cd sdk/typescript && rm -rf dist node_modules
 
 # Release helper
 show-versions: ## Show current versions
@@ -242,7 +242,7 @@ get-ts-sdk-version: ## Get wasmcp-typescript version
 publish-server: ## Publish wasmcp-server to ghcr.io
 	@echo "Publishing wasmcp-server..."
 	@version=$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2); \
-	cd src/components/wasmcp-server && \
+	cd components/server && \
 	wkg oci push ghcr.io/fastertools/wasmcp-server:$$version \
 		--annotation "org.opencontainers.image.source=https://github.com/fastertools/wasmcp" \
 		--annotation "org.opencontainers.image.description=WebAssembly server component" \
@@ -257,19 +257,19 @@ publish-server: ## Publish wasmcp-server to ghcr.io
 
 publish-rust-sdk: ## Publish wasmcp-rust to crates.io
 	@echo "Publishing wasmcp-rust to crates.io..."
-	cd src/sdk/wasmcp-rust && cargo publish
+	cd sdk/rust && cargo publish
 	@echo "✅ Published wasmcp v$$(make get-rust-sdk-version)"
 
 publish-rust-sdk-dry: ## Dry run publish wasmcp-rust
-	cd src/sdk/wasmcp-rust && cargo publish --dry-run
+	cd sdk/rust && cargo publish --dry-run
 
 publish-ts-sdk: build-ts-sdk ## Publish wasmcp-typescript to npm
 	@echo "Publishing wasmcp to npm..."
-	cd src/sdk/wasmcp-typescript && npm publish --access public
+	cd sdk/typescript && npm publish --access public
 	@echo "✅ Published wasmcp v$$(make get-ts-sdk-version)"
 
 publish-ts-sdk-dry: ## Dry run publish wasmcp-typescript
-	cd src/sdk/wasmcp-typescript && npm publish --dry-run --access public
+	cd sdk/typescript && npm publish --dry-run --access public
 
 publish-all: ## Publish all packages (use with caution!)
 	@echo "⚠️  Publishing all packages..."
