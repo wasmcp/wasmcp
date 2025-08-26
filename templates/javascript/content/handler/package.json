@@ -13,7 +13,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "wasmcp": "^0.1.11"
+    "wasmcp": "^0.1.13"
   },
   "devDependencies": {
     "@bytecodealliance/jco": "^1.8.1",

@@ -11,8 +11,8 @@ route = "/mcp"
 component = "wasmcp-spin"
 
 [component.wasmcp-spin]
-# Using the published gateway component
-source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.3" }
+# Using the local gateway component
+source = "wasmcp-spin.wasm"
 build.command = "make build"
 build.watch = ["handler/src/**/*.js", "handler/package.json"]
 # Allow outbound HTTP requests for weather API

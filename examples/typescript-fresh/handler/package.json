@@ -1,8 +1,8 @@
 {
-  "name": "{{project-name | kebab_case}}-handler",
+  "name": "typescript-fresh-handler",
   "version": "0.1.0",
   "type": "module",
-  "description": "{{project-description}}",
+  "description": "An MCP server written in TypeScript",
   "main": "dist/index.js",
   "scripts": {
     "build": "npm run build:types && npm run build:js && npm run build:bundle && npm run build:component",
