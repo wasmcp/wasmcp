@@ -15,7 +15,7 @@ help: ## Show this help message
 $(EXTRACT_WIT): go.mod
 	@mkdir -p .bin
 	@echo "Setting up build tools..."
-	@go mod download
+	@go mod tidy
 	@go build -o $(EXTRACT_WIT) github.com/fastertools/wasmcp/src/sdk/wasmcp-go/cmd/extract-wit
 
 build: $(EXTRACT_WIT) ## Build the handler component
