@@ -30,47 +30,12 @@ func init() {
         nil,
     )
     
-    // Add a simple tool
-    mcp.AddTool(server, &mcp.Tool{
-        Name:        "echo",
-        Description: "Echo a message",
-        InputSchema: mcp.Schema(`{
-            "type": "object",
-            "properties": {
-                "message": {"type": "string"}
-            },
-            "required": ["message"]
-        }`),
-    }, func(ctx context.Context, args map[string]any) (string, error) {
-        message := args["message"].(string)
-        return "Echo: " + message, nil
-    })
+    // Define argument struct
+    type EchoArgs struct {
+        Message string `json:"message"`
+    }
     
-    server.Run(context.Background(), nil)
-}
-
-func main() {} // Required for TinyGo
-```
-
-### Typed Handlers
-
-For better type safety, use typed handlers with structs:
-
-```go
-type EchoArgs struct {
-    Message string `json:"message"`
-}
-
-func Echo(ctx context.Context, args EchoArgs) (string, error) {
-    return "Echo: " + args.Message, nil
-}
-
-func init() {
-    server := mcp.NewServer(
-        &mcp.Implementation{Name: "my-server", Version: "v1.0.0"},
-        nil,
-    )
-    
+    // Add tool with typed handler - automatic JSON unmarshaling
     mcp.AddTool(server, &mcp.Tool{
         Name:        "echo",
         Description: "Echo a message",
@@ -81,10 +46,18 @@ func init() {
             },
             "required": ["message"]
         }`),
-    }, mcp.TypedHandler(Echo))
+    }, func(ctx context.Context, args EchoArgs) (*mcp.CallToolResult, error) {
+        return &mcp.CallToolResult{
+            Content: []mcp.Content{
+                &mcp.TextContent{Text: "Echo: " + args.Message},
+            },
+        }, nil
+    })
     
     server.Run(context.Background(), nil)
 }
+
+func main() {} // Required for TinyGo
 ```
 
 ### Schema Generation
@@ -120,21 +93,21 @@ wasmtime serve -S cli -S http composed.wasm
 
 ## API
 
-### `mcp.Handle(func(*Handler))`
+### `mcp.NewServer(impl *Implementation, opts *ServerOptions) *Server`
 
-Register your MCP handler. Must be called in an `init()` function.
+Create a new MCP server instance.
 
-### `Handler.Tool(name, description string, schema json.RawMessage, fn ToolFunc)`
+### `mcp.AddTool[In any](server *Server, tool *Tool, handler func(context.Context, In) (*CallToolResult, error))`
 
-Register a tool that can be called by MCP clients.
+Register a tool with typed handler. The generic type `In` defines the argument structure and the SDK automatically handles JSON unmarshaling.
 
-### `Handler.Resource(uri, name, description, mimeType string, fn ResourceFunc)`
+### `server.AddResource(resource *Resource, handler func(context.Context) (string, error))`
 
 Register a resource that can be read by MCP clients.
 
-### `Handler.Prompt(name, description string, arguments []PromptArgument, fn PromptFunc)`
+### `mcp.AddPrompt[In any](server *Server, prompt *Prompt, handler func(context.Context, In) ([]PromptMessage, error))`
 
-Register a prompt template.
+Register a prompt template with typed arguments.
 
 ### `mcp.Schema(string) json.RawMessage`
 

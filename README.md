@@ -35,7 +35,7 @@ That's it. Zero configuration, no WIT files, runs on any WASI runtime.
 
 ## Features
 
-- **Clean SDKs**: Rust with proc macros (no WIT files), TypeScript with npm package, Go with TinyGo support
+- **Clean SDKs**: Rust with proc macros (no WIT files), TypeScript with npm package, Go with idiomatic generics API
 - **Full Async**: Native async/await support for HTTP, database, and I/O operations  
 - **Any Runtime**: Spin, Wasmtime, or any WASI-compatible WebAssembly runtime
 - **Production Ready**: Optimized builds, proper error handling, comprehensive testing
@@ -136,13 +136,54 @@ export const handler = createHandler({
 });
 ```
 
+### Go
+```go
+import (
+    "context"
+    mcp "github.com/fastertools/wasmcp/src/sdk/wasmcp-go"
+)
+
+func init() {
+    server := mcp.NewServer(
+        &mcp.Implementation{Name: "weather", Version: "v1.0.0"},
+        nil,
+    )
+    
+    // Typed handler with automatic JSON unmarshaling
+    type EchoArgs struct {
+        Message string `json:"message"`
+    }
+    
+    mcp.AddTool(server, &mcp.Tool{
+        Name:        "echo",
+        Description: "Echo a message back",
+        InputSchema: mcp.Schema(`{
+            "type": "object",
+            "properties": {
+                "message": {"type": "string"}
+            },
+            "required": ["message"]
+        }`),
+    }, func(ctx context.Context, args EchoArgs) (*mcp.CallToolResult, error) {
+        return &mcp.CallToolResult{
+            Content: []mcp.Content{
+                &mcp.TextContent{Text: "Echo: " + args.Message},
+            },
+        }, nil
+    })
+    
+    server.Run(context.Background(), nil)
+}
+```
+
 ## Examples
 
 See [`examples/`](./examples) for complete working servers:
 - **[`rust-weather`](./examples/rust-weather)** - Rust with async HTTP weather API
 - **[`typescript-weather`](./examples/typescript-weather)** - TypeScript with fetch API
+- **[`go-weather`](./examples/go-weather)** - Go with concurrent goroutines
 
-Both implement the same tools and work identically from the client's perspective.
+All implement the same tools and work identically from the client's perspective.
 
 ## Architecture
 
@@ -156,7 +197,7 @@ Both implement the same tools and work identically from the client's perspective
                                                  │
                                           ┌──────▼───────┐
                                           │ Your Handler │
-                                          │ (Rust/TS/JS) │
+                                          │ (Rust/TS/Go) │
                                           └──────────────┘
 ```
 
@@ -171,8 +212,8 @@ spin new -t wasmcp-rust my-rust-server
 # TypeScript (WIT bundled in npm)  
 spin new -t wasmcp-typescript my-ts-server
 
-# JavaScript
-spin new -t wasmcp-javascript my-js-server
+# Go (idiomatic generics API)
+spin new -t wasmcp-go my-go-server
 ```
 
 ## Development

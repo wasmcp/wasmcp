@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,73 +14,155 @@ import (
 )
 
 func init() {
-	mcp.Handle(func(h *mcp.Handler) {
-		// Register tools
-		h.Tool("echo", "Echo a message back to the user", echoSchema(), echoHandler)
-		h.Tool("weather", "Get current weather for a location using Open-Meteo API", weatherSchema(), weatherHandler)
-		h.Tool("multi_weather", "Get weather for multiple cities concurrently", multiWeatherSchema(), multiWeatherHandler)
-	})
-}
-
-func echoSchema() json.RawMessage {
-	return mcp.Schema(`{
-		"type": "object",
-		"properties": {
-			"message": {
-				"type": "string",
-				"description": "Message to echo back",
-				"minLength": 1
-			}
-		},
-		"required": ["message"]
-	}`)
-}
-
-func echoHandler(args json.RawMessage) (string, error) {
-	var params struct {
+	// Create the server
+	server := mcp.NewServer(
+		&mcp.Implementation{Name: "{{project-name | snake_case}}", Version: "v1.0.0"},
+		nil,
+	)
+	
+	// Echo tool - demonstrates typed handler with struct args
+	type EchoArgs struct {
 		Message string `json:"message"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return "", fmt.Errorf("invalid arguments: %w", err)
-	}
-	return fmt.Sprintf("Echo: %s", params.Message), nil
-}
-
-func weatherSchema() json.RawMessage {
-	return mcp.Schema(`{
-		"type": "object",
-		"properties": {
-			"location": {
-				"type": "string",
-				"description": "City name to get weather for"
-			}
-		},
-		"required": ["location"]
-	}`)
-}
-
-func weatherHandler(args json.RawMessage) (string, error) {
-	var params struct {
+	
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "echo",
+		Description: "Echo a message back to the user",
+		InputSchema: mcp.Schema(`{
+			"type": "object",
+			"properties": {
+				"message": {
+					"type": "string",
+					"description": "The message to echo"
+				}
+			},
+			"required": ["message"]
+		}`),
+	}, func(ctx context.Context, args EchoArgs) (*mcp.CallToolResult, error) {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Echo: %s", args.Message)},
+			},
+		}, nil
+	})
+	
+	// Weather tool - demonstrates typed handler
+	type WeatherArgs struct {
 		Location string `json:"location"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return "", fmt.Errorf("invalid arguments: %w", err)
+	
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "weather",
+		Description: "Get current weather for a location",
+		InputSchema: mcp.Schema(`{
+			"type": "object",
+			"properties": {
+				"location": {
+					"type": "string",
+					"description": "City name to get weather for"
+				}
+			},
+			"required": ["location"]
+		}`),
+	}, func(ctx context.Context, args WeatherArgs) (*mcp.CallToolResult, error) {
+		result, err := getWeatherForCity(args.Location)
+		if err != nil {
+			return nil, err
+		}
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: result}},
+		}, nil
+	})
+	
+	// Multi-weather tool - demonstrates concurrent requests with typed struct
+	type MultiWeatherArgs struct {
+		Cities []string `json:"cities"`
 	}
+	
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "multi_weather",
+		Description: "Get weather for multiple cities concurrently",
+		InputSchema: mcp.Schema(`{
+			"type": "object",
+			"properties": {
+				"cities": {
+					"type": "array",
+					"description": "List of cities to get weather for",
+					"items": {
+						"type": "string"
+					},
+					"minItems": 1,
+					"maxItems": 5
+				}
+			},
+			"required": ["cities"]
+		}`),
+	}, func(ctx context.Context, args MultiWeatherArgs) (*mcp.CallToolResult, error) {
+		type cityWeather struct {
+			city    string
+			weather string
+			err     error
+		}
 
-	// First, geocode the location
-	geocodingUrl := fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", 
-		url.QueryEscape(params.Location))
+		// Channel to collect results
+		results := make(chan cityWeather, len(args.Cities))
+		
+		// WaitGroup to wait for all goroutines
+		var wg sync.WaitGroup
+		
+		// Launch concurrent requests for each city
+		for _, city := range args.Cities {
+			wg.Add(1)
+			go func(cityName string) {
+				defer wg.Done()
+				
+				// Fetch weather concurrently using the helper
+				weatherInfo, err := getWeatherForCity(cityName)
+				
+				results <- cityWeather{
+					city:    cityName,
+					weather: weatherInfo,
+					err:     err,
+				}
+			}(city)
+		}
+		
+		// Wait for all goroutines to complete
+		go func() {
+			wg.Wait()
+			close(results)
+		}()
+		
+		// Collect results
+		var output strings.Builder
+		output.WriteString("=== Concurrent Weather Results ===\n\n")
+		
+		for result := range results {
+			if result.err != nil {
+				output.WriteString(fmt.Sprintf("Error fetching weather for %s: %v\n\n", result.city, result.err))
+			} else {
+				output.WriteString(result.weather)
+				output.WriteString("\n\n")
+			}
+		}
+		
+		output.WriteString("=== All requests completed concurrently ===")
+		
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: output.String()}},
+		}, nil
+	})
 	
-	var geocodingData struct {
-		Results []struct {
-			Latitude  float64 `json:"latitude"`
-			Longitude float64 `json:"longitude"`
-			Name      string  `json:"name"`
-		} `json:"results"`
-	}
+	// Run the server (initializes WASM exports)
+	server.Run(context.Background(), nil)
+}
+
+func getWeatherForCity(location string) (string, error) {
+	// Geocode the location
+	geocodingURL := fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1",
+		url.QueryEscape(location))
 	
-	// Use standard net/http - WASI HTTP support is enabled automatically by the SDK
-	resp, err := http.Get(geocodingUrl)
+	resp, err := http.Get(geocodingURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to geocode location: %w", err)
 	}
@@ -90,32 +173,30 @@ func weatherHandler(args json.RawMessage) (string, error) {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
 	
+	var geocodingData struct {
+		Results []struct {
+			Latitude  float64 `json:"latitude"`
+			Longitude float64 `json:"longitude"`
+			Name      string  `json:"name"`
+			Country   string  `json:"country"`
+		} `json:"results"`
+	}
+	
 	if err := json.Unmarshal(body, &geocodingData); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
+		return "", fmt.Errorf("failed to parse geocoding response: %w", err)
 	}
 
 	if len(geocodingData.Results) == 0 {
-		return fmt.Sprintf("Location '%s' not found", params.Location), nil
+		return fmt.Sprintf("Location '%s' not found", location), nil
 	}
 
-	location := geocodingData.Results[0]
+	loc := geocodingData.Results[0]
 
-	// Now fetch the weather data
-	weatherUrl := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
-		location.Latitude, location.Longitude)
+	// Fetch weather data
+	weatherURL := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
+		loc.Latitude, loc.Longitude)
 	
-	var weatherData struct {
-		Current struct {
-			Temperature2m         float64 `json:"temperature_2m"`
-			ApparentTemperature   float64 `json:"apparent_temperature"`
-			RelativeHumidity2m    int     `json:"relative_humidity_2m"`
-			WindSpeed10m          float64 `json:"wind_speed_10m"`
-			WeatherCode           int     `json:"weather_code"`
-		} `json:"current"`
-	}
-	
-	// Use standard net/http for weather API too
-	weatherResp, err := http.Get(weatherUrl)
+	weatherResp, err := http.Get(weatherURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch weather: %w", err)
 	}
@@ -126,26 +207,38 @@ func weatherHandler(args json.RawMessage) (string, error) {
 		return "", fmt.Errorf("failed to read weather response: %w", err)
 	}
 	
+	var weatherData struct {
+		Current struct {
+			Temperature         float64 `json:"temperature_2m"`
+			ApparentTemperature float64 `json:"apparent_temperature"`
+			Humidity            int     `json:"relative_humidity_2m"`
+			WindSpeed           float64 `json:"wind_speed_10m"`
+			WeatherCode         int     `json:"weather_code"`
+		} `json:"current"`
+	}
+	
 	if err := json.Unmarshal(weatherBody, &weatherData); err != nil {
 		return "", fmt.Errorf("failed to parse weather response: %w", err)
 	}
 
 	conditions := getWeatherCondition(weatherData.Current.WeatherCode)
 
-	return fmt.Sprintf(`Weather in %s:
+	result := fmt.Sprintf(`Weather in %s, %s:
 Temperature: %.1f°C (feels like %.1f°C)
 Conditions: %s
 Humidity: %d%%
 Wind: %.1f km/h`,
-		location.Name,
-		weatherData.Current.Temperature2m,
+		loc.Name,
+		loc.Country,
+		weatherData.Current.Temperature,
 		weatherData.Current.ApparentTemperature,
 		conditions,
-		weatherData.Current.RelativeHumidity2m,
-		weatherData.Current.WindSpeed10m), nil
+		weatherData.Current.Humidity,
+		weatherData.Current.WindSpeed)
+
+	return result, nil
 }
 
-// Helper function to decode weather conditions
 func getWeatherCondition(code int) string {
 	conditions := map[int]string{
 		0:  "Clear sky",
@@ -160,9 +253,9 @@ func getWeatherCondition(code int) string {
 		61: "Slight rain",
 		63: "Moderate rain",
 		65: "Heavy rain",
-		71: "Slight snow fall",
-		73: "Moderate snow fall",
-		75: "Heavy snow fall",
+		71: "Slight snow",
+		73: "Moderate snow",
+		75: "Heavy snow",
 		77: "Snow grains",
 		80: "Slight rain showers",
 		81: "Moderate rain showers",
@@ -177,87 +270,6 @@ func getWeatherCondition(code int) string {
 		return condition
 	}
 	return "Unknown"
-}
-
-func multiWeatherSchema() json.RawMessage {
-	return mcp.Schema(`{
-		"type": "object",
-		"properties": {
-			"cities": {
-				"type": "array",
-				"description": "List of cities to get weather for",
-				"items": {
-					"type": "string"
-				},
-				"minItems": 1,
-				"maxItems": 5
-			}
-		},
-		"required": ["cities"]
-	}`)
-}
-
-// multiWeatherHandler demonstrates concurrent HTTP requests using goroutines
-func multiWeatherHandler(args json.RawMessage) (string, error) {
-	var params struct {
-		Cities []string `json:"cities"`
-	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return "", fmt.Errorf("invalid arguments: %w", err)
-	}
-
-	type cityWeather struct {
-		city    string
-		weather string
-		err     error
-	}
-
-	// Channel to collect results
-	results := make(chan cityWeather, len(params.Cities))
-	
-	// WaitGroup to wait for all goroutines
-	var wg sync.WaitGroup
-	
-	// Launch concurrent requests for each city using standard net/http
-	for _, city := range params.Cities {
-		wg.Add(1)
-		go func(cityName string) {
-			defer wg.Done()
-			
-			// Fetch weather concurrently
-			weatherJSON, _ := json.Marshal(map[string]string{"location": cityName})
-			weatherInfo, err := weatherHandler(weatherJSON)
-			
-			results <- cityWeather{
-				city:    cityName,
-				weather: weatherInfo,
-				err:     err,
-			}
-		}(city)
-	}
-	
-	// Wait for all goroutines to complete
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-	
-	// Collect results
-	var output strings.Builder
-	output.WriteString("=== Concurrent Weather Results ===\n\n")
-	
-	for result := range results {
-		if result.err != nil {
-			output.WriteString(fmt.Sprintf("Error fetching weather for %s: %v\n\n", result.city, result.err))
-		} else {
-			output.WriteString(result.weather)
-			output.WriteString("\n\n")
-		}
-	}
-	
-	output.WriteString("=== All requests completed concurrently ===")
-	
-	return output.String(), nil
 }
 
 func main() {

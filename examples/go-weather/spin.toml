@@ -1,7 +1,7 @@
 spin_manifest_version = 2
 
 [application]
-name = "go-weather"
+name = "go-weather-fresh"
 version = "0.1.0"
 authors = ["Ian McDonald <bowlofarugula@gmail.com>"]
 description = "An MCP server written in Go"

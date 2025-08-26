@@ -18,13 +18,21 @@ A TypeScript MCP handler featuring:
 - Clean project structure with WIT deps from npm
 - Uses `wasmcp@0.1.11` npm package
 
+### 🐹 [`go-weather/`](./go-weather)
+A Go MCP handler featuring:
+- Echo tool with typed structs
+- Weather tool with HTTP requests
+- Multi-weather tool demonstrating concurrent goroutines
+- Idiomatic generics API with automatic JSON unmarshaling
+- Uses `wasmcp-go@v0.2.4` with TinyGo
+
 ## Quick Start
 
-Both examples follow the same workflow:
+All examples follow the same workflow:
 
 ```bash
 # Enter an example directory
-cd rust-weather  # or typescript-weather
+cd rust-weather  # or typescript-weather or go-weather
 
 # Build and compose the component
 make compose
@@ -60,11 +68,11 @@ curl -X POST http://localhost:3000/mcp \
 
 ## Key Features
 
-Both examples demonstrate:
+All examples demonstrate:
 
 1. **Zero Configuration**: Create from template and immediately have a working MCP server
 2. **Real Async Operations**: Weather tool makes actual HTTP requests to external APIs
-3. **Clean Project Structure**: No WIT files to manage (Rust uses proc macros, TypeScript bundles them in npm)
+3. **Clean Project Structure**: No WIT files to manage (Rust uses proc macros, TypeScript/Go bundle them in SDK)
 4. **Production Ready**: Optimized builds, proper error handling, comprehensive testing
 5. **Runtime Flexibility**: Works with Spin, wasmtime, or any WASI-compliant runtime
 
@@ -81,6 +89,9 @@ spin new -t wasmcp-rust my-rust-mcp
 
 # Create new TypeScript project  
 spin new -t wasmcp-typescript my-ts-mcp
+
+# Create new Go project
+spin new -t wasmcp-go my-go-mcp
 ```
 
 See each example's README for details on implementing your own tools.
