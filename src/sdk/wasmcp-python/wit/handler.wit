@@ -66,9 +66,3 @@ interface handler {
     list-prompts: func() -> list<prompt>;
     get-prompt: func(name: string, arguments: string) -> prompt-result;
 }
-
-world mcp-handler {
-    // Temporarily removed WASI imports to test if componentize-py can find the world
-    // Export our MCP handler interface
-    export handler;
-}

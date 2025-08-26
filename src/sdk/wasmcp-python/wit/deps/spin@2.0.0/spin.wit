@@ -1,0 +1,29 @@
+package fermyon:spin@2.0.0;
+
+world spin-imports {
+  import wasi:cli/environment@0.2.3;
+  import wasi:http/outgoing-handler@0.2.3;
+  import llm;
+  import redis;
+  import postgres;
+  import mysql;
+  import mqtt;
+  import sqlite;
+  import key-value;
+  import variables;
+}
+
+world spin-redis {
+  include spin-imports;
+  export fermyon:spin/inbound-redis;
+}
+
+world spin-http {
+  include spin-imports;
+  export wasi:http/incoming-handler@0.2.3;
+}
+
+world spin-all {
+  include spin-redis;
+  include spin-http;
+}

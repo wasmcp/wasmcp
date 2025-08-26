@@ -90,13 +90,19 @@ class Tool:
             else:
                 result = self.func(**parsed_args)
             
-            # Format result
+            # Format result according to MCP specification
+            # MCP requires content array with typed content objects
             if isinstance(result, (str, int, float, bool)):
-                return McpResponse.success({"text": str(result)})
+                content_text = str(result)
             elif isinstance(result, (dict, list)):
-                return McpResponse.success({"text": json.dumps(result, indent=2)})
+                content_text = json.dumps(result, indent=2)
             else:
-                return McpResponse.success({"text": str(result)})
+                content_text = str(result)
+            
+            return McpResponse.success({
+                "content": [{"type": "text", "text": content_text}],
+                "isError": False
+            })
                 
         except Exception as e:
             return McpResponse.internal_error(f"Tool execution failed: {str(e)}")

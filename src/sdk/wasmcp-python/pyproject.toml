@@ -37,7 +37,7 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-wasmcp = ["componentize-py.toml", "wit/*.wit"]
+wasmcp = ["componentize-py.toml", "wit/*.wit", "wit/bindings/**/*.py"]
 
 [project.scripts]
 wasmcp-build = "wasmcp.build:main"

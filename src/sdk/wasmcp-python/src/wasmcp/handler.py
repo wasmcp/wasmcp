@@ -2,7 +2,6 @@
 
 from typing import Any, Callable, Dict, Optional
 
-from .wit.exports import set_handler
 from .tools import Tool
 from .resources import Resource
 from .prompts import Prompt
@@ -32,12 +31,7 @@ class WasmcpHandler:
         self.resources = self._resources
         self.prompts = self._prompts
         
-        # Don't set up exports in constructor - decorators haven't run yet!
-    
-    def _setup_exports(self):
-        """Set up WIT exports for this handler."""
-        # Register this handler globally for the export bridge
-        set_handler(self)
+        # Handler will be used by the export bridge at build time
     
     @property
     def tool(self):
@@ -59,14 +53,12 @@ class WasmcpHandler:
                 def inner_decorator(func: Callable) -> Callable:
                     tool = Tool.from_function(func, **kwargs)
                     self._tools[tool.name] = tool
-                    self._setup_exports()  # Re-register after adding tool
                     return func
                 return inner_decorator
             elif callable(func_or_options):
                 # Direct decoration: @handler.tool
                 tool = Tool.from_function(func_or_options, **kwargs)
                 self._tools[tool.name] = tool
-                self._setup_exports()  # Re-register after adding tool
                 return func_or_options
             else:
                 # Called with positional args (shouldn't happen but handle gracefully)
@@ -99,7 +91,6 @@ class WasmcpHandler:
                 
                 resource = Resource.from_function(func, **options)
                 self._resources[resource.uri] = resource
-                self._setup_exports()  # Re-register after adding resource
                 return func
             return inner
         
@@ -130,14 +121,12 @@ class WasmcpHandler:
                 def inner_decorator(func: Callable) -> Callable:
                     prompt = Prompt.from_function(func, **kwargs)
                     self._prompts[prompt.name] = prompt
-                    self._setup_exports()  # Re-register after adding prompt
                     return func
                 return inner_decorator
             elif callable(func_or_options):
                 # Direct decoration: @handler.prompt
                 prompt = Prompt.from_function(func_or_options, **kwargs)
                 self._prompts[prompt.name] = prompt
-                self._setup_exports()  # Re-register after adding prompt
                 return func_or_options
             else:
                 # Called with positional args (shouldn't happen but handle gracefully)
@@ -148,13 +137,12 @@ class WasmcpHandler:
     def build(self) -> "WasmcpHandler":
         """Build and return the handler for export.
         
-        This method ensures exports are properly configured and
-        returns the handler instance for use in the WASM component.
+        This method ensures the handler is ready for use
+        in the WASM component.
         
         Returns:
             The handler instance
         """
-        self._setup_exports()
         return self
     
     def __repr__(self) -> str:

@@ -14,9 +14,8 @@ component = "wasmcp-spin"
 # Using the local gateway component
 source = "wasmcp-server.wasm"
 allowed_outbound_hosts = [
-    # Add external hosts here if implementing real weather API
-    # "https://api.openweathermap.org",
-    # "https://geocoding-api.open-meteo.com"
+    # Weather API
+    "https://wttr.in"
 ]
 dependencies_inherit_configuration = true
 key_value_stores = ["default"]

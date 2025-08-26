@@ -73,8 +73,4 @@ __all__ = [
     "get_wit_path",
     "get_wit_world_path",
     "get_componentize_config",
-    "setup_handler",
 ]
-
-# Import the setup function for easy access
-from .exports_adapter import setup_handler

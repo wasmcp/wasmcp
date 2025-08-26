@@ -106,7 +106,7 @@ class Resource:
                 "contents": [
                     {
                         "uri": self.uri,
-                        "mimeType": self.mime_type,
+                        "mime_type": self.mime_type,  # Fixed: MCP uses snake_case
                         "text": text_content
                     }
                 ]
