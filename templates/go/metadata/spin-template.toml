@@ -1,8 +1,13 @@
 manifest_version = "1"
 id = "wasmcp-go"
-description = "MCP server using Go"
-tags = ["go", "mcp", "http"]
+description = "Go wasmcp handler component"
+tags = ["go", "mcp", "http", "wasm", "component"]
 
 [parameters]
-project-name = { description = "Project name", pattern = "^[a-zA-Z][a-zA-Z0-9_-]*$" }
-authors = { description = "Authors", default = "Your Name" }
+project-description = { type = "string", prompt = "Description", default = "An MCP server written in Go" }
+route = { type = "string", prompt = "HTTP route", default = "/mcp" }
+
+[add_component]
+skip_files = ["spin.toml", "README.md", ".gitignore"]
+[add_component.snippets]
+component = "component.txt"

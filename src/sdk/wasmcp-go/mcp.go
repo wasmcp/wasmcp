@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/fastertools/wasmcp-go/wasmcp/mcp/handler"
+	"github.com/fastertools/wasmcp/src/sdk/wasmcp-go/wasmcp/mcp/handler"
 	"go.bytecodealliance.org/cm"
 )
 

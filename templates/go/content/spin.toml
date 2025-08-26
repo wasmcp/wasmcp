@@ -1,20 +1,29 @@
 spin_manifest_version = 2
 
 [application]
-name = "{{project-name}}"
+name = "{{project-name | kebab_case}}"
 version = "0.1.0"
 authors = ["{{authors}}"]
-description = "MCP server written in Go"
+description = "{{project-description}}"
 
 [[trigger.http]]
-route = "/..."
-component = "mcp-server"
+route = "/mcp"
+component = "wasmcp-server"
 
-[component.mcp-server]
-source = "composed.wasm"
+[component.wasmcp-server]
+# Using the local server component
+source = "wasmcp-server.wasm"
 allowed_outbound_hosts = [
-    # Add any external hosts your tools need to access
-    # "https://api.example.com",
+    "https://geocoding-api.open-meteo.com",
+    "https://api.open-meteo.com"
 ]
-[component.mcp-server.build]
-command = "make compose"
+dependencies_inherit_configuration = true
+key_value_stores = ["default"]
+
+[component.wasmcp-server.dependencies]
+# Link to the local handler component
+"wasmcp:mcp/handler@0.1.0" = { path = "./handler.component.wasm" }
+
+[component.wasmcp-server.build]
+command = "make build"
+watch = ["*.go", "go.mod", "wit/*.wit"]

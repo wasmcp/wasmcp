@@ -4,8 +4,12 @@ Go SDK for building MCP (Model Context Protocol) handlers as WebAssembly compone
 
 ## Installation
 
+```bash
+go get github.com/fastertools/wasmcp/src/sdk/wasmcp-go
+```
+
 ```go
-import mcp "github.com/fastertools/wasmcp-go"
+import mcp "github.com/fastertools/wasmcp/src/sdk/wasmcp-go"
 ```
 
 ## Usage
@@ -17,8 +21,7 @@ import (
     "encoding/json"
     "fmt"
     
-    mcp "github.com/fastertools/wasmcp-go"
-    spinhttp "github.com/fermyon/spin-go-sdk/http"  // Use Spin SDK directly for HTTP
+    mcp "github.com/fastertools/wasmcp/src/sdk/wasmcp-go"
 )
 
 func init() {
@@ -58,13 +61,13 @@ func weatherHandler(args json.RawMessage) (string, error) {
     }
     json.Unmarshal(args, &params)
     
-    // Use Spin SDK directly for HTTP requests
-    resp, err := spinhttp.Get(fmt.Sprintf("https://api.weather.com/%s", params.Location))
+    // Use the built-in HTTP client
+    resp, err := mcp.DefaultHTTPClient.Get(fmt.Sprintf("https://api.weather.com/%s", params.Location))
     if err != nil {
         return "", err
     }
     
-    return resp.Body, nil
+    return resp, nil
 }
 
 func main() {} // Required for TinyGo
@@ -73,14 +76,14 @@ func main() {} // Required for TinyGo
 ## Building
 
 ```bash
-# Build your handler
-tinygo build -target=wasip1 -gc=leaking -buildmode=c-shared -no-debug -o handler.wasm .
-
-# Convert to component (requires wasm-tools)
-wasm-tools component new handler.wasm --adapt wasi_snapshot_preview1.reactor.wasm -o handler.component.wasm
+# Build your handler (with wasip2 target)
+tinygo build -target=wasip2-mcp.json -gc=leaking -no-debug -o handler.component.wasm main.go
 
 # Compose with server (requires wac)
-wac plug handler.component.wasm wasmcp-server.wasm -o composed.wasm
+wac plug --plug handler.component.wasm wasmcp-server.wasm -o composed.wasm
+
+# Run with wasmtime
+wasmtime serve -S cli -S http composed.wasm
 ```
 
 ## API
@@ -105,17 +108,21 @@ Register a prompt template.
 
 Helper to create JSON schema definitions inline.
 
-## Integration with Spin SDK
+## Built-in HTTP Client
 
-This SDK focuses only on MCP functionality. For additional capabilities, import the Spin SDK directly:
+The SDK includes an HTTP client using WASI HTTP interfaces:
 
-- HTTP client: `github.com/fermyon/spin-go-sdk/http`
-- Key-Value store: `github.com/fermyon/spin-go-sdk/kv`
-- SQLite: `github.com/fermyon/spin-go-sdk/sqlite`
-- Variables: `github.com/fermyon/spin-go-sdk/variables`
+```go
+// Simple GET request
+resp, err := mcp.DefaultHTTPClient.Get("https://api.example.com/data")
+
+// GET JSON into a struct
+var data MyStruct
+err := mcp.DefaultHTTPClient.GetJSON("https://api.example.com/data", &data)
+```
 
 ## Notes
 
 - Requires TinyGo for compilation to WebAssembly
-- Uses CGO for WIT bindings (included)
+- Uses wit-bindgen-go for WIT bindings (generated)
 - Compatible with any WASI runtime (Spin, Wasmtime, etc.)
