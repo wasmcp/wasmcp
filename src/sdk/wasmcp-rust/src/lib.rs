@@ -248,6 +248,8 @@ macro_rules! create_handler {
             PromptArgument as WitPromptArgument,
             Error as WitError,
             ToolResult,
+            ResourceResult,
+            PromptResult,
         };
 
         struct Component;
@@ -309,17 +311,17 @@ macro_rules! create_handler {
                 ]
             }
 
-            fn read_resource(uri: String) -> Result<WitResourceContents, WitError> {
+            fn read_resource(uri: String) -> ResourceResult {
                 $($(
                     if uri == <$resource as $crate::ResourceHandler>::URI {
                         return match <$resource as $crate::ResourceHandler>::read() {
-                            Ok(contents) => Ok(WitResourceContents {
+                            Ok(contents) => ResourceResult::Contents(WitResourceContents {
                                 uri: <$resource as $crate::ResourceHandler>::URI.to_string(),
                                 mime_type: <$resource as $crate::ResourceHandler>::MIME_TYPE.map(|s| s.to_string()),
                                 text: Some(contents),
                                 blob: None,
                             }),
-                            Err(e) => Err(WitError {
+                            Err(e) => ResourceResult::Error(WitError {
                                 code: -32603,
                                 message: e,
                                 data: None,
@@ -328,7 +330,7 @@ macro_rules! create_handler {
                     }
                 )*)?
 
-                Err(WitError {
+                ResourceResult::Error(WitError {
                     code: -32601,
                     message: format!("Resource not found: {}", uri),
                     data: None,
@@ -354,13 +356,13 @@ macro_rules! create_handler {
                 ]
             }
 
-            fn get_prompt(name: String, arguments: String) -> Result<Vec<WitPromptMessage>, WitError> {
+            fn get_prompt(name: String, arguments: String) -> PromptResult {
                 let args = if arguments.is_empty() {
                     serde_json::Value::Object(serde_json::Map::new())
                 } else {
                     match serde_json::from_str(&arguments) {
                         Ok(v) => v,
-                        Err(e) => return Err(WitError {
+                        Err(e) => return PromptResult::Error(WitError {
                             code: -32602,
                             message: format!("Invalid JSON arguments: {}", e),
                             data: None,
@@ -371,7 +373,7 @@ macro_rules! create_handler {
                 $($(
                     if name == <$prompt as $crate::PromptHandler>::NAME {
                         return match <$prompt as $crate::PromptHandler>::resolve(args) {
-                            Ok(messages) => Ok(messages.into_iter()
+                            Ok(messages) => PromptResult::Messages(messages.into_iter()
                                 .map(|msg| WitPromptMessage {
                                     role: match msg.role {
                                         $crate::PromptRole::User => "user".to_string(),
@@ -380,7 +382,7 @@ macro_rules! create_handler {
                                     content: msg.content,
                                 })
                                 .collect()),
-                            Err(e) => Err(WitError {
+                            Err(e) => PromptResult::Error(WitError {
                                 code: -32603,
                                 message: e,
                                 data: None,
@@ -389,7 +391,7 @@ macro_rules! create_handler {
                     }
                 )*)?
 
-                Err(WitError {
+                PromptResult::Error(WitError {
                     code: -32601,
                     message: format!("Prompt not found: {}", name),
                     data: None,

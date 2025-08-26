@@ -22,14 +22,14 @@ clean: ## Clean build artifacts
 
 compose: build ## Compose handler with gateway using wac plug
 	@echo "Composing handler with gateway..."
-	wac plug wasmcp-spin.wasm --plug handler/target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm -o composed.wasm
+	wac plug wasmcp-spin.wasm --plug handler/target/wasm32-wasip1/release/rust_echo.wasm -o composed.wasm
 	@echo "✅ Created composed.wasm"
 
 run: build ## Run with Spin (handles dependencies automatically)
 	spin up
 
 run-wasmtime: compose ## Run with wasmtime (requires manual composition)
-	wasmtime serve -Scli -Skeyvalue -Shttp composed.wasm
+	wasmtime serve -Scli -Skeyvalue composed.wasm
 
 # Development targets
 dev: build compose ## Build and compose for development

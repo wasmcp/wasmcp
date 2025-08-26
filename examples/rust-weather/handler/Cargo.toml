@@ -1,15 +1,18 @@
 [package]
-name = "{{project-name | snake_case}}"
+name = "rust_weather"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-wasmcp = "0.1.10"
+wasmcp = "0.1.9"
 wit-bindgen-rt = "0.43.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-# Optional: Add spin-sdk if you need HTTP
-# spin-sdk = "4.0"
+wasi = "0.13"
+spin-executor = "4.0"
+url = "2.5"
+http = "1.0"
+spin-sdk = "4.0.0"
 
 [dev-dependencies]
 serde_json = { version = "1.0", features = ["preserve_order"] }
@@ -20,7 +23,7 @@ futures = "0.3"
 crate-type = ["cdylib"]
 
 [package.metadata.component]
-package = "{{project-name | kebab_case}}:handler"
+package = "rust-weather:handler"
 
 [package.metadata.component.target]
 path = "wit"
