@@ -1,54 +1,50 @@
-# wasmcp Spin Component
+# wasmcp-spin
 
-This directory contains the source code for the wasmcp Spin gateway component that bridges HTTP requests to MCP handlers using Spin's HTTP trigger system.
+HTTP gateway component for MCP servers. Handles protocol translation between HTTP/JSON-RPC and WebAssembly components.
 
-## Using the Published Gateway
+## What It Does
 
-Most users should use the pre-published gateway component:
+Bridges HTTP requests to your MCP handler:
+- Receives JSON-RPC requests at `/mcp` endpoint  
+- Translates to component calls
+- Returns JSON-RPC responses
+- Handles errors gracefully
+
+## Usage
+
+Most users get this automatically from templates. It's included in `spin.toml`:
 
 ```toml
 [component.wasmcp-spin]
-source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.1" }
+source = "wasmcp-spin.wasm"
+
+[component.wasmcp-spin.dependencies]
+"wasmcp:mcp/handler@0.1.0" = { path = "./handler.wasm" }
 ```
 
-## Building a Custom Gateway
+## Protocol Support
 
-If you need to customize the gateway behavior:
+- **MCP methods**: `tools/list`, `tools/call`, `resources/list`, `resources/read`, `prompts/list`, `prompts/get`
+- **JSON-RPC 2.0**: Full spec compliance with batching
+- **Error codes**: Standard MCP error codes (-32601, -32603, etc.)
 
-1. Make your modifications to the source code
-2. Build the component:
-   ```bash
-   cargo component build --release
-   ```
-3. Publish to your registry:
-   ```bash
-   wkg oci push ghcr.io/fastertools/wasmcp-spin:0.0.1 \
-     target/wasm32-wasip1/release/wasmcp_spin.wasm
-   ```
-4. Use your custom gateway in `spin.toml`:
-   ```toml
-   [component.wasmcp-spin]
-   source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.1" }
-   ```
-
-## Gateway Features
-
-The gateway handles:
-- JSON-RPC 2.0 protocol
-- MCP protocol compliance (version 2025-03-26)
-- HTTP request/response handling via Spin HTTP triggers
-- Integration with Spin's request/response model
-- Error handling and logging
-- Tool calls, resource operations, and prompts
-
-## Development
-
-To work on the gateway:
+## Building Custom Gateway
 
 ```bash
-# Build
-cargo component build
-
-# Test with a local handler
-# Create a test spin.toml that uses the local gateway build
+cargo component build --release --target wasm32-wasip2
 ```
+
+## Architecture
+
+```
+HTTP Request → Spin Trigger → wasmcp-spin → Your Handler
+     ↓             ↓              ↓              ↓
+ JSON-RPC    IncomingRequest  Component    Tool/Resource
+              /Response         Call        Implementation
+```
+
+The gateway is stateless - all state lives in your handler or Spin's KV stores.
+
+## License
+
+Apache-2.0

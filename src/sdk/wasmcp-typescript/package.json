@@ -1,6 +1,6 @@
 {
   "name": "wasmcp",
-  "version": "0.1.11",
+  "version": "0.1.13",
   "type": "module",
   "description": "TypeScript SDK for building MCP (Model Context Protocol) WebAssembly components",
   "main": "./dist/index.js",

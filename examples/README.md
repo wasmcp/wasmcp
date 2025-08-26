@@ -1,53 +1,55 @@
 # WasmCP Examples
 
-This directory contains working examples of MCP (Model Context Protocol) handlers as WebAssembly components.
+Complete, working examples of MCP (Model Context Protocol) servers running as WebAssembly components.
 
-## typescript-weather
+## Examples
 
-A TypeScript MCP handler that demonstrates:
+### 🦀 [`rust-weather/`](./rust-weather)
+A Rust MCP handler featuring:
 - Echo tool for basic testing
-- Weather tool with async HTTP requests using fetch
-- Works with both Spin and wasmtime runtimes
+- Weather tool with async HTTP requests
+- Clean project structure with NO WIT files needed
+- Uses `wasmcp@0.2.7` with proc macros
 
-### Quick Start
+### 📘 [`typescript-weather/`](./typescript-weather)
+A TypeScript MCP handler featuring:
+- Echo tool for basic testing  
+- Weather tool with async fetch API
+- Clean project structure with WIT deps from npm
+- Uses `wasmcp@0.1.11` npm package
+
+## Quick Start
+
+Both examples follow the same workflow:
 
 ```bash
-cd typescript-weather
+# Enter an example directory
+cd rust-weather  # or typescript-weather
 
 # Build and compose the component
 make compose
 
-# Run with Spin
+# Run with Spin (recommended)
 spin up
 
 # OR run with wasmtime
-wasmtime serve -Scli composed.wasm
+wasmtime serve -S cli -S http composed.wasm
 ```
 
-### Testing the Tools
+Then test the MCP server:
 
-Test the echo tool:
 ```bash
+# List available tools
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}'
+
+# Get weather for a location
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": {
-      "name": "echo",
-      "arguments": {"message": "Hello!"}
-    }
-  }'
-```
-
-Test the weather tool:
-```bash
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
+    "id": 2,
     "method": "tools/call",
     "params": {
       "name": "weather",
@@ -56,11 +58,29 @@ curl -X POST http://localhost:3000/mcp \
   }'
 ```
 
-## How It Works
+## Key Features
 
-1. **Handler**: The TypeScript handler implements MCP tools using the `wasmcp` SDK
-2. **Gateway**: The pre-built gateway component (`wasmcp-spin.wasm`) handles HTTP and runtime integration
-3. **Composition**: `wac plug` combines the handler and gateway into a single component (`composed.wasm`)
-4. **Runtime**: The composed component runs on any WASI-compliant runtime (Spin, wasmtime, etc.)
+Both examples demonstrate:
 
-The workflow is completely automated - no manual intervention needed between template and running server!
+1. **Zero Configuration**: Create from template and immediately have a working MCP server
+2. **Real Async Operations**: Weather tool makes actual HTTP requests to external APIs
+3. **Clean Project Structure**: No WIT files to manage (Rust uses proc macros, TypeScript bundles them in npm)
+4. **Production Ready**: Optimized builds, proper error handling, comprehensive testing
+5. **Runtime Flexibility**: Works with Spin, wasmtime, or any WASI-compliant runtime
+
+## Creating Your Own
+
+Start with the official templates:
+
+```bash
+# Install templates
+spin templates install --git https://github.com/fastertools/wasmcp --upgrade
+
+# Create new Rust project
+spin new -t wasmcp-rust my-rust-mcp
+
+# Create new TypeScript project  
+spin new -t wasmcp-typescript my-ts-mcp
+```
+
+See each example's README for details on implementing your own tools.

@@ -1,66 +1,96 @@
-# wasmcp - Rust SDK for MCP WebAssembly Components
+# wasmcp
 
-A high-performance, zero-cost abstraction SDK for building MCP (Model Context Protocol) handlers in Rust.
+Rust SDK for MCP WebAssembly components. Zero WIT files, just a proc macro.
 
-## Design Philosophy
-
-This SDK prioritizes:
-- **Zero runtime overhead** - All dispatch is compile-time
-- **Minimal binary size** - No heap allocations for metadata
-- **Type safety** - Leverage Rust's type system
-- **Ergonomic API** - Idiomatic Rust patterns
+[![Crates.io](https://img.shields.io/crates/v/wasmcp.svg)](https://crates.io/crates/wasmcp)
+[![docs.rs](https://docs.rs/wasmcp/badge.svg)](https://docs.rs/wasmcp)
 
 ## Installation
 
-Add to your `Cargo.toml`:
-
 ```toml
 [dependencies]
-wasmcp = "0.1.0"
+wasmcp = "0.2"
 ```
 
 ## Usage
 
-Define your MCP features as zero-sized types implementing the appropriate traits:
-
 ```rust
-use wasmcp::{ToolHandler, ResourceHandler, PromptHandler, json};
+use wasmcp::{mcp_handler, ToolHandler, AsyncToolHandler};
 
-// Define a tool
-struct HelloTool;
+// Sync tool
+struct EchoTool;
 
-impl ToolHandler for HelloTool {
-    const NAME: &'static str = "hello";
-    const DESCRIPTION: &'static str = "Says hello to someone";
+impl ToolHandler for EchoTool {
+    const NAME: &'static str = "echo";
+    const DESCRIPTION: &'static str = "Echo a message";
     
     fn input_schema() -> serde_json::Value {
-        json!({
+        serde_json::json!({
             "type": "object",
             "properties": {
-                "name": { 
-                    "type": "string",
-                    "description": "Name to greet"
-                }
+                "message": { "type": "string" }
             },
-            "required": ["name"]
+            "required": ["message"]
         })
     }
     
     fn execute(args: serde_json::Value) -> Result<String, String> {
-        let name = args["name"]
-            .as_str()
-            .ok_or("Missing name field")?;
-        Ok(format!("Hello, {}!", name))
+        Ok(format!("Echo: {}", args["message"]))
     }
 }
 
-// Define a resource
+// Async tool
+struct WeatherTool;
+
+impl AsyncToolHandler for WeatherTool {
+    const NAME: &'static str = "weather";
+    const DESCRIPTION: &'static str = "Get weather for a location";
+    
+    fn input_schema() -> serde_json::Value {
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "location": { "type": "string" }
+            },
+            "required": ["location"]
+        })
+    }
+    
+    async fn execute_async(args: serde_json::Value) -> Result<String, String> {
+        use spin_sdk::http::{Request, send};
+        
+        let location = args["location"].as_str().ok_or("Missing location")?;
+        let request = Request::get(&format!("https://api.weather.com?q={}", location));
+        let response = send(request).await
+            .map_err(|e| format!("Request failed: {:?}", e))?;
+        
+        Ok(format!("Weather data for {}", location))
+    }
+}
+
+// Register your tools - no WIT files needed!
+#[mcp_handler(
+    tools(EchoTool, WeatherTool),
+)]
+mod handler {}
+```
+
+## Features
+
+- **No WIT files**: Proc macro embeds all WebAssembly interface definitions
+- **Full async support**: Both sync and async tools work seamlessly
+- **Zero overhead**: Compile-time dispatch, no vtables
+- **Type safe**: Leverage Rust's type system
+- **Spin SDK integration**: Use `spin_sdk` for HTTP, KV, and more
+
+## Resources
+
+```rust
 struct ConfigResource;
 
 impl ResourceHandler for ConfigResource {
     const URI: &'static str = "config://app";
     const NAME: &'static str = "Application Config";
-    const DESCRIPTION: Option<&'static str> = Some("Current configuration");
     const MIME_TYPE: Option<&'static str> = Some("application/json");
     
     fn read() -> Result<String, String> {
@@ -68,93 +98,58 @@ impl ResourceHandler for ConfigResource {
     }
 }
 
-// Generate the handler
-wasmcp::create_handler!(
-    tools: [HelloTool],
-    resources: [ConfigResource],
-);
+// Add to handler
+#[mcp_handler(
+    tools(EchoTool),
+    resources(ConfigResource),
+)]
+mod handler {}
 ```
 
-## Performance
-
-The SDK uses several techniques for optimal WASM performance:
-
-1. **Zero-sized types** - Tools, resources, and prompts are just type markers
-2. **Const evaluation** - Metadata is stored as `&'static str`
-3. **Compile-time dispatch** - No vtables or dynamic dispatch
-4. **Monomorphization** - Each handler is specialized at compile time
-
-This results in:
-- Smaller WASM binaries
-- Faster execution
-- No runtime registration overhead
-- Dead code elimination of unused features
-
-## Prompts with Arguments
-
-For prompts that need arguments, implement the `PromptArguments` trait:
+## Prompts
 
 ```rust
-use wasmcp::{PromptHandler, PromptArguments, PromptArgument, PromptMessage, PromptRole};
-
 struct GreetingPrompt;
-
-struct GreetingArgs;
-impl PromptArguments for GreetingArgs {
-    fn schema() -> Vec<PromptArgument> {
-        vec![
-            PromptArgument {
-                name: "name",
-                description: Some("Name to greet"),
-                required: true,
-            },
-            PromptArgument {
-                name: "formal",
-                description: Some("Use formal greeting"),
-                required: false,
-            }
-        ]
-    }
-}
 
 impl PromptHandler for GreetingPrompt {
     const NAME: &'static str = "greeting";
-    const DESCRIPTION: Option<&'static str> = Some("Generate a personalized greeting");
+    const DESCRIPTION: Option<&'static str> = Some("Generate greeting");
     
     type Arguments = GreetingArgs;
     
     fn resolve(args: serde_json::Value) -> Result<Vec<PromptMessage>, String> {
-        let name = args["name"].as_str().unwrap_or("Friend");
-        let formal = args["formal"].as_bool().unwrap_or(false);
-        
-        let greeting = if formal {
-            format!("Good day, {}. How may I assist you?", name)
-        } else {
-            format!("Hey {}! What's up?", name)
-        };
-        
         Ok(vec![
             PromptMessage {
                 role: PromptRole::Assistant,
-                content: greeting,
+                content: format!("Hello, {}!", args["name"]),
             }
         ])
     }
 }
+
+// Add to handler
+#[mcp_handler(
+    tools(EchoTool),
+    prompts(GreetingPrompt),
+)]
+mod handler {}
 ```
 
-## Building Components
+## Building
 
-1. Create a new component project:
-   ```bash
-   cargo component new my-handler --lib
-   ```
+```bash
+cargo component build --release --target wasm32-wasip2
+```
 
-2. Add the WIT files to your project
+The resulting WASM component works with any MCP gateway (wasmcp-spin, custom, etc).
 
-3. Build:
-   ```bash
-   cargo component build --release
-   ```
+## Performance
 
-The resulting WASM component will be optimized for size and performance.
+- **Zero-sized types**: Tools are just type markers
+- **Const metadata**: All strings are `&'static str`
+- **Compile-time dispatch**: No runtime overhead
+- **Automatic async runtime**: `spin_executor` handles async/await
+
+## License
+
+Apache-2.0

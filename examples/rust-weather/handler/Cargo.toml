@@ -1,5 +1,5 @@
 [package]
-name = "{{project-name | snake_case}}"
+name = "rust_weather"
 version = "0.1.0"
 edition = "2021"
 

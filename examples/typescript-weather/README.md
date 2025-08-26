@@ -1,65 +1,89 @@
-# TypeScript Weather Example
+# typescript-weather
 
-A TypeScript MCP handler that demonstrates:
-- Echo tool for basic testing
-- Weather tool with async HTTP requests using fetch
-- Works with both Spin and wasmtime runtimes
-- Clean project structure with WIT dependencies from npm
+An MCP server written in TypeScript
 
-## Quick Start
+## Structure
+
+This is an FTL tool that implements the Model Context Protocol (MCP) using WebAssembly components.
+
+- `handler/` - The TypeScript implementation of your MCP handler
+- `ftl.toml` - FTL configuration file
+- `spin.toml` - Spin application manifest
+
+## Development
+
+### Prerequisites
+
+- Node.js >= 20.0.0
+- FTL CLI
+
+### Building
 
 ```bash
-# Build and compose the component
-make compose
-
-# Run with Spin
-spin up
-
-# OR run with wasmtime
-wasmtime serve -Scli composed.wasm
+ftl build
+# or
+make build
 ```
 
-## Testing the Tools
+### Testing
 
-Test the echo tool:
+```bash
+ftl test
+# or
+make test
+```
+
+### Running Locally
+
+```bash
+ftl serve
+# or
+make serve
+```
+
+The tool will be available at `http://localhost:3000/mcp`
+
+### Example Usage
+
 ```bash
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "id": 1,
     "method": "tools/call",
     "params": {
-      "name": "echo",
-      "arguments": {"message": "Hello!"}
-    }
+      "name": "typescript_weather",
+      "arguments": {
+        "input": "Hello, world!"
+      }
+    },
+    "id": 1
   }'
 ```
 
-Test the weather tool:
+## Deployment
+
 ```bash
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": {
-      "name": "weather",
-      "arguments": {"location": "San Francisco"}
-    }
-  }'
+ftl deploy
+# or
+make deploy
 ```
 
-## How It Works
+## Implementing Your Tool
 
-1. **Handler**: The TypeScript handler implements MCP tools using the `wasmcp` SDK
-2. **Gateway**: The pre-built gateway component (`wasmcp-spin.wasm`) handles HTTP and runtime integration
-3. **Composition**: `wac plug` combines the handler and gateway into a single component (`composed.wasm`)
-4. **Runtime**: The composed component runs on any WASI-compliant runtime (Spin, wasmtime, etc.)
+Edit `handler/src/index.ts` to implement your tool's functionality:
 
-The workflow is completely automated - no manual intervention needed between template and running server!
+1. Modify `listTools()` to define your tools
+2. Implement the tool logic in `callTool()`
+3. Optionally implement resources and prompts
 
-## Clean Project Structure
+## Type Safety
 
-This example uses `wasmcp@0.1.11` which bundles all WIT dependencies. You don't need to commit any WIT files - they're all pulled from the npm package during build.
+This template uses `jco` to generate TypeScript types from the WIT interface definition. The types are generated in `handler/src/generated/` when you run `npm run build`.
+
+## Configuration
+
+Edit `ftl.toml` to configure:
+- Allowed external hosts
+- Build optimization flags
+- Other runtime settings

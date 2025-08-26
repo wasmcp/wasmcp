@@ -11,7 +11,13 @@ route = "/mcp"
 component = "wasmcp-spin"
 
 [component.wasmcp-spin]
-# Using the pre-composed component
-source = "composed.wasm"
+# Using the local gateway component
+source = "wasmcp-spin.wasm"
+build.command = "make build"
+build.watch = ["handler/src/**/*.ts", "handler/package.json", "handler/tsconfig.json"]
 # Allow outbound HTTP requests for weather API
 allowed_outbound_hosts = ["https://geocoding-api.open-meteo.com", "https://api.open-meteo.com"]
+
+[component.wasmcp-spin.dependencies]
+# Link to the local handler component
+"wasmcp:mcp/handler" = { path = "./handler/dist/handler.wasm" }

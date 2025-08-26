@@ -148,6 +148,20 @@ impl<T: AsyncToolHandler> ToolHandler for T {
     }
 }
 
+/// Internal trait to check if a type implements AsyncToolHandler.
+/// This is used by the macro to determine whether to use async execution.
+#[doc(hidden)]
+pub trait MaybeAsyncToolHandler {
+    const IS_ASYNC: bool;
+    const NAME: &'static str;
+}
+
+// Implementation for sync tools
+impl<T: ToolHandler> MaybeAsyncToolHandler for T {
+    const IS_ASYNC: bool = false;
+    const NAME: &'static str = T::NAME;
+}
+
 /// Automatic bridging from async to sync for resources
 /// This allows async implementations to work with the sync WIT interface
 /// The async runtime is managed by the WASM component host (e.g., Spin)
@@ -214,190 +228,42 @@ pub enum PromptRole {
     Assistant,
 }
 
-/// Macro for generating MCP handler implementations.
-///
-/// This macro generates the necessary WebAssembly bindings and handler logic
-/// with zero runtime overhead.
+// Re-export dependencies needed by the macro
+#[doc(hidden)]
+pub use spin_executor;
+#[doc(hidden)]
+pub use wit_bindgen;
+
+/// Re-export the proc macro for creating MCP handlers.
+/// 
+/// This macro generates all necessary WebAssembly bindings and handler logic
+/// automatically, without needing any local WIT files in your project.
 ///
 /// # Example
 ///
 /// ```rust,ignore
-/// wasmcp::create_handler!(
-///     tools: [EchoTool, CalculatorTool],
-///     resources: [ConfigResource],
-///     prompts: [GreetingPrompt],
-/// );
+/// use wasmcp::mcp_handler;
+///
+/// #[mcp_handler(
+///     tools(EchoTool, CalculatorTool),
+///     resources(ConfigResource),
+///     prompts(GreetingPrompt),
+/// )]
+/// mod handler {}
 /// ```
+pub use wasmcp_macro::mcp_handler;
+
+/// Legacy macro for backwards compatibility (deprecated).
+/// Please use the `#[mcp_handler]` attribute macro instead.
 #[macro_export]
+#[deprecated(since = "0.2.0", note = "Use the #[mcp_handler] attribute macro instead")]
 macro_rules! create_handler {
     (
         $(tools: [$($tool:ty),* $(,)?],)?
         $(resources: [$($resource:ty),* $(,)?],)?
         $(prompts: [$($prompt:ty),* $(,)?])?
     ) => {
-        #[allow(warnings)]
-        mod bindings;
-
-        use bindings::exports::wasmcp::mcp::handler::Guest;
-        use bindings::exports::wasmcp::mcp::handler::{
-            Tool as WitTool,
-            ResourceInfo as WitResourceInfo,
-            ResourceContents as WitResourceContents,
-            Prompt as WitPrompt,
-            PromptMessage as WitPromptMessage,
-            PromptArgument as WitPromptArgument,
-            Error as WitError,
-            ToolResult,
-        };
-
-        struct Component;
-
-        impl Guest for Component {
-            fn list_tools() -> Vec<WitTool> {
-                vec![
-                    $($(
-                        WitTool {
-                            name: <$tool as $crate::ToolHandler>::NAME.to_string(),
-                            description: <$tool as $crate::ToolHandler>::DESCRIPTION.to_string(),
-                            input_schema: <$tool as $crate::ToolHandler>::input_schema().to_string(),
-                        },
-                    )*)?
-                ]
-            }
-
-            fn call_tool(name: String, arguments: String) -> ToolResult {
-                let args = match serde_json::from_str(&arguments) {
-                    Ok(v) => v,
-                    Err(e) => return ToolResult::Error(WitError {
-                        code: -32602,
-                        message: format!("Invalid JSON arguments: {}", e),
-                        data: None,
-                    }),
-                };
-
-                // Compile-time dispatch - no vtables, no dynamic dispatch
-                $($(
-                    if name == <$tool as $crate::ToolHandler>::NAME {
-                        return match <$tool as $crate::ToolHandler>::execute(args) {
-                            Ok(result) => ToolResult::Text(result),
-                            Err(e) => ToolResult::Error(WitError {
-                                code: -32603,
-                                message: e,
-                                data: None,
-                            }),
-                        };
-                    }
-                )*)?
-
-                ToolResult::Error(WitError {
-                    code: -32601,
-                    message: format!("Unknown tool: {}", name),
-                    data: None,
-                })
-            }
-
-            fn list_resources() -> Vec<WitResourceInfo> {
-                vec![
-                    $($(
-                        WitResourceInfo {
-                            uri: <$resource as $crate::ResourceHandler>::URI.to_string(),
-                            name: <$resource as $crate::ResourceHandler>::NAME.to_string(),
-                            description: <$resource as $crate::ResourceHandler>::DESCRIPTION.map(|s| s.to_string()),
-                            mime_type: <$resource as $crate::ResourceHandler>::MIME_TYPE.map(|s| s.to_string()),
-                        },
-                    )*)?
-                ]
-            }
-
-            fn read_resource(uri: String) -> Result<WitResourceContents, WitError> {
-                $($(
-                    if uri == <$resource as $crate::ResourceHandler>::URI {
-                        return match <$resource as $crate::ResourceHandler>::read() {
-                            Ok(contents) => Ok(WitResourceContents {
-                                uri: <$resource as $crate::ResourceHandler>::URI.to_string(),
-                                mime_type: <$resource as $crate::ResourceHandler>::MIME_TYPE.map(|s| s.to_string()),
-                                text: Some(contents),
-                                blob: None,
-                            }),
-                            Err(e) => Err(WitError {
-                                code: -32603,
-                                message: e,
-                                data: None,
-                            }),
-                        };
-                    }
-                )*)?
-
-                Err(WitError {
-                    code: -32601,
-                    message: format!("Resource not found: {}", uri),
-                    data: None,
-                })
-            }
-
-            fn list_prompts() -> Vec<WitPrompt> {
-                vec![
-                    $($(
-                        WitPrompt {
-                            name: <$prompt as $crate::PromptHandler>::NAME.to_string(),
-                            description: <$prompt as $crate::PromptHandler>::DESCRIPTION.map(|s| s.to_string()),
-                            arguments: <<$prompt as $crate::PromptHandler>::Arguments as $crate::PromptArguments>::schema()
-                                .into_iter()
-                                .map(|arg| WitPromptArgument {
-                                    name: arg.name.to_string(),
-                                    description: arg.description.map(|s| s.to_string()),
-                                    required: arg.required,
-                                })
-                                .collect(),
-                        },
-                    )*)?
-                ]
-            }
-
-            fn get_prompt(name: String, arguments: String) -> Result<Vec<WitPromptMessage>, WitError> {
-                let args = if arguments.is_empty() {
-                    serde_json::Value::Object(serde_json::Map::new())
-                } else {
-                    match serde_json::from_str(&arguments) {
-                        Ok(v) => v,
-                        Err(e) => return Err(WitError {
-                            code: -32602,
-                            message: format!("Invalid JSON arguments: {}", e),
-                            data: None,
-                        }),
-                    }
-                };
-
-                $($(
-                    if name == <$prompt as $crate::PromptHandler>::NAME {
-                        return match <$prompt as $crate::PromptHandler>::resolve(args) {
-                            Ok(messages) => Ok(messages.into_iter()
-                                .map(|msg| WitPromptMessage {
-                                    role: match msg.role {
-                                        $crate::PromptRole::User => "user".to_string(),
-                                        $crate::PromptRole::Assistant => "assistant".to_string(),
-                                    },
-                                    content: msg.content,
-                                })
-                                .collect()),
-                            Err(e) => Err(WitError {
-                                code: -32603,
-                                message: e,
-                                data: None,
-                            }),
-                        };
-                    }
-                )*)?
-
-                Err(WitError {
-                    code: -32601,
-                    message: format!("Prompt not found: {}", name),
-                    data: None,
-                })
-            }
-        }
-
-        bindings::export!(Component with_types_in bindings);
+        compile_error!("create_handler! macro is deprecated. Use #[mcp_handler(...)] attribute macro instead.");
     };
 }
 
