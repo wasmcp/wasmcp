@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 
 	mcp "github.com/fastertools/wasmcp/src/sdk/wasmcp-go"
@@ -73,8 +75,20 @@ func weatherHandler(args json.RawMessage) (string, error) {
 		} `json:"results"`
 	}
 	
-	if err := mcp.DefaultHTTPClient.GetJSON(geocodingUrl, &geocodingData); err != nil {
+	// Use standard net/http - WASI HTTP support is enabled automatically by the SDK
+	resp, err := http.Get(geocodingUrl)
+	if err != nil {
 		return "", fmt.Errorf("failed to geocode location: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+	
+	if err := json.Unmarshal(body, &geocodingData); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	if len(geocodingData.Results) == 0 {
@@ -97,8 +111,20 @@ func weatherHandler(args json.RawMessage) (string, error) {
 		} `json:"current"`
 	}
 	
-	if err := mcp.DefaultHTTPClient.GetJSON(weatherUrl, &weatherData); err != nil {
+	// Use standard net/http for weather API too
+	weatherResp, err := http.Get(weatherUrl)
+	if err != nil {
 		return "", fmt.Errorf("failed to fetch weather: %w", err)
+	}
+	defer weatherResp.Body.Close()
+	
+	weatherBody, err := io.ReadAll(weatherResp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read weather response: %w", err)
+	}
+	
+	if err := json.Unmarshal(weatherBody, &weatherData); err != nil {
+		return "", fmt.Errorf("failed to parse weather response: %w", err)
 	}
 
 	conditions := getWeatherCondition(weatherData.Current.WeatherCode)

@@ -8,6 +8,9 @@ import (
 
 	"github.com/fastertools/wasmcp/src/sdk/wasmcp-go/wasmcp/mcp/handler"
 	"go.bytecodealliance.org/cm"
+	
+	// Enable WASI HTTP support for standard net/http package
+	_ "github.com/ydnar/wasi-http-go/wasihttp"
 )
 
 // ToolFunc is the function signature for tool implementations.
