@@ -132,5 +132,13 @@ wg.Wait()
 ## Notes
 
 - Requires TinyGo for compilation to WebAssembly
-- Uses wit-bindgen-go for WIT bindings (generated)
+- Uses wit-bindgen-go for WIT bindings (pre-generated in `wasmcp/` directory)
 - Compatible with any WASI runtime (Spin, Wasmtime, etc.)
+
+## Development
+
+The `wasmcp/` directory contains pre-generated Go bindings from the WIT files. If you need to regenerate them:
+
+```bash
+make clean generate
+```

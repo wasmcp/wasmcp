@@ -1,23 +1,18 @@
-.PHONY: generate build test clean
+.PHONY: generate test clean verify
 
-# Generate C bindings from WIT
+# Generate Go bindings from WIT using wit-bindgen-go
 generate:
-	wit-bindgen c ../wasmcp-macro/wit/
-	@echo "✅ Generated C bindings"
+	wit-bindgen-go generate --out wasmcp ./wit/world.wit
+	@echo "✅ Generated Go bindings in wasmcp/"
 
-# Build the SDK (verification only, this is a library)
-build:
-	tinygo build -target=wasip1 -gc=leaking -buildmode=c-shared -no-debug -o test.wasm test/test.go || true
-	@echo "✅ SDK builds successfully"
-
-# Run tests
+# Run tests (when we add them)
 test:
-	tinygo test -target=wasip1 -gc=leaking -buildmode=c-shared .
+	@echo "Tests not yet implemented"
 
 # Clean generated files
 clean:
-	rm -f mcp_handler.c mcp_handler.h mcp_handler_component_type.o test.wasm
-	@echo "✅ Cleaned generated files"
+	rm -rf wasmcp/
+	@echo "✅ Cleaned generated bindings"
 
 # Verify the SDK can be imported
 verify:
