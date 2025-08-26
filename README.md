@@ -15,19 +15,23 @@ Run [Model Context Protocol](https://modelcontextprotocol.io) servers on [Spin](
 spin templates install --git https://github.com/fastertools/wasmcp --upgrade
 
 # Create MCP server
-spin new -t wasmcp-rust my-weather-server
+spin new -t wasmcp-rust my-weather-server --accept-defaults
 cd my-weather-server
 
-# Run it
-spin up
+# Build handler and compose with gateway
+make build
+make compose
+
+# Run with wasmtime (or spin up for Spin)
+wasmtime serve -S cli -S http composed.wasm
 
 # Test it
-curl -X POST http://localhost:3000/mcp \
+curl -X POST http://localhost:8080 \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}'
 ```
 
-That's it. Zero configuration, no WIT files, just works.
+That's it. Zero configuration, no WIT files, runs on any WASI runtime.
 
 ## Features
 
