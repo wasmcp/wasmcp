@@ -1,19 +1,8 @@
 """HTTP client for WASI environments using direct WASI bindings."""
 
 import json
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Tuple
 from enum import Enum
-
-# Note: In a real WASI environment, these would be imported from the WASI bindings
-# For now, we'll create stub implementations that match the expected interface
-try:
-    # Try to import WASI bindings if available
-    import urllib.request
-    import urllib.parse
-    import urllib.error
-    HTTP_AVAILABLE = True
-except ImportError:
-    HTTP_AVAILABLE = False
 
 
 class HttpMethod(Enum):
@@ -173,37 +162,143 @@ def send(request: Request) -> Response:
         Response object
         
     Raises:
-        RuntimeError: If HTTP is not available in WASI environment
+        RuntimeError: If HTTP request fails
     """
-    if not HTTP_AVAILABLE:
-        raise RuntimeError("HTTP not available in this environment")
-    
-    # In a real WASI environment, this would use the WASI HTTP bindings
-    # For testing/development, we'll use a stub that simulates the behavior
-    wasi_request = request.to_wasi_request()
-    
-    # Create urllib request
-    urllib_request = urllib.request.Request(
-        wasi_request["uri"],
-        data=wasi_request["body"],
-        method=wasi_request["method"]
-    )
-    
-    # Add headers
-    for name, value in wasi_request["headers"]:
-        urllib_request.add_header(name, value)
-    
     try:
-        response = urllib.request.urlopen(urllib_request)
-        status = response.getcode()
-        headers = dict(response.headers)
-        body = response.read()
-        return Response(status, headers, body)
-    except urllib.error.HTTPError as e:
-        # Return error response
-        headers = dict(e.headers) if e.headers else {}
-        body = e.read() if hasattr(e, 'read') else b""
-        return Response(e.code, headers, body)
+        # Import WASI HTTP bindings
+        from .bindings.wasi_http import request as wasi_request
+        
+        # Convert to WASI format
+        wasi_req = request.to_wasi_request()
+        
+        # Make WASI HTTP request
+        wasi_response = wasi_request(
+            method=wasi_req["method"],
+            uri=wasi_req["uri"],
+            headers=wasi_req["headers"],
+            body=wasi_req["body"]
+        )
+        
+        return Response(
+            status=wasi_response["status"],
+            headers=dict(wasi_response["headers"]),
+            body=wasi_response["body"]
+        )
+        
+    except ImportError:
+        # WASI bindings not available - try componentize-py bindings
+        try:
+            from .bindings.http import outgoing_request, outgoing_body
+            from .bindings.http import method as http_method
+            from .bindings.http import scheme as http_scheme
+            from .bindings.http import fields as http_fields
+            
+            # Create outgoing request
+            method = getattr(http_method, request.method.value.lower())
+            
+            # Parse URL
+            if request.url.startswith('https://'):
+                scheme = http_scheme.https
+                url_without_scheme = request.url[8:]
+            elif request.url.startswith('http://'):
+                scheme = http_scheme.http
+                url_without_scheme = request.url[7:]
+            else:
+                raise ValueError(f"Unsupported URL scheme: {request.url}")
+            
+            if '/' in url_without_scheme:
+                authority, path_and_query = url_without_scheme.split('/', 1)
+                path_and_query = '/' + path_and_query
+            else:
+                authority = url_without_scheme
+                path_and_query = '/'
+            
+            # Create headers
+            headers = http_fields.Fields()
+            for name, value in request.headers.items():
+                headers.append(name.lower(), value.encode('utf-8'))
+            
+            # Create request
+            req = outgoing_request.OutgoingRequest(
+                method=method,
+                path_with_query=path_and_query,
+                scheme=scheme,
+                authority=authority,
+                headers=headers
+            )
+            
+            # Add body if present
+            body = request._prepare_body()
+            if body:
+                outgoing_body_obj = req.body()
+                stream = outgoing_body_obj.write()
+                stream.write(body)
+                stream.flush()
+                outgoing_body.finish(outgoing_body_obj)
+            
+            # Send request and get response
+            future_response = req.send()
+            incoming_response = future_response.get()
+            
+            # Extract response data
+            status = incoming_response.status()
+            response_headers = {}
+            for name, values in incoming_response.headers().entries():
+                if values:
+                    response_headers[name] = values[0].decode('utf-8')
+            
+            # Read response body
+            response_body = b''
+            if hasattr(incoming_response, 'consume'):
+                body_stream = incoming_response.consume()
+                while True:
+                    chunk = body_stream.read(8192)
+                    if not chunk:
+                        break
+                    response_body += chunk
+            
+            return Response(status, response_headers, response_body)
+            
+        except ImportError:
+            # Fallback to direct WASI system calls
+            try:
+                import wasmtime
+                
+                # This would use direct WASI system calls in a real WASI environment
+                # For now, we'll raise an error since we need actual WASI HTTP support
+                raise RuntimeError(
+                    "WASI HTTP bindings not available. "
+                    "This implementation requires running in a WASI environment "
+                    "with HTTP capabilities enabled."
+                )
+                
+            except ImportError:
+                # Last resort - use urllib for development/testing ONLY
+                import urllib.request
+                import urllib.error
+                
+                # Create urllib request
+                urllib_request = urllib.request.Request(
+                    request.url,
+                    data=request._prepare_body(),
+                    method=request.method.value
+                )
+                
+                # Add headers
+                for name, value in request.headers.items():
+                    urllib_request.add_header(name, value)
+                
+                try:
+                    response = urllib.request.urlopen(urllib_request)
+                    status = response.getcode()
+                    headers = dict(response.headers)
+                    body = response.read()
+                    return Response(status, headers, body)
+                except urllib.error.HTTPError as e:
+                    # Return error response
+                    headers = dict(e.headers) if e.headers else {}
+                    body = e.read() if hasattr(e, 'read') else b""
+                    return Response(e.code, headers, body)
 
 
 def get(url: str, headers: Optional[Dict[str, str]] = None) -> Response:

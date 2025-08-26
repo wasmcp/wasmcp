@@ -37,7 +37,7 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-"*" = ["*.wit"]
+wasmcp = ["../../wit/*.wit"]
 
 [tool.black]
 line-length = 88

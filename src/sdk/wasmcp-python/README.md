@@ -12,44 +12,328 @@ Python SDK for creating WebAssembly MCP (Model Context Protocol) handlers using 
 
 ## Quick Start
 
-```python
-from wasmcp import WasmcpHandler
-
-# Create handler
-handler = WasmcpHandler("my-handler")
-
-# Register a tool
-@handler.tool
-def greet(name: str) -> str:
-    """Greet someone by name."""
-    return f"Hello, {name}!"
-
-# Register a resource
-@handler.resource(uri="config://settings")
-def get_settings() -> dict:
-    return {"version": "1.0.0"}
-
-# Register a prompt
-@handler.prompt
-def code_review() -> list:
-    return [
-        {"role": "system", "content": "You are a code reviewer."},
-        {"role": "user", "content": "Review this code: {{code}}"}
-    ]
-
-# Export for WASM compilation
-Handler = handler.build()
-```
-
-## Installation
+### 1. Install the SDK
 
 ```bash
-pip install wasmcp
+# Install from source (package not yet published to PyPI)
+cd /path/to/wasmcp/src/sdk/wasmcp-python
+pip install -e .
+```
+
+### 2. Create Your First Handler
+
+Create a new file `example_handler.py`:
+
+```python
+from wasmcp import WasmcpHandler
+from typing import Optional, List, Dict
+
+# Create handler with a descriptive name
+handler = WasmcpHandler("example-tools")
+
+# Register a tool with type hints
+@handler.tool
+def calculate(operation: str, a: float, b: float) -> float:
+    """Perform a mathematical calculation.
+    
+    Args:
+        operation: The operation to perform (add, subtract, multiply, divide)
+        a: First operand
+        b: Second operand
+        
+    Returns:
+        The result of the calculation
+    """
+    if operation == "add":
+        return a + b
+    elif operation == "subtract":
+        return a - b
+    elif operation == "multiply":
+        return a * b
+    elif operation == "divide":
+        if b == 0:
+            raise ValueError("Division by zero")
+        return a / b
+    else:
+        raise ValueError(f"Unknown operation: {operation}")
+
+# Register a resource to expose data
+@handler.resource(uri="config://calculator", mime_type="application/json")
+def get_calculator_config() -> dict:
+    """Get calculator configuration and supported operations."""
+    return {
+        "version": "1.0.0",
+        "supported_operations": ["add", "subtract", "multiply", "divide"],
+        "precision": 10
+    }
+
+# Register a prompt template
+@handler.prompt
+def math_tutor(topic: str = "arithmetic", difficulty: str = "beginner") -> list:
+    """Generate a math tutoring prompt.
+    
+    Args:
+        topic: Math topic to focus on
+        difficulty: Difficulty level (beginner, intermediate, advanced)
+    """
+    return [
+        {
+            "role": "system", 
+            "content": f"You are a helpful {topic} tutor teaching at the {difficulty} level."
+        },
+        {
+            "role": "user", 
+            "content": "I need help understanding this math problem."
+        }
+    ]
+
+# Build and export the handler (required for WASM compilation)
+handler.build()
+```
+
+### 3. Test Your Handler Locally
+
+Create a test file `test_handler.py`:
+
+```python
+import json
+from example_handler import handler
+from wasmcp.exports import WasmcpExports
+
+# Create exports wrapper
+exports = WasmcpExports(handler)
+
+# Test listing tools
+tools = exports.list_tools()
+print(f"Available tools: {[t['name'] for t in tools]}")
+
+# Test calling a tool
+result = exports.call_tool("calculate", json.dumps({
+    "operation": "multiply",
+    "a": 7,
+    "b": 6
+}))
+print(f"7 * 6 = {result['result']['text']}")
+
+# Test reading a resource
+config = exports.read_resource("config://calculator")
+config_data = json.loads(config['result']['contents'][0]['text'])
+print(f"Calculator version: {config_data['version']}")
+
+# Test getting a prompt
+prompt = exports.get_prompt("math_tutor", json.dumps({
+    "topic": "algebra",
+    "difficulty": "intermediate"
+}))
+messages = prompt['result']['messages']
+print(f"Generated prompt with {len(messages)} messages")
+```
+
+Run the test:
+
+```bash
+python test_handler.py
+```
+
+Expected output:
+```
+Available tools: ['calculate']
+7 * 6 = 42
+Calculator version: 1.0.0
+Generated prompt with 2 messages
+```
+
+### 4. Compile to WebAssembly
+
+The SDK includes WIT files and build tools - no manual WIT file creation needed!
+
+#### Option A: Using the build script (easiest)
+
+```bash
+# Install componentize-py
+pip install componentize-py
+
+# Use the included build script
+python -m wasmcp.build example_handler.py -o handler.wasm
+```
+
+#### Option B: Using componentize-py directly
+
+```bash
+# Install componentize-py
+pip install componentize-py
+
+# Compile using the bundled WIT definition
+componentize-py -w $(python -c "import wasmcp; print(wasmcp.get_wit_path())") -o handler.wasm example_handler.py
+```
+
+#### Option C: Using the standalone script
+
+```bash
+# The SDK includes a build script you can use directly
+python scripts/build-component.py example_handler.py -o handler.wasm
+```
+
+## Complete Example: Weather Tool
+
+Here's a more complete example showing all features:
+
+```python
+from wasmcp import WasmcpHandler
+from typing import Optional, Dict, List
+from datetime import datetime
+
+handler = WasmcpHandler("weather-assistant")
+
+# In-memory storage for demo purposes
+weather_data = {
+    "New York": {"temp": 72, "condition": "sunny"},
+    "London": {"temp": 59, "condition": "cloudy"},
+    "Tokyo": {"temp": 68, "condition": "partly cloudy"}
+}
+
+@handler.tool(name="get_weather")
+def get_weather(city: str, units: str = "fahrenheit") -> Dict[str, any]:
+    """Get current weather for a city.
+    
+    Args:
+        city: Name of the city
+        units: Temperature units (fahrenheit or celsius)
+        
+    Returns:
+        Weather information including temperature and conditions
+    """
+    if city not in weather_data:
+        raise ValueError(f"Weather data not available for {city}")
+    
+    data = weather_data[city].copy()
+    
+    # Convert temperature if needed
+    if units == "celsius":
+        data["temp"] = round((data["temp"] - 32) * 5/9, 1)
+        data["units"] = "celsius"
+    else:
+        data["units"] = "fahrenheit"
+    
+    data["city"] = city
+    data["timestamp"] = datetime.now().isoformat()
+    
+    return data
+
+@handler.tool
+def list_available_cities() -> List[str]:
+    """Get list of cities with available weather data."""
+    return list(weather_data.keys())
+
+@handler.resource(uri="weather://current/all", mime_type="application/json")
+def get_all_weather() -> dict:
+    """Get current weather for all available cities."""
+    return {
+        "cities": weather_data,
+        "last_updated": datetime.now().isoformat()
+    }
+
+@handler.prompt(name="weather_report")
+def weather_report_prompt(city: Optional[str] = None) -> list:
+    """Generate a weather report prompt.
+    
+    Args:
+        city: Optional city to focus the report on
+    """
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a friendly weather reporter. Provide clear, concise weather information."
+        }
+    ]
+    
+    if city:
+        messages.append({
+            "role": "user",
+            "content": f"What's the weather like in {city} today?"
+        })
+    else:
+        messages.append({
+            "role": "user", 
+            "content": "Give me a weather summary for all major cities."
+        })
+    
+    return messages
+
+# Build the handler
+handler.build()
+```
+
+## API Reference
+
+### Handler Creation
+
+```python
+handler = WasmcpHandler(name="my-handler", version="1.0.0", description="My MCP handler")
+```
+
+### Tool Registration
+
+```python
+@handler.tool(name="custom_name", description="Tool description")
+def my_tool(param1: str, param2: int = 0) -> dict:
+    """Tool implementation."""
+    return {"result": param1, "count": param2}
+```
+
+### Resource Registration
+
+```python
+@handler.resource(
+    uri="protocol://path",
+    name="Resource Name",
+    description="Resource description",
+    mime_type="application/json"
+)
+def my_resource() -> dict:
+    """Resource implementation."""
+    return {"data": "value"}
+```
+
+### Prompt Registration
+
+```python
+@handler.prompt(name="prompt_name", description="Prompt description")
+def my_prompt(variable: str = "default") -> list:
+    """Prompt implementation."""
+    return [
+        {"role": "system", "content": "System message"},
+        {"role": "user", "content": f"User message with {variable}"}
+    ]
+```
+
+## Testing
+
+Run the test suite:
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run with coverage
+pytest tests/ --cov=wasmcp --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_handler.py -v
 ```
 
 ## Development
 
 ```bash
+# Install in development mode with test dependencies
 pip install -e ".[dev]"
+
+# Run tests
 pytest
+
+# Format code
+black src/ tests/
+
+# Type checking (if using mypy)
+mypy src/
 ```
