@@ -108,17 +108,25 @@ Register a prompt template.
 
 Helper to create JSON schema definitions inline.
 
-## Built-in HTTP Client
+## HTTP Support
 
-The SDK includes an HTTP client using WASI HTTP interfaces:
+The SDK automatically enables WASI HTTP support, so you can use Go's standard `net/http` package directly:
 
 ```go
-// Simple GET request
-resp, err := mcp.DefaultHTTPClient.Get("https://api.example.com/data")
+// Standard net/http just works!
+resp, err := http.Get("https://api.example.com/data")
 
-// GET JSON into a struct
-var data MyStruct
-err := mcp.DefaultHTTPClient.GetJSON("https://api.example.com/data", &data)
+// Concurrent requests with goroutines work too
+var wg sync.WaitGroup
+for _, url := range urls {
+    wg.Add(1)
+    go func(u string) {
+        defer wg.Done()
+        resp, _ := http.Get(u)
+        // Process response
+    }(url)
+}
+wg.Wait()
 ```
 
 ## Notes

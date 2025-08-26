@@ -6,8 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
-	"sync"
 
 	mcp "github.com/fastertools/wasmcp/src/sdk/wasmcp-go"
 )
@@ -17,7 +15,6 @@ func init() {
 		// Register tools
 		h.Tool("echo", "Echo a message back to the user", echoSchema(), echoHandler)
 		h.Tool("weather", "Get current weather for a location using Open-Meteo API", weatherSchema(), weatherHandler)
-		h.Tool("multi_weather", "Get weather for multiple cities concurrently", multiWeatherSchema(), multiWeatherHandler)
 	})
 }
 
@@ -177,87 +174,6 @@ func getWeatherCondition(code int) string {
 		return condition
 	}
 	return "Unknown"
-}
-
-func multiWeatherSchema() json.RawMessage {
-	return mcp.Schema(`{
-		"type": "object",
-		"properties": {
-			"cities": {
-				"type": "array",
-				"description": "List of cities to get weather for",
-				"items": {
-					"type": "string"
-				},
-				"minItems": 1,
-				"maxItems": 5
-			}
-		},
-		"required": ["cities"]
-	}`)
-}
-
-// multiWeatherHandler demonstrates concurrent HTTP requests using goroutines
-func multiWeatherHandler(args json.RawMessage) (string, error) {
-	var params struct {
-		Cities []string `json:"cities"`
-	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return "", fmt.Errorf("invalid arguments: %w", err)
-	}
-
-	type cityWeather struct {
-		city    string
-		weather string
-		err     error
-	}
-
-	// Channel to collect results
-	results := make(chan cityWeather, len(params.Cities))
-	
-	// WaitGroup to wait for all goroutines
-	var wg sync.WaitGroup
-	
-	// Launch concurrent requests for each city using standard net/http
-	for _, city := range params.Cities {
-		wg.Add(1)
-		go func(cityName string) {
-			defer wg.Done()
-			
-			// Fetch weather concurrently
-			weatherJSON, _ := json.Marshal(map[string]string{"location": cityName})
-			weatherInfo, err := weatherHandler(weatherJSON)
-			
-			results <- cityWeather{
-				city:    cityName,
-				weather: weatherInfo,
-				err:     err,
-			}
-		}(city)
-	}
-	
-	// Wait for all goroutines to complete
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-	
-	// Collect results
-	var output strings.Builder
-	output.WriteString("=== Concurrent Weather Results ===\n\n")
-	
-	for result := range results {
-		if result.err != nil {
-			output.WriteString(fmt.Sprintf("Error fetching weather for %s: %v\n\n", result.city, result.err))
-		} else {
-			output.WriteString(result.weather)
-			output.WriteString("\n\n")
-		}
-	}
-	
-	output.WriteString("=== All requests completed concurrently ===")
-	
-	return output.String(), nil
 }
 
 func main() {
