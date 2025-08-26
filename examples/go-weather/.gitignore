@@ -3,3 +3,4 @@
 !wasi_snapshot_preview1.reactor.wasm
 go.sum
 .spin/
+.spin-aka/
