@@ -34,7 +34,7 @@ world mcp-handler {
 ┌─────────────┐         ┌──────────────┐
 │   Gateway   │ imports │   Handler    │
 │  Component  │────────►│  Component   │
-│(wasmcp-spin)│ handler │ (Your Code)  │
+│(wasmcp-server)│ handler │ (Your Code)  │
 └─────────────┘         └──────────────┘
 ```
 

@@ -35,7 +35,7 @@ That's it. Zero configuration, no WIT files, runs on any WASI runtime.
 
 ## Features
 
-- **Clean SDKs**: Rust with proc macros (no WIT files), TypeScript with npm package
+- **Clean SDKs**: Rust with proc macros (no WIT files), TypeScript with npm package, Go with TinyGo support
 - **Full Async**: Native async/await support for HTTP, database, and I/O operations  
 - **Any Runtime**: Spin, Wasmtime, or any WASI-compatible WebAssembly runtime
 - **Production Ready**: Optimized builds, proper error handling, comprehensive testing
@@ -148,8 +148,8 @@ Both implement the same tools and work identically from the client's perspective
 
 ```
 ┌─────────────┐      HTTP/JSON-RPC      ┌──────────────┐
-│ MCP Client  │◄────────────────────────►│ wasmcp-spin  │
-│  (Claude)   │                          │   (Gateway)  │
+│ MCP Client  │◄────────────────────────►│wasmcp-server │
+│  (Claude)   │                          │   (Server)   │
 └─────────────┘                          └──────┬───────┘
                                                  │
                                          Component Model
@@ -160,7 +160,7 @@ Both implement the same tools and work identically from the client's perspective
                                           └──────────────┘
 ```
 
-The gateway handles HTTP and MCP protocol. You just implement tools.
+The server handles HTTP and MCP protocol. You just implement tools.
 
 ## Templates
 
@@ -201,7 +201,7 @@ wasmcp/
 │   └── typescript-weather/ # TypeScript weather server
 ├── src/
 │   ├── components/
-│   │   └── wasmcp-spin/  # HTTP gateway component
+│   │   └── wasmcp-server/  # MCP server component
 │   └── sdk/
 │       ├── wasmcp-rust/  # Rust SDK (crates.io)
 │       └── wasmcp-typescript/ # TypeScript SDK (npm)

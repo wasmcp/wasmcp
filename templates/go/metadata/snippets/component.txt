@@ -1,0 +1,9 @@
+Add your MCP tools to the handler in main.go:
+
+```go
+func init() {
+    mcp.Handle(func(h *mcp.Handler) {
+        h.Tool("my-tool", "Tool description", schema, handler)
+    })
+}
+```

@@ -141,7 +141,7 @@ mod handler {}
 cargo component build --release --target wasm32-wasip2
 ```
 
-The resulting WASM component works with any MCP gateway (wasmcp-spin, custom, etc).
+The resulting WASM component works with any MCP server (wasmcp-server, custom, etc).
 
 ## Performance
 

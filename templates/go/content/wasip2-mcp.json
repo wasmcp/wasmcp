@@ -1,0 +1,5 @@
+{
+	"inherits": ["wasip2"],
+	"wit-package": "./wit",
+	"wit-world": "wasmcp:mcp/mcp-handler"
+}

@@ -8,16 +8,16 @@ description = "{{project-description}}"
 
 [[trigger.http]]
 route = "/mcp"
-component = "wasmcp-spin"
+component = "wasmcp-server"
 
-[component.wasmcp-spin]
-# Using the local gateway component
-source = "wasmcp-spin.wasm"
+[component.wasmcp-server]
+# Using the local server component
+source = "wasmcp-server.wasm"
 build.command = "make build"
 build.watch = ["handler/src/**/*.js", "handler/package.json"]
 # Allow outbound HTTP requests for weather API
 allowed_outbound_hosts = ["https://geocoding-api.open-meteo.com", "https://api.open-meteo.com"]
 
-[component.wasmcp-spin.dependencies]
+[component.wasmcp-server.dependencies]
 # Link to the local handler component
 "wasmcp:mcp/handler" = { path = "./handler/dist/handler.wasm" }

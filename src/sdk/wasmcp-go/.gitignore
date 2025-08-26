@@ -1,0 +1,11 @@
+# Test binaries
+*.test
+
+# Build artifacts
+*.wasm
+
+# Local testing
+/test/
+
+# Note: wasmcp/ directory contains generated bindings and is committed to git
+# To regenerate: make clean generate

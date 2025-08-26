@@ -4,3 +4,4 @@ Cargo.lock
 composed.wasm
 handler/**/*.wasm
 .spin/
+.spin-aka/

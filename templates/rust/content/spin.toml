@@ -8,11 +8,11 @@ description = "{{project-description}}"
 
 [[trigger.http]]
 route = "/mcp"
-component = "wasmcp-spin"
+component = "wasmcp-server"
 
-[component.wasmcp-spin]
-# Using the local gateway component
-source = "wasmcp-spin.wasm"
+[component.wasmcp-server]
+# Using the local server component
+source = "wasmcp-server.wasm"
 allowed_outbound_hosts = [
     "https://geocoding-api.open-meteo.com",
     "https://api.open-meteo.com"
@@ -20,10 +20,10 @@ allowed_outbound_hosts = [
 dependencies_inherit_configuration = true
 key_value_stores = ["default"]
 
-[component.wasmcp-spin.dependencies]
+[component.wasmcp-server.dependencies]
 # Link to the local handler component
 "wasmcp:mcp/handler@0.1.0" = { path = "./handler/target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm" }
 
-[component.wasmcp-spin.build]
+[component.wasmcp-server.build]
 command = "make build"
 watch = ["handler/src/**/*.rs", "handler/Cargo.toml", "handler/wit/*.wit"]
