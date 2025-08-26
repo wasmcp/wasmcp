@@ -1,5 +1,4 @@
 github.com/ydnar/wasi-http-go v0.0.0-20250620060720-9877ebcf27b5 h1:WFlSpsBgZ0SZcbNJkpuV6bLFPm0rpjiII1Sot14Oucs=
 github.com/ydnar/wasi-http-go v0.0.0-20250620060720-9877ebcf27b5/go.mod h1:d8SobHm5UmjaDQZQhxSnzTer69vfXAMnNOn8ios/Jb4=
+go.bytecodealliance.org/cm v0.2.2 h1:M9iHS6qs884mbQbIjtLX1OifgyPG9DuMs2iwz8G4WQA=
 go.bytecodealliance.org/cm v0.2.2/go.mod h1:JD5vtVNZv7sBoQQkvBvAAVKJPhR/bqBH7yYXTItMfZI=
-go.bytecodealliance.org/cm v0.3.0 h1:VhV+4vjZPUGCozCg9+up+FNL3YU6XR+XKghk7kQ0vFc=
-go.bytecodealliance.org/cm v0.3.0/go.mod h1:JD5vtVNZv7sBoQQkvBvAAVKJPhR/bqBH7yYXTItMfZI=

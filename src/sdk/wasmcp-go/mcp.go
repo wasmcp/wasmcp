@@ -1,5 +1,5 @@
 // Package mcp provides the Go SDK for building MCP (Model Context Protocol) handlers
-// in WebAssembly components, following the same patterns as the Spin Go SDK.
+// in WebAssembly components using pure wasip2.
 package mcp
 
 import (

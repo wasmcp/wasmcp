@@ -76,13 +76,13 @@ func main() {} // Required for TinyGo
 ## Building
 
 ```bash
-# Build your handler (with wasip2 target)
-tinygo build -target=wasip2-mcp.json -gc=leaking -no-debug -o handler.component.wasm main.go
+# Build your handler
+tinygo build -target=wasip2 -scheduler=asyncify -no-debug -o handler.wasm main.go
 
-# Compose with server (requires wac)
-wac plug --plug handler.component.wasm wasmcp-server.wasm -o composed.wasm
+# Compose with server
+wac plug --plug handler.wasm wasmcp-server.wasm -o composed.wasm
 
-# Run with wasmtime
+# Run
 wasmtime serve -S cli -S http composed.wasm
 ```
 
@@ -131,14 +131,6 @@ wg.Wait()
 
 ## Notes
 
-- Requires TinyGo for compilation to WebAssembly
-- Uses wit-bindgen-go for WIT bindings (pre-generated in `wasmcp/` directory)
-- Compatible with any WASI runtime (Spin, Wasmtime, etc.)
-
-## Development
-
-The `wasmcp/` directory contains pre-generated Go bindings from the WIT files. If you need to regenerate them:
-
-```bash
-make clean generate
-```
+- Requires TinyGo with wasip2 support
+- Compatible with any wasip2 runtime (Wasmtime, Spin, etc.)
+- Pure WebAssembly Component Model - no adapters needed
