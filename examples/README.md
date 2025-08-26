@@ -2,6 +2,29 @@
 
 This directory contains working examples of MCP (Model Context Protocol) handlers as WebAssembly components.
 
+## rust-weather
+
+A Rust MCP handler that demonstrates:
+- Echo tool for basic testing
+- Weather tool with async HTTP requests using Spin SDK
+- Works with both Spin and wasmtime runtimes
+
+### Quick Start
+
+```bash
+cd rust-weather
+
+# Build the handler
+make build
+
+# Run with Spin
+spin up
+
+# OR compose and run with wasmtime
+make compose
+wasmtime serve -Scli -Skeyvalue -Shttp composed.wasm
+```
+
 ## typescript-weather
 
 A TypeScript MCP handler that demonstrates:
@@ -24,7 +47,9 @@ spin up
 wasmtime serve -Scli composed.wasm
 ```
 
-### Testing the Tools
+## Testing the Tools
+
+Both examples expose the same tools. Test with either runtime:
 
 Test the echo tool:
 ```bash

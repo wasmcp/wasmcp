@@ -30,15 +30,15 @@ impl wasmcp::ToolHandler for EchoTool {
     }
 }
 
-// Weather tool demonstrating real async HTTP requests using Spin SDK
+// Weather tool demonstrating real async HTTP requests
 struct WeatherTool;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct GeocodingResponse {
     results: Option<Vec<Location>>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct Location {
     latitude: f64,
     longitude: f64,
@@ -46,12 +46,12 @@ struct Location {
     country: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct WeatherResponse {
     current_weather: CurrentWeather,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct CurrentWeather {
     temperature: f64,
     windspeed: f64,
@@ -80,7 +80,7 @@ impl wasmcp::AsyncToolHandler for WeatherTool {
             .as_str()
             .ok_or("Missing location field")?;
         
-        // Use spin_sdk for HTTP requests
+        // Use spin_sdk for HTTP requests (works with any WASI HTTP runtime)
         use spin_sdk::http::{Request, send};
         
         // Step 1: Get coordinates for the location

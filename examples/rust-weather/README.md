@@ -1,6 +1,6 @@
-# {{project-name | kebab_case}}
+# rust-demo
 
-{{project-description}}
+An MCP server written in Rust
 
 ## Structure
 

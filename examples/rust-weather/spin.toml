@@ -1,10 +1,10 @@
 spin_manifest_version = 2
 
 [application]
-name = "rust-weather"
+name = "rust-demo"
 version = "0.1.0"
-authors = ["wasmcp"]
-description = "Rust MCP Weather Example"
+authors = ["Ian McDonald <bowlofarugula@gmail.com>"]
+description = "An MCP server written in Rust"
 
 [[trigger.http]]
 route = "/mcp"
@@ -22,7 +22,7 @@ key_value_stores = ["default"]
 
 [component.wasmcp-spin.dependencies]
 # Link to the local handler component
-"wasmcp:mcp/handler@0.1.0" = { path = "./handler/target/wasm32-wasip1/release/rust_weather.wasm" }
+"wasmcp:mcp/handler@0.1.0" = { path = "./handler/target/wasm32-wasip1/release/rust_demo.wasm" }
 
 [component.wasmcp-spin.build]
 command = "make build"
