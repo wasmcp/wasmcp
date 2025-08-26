@@ -11,19 +11,25 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 build: ## Build the handler component
-	tinygo build -target=wasip2-mcp.json -gc=leaking -no-debug -o handler.component.wasm main.go
-	@echo "✅ Built handler.component.wasm"
+	@WIT_DIR=$$(mktemp -d) && \
+	go run github.com/fastertools/wasmcp/src/sdk/wasmcp-go/cmd/extract-wit@latest $$WIT_DIR && \
+	echo '{"inherits":["wasip2"],"wit-package":"'$$WIT_DIR'","wit-world":"wasmcp:mcp/mcp-handler"}' > $$WIT_DIR/target.json && \
+	tinygo build -target=$$WIT_DIR/target.json -scheduler=asyncify -no-debug -o handler.wasm . ; \
+	EXIT_CODE=$$? ; \
+	rm -rf $$WIT_DIR ; \
+	if [ $$EXIT_CODE -eq 0 ]; then echo "✅ Built handler.wasm"; fi ; \
+	exit $$EXIT_CODE
 
 test: ## Run tests
 	@echo "Testing not yet implemented for Go handlers"
 
 clean: ## Clean build artifacts
-	rm -f handler.wasm handler.component.wasm composed.wasm
+	rm -f handler.wasm composed.wasm
 	@echo "✅ Cleaned build artifacts"
 
-compose: build ## Compose handler with server using wac plug
+compose: build ## Compose handler with server
 	@echo "Composing handler with server..."
-	wac plug --plug handler.component.wasm $(SERVER_WASM) -o composed.wasm
+	wac plug --plug handler.wasm $(SERVER_WASM) -o composed.wasm
 	@echo "✅ Created composed.wasm"
 
 run: build ## Run with Spin (handles dependencies automatically)

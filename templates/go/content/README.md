@@ -1,37 +1,29 @@
 # {{project-name}}
 
-An MCP (Model Context Protocol) server written in Go.
+MCP server in Go.
 
 ## Prerequisites
 
 - [TinyGo](https://tinygo.org/getting-started/install/)
-- [wasm-tools](https://github.com/bytecodealliance/wasm-tools)
-- [wac](https://github.com/bytecodealliance/wac)
-- [Spin](https://developer.fermyon.com/spin/v2/install) (optional, for `spin up`)
-- [Wasmtime](https://wasmtime.dev/) (optional, for standalone execution)
+- [wac](https://github.com/bytecodealliance/wac) 
+- [Wasmtime](https://wasmtime.dev/) or [Spin](https://developer.fermyon.com/spin)
 
 ## Quick Start
 
 ```bash
-# Build and compose the component
+# Build and run
 make compose
-
-# Run with wasmtime
 make run-wasmtime
 
-# Or run with Spin
-make run
-
-# Test the echo tool
+# Test  
 make test-echo
 ```
 
-## Project Structure
+## Structure
 
-- `main.go` - Your MCP handler implementation
+- `main.go` - MCP handler implementation
 - `Makefile` - Build commands
 - `spin.toml` - Spin configuration
-- `wasmcp-server.wasm` - Pre-built MCP server component
 
 ## Adding Tools
 
@@ -45,19 +37,6 @@ func init() {
 }
 ```
 
-## Using Spin SDK Features
-
-To use HTTP, Key-Value, or other Spin features, add the Spin SDK to your `go.mod`:
-
-```bash
-go get github.com/fermyon/spin-go-sdk/v2
-```
-
-Then import what you need:
-
-```go
-import spinhttp "github.com/fermyon/spin-go-sdk/v2/http"
-```
 
 ## Testing
 
