@@ -83,6 +83,16 @@ Thumbs.db
 .pnp.*
 tmp/
 
+# WebAssembly build artifacts
+*.wasm
+# But keep the gateway wasm files
+!wasmcp-server.wasm
+!wasmcp-spin.wasm
+
+# Spin runtime files
+.spin/
+
+
 # Python
 __pycache__/
 *.py[cod]
