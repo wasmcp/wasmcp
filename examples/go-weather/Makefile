@@ -1,8 +1,9 @@
-.PHONY: build test clean compose run run-wasmtime help
+.PHONY: build test clean compose run run-wasmtime help deps
 
 # Default server version to use
 SERVER_VERSION ?= 0.1.0
 SERVER_WASM ?= wasmcp-server.wasm
+EXTRACT_WIT ?= .bin/extract-wit
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -10,9 +11,16 @@ help: ## Show this help message
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-build: ## Build the handler component
+# Ensure dependencies are downloaded and extract-wit tool is built
+$(EXTRACT_WIT): go.mod
+	@mkdir -p .bin
+	@echo "Setting up build tools..."
+	@go mod tidy
+	@go build -o $(EXTRACT_WIT) github.com/fastertools/wasmcp/src/sdk/wasmcp-go/cmd/extract-wit
+
+build: $(EXTRACT_WIT) ## Build the handler component
 	@WIT_DIR=$$(mktemp -d) && \
-	/tmp/extract-wit $$WIT_DIR && \
+	$(EXTRACT_WIT) $$WIT_DIR && \
 	echo '{"inherits":["wasip2"],"wit-package":"'$$WIT_DIR'","wit-world":"wasmcp:mcp/mcp-handler"}' > $$WIT_DIR/target.json && \
 	tinygo build -target=$$WIT_DIR/target.json -scheduler=asyncify -no-debug -o handler.wasm . ; \
 	EXIT_CODE=$$? ; \
@@ -24,12 +32,13 @@ test: ## Run tests
 	@echo "Testing not yet implemented for Go handlers"
 
 clean: ## Clean build artifacts
-	rm -f handler.wasm composed.wasm
+	rm -rf handler.wasm composed.wasm .bin
 	@echo "✅ Cleaned build artifacts"
 
-compose: build ## Compose handler with server
+compose: ## Compose handler with server
+	@if [ ! -f handler.wasm ]; then echo "Error: handler.wasm not found. Run 'make build' first."; exit 1; fi
 	@echo "Composing handler with server..."
-	wac plug --plug handler.wasm $(SERVER_WASM) -o composed.wasm
+	@wac plug --plug handler.wasm $(SERVER_WASM) -o composed.wasm
 	@echo "✅ Created composed.wasm"
 
 run: build ## Run with Spin (handles dependencies automatically)

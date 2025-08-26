@@ -1,28 +1,59 @@
-# Go Weather Example
+# go-weather
 
-MCP handler demonstrating concurrent HTTP requests with Go and wasip2.
+MCP server in Go.
 
-## Tools
+## Prerequisites
 
-- `echo` - Simple echo tool
-- `weather` - Get weather for a location  
-- `multi_weather` - Concurrent weather for multiple cities
+- [TinyGo](https://tinygo.org/getting-started/install/)
+- [wac](https://github.com/bytecodealliance/wac) 
+- [Wasmtime](https://wasmtime.dev/) or [Spin](https://developer.fermyon.com/spin)
 
-## Build & Run
+## Quick Start
 
 ```bash
+# Build and run
 make compose
 make run-wasmtime
+
+# Test  
+make test-echo
 ```
 
-## Test
+## Structure
+
+- `main.go` - MCP handler implementation
+- `Makefile` - Build commands
+- `spin.toml` - Spin configuration
+
+## Adding Tools
+
+Edit `main.go` to add new tools:
+
+```go
+func init() {
+    mcp.Handle(func(h *mcp.Handler) {
+        h.Tool("my-tool", "Description", mySchema(), myHandler)
+    })
+}
+```
+
+
+## Testing
+
+Test your tools with curl:
 
 ```bash
-# Single weather
-make test-weather
-
-# Concurrent requests
+# List available tools
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"multi_weather","arguments":{"cities":["London","Paris","Tokyo"]}},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}'
+
+# Call a tool
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"test"}},"id":1}'
 ```
+
+## License
+
+Apache-2.0
