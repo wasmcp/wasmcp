@@ -1,52 +1,74 @@
-# MCP Component Interface
+# WIT Interfaces
 
-This directory contains the WebAssembly Interface Types (WIT) definitions for the Model Context Protocol (MCP) component model.
+WebAssembly Interface Types defining the MCP component model.
 
-## Package Structure
+## Files
 
-- `mcp.wit` - Defines the MCP handler interface and the `mcp-handler` world that components must implement
+- `mcp.wit` - MCP handler interface and `mcp-handler` world
 
-## WIT File Synchronization
+## Interface
 
-The `mcp-http-component` needs a copy of the handler interface without the package declaration. This is handled automatically by:
+```wit
+interface handler {
+  // Tools
+  list-tools: func() -> list<tool>
+  call-tool: func(name: string, arguments: string) -> tool-result
+  
+  // Resources  
+  list-resources: func() -> list<resource-info>
+  read-resource: func(uri: string) -> resource-result
+  
+  // Prompts
+  list-prompts: func() -> list<prompt>
+  get-prompt: func(name: string, arguments: string) -> prompt-result
+}
 
+world mcp-handler {
+  export handler
+}
+```
+
+## Component Model
+
+```
+┌─────────────┐         ┌──────────────┐
+│   Gateway   │ imports │   Handler    │
+│  Component  │────────►│  Component   │
+│(wasmcp-spin)│ handler │ (Your Code)  │
+└─────────────┘         └──────────────┘
+```
+
+Gateway imports the handler interface. Your component exports it.
+
+## Usage
+
+### Rust
+The `wasmcp` crate's proc macro embeds this automatically:
+```rust
+#[mcp_handler(tools(MyTool))]
+mod handler {}
+```
+
+### TypeScript
+The `wasmcp` npm package bundles this:
+```typescript
+import { createHandler } from 'wasmcp';
+```
+
+### Direct Use
 ```bash
-make sync-wit
+# Generate bindings
+wit-bindgen rust wit/mcp.wit
+
+# Build component
+wasm-tools component new module.wasm -o component.wasm --adapt wasi_snapshot_preview1.wasm
 ```
 
-This command is run automatically during CI builds to ensure the files stay in sync.
+## Versioning
 
-## Using the Interface
+Interface version: `0.1.0`  
+Protocol compatibility: MCP 2025-03-26
 
-### In Rust Components
+## License
 
-When creating a Rust component that implements the MCP handler interface:
-
-1. Reference this WIT package in your `Cargo.toml`:
-
-```toml
-[package.metadata.component.target.dependencies]
-"component:mcp" = { path = "../path/to/wit" }
-```
-
-2. Use `cargo-component` to generate bindings and implement the handler.
-
-### In JavaScript/TypeScript Components
-
-When creating a JavaScript component:
-
-1. Copy or reference the WIT files in your project
-2. Use `jco` to generate TypeScript types:
-   ```bash
-   jco types ./wit/mcp.wit -o generated
-   ```
-3. Use `jco componentize` to build your component
-
-## Interface Overview
-
-The MCP handler interface provides:
-- **Tools**: Functions that can be called with arguments
-- **Resources**: URIs that can be read to provide content
-- **Prompts**: Templates that can be resolved with arguments
-
-Components implementing this interface can be composed with the `mcp-http-component` gateway to expose MCP functionality over HTTP.
+Apache-2.0

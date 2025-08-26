@@ -2,289 +2,209 @@
 
 # `wasmcp`
 
-[WebAssembly components](https://component-model.bytecodealliance.org/introduction.html) for building [MCP (Model Context Protocol)](https://modelcontextprotocol.io/introduction) servers
+**MCP servers as WebAssembly components**
+
+Run [Model Context Protocol](https://modelcontextprotocol.io) servers on [Spin](https://github.com/fermyon/spin), [Wasmtime](https://github.com/bytecodealliance/wasmtime), or any WASI runtime.
+
 </div>
 
-## Overview
-
-This repository provides a way to compose MCP servers as WebAssembly components. These components can run on any WebAssembly runtime that supports the component model, including:
-
-- **[Spin](https://github.com/spinframework/spin)** - Fermyon's WebAssembly framework
-- **[Wasmtime](https://github.com/bytecodealliance/wasmtime)** - Bytecode Alliance's WebAssembly runtime
-- Any other WASI-compatible runtime
-
-### Contents
-
-1. **wit** - Wasm Interface Types defining the MCP component interfaces
-2. **wasmcp-spin** - A Spin-specific WebAssembly component that exposes an MCP server over HTTP, delegating business logic to a MCP handler component
-3. **wasmcp** (Rust) - SDK for building MCP handler components in Rust
-4. **wasmcp** (TypeScript) - SDK for building MCP handler components in TypeScript/JavaScript
-5. **templates** - Spin templates for easily managing MCP projects
-
-## Quick Start with Spin
-
-### Installing Templates
-
-First, install the wasmcp templates:
+## Quick Start
 
 ```bash
+# Install templates
 spin templates install --git https://github.com/fastertools/wasmcp --upgrade
-```
 
-This installs three templates:
-- `wasmcp-rust` - For building MCP handlers in Rust
-- `wasmcp-typescript` - For building MCP handlers in TypeScript
-- `wasmcp-javascript` - For building MCP handlers in JavaScript
+# Create MCP server
+spin new -t wasmcp-rust my-weather-server
+cd my-weather-server
 
-### Creating a New MCP Server
-
-1. **Create a new Spin application with an MCP handler:**
-   ```bash
-   # Rust
-   spin new -t wasmcp-rust my-mcp-server
-   
-   # TypeScript
-   spin new -t wasmcp-typescript my-mcp-server
-   
-   # JavaScript  
-   spin new -t wasmcp-javascript my-mcp-server
-   ```
-
-2. **Build and run:**
-   ```bash
-   cd my-mcp-server
-   spin build
-   spin up
-   ```
-
-3. **Test your MCP server:**
-   ```bash
-   # List available tools
-   curl -X POST http://localhost:3000/mcp \
-     -H "Content-Type: application/json" \
-     -d '{
-       "jsonrpc": "2.0",
-       "method": "tools/list",
-       "params": {},
-       "id": 1
-     }'
-   
-   # Call a tool
-   curl -X POST http://localhost:3000/mcp \
-     -H "Content-Type: application/json" \
-     -d '{
-       "jsonrpc": "2.0",
-       "method": "tools/call",
-       "params": {
-         "name": "echo",
-         "arguments": {
-           "message": "Hello, MCP!"
-         }
-       },
-       "id": 2
-     }'
-   ```
-
-### Adding MCP to an Existing Spin App
-
-If you already have a Spin application, you can add an MCP component:
-
-```bash
-# Add a TypeScript MCP handler
-spin add -t wasmcp-typescript my-handler
-
-# Add a Rust MCP handler  
-spin add -t wasmcp-rust my-handler
-
-# Then build and run as usual
-spin build
+# Run it
 spin up
+
+# Test it
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}'
 ```
 
-### Development with File Watching
+That's it. Zero configuration, no WIT files, just works.
 
-Use `spin watch` for automatic rebuilds during development:
+## Features
 
-```bash
-spin watch
+- **Clean SDKs**: Rust with proc macros (no WIT files), TypeScript with npm package
+- **Full Async**: Native async/await support for HTTP, database, and I/O operations  
+- **Any Runtime**: Spin, Wasmtime, or any WASI-compatible WebAssembly runtime
+- **Production Ready**: Optimized builds, proper error handling, comprehensive testing
+- **Component Composition**: Modular architecture via WebAssembly Component Model
+
+## Language Support
+
+### Rust
+```rust
+use wasmcp::{mcp_handler, ToolHandler, AsyncToolHandler};
+use serde_json::json;
+
+// Simple sync tool
+struct EchoTool;
+
+impl ToolHandler for EchoTool {
+    const NAME: &'static str = "echo";
+    const DESCRIPTION: &'static str = "Echo a message back to the user";
+    
+    fn input_schema() -> serde_json::Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "message": { "type": "string", "description": "Message to echo back" }
+            },
+            "required": ["message"]
+        })
+    }
+    
+    fn execute(args: serde_json::Value) -> Result<String, String> {
+        Ok(format!("Echo: {}", args["message"]))
+    }
+}
+
+// Async tool with real HTTP requests
+impl AsyncToolHandler for WeatherTool {
+    const NAME: &'static str = "weather";
+    const DESCRIPTION: &'static str = "Get weather information for a location";
+    
+    async fn execute_async(args: serde_json::Value) -> Result<String, String> {
+        use spin_sdk::http::{Request, send};
+        
+        // Geocode location
+        let geocoding_url = format!("https://geocoding-api.open-meteo.com/v1/search?name={}", 
+            args["location"]);
+        let response = send(Request::get(&geocoding_url)).await?;
+        
+        // Parse and fetch weather...
+        Ok(format!("Weather for {}: 22°C, Sunny", args["location"]))
+    }
+}
+
+#[mcp_handler(tools(EchoTool, WeatherTool))]
+mod handler {}
 ```
 
-This will automatically rebuild your MCP handler when you modify source files.
+### TypeScript
+```typescript
+import { createTool, createHandler, z } from 'wasmcp';
+
+// Simple tool with schema validation
+const echoTool = createTool({
+  name: 'echo',
+  description: 'Echo a message back to the user',
+  schema: z.object({
+    message: z.string().describe('Message to echo back')
+  }),
+  execute: async (args) => {
+    return `Echo: ${args.message}`;
+  }
+});
+
+// Weather tool with async fetch
+const weatherTool = createTool({
+  name: 'weather',
+  description: 'Get current weather for a location',
+  schema: z.object({
+    location: z.string().describe('City name')
+  }),
+  execute: async (args) => {
+    // Geocode location
+    const geocoding = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${args.location}`
+    );
+    const location = await geocoding.json();
+    
+    // Get weather
+    const weather = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}`
+    );
+    
+    return `Weather in ${args.location}: 22°C, Sunny`;
+  }
+});
+
+export const handler = createHandler({
+  tools: [echoTool, weatherTool]
+});
+```
+
+## Examples
+
+See [`examples/`](./examples) for complete working servers:
+- **[`rust-weather`](./examples/rust-weather)** - Rust with async HTTP weather API
+- **[`typescript-weather`](./examples/typescript-weather)** - TypeScript with fetch API
+
+Both implement the same tools and work identically from the client's perspective.
 
 ## Architecture
 
-```mermaid
-graph TB
-    subgraph "Client Layer"
-        Client[MCP Client<br/>Claude/IDE/CLI]
-    end
-    
-    subgraph "HTTP Transport"
-        HTTP[HTTP/JSON-RPC]
-    end
-    
-    subgraph "Spin Runtime"
-        subgraph "wasmcp-spin Component"
-            Gateway[HTTP Gateway<br/>spin:http trigger]
-            Protocol[MCP Protocol Handler<br/>JSON-RPC → WASI]
-        end
-        
-        subgraph "Handler Component"
-            Handler[Your MCP Handler<br/>Rust/TS/JS]
-            Tools[Tool Implementations]
-            Resources[Resource Providers]
-            Prompts[Prompt Templates]
-        end
-    end
-    
-    Client -->|POST /mcp| HTTP
-    HTTP --> Gateway
-    Gateway --> Protocol
-    Protocol -->|wasmcp:mcp/handler| Handler
-    Handler --> Tools
-    Handler --> Resources  
-    Handler --> Prompts
+```
+┌─────────────┐      HTTP/JSON-RPC      ┌──────────────┐
+│ MCP Client  │◄────────────────────────►│ wasmcp-spin  │
+│  (Claude)   │                          │   (Gateway)  │
+└─────────────┘                          └──────┬───────┘
+                                                 │
+                                         Component Model
+                                                 │
+                                          ┌──────▼───────┐
+                                          │ Your Handler │
+                                          │ (Rust/TS/JS) │
+                                          └──────────────┘
 ```
 
-The architecture consists of three layers:
+The gateway handles HTTP and MCP protocol. You just implement tools.
 
-1. **Client Layer**: Any MCP-compatible client (Claude Desktop, IDE extensions, CLI tools)
-2. **Gateway Component** (`wasmcp-spin`): Handles HTTP transport and protocol translation
-3. **Handler Component**: Your business logic implementing MCP tools, resources, and prompts
+## Templates
 
-The gateway component:
-- Exposes an HTTP endpoint at `/mcp` for JSON-RPC requests
-- Translates between HTTP/JSON-RPC and WASI component calls
-- Manages request/response lifecycle and error handling
+```bash
+# Rust (no WIT files needed)
+spin new -t wasmcp-rust my-rust-server
+
+# TypeScript (WIT bundled in npm)  
+spin new -t wasmcp-typescript my-ts-server
+
+# JavaScript
+spin new -t wasmcp-javascript my-js-server
+```
 
 ## Development
 
-### Prerequisites
-
-- Rust toolchain with `wasm32-wasip1` target
-- Node.js 20+
-- cargo-component (`cargo install --locked cargo-component`)
-- wasm-tools (`cargo install --locked wasm-tools`)
-
-### Common Commands
-
 ```bash
-# Show all available commands
-make help
-
-# Install dependencies and tools
-make install-deps
+# Prerequisites
+cargo install cargo-component
+npm install -g @bytecodealliance/jco
 
 # Build everything
 make build-all
 
-# Run all tests
+# Run tests
 make test-all
 
-# Fix all lint and formatting issues
-make lint-fix-all
-
-# Full CI pipeline (build + test)
-make ci
+# See all commands
+make help
 ```
 
 ## Repository Structure
 
 ```
 wasmcp/
-├── wit/                    # Shared WIT interface definitions
-│   └── mcp.wit            # MCP handler interface and world
+├── examples/              # Complete example servers
+│   ├── rust-weather/     # Rust async weather server
+│   └── typescript-weather/ # TypeScript weather server
 ├── src/
 │   ├── components/
-│   │   └── wasmcp-spin/  # Spin HTTP gateway component
-│   │       └── wit/           # Gateway-specific world
+│   │   └── wasmcp-spin/  # HTTP gateway component
 │   └── sdk/
-│       ├── wasmcp-rust/       # Rust SDK
-│       └── wasmcp-typescript/ # TypeScript SDK
-├── templates/             # Project templates
-└── scripts/               # Build and version management scripts
+│       ├── wasmcp-rust/  # Rust SDK (crates.io)
+│       └── wasmcp-typescript/ # TypeScript SDK (npm)
+├── templates/            # Spin templates
+└── wit/                  # Component interfaces
 ```
 
-## Version Management
+## License
 
-This repository uses a centralized version management system. All component versions are managed through `versions.toml`.
-
-### Quick Commands
-
-```bash
-# Show current versions
-make show-versions
-
-# Bump all packages by patch version (e.g., 0.1.2 → 0.1.3)
-make bump-all-patch
-
-# Bump all packages by minor version (e.g., 0.1.2 → 0.2.0)
-make bump-all-minor
-
-# Bump individual packages
-make bump-rust-patch      # Bump Rust SDK patch version
-make bump-gateway-minor   # Bump HTTP gateway minor version
-make bump-ts-patch       # Bump TypeScript SDK patch version
-
-# Ensure versions are in sync
-make sync-versions
-
-# Sync WIT files from root to templates
-make sync-wit
-
-# Validate WIT files are in sync
-make validate-wit
-```
-
-### How It Works
-
-1. **Single Source of Truth**: `versions.toml` contains all version information
-2. **Automatic Propagation**: Version changes are automatically synced to:
-   - Package files (Cargo.toml, package.json)
-   - Template dependencies
-   - Gateway component references
-   - Documentation
-
-3. **CI Validation**: Pull requests are checked to ensure version and WIT file consistency
-
-### Release Process
-
-#### Automated Release (Recommended)
-
-```bash
-# For patch release (bug fixes)
-make release-patch
-
-# For minor release (new features)
-make release-minor
-
-# Then follow the instructions printed by make
-```
-
-#### Manual Publishing
-
-If you need to publish packages manually:
-
-```bash
-# Dry run first to verify
-make publish-dry-run
-
-# Publish individual packages
-make publish-gateway      # Publish to ghcr.io
-make publish-rust-sdk    # Publish to crates.io  
-make publish-ts-sdk      # Publish to npm
-
-# Or publish everything at once (use with caution!)
-make publish-all
-```
-
-**Note**: The GitHub Actions workflow handles publishing automatically when you push version tags. Manual publishing is only needed for special cases.
-
-For more details, see [Version Management Scripts](./scripts/README.md).
-
-## Documentation
-
-- [WIT Interface Documentation](./wit/README.md)
-- [Rust SDK Documentation](./src/sdk/wasmcp-rust/README.md)
-- [TypeScript SDK Documentation](./src/sdk/wasmcp-typescript/README.md)
-- [Spin HTTP Gateway Documentation](./src/components/wasmcp-spin/README.md)
+Apache-2.0

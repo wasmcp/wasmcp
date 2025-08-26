@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { tools, echoTool } from '../src/index';
 
-describe('clean-example MCP Handler', () => {
+describe('typescript-weather MCP Handler', () => {
     describe('Tools', () => {
         it('should export at least one tool', () => {
             expect(tools).toBeDefined();
