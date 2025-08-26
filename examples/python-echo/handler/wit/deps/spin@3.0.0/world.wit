@@ -1,0 +1,24 @@
+package fermyon:spin@3.0.0;
+
+world spin-imports {
+  include fermyon:spin/spin-imports@2.0.0;
+  include wasi:keyvalue/imports@0.2.0-draft2;
+  import spin:postgres/postgres@3.0.0;
+  import wasi:config/store@0.2.0-draft-2024-09-27;
+}
+
+world spin-redis {
+  include spin-imports;
+  export fermyon:spin/inbound-redis;
+}
+
+world spin-http {
+  include spin-imports;
+  export wasi:http/incoming-handler@0.2.0;
+}
+
+world spin-all {
+  include spin-redis;
+  include spin-http;
+}
+

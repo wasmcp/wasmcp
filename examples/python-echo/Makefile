@@ -49,7 +49,7 @@ clean: ## Clean build artifacts
 
 compose: build ## Compose handler with gateway using wac plug
 	@echo "Composing handler with gateway..."
-	wac plug wasmcp-spin.wasm --plug $(HANDLER_WASM) -o composed.wasm
+	wac plug wasmcp-server.wasm --plug $(HANDLER_WASM) -o composed.wasm
 	@echo "✅ Created composed.wasm"
 
 run: build ## Run with Spin (handles dependencies automatically)

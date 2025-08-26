@@ -12,13 +12,12 @@ if [ "$LOCAL_BUILD" = "true" ]; then
     # The SDK is installed with pip install -e ../../../src/sdk/wasmcp-python
     SDK_DIR="../../../src/sdk/wasmcp-python"
     
-    # Use the WIT file from the SDK directory
+    # Use the WIT file directly (not directory)
     echo "Running componentize-py with local SDK paths..."
     ../.venv/bin/componentize-py \
-        -d ${SDK_DIR}/wit/mcp.wit \
+        -d ${SDK_DIR}/wit/handler.wit \
         -w mcp-handler \
         componentize app \
-        -p ../.venv/lib/python3.13/site-packages \
         -p ${SDK_DIR}/src \
         -p . \
         -o app.wasm

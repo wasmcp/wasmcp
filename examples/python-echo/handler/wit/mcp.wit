@@ -1,0 +1,74 @@
+package wasmcp:mcp@0.1.0;
+
+interface handler {
+    record tool {
+        name: string,
+        description: string,
+        input-schema: string,
+    }
+    
+    record resource-info {
+        uri: string,
+        name: string,
+        description: option<string>,
+        mime-type: option<string>,
+    }
+    
+    record resource-contents {
+        uri: string,
+        mime-type: option<string>,
+        text: option<string>,
+        blob: option<list<u8>>,
+    }
+    
+    record prompt {
+        name: string,
+        description: option<string>,
+        arguments: list<prompt-argument>,
+    }
+    
+    record prompt-argument {
+        name: string,
+        description: option<string>,
+        required: bool,
+    }
+    
+    record prompt-message {
+        role: string,
+        content: string,
+    }
+    
+    record error {
+        code: s32,
+        message: string,
+        data: option<string>,
+    }
+    
+    variant tool-result {
+        text(string),
+        error(error),
+    }
+    
+    variant resource-result {
+        contents(resource-contents),
+        error(error),
+    }
+    
+    variant prompt-result {
+        messages(list<prompt-message>),
+        error(error),
+    }
+    
+    list-tools: func() -> list<tool>;
+    call-tool: func(name: string, arguments: string) -> tool-result;
+    list-resources: func() -> list<resource-info>;
+    read-resource: func(uri: string) -> resource-result;
+    list-prompts: func() -> list<prompt>;
+    get-prompt: func(name: string, arguments: string) -> prompt-result;
+}
+
+world mcp-handler {
+    // Temporarily removed WASI imports to test if componentize-py can find the world
+    // Export our MCP handler interface
+    export handler;
+}
