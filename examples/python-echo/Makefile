@@ -18,13 +18,13 @@ install-deps: ## Install Python dependencies
 		python3 -m venv $(VENV); \
 	fi
 	@echo "Installing dependencies..."
-	@$(VENV)/bin/pip install spin-sdk>=3.3.0
+	@$(VENV)/bin/pip install spin-sdk==3.4.1
 	@$(VENV)/bin/pip install componentize-py
 	@$(VENV)/bin/pip install -e ../../src/sdk/wasmcp-python
 
 build: install-deps ## Build the handler component
-	@echo "Building Python handler component..."
-	cd handler && ../$(VENV)/bin/componentize-py -d mcp.wit -w mcp-handler componentize app -p ../$(VENV)/lib/python3.13/site-packages -p ../../../src/sdk/wasmcp-python/src -p . -o app.wasm
+	@echo "Building Python handler component using build.sh..."
+	@cd handler && chmod +x build.sh && LOCAL_BUILD=true ./build.sh
 	@echo "✅ Built handler/app.wasm"
 
 test: install-deps ## Test the handler locally (Python only)

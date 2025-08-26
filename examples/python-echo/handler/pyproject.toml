@@ -1,0 +1,4 @@
+
+[tool.componentize-py]
+wit-path = "wit"
+world = "mcp-handler"

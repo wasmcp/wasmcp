@@ -63,3 +63,6 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+[tool.componentize-py]
+wit-path = "wit"
+world = "mcp-handler"
