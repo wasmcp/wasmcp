@@ -66,21 +66,10 @@ func weatherHandler(args json.RawMessage) (string, error) {
 		return "", fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	// First, geocode the location using standard net/http
+	// First, geocode the location
 	geocodingUrl := fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", 
 		url.QueryEscape(params.Location))
 	
-	resp, err := http.Get(geocodingUrl)
-	if err != nil {
-		return "", fmt.Errorf("failed to geocode location: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read geocoding response: %w", err)
-	}
-
 	var geocodingData struct {
 		Results []struct {
 			Latitude  float64 `json:"latitude"`
@@ -89,8 +78,20 @@ func weatherHandler(args json.RawMessage) (string, error) {
 		} `json:"results"`
 	}
 	
+	// Use standard net/http - WASI HTTP support is enabled automatically by the SDK
+	resp, err := http.Get(geocodingUrl)
+	if err != nil {
+		return "", fmt.Errorf("failed to geocode location: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+	
 	if err := json.Unmarshal(body, &geocodingData); err != nil {
-		return "", fmt.Errorf("failed to parse geocoding response: %w", err)
+		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	if len(geocodingData.Results) == 0 {
@@ -99,21 +100,10 @@ func weatherHandler(args json.RawMessage) (string, error) {
 
 	location := geocodingData.Results[0]
 
-	// Now fetch the weather data using standard net/http
+	// Now fetch the weather data
 	weatherUrl := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
 		location.Latitude, location.Longitude)
 	
-	weatherResp, err := http.Get(weatherUrl)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch weather: %w", err)
-	}
-	defer weatherResp.Body.Close()
-
-	weatherBody, err := io.ReadAll(weatherResp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read weather response: %w", err)
-	}
-
 	var weatherData struct {
 		Current struct {
 			Temperature2m         float64 `json:"temperature_2m"`
@@ -122,6 +112,18 @@ func weatherHandler(args json.RawMessage) (string, error) {
 			WindSpeed10m          float64 `json:"wind_speed_10m"`
 			WeatherCode           int     `json:"weather_code"`
 		} `json:"current"`
+	}
+	
+	// Use standard net/http for weather API too
+	weatherResp, err := http.Get(weatherUrl)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch weather: %w", err)
+	}
+	defer weatherResp.Body.Close()
+	
+	weatherBody, err := io.ReadAll(weatherResp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read weather response: %w", err)
 	}
 	
 	if err := json.Unmarshal(weatherBody, &weatherData); err != nil {
@@ -195,6 +197,7 @@ func multiWeatherSchema() json.RawMessage {
 	}`)
 }
 
+// multiWeatherHandler demonstrates concurrent HTTP requests using goroutines
 func multiWeatherHandler(args json.RawMessage) (string, error) {
 	var params struct {
 		Cities []string `json:"cities"`
@@ -204,9 +207,9 @@ func multiWeatherHandler(args json.RawMessage) (string, error) {
 	}
 
 	type cityWeather struct {
-		city string
+		city    string
 		weather string
-		err error
+		err     error
 	}
 
 	// Channel to collect results
@@ -215,20 +218,20 @@ func multiWeatherHandler(args json.RawMessage) (string, error) {
 	// WaitGroup to wait for all goroutines
 	var wg sync.WaitGroup
 	
-	// Launch concurrent requests for each city
+	// Launch concurrent requests for each city using standard net/http
 	for _, city := range params.Cities {
 		wg.Add(1)
 		go func(cityName string) {
 			defer wg.Done()
 			
-			// Call the existing weather function
+			// Fetch weather concurrently
 			weatherJSON, _ := json.Marshal(map[string]string{"location": cityName})
 			weatherInfo, err := weatherHandler(weatherJSON)
 			
 			results <- cityWeather{
-				city: cityName,
+				city:    cityName,
 				weather: weatherInfo,
-				err: err,
+				err:     err,
 			}
 		}(city)
 	}
