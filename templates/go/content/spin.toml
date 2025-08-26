@@ -1,0 +1,20 @@
+spin_manifest_version = 2
+
+[application]
+name = "{{project-name}}"
+version = "0.1.0"
+authors = ["{{authors}}"]
+description = "MCP server written in Go"
+
+[[trigger.http]]
+route = "/..."
+component = "mcp-server"
+
+[component.mcp-server]
+source = "composed.wasm"
+allowed_outbound_hosts = [
+    # Add any external hosts your tools need to access
+    # "https://api.example.com",
+]
+[component.mcp-server.build]
+command = "make compose"
