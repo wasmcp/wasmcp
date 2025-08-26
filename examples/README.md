@@ -2,29 +2,31 @@
 
 Complete, working examples of MCP (Model Context Protocol) servers running as WebAssembly components.
 
-## Examples
+## Weather Examples
 
-### 🦀 [`rust-weather/`](./rust-weather)
+Parallel implementations of a weather MCP server in different languages:
+
+### 🦀 [`weather/rust/`](./weather/rust)
 A Rust MCP handler featuring:
 - Echo tool for basic testing
 - Weather tool with async HTTP requests
 - Clean project structure with NO WIT files needed
 - Uses `wasmcp@0.2.7` with proc macros
 
-### 📘 [`typescript-weather/`](./typescript-weather)
+### 📘 [`weather/typescript/`](./weather/typescript)
 A TypeScript MCP handler featuring:
 - Echo tool for basic testing  
 - Weather tool with async fetch API
 - Clean project structure with WIT deps from npm
 - Uses `wasmcp@0.1.11` npm package
 
-### 🐹 [`go-weather/`](./go-weather)
+### 🐹 [`weather/go/`](./weather/go)
 A Go MCP handler featuring:
 - Echo tool with typed structs
 - Weather tool with HTTP requests
 - Multi-weather tool demonstrating concurrent goroutines
 - Idiomatic generics API with automatic JSON unmarshaling
-- Uses `wasmcp-go@v0.2.4` with TinyGo
+- Uses `wasmcp/src/sdk/go@v0.2.5` with TinyGo
 
 ## Quick Start
 
@@ -32,7 +34,7 @@ All examples follow the same workflow:
 
 ```bash
 # Enter an example directory
-cd rust-weather  # or typescript-weather or go-weather
+cd weather/rust  # or weather/typescript or weather/go
 
 # Build and compose the component
 make compose
