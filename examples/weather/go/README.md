@@ -66,7 +66,6 @@ func init() {
 }
 ```
 
-
 ## Testing
 
 Test your tools with curl:

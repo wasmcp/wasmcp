@@ -16,7 +16,7 @@ import (
 func init() {
 	// Create the server
 	server := mcp.NewServer(
-		&mcp.Implementation{Name: "go_weather_new", Version: "v1.0.0"},
+		&mcp.Implementation{Name: "go_weather", Version: "v1.0.0"},
 		nil,
 	)
 	
