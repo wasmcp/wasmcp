@@ -1063,12 +1063,12 @@ mod _rt {
 }
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:spin@0.1.0:mcp-spin-gateway:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:server@0.1.0:mcp-server:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 856] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xd1\x05\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 846] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xcd\x05\x01A\x02\x01\
 A\x02\x01B(\x01r\x03\x04names\x0bdescriptions\x0cinput-schemas\x04\0\x04tool\x03\
 \0\0\x01ks\x01r\x04\x03uris\x04names\x0bdescription\x02\x09mime-type\x02\x04\0\x0d\
 resource-info\x03\0\x03\x01p}\x01k\x05\x01r\x04\x03uris\x09mime-type\x02\x04text\
@@ -1084,9 +1084,9 @@ ist-tools\x01\x1a\x01@\x02\x04names\x09argumentss\0\x13\x04\0\x09call-tool\x01\x
 \x01p\x04\x01@\0\0\x1c\x04\0\x0elist-resources\x01\x1d\x01@\x01\x03uris\0\x15\x04\
 \0\x0dread-resource\x01\x1e\x01p\x0d\x01@\0\0\x1f\x04\0\x0clist-prompts\x01\x20\x01\
 @\x02\x04names\x09argumentss\0\x18\x04\0\x0aget-prompt\x01!\x03\0\x18wasmcp:mcp/\
-handler@0.1.0\x05\0\x04\0\"wasmcp:spin/mcp-spin-gateway@0.1.0\x04\0\x0b\x16\x01\0\
-\x10mcp-spin-gateway\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-comp\
-onent\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+handler@0.1.0\x05\0\x04\0\x1ewasmcp:server/mcp-server@0.1.0\x04\0\x0b\x10\x01\0\x0a\
+mcp-server\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070\
+.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

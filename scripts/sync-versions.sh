@@ -24,11 +24,11 @@ fi
 VERSIONS_FILE="$REPO_ROOT/versions.toml"
 
 # Extract versions using grep and sed
-WASMCP_SPIN=$(grep '^wasmcp-spin = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
+WASMCP_SERVER=$(grep '^wasmcp-server = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
 WASMCP_RUST=$(grep '^wasmcp-rust = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
 WASMCP_TYPESCRIPT=$(grep '^wasmcp-typescript = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
 WIT_MCP=$(grep '^mcp = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
-WASMCP_SPIN_REF=$(grep '"ghcr.io/fastertools/wasmcp-spin" = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
+WASMCP_SERVER_REF=$(grep '"ghcr.io/fastertools/wasmcp-server" = ' "$VERSIONS_FILE" | sed 's/.*"\(.*\)".*/\1/')
 
 echo "Synchronizing versions across wasmcp..."
 echo
@@ -53,13 +53,13 @@ for template in rust javascript typescript; do
     echo "Updating $template spin.toml..."
     spin_toml="$REPO_ROOT/templates/$template/content/spin.toml"
     if [ -f "$spin_toml" ]; then
-        sed_inplace "s/fastertools:wasmcp-spin\", version = \"[^\"]*\"/fastertools:wasmcp-spin\", version = \"$WASMCP_SPIN_REF\"/" "$spin_toml"
+        sed_inplace "s/fastertools:wasmcp-server\", version = \"[^\"]*\"/fastertools:wasmcp-server\", version = \"$WASMCP_SERVER_REF\"/" "$spin_toml"
     fi
     
     # Update snippet
     snippet="$REPO_ROOT/templates/$template/metadata/snippets/component.txt"
     if [ -f "$snippet" ]; then
-        sed_inplace "s/fastertools:wasmcp-spin\", version = \"[^\"]*\"/fastertools:wasmcp-spin\", version = \"$WASMCP_SPIN_REF\"/" "$snippet"
+        sed_inplace "s/fastertools:wasmcp-server\", version = \"[^\"]*\"/fastertools:wasmcp-server\", version = \"$WASMCP_SERVER_REF\"/" "$snippet"
     fi
 done
 
@@ -67,8 +67,8 @@ echo
 echo "Version sync complete!"
 echo
 echo "Current versions:"
-echo "  wasmcp-spin: $WASMCP_SPIN"
+echo "  wasmcp-server: $WASMCP_SERVER"
 echo "  wasmcp-rust: $WASMCP_RUST"
 echo "  wasmcp-typescript: $WASMCP_TYPESCRIPT"
 echo "  WIT package: $WIT_MCP"
-echo "  Gateway reference: $WASMCP_SPIN_REF"
+echo "  Server reference: $WASMCP_SERVER_REF"

@@ -1,8 +1,8 @@
 .PHONY: build test clean install compose run run-wasmtime help
 
-# Default gateway version to use
-GATEWAY_VERSION ?= 0.0.5
-GATEWAY_WASM ?= wasmcp-spin.wasm
+# Default server version to use
+SERVER_VERSION ?= 0.1.0
+SERVER_WASM ?= wasmcp-server.wasm
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -24,16 +24,16 @@ clean: ## Clean build artifacts
 	cd handler && rm -rf node_modules
 	rm -f composed.wasm
 
-compose: build ## Compose handler with gateway using wac plug
-	@echo "Composing handler with gateway..."
-	wac plug wasmcp-spin.wasm --plug handler/dist/handler.wasm -o composed.wasm
+compose: build ## Compose handler with server using wac plug
+	@echo "Composing handler with server..."
+	wac plug --plug handler/dist/handler.wasm wasmcp-server.wasm -o composed.wasm
 	@echo "✅ Created composed.wasm"
 
 run: build ## Run with Spin (handles dependencies automatically)
 	spin up
 
 run-wasmtime: compose ## Run with wasmtime (requires manual composition)
-	wasmtime serve -Scli composed.wasm
+	wasmtime serve -S cli -S http composed.wasm
 
 # Development targets
 dev: build compose ## Build and compose for development

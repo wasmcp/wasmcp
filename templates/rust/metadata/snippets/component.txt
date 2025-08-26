@@ -1,15 +1,15 @@
 [[trigger.http]]
 route = "{{route}}"
-component = "wasmcp-spin-{{project-name | kebab_case}}"
+component = "wasmcp-server-{{project-name | kebab_case}}"
 
-[component.wasmcp-spin-{{project-name | kebab_case}}]
+[component.wasmcp-server-{{project-name | kebab_case}}]
 # Using the published gateway component
-source = { registry = "ghcr.io", package = "fastertools:wasmcp-spin", version = "0.0.3" }
+source = { registry = "ghcr.io", package = "fastertools:wasmcp-server", version = "0.1.0" }
 
-[component.wasmcp-spin-{{project-name | kebab_case}}.build]
+[component.wasmcp-server-{{project-name | kebab_case}}.build]
 command = "cd {{project-name | kebab_case}} && make build"
 watch = ["{{project-name | kebab_case}}/handler/src/**/*.rs", "{{project-name | kebab_case}}/handler/Cargo.toml"]
 
-[component.wasmcp-spin-{{project-name | kebab_case}}.dependencies]
+[component.wasmcp-server-{{project-name | kebab_case}}.dependencies]
 # Link to the local handler component
 "wasmcp:mcp/handler" = { path = "{{project-name | kebab_case}}/handler/target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm" }

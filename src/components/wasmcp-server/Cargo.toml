@@ -1,6 +1,6 @@
 [package]
-name = "wasmcp_spin"
-version = "0.0.7"
+name = "wasmcp_server"
+version = "0.1.0"
 edition = "2021"
 
 [lib]
@@ -15,11 +15,11 @@ base64 = "0.22"
 wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
 
 [package.metadata.component]
-package = "wasmcp:spin"
+package = "wasmcp:server"
 
 [package.metadata.component.target]
 path = "wit"
-world = "mcp-spin-gateway"
+world = "mcp-server"
 
 [package.metadata.component.target.dependencies]
 "wasmcp:mcp" = { path = "wit/deps/wasmcp" }

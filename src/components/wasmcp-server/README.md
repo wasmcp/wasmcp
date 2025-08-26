@@ -1,25 +1,31 @@
-# wasmcp-spin
+# wasmcp-server
 
-HTTP gateway component for MCP servers. Handles protocol translation between HTTP/JSON-RPC and WebAssembly components.
+MCP server component that handles HTTP and JSON-RPC protocol. Works with any WASI runtime (Spin, Wasmtime, etc.).
 
 ## What It Does
 
 Bridges HTTP requests to your MCP handler:
-- Receives JSON-RPC requests at `/mcp` endpoint  
+- Receives JSON-RPC requests
 - Translates to component calls
 - Returns JSON-RPC responses
 - Handles errors gracefully
 
 ## Usage
 
-Most users get this automatically from templates. It's included in `spin.toml`:
+Compose with your handler using `wac`:
 
-```toml
-[component.wasmcp-spin]
-source = "wasmcp-spin.wasm"
+```bash
+wac plug --plug handler.wasm wasmcp-server.wasm -o composed.wasm
+```
 
-[component.wasmcp-spin.dependencies]
-"wasmcp:mcp/handler@0.1.0" = { path = "./handler.wasm" }
+Run with any WASI runtime:
+
+```bash
+# Wasmtime
+wasmtime serve -S cli -S http composed.wasm
+
+# Spin
+spin up
 ```
 
 ## Protocol Support
@@ -37,13 +43,13 @@ cargo component build --release --target wasm32-wasip2
 ## Architecture
 
 ```
-HTTP Request → Spin Trigger → wasmcp-spin → Your Handler
+HTTP Request → WASI Runtime → wasmcp-server → Your Handler
      ↓             ↓              ↓              ↓
  JSON-RPC    IncomingRequest  Component    Tool/Resource
               /Response         Call        Implementation
 ```
 
-The gateway is stateless - all state lives in your handler or Spin's KV stores.
+The server is stateless - all state lives in your handler or external stores.
 
 ## License
 

@@ -55,8 +55,8 @@ jobs:
     - name: Run CI pipeline
       run: make ci
     
-    - name: Upload wasmcp-spin artifact
+    - name: Upload wasmcp-server artifact
       uses: actions/upload-artifact@v4
       with:
-        name: wasmcp-spin
-        path: src/components/wasmcp-spin/target/wasm32-wasip1/release/wasmcp_spin.wasm
+        name: wasmcp-server
+        path: src/components/wasmcp-server/target/wasm32-wasip1/release/wasmcp_server.wasm

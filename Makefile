@@ -42,15 +42,15 @@ validate-wit: ## Check if WIT files are in sync
 	fi
 
 # Individual component bumps
-bump-gateway-patch: ## Bump wasmcp-spin patch version
-	@current=$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2); \
+bump-server-patch: ## Bump wasmcp-server patch version
+	@current=$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2"."$$3+1}'); \
-	./scripts/bump-version.sh wasmcp-spin $$new
+	./scripts/bump-version.sh wasmcp-server $$new
 
-bump-gateway-minor: ## Bump wasmcp-spin minor version
-	@current=$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2); \
+bump-server-minor: ## Bump wasmcp-server minor version
+	@current=$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
-	./scripts/bump-version.sh wasmcp-spin $$new
+	./scripts/bump-version.sh wasmcp-server $$new
 
 bump-rust-patch: ## Bump wasmcp-rust patch version
 	@current=$$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2); \
@@ -77,15 +77,15 @@ bump-mcp-wit: ## Bump MCP WIT package version (breaking changes only)
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
 	./scripts/bump-version.sh mcp $$new
 
-bump-gateway-wit: ## Bump MCP Gateway WIT package version (breaking changes only)
-	@current=$$(grep '^mcp-gateway = ' versions.toml | cut -d'"' -f2); \
+bump-server-wit: ## Bump MCP Server WIT package version (breaking changes only)
+	@current=$$(grep '^mcp-server = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
-	./scripts/bump-version.sh mcp-gateway $$new
+	./scripts/bump-version.sh mcp-server $$new
 
 # Bump all packages
 bump-all-patch: ## Bump all packages patch version
 	@echo "Bumping all packages (patch)..."
-	@$(MAKE) bump-gateway-patch
+	@$(MAKE) bump-server-patch
 	@$(MAKE) bump-rust-patch
 	@$(MAKE) bump-ts-patch
 	@echo ""
@@ -95,14 +95,14 @@ bump-all-patch: ## Bump all packages patch version
 	@echo "  1. Review changes: git diff"
 	@echo "  2. Commit: git commit -am 'chore: bump all packages patch version'"
 	@echo "  3. Create tags:"
-	@echo "     git tag wasmcp-spin-v$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2)"
+	@echo "     git tag wasmcp-server-v$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2)"
 	@echo "     git tag wasmcp-rust-v$$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2)"
 	@echo "     git tag wasmcp-typescript-v$$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2)"
 	@echo "  4. Push: git push origin main --tags"
 
 bump-all-minor: ## Bump all packages minor version
 	@echo "Bumping all packages (minor)..."
-	@$(MAKE) bump-gateway-minor
+	@$(MAKE) bump-server-minor
 	@$(MAKE) bump-rust-minor
 	@$(MAKE) bump-ts-minor
 	@echo ""
@@ -149,18 +149,18 @@ install-deps: install-rust-tools install-ts-deps ## Install all dependencies
 # Lint targets
 lint-rust: ## Run Rust linters (clippy and rustfmt check)
 	@echo "Running clippy..."
-	cd src/components/wasmcp-spin && cargo clippy -- -D warnings
+	cd src/components/wasmcp-server && cargo clippy -- -D warnings
 	cd src/sdk/wasmcp-rust && cargo clippy -- -D warnings
 	@echo "Checking rustfmt..."
-	cd src/components/wasmcp-spin && cargo fmt -- --check
+	cd src/components/wasmcp-server && cargo fmt -- --check
 	cd src/sdk/wasmcp-rust && cargo fmt -- --check
 
 lint-rust-fix: ## Fix Rust lint issues
 	@echo "Running clippy with fixes..."
-	cd src/components/wasmcp-spin && cargo clippy --fix --allow-dirty --allow-staged
+	cd src/components/wasmcp-server && cargo clippy --fix --allow-dirty --allow-staged
 	cd src/sdk/wasmcp-rust && cargo clippy --fix --allow-dirty --allow-staged
 	@echo "Running rustfmt..."
-	cd src/components/wasmcp-spin && cargo fmt
+	cd src/components/wasmcp-server && cargo fmt
 	cd src/sdk/wasmcp-rust && cargo fmt
 
 lint-ts: ## Run TypeScript linter
@@ -178,8 +178,8 @@ lint-fix-all: ## Fix all lint and formatting issues (Rust and TypeScript)
 	@echo "✅ All lint and formatting issues fixed!"
 
 # Build targets
-build-gateway: ## Build wasmcp-spin
-	cd src/components/wasmcp-spin && cargo clippy -- -D warnings && cargo component build --release
+build-server: ## Build wasmcp-server
+	cd src/components/wasmcp-server && cargo clippy -- -D warnings && cargo component build --release
 
 build-rust-sdk: ## Build wasmcp-rust
 	cd src/sdk/wasmcp-rust && cargo clippy -- -D warnings && cargo build --release
@@ -187,16 +187,16 @@ build-rust-sdk: ## Build wasmcp-rust
 build-ts-sdk: install-ts-deps ## Build wasmcp-typescript
 	cd src/sdk/wasmcp-typescript && npm run lint && npm run build
 
-build-all: build-gateway build-rust-sdk build-ts-sdk ## Build all components
+build-all: build-server build-rust-sdk build-ts-sdk ## Build all components
 
 # Test targets
-test-gateway: ## Test wasmcp-spin
-	cd src/components/wasmcp-spin && cargo test
+test-server: ## Test wasmcp-server
+	cd src/components/wasmcp-server && cargo test
 
 test-rust-sdk: ## Test wasmcp-rust
 	cd src/sdk/wasmcp-rust && cargo test
 
-test-rust: test-gateway test-rust-sdk ## Run all Rust tests
+test-rust: test-server test-rust-sdk ## Run all Rust tests
 
 test-ts: install-ts-deps ## Run TypeScript tests
 	cd src/sdk/wasmcp-typescript && npm test
@@ -214,23 +214,23 @@ ci: ci-build ci-test ## Run full CI pipeline
 
 # Clean targets
 clean: ## Clean all build artifacts
-	cd src/components/wasmcp-spin && cargo clean
+	cd src/components/wasmcp-server && cargo clean
 	cd src/sdk/wasmcp-rust && cargo clean
 	cd src/sdk/wasmcp-typescript && rm -rf dist node_modules
 
 # Release helper
 show-versions: ## Show current versions
 	@echo "Current versions:"
-	@echo "  wasmcp-spin:  $$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2)"
+	@echo "  wasmcp-server:  $$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2)"
 	@echo "  wasmcp-rust:       $$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2)"
 	@echo "  wasmcp-typescript: $$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2)"
 	@echo ""
 	@echo "WIT packages:"
 	@echo "  mcp:                $$(grep '^mcp = ' versions.toml | cut -d'"' -f2)"
-	@echo "  mcp-gateway:        $$(grep '^mcp-gateway = ' versions.toml | cut -d'"' -f2)"
+	@echo "  mcp-server:         $$(grep '^mcp-server = ' versions.toml | cut -d'"' -f2)"
 
-get-gateway-version: ## Get wasmcp-spin version
-	@grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2
+get-server-version: ## Get wasmcp-server version
+	@grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2
 
 get-rust-sdk-version: ## Get wasmcp-rust version
 	@grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2
@@ -239,21 +239,21 @@ get-ts-sdk-version: ## Get wasmcp-typescript version
 	@grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2
 
 # Publishing targets
-publish-gateway: ## Publish wasmcp-spin to ghcr.io
-	@echo "Publishing wasmcp-spin..."
-	@version=$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2); \
-	cd src/components/wasmcp-spin && \
-	wkg oci push ghcr.io/fastertools/wasmcp-spin:$$version \
+publish-server: ## Publish wasmcp-server to ghcr.io
+	@echo "Publishing wasmcp-server..."
+	@version=$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2); \
+	cd src/components/wasmcp-server && \
+	wkg oci push ghcr.io/fastertools/wasmcp-server:$$version \
 		--annotation "org.opencontainers.image.source=https://github.com/fastertools/wasmcp" \
-		--annotation "org.opencontainers.image.description=WebAssembly server component for Spin" \
+		--annotation "org.opencontainers.image.description=WebAssembly server component" \
 		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
-		target/wasm32-wasip1/release/wasmcp_spin.wasm && \
-	wkg oci push ghcr.io/fastertools/wasmcp-spin:latest \
+		target/wasm32-wasip1/release/wasmcp_server.wasm && \
+	wkg oci push ghcr.io/fastertools/wasmcp-server:latest \
 		--annotation "org.opencontainers.image.source=https://github.com/fastertools/wasmcp" \
-		--annotation "org.opencontainers.image.description=WebAssembly server component for Spin" \
+		--annotation "org.opencontainers.image.description=WebAssembly server component" \
 		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
-		target/wasm32-wasip1/release/wasmcp_spin.wasm
-	@echo "✅ Published wasmcp-spin v$$(grep 'wasmcp-spin = ' versions.toml | cut -d'"' -f2)"
+		target/wasm32-wasip1/release/wasmcp_server.wasm
+	@echo "✅ Published wasmcp-server v$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2)"
 
 publish-rust-sdk: ## Publish wasmcp-rust to crates.io
 	@echo "Publishing wasmcp-rust to crates.io..."
@@ -274,13 +274,13 @@ publish-ts-sdk-dry: ## Dry run publish wasmcp-typescript
 publish-all: ## Publish all packages (use with caution!)
 	@echo "⚠️  Publishing all packages..."
 	@echo "This will publish:"
-	@echo "  - wasmcp-spin v$$(make get-gateway-version) to ghcr.io"
+	@echo "  - wasmcp-server v$$(make get-server-version) to ghcr.io"
 	@echo "  - wasmcp v$$(make get-rust-sdk-version) to crates.io"
 	@echo "  - wasmcp v$$(make get-ts-sdk-version) to npm"
 	@echo ""
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
-	@$(MAKE) publish-gateway
+	@$(MAKE) publish-server
 	@$(MAKE) publish-rust-sdk
 	@$(MAKE) publish-ts-sdk
 	@echo ""
@@ -289,8 +289,8 @@ publish-all: ## Publish all packages (use with caution!)
 publish-dry-run: ## Dry run all publishes
 	@echo "Dry run for all packages:"
 	@echo ""
-	@echo "=== wasmcp-spin ==="
-	@echo "Would publish v$$(make get-gateway-version) to ghcr.io"
+	@echo "=== wasmcp-server ==="
+	@echo "Would publish v$$(make get-server-version) to ghcr.io"
 	@echo ""
 	@echo "=== wasmcp-rust ==="
 	@$(MAKE) publish-rust-sdk-dry
@@ -307,7 +307,7 @@ release-patch: ## Full release workflow for patch version
 	@echo "1. Review: git diff"
 	@echo "2. Commit: git commit -am 'chore: release patch version'"
 	@echo "3. Tag and push:"
-	@echo "   git tag wasmcp-spin-v$$(make get-gateway-version)"
+	@echo "   git tag wasmcp-server-v$$(make get-server-version)"
 	@echo "   git tag wasmcp-rust-v$$(make get-rust-sdk-version)"
 	@echo "   git tag wasmcp-typescript-v$$(make get-ts-sdk-version)"
 	@echo "   git push origin main --tags"
