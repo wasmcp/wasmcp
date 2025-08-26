@@ -22,7 +22,7 @@ clean: ## Clean build artifacts
 
 compose: build ## Compose handler with gateway using wac plug
 	@echo "Composing handler with gateway..."
-	wac plug wasmcp-spin.wasm --plug handler/target/wasm32-wasip1/release/rust_demo.wasm -o composed.wasm
+	wac plug wasmcp-spin.wasm --plug handler/target/wasm32-wasip1/release/rust_final.wasm -o composed.wasm
 	@echo "✅ Created composed.wasm"
 
 run: build ## Run with Spin (handles dependencies automatically)
