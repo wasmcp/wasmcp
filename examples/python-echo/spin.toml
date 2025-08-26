@@ -1,0 +1,22 @@
+spin_manifest_version = 2
+
+[application]
+name = "echo-handler"
+version = "1.0.0"
+authors = ["wasmcp"]
+description = "Example echo handler for wasmcp"
+
+[variables]
+mcp_handler_name = { default = "echo-handler" }
+
+[[trigger.http]]
+route = "/mcp"
+component = "echo-handler"
+
+[component.echo-handler]
+source = "app.wasm"
+allowed_outbound_hosts = []
+
+[component.echo-handler.build]
+command = "componentize-py -w ../../wit -o app.wasm componentize app"
+watch = ["*.py", "requirements.txt"]

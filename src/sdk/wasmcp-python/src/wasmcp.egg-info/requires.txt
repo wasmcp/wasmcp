@@ -1,0 +1,7 @@
+
+[dev]
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=22.0.0
+isort>=5.10.0
+mypy>=1.0.0

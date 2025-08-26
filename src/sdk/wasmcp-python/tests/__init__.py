@@ -1,0 +1,1 @@
+"""Tests for wasmcp Python SDK."""

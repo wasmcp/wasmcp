@@ -144,7 +144,19 @@ install-rust-tools: ## Install required Rust tools
 install-ts-deps: ## Install TypeScript dependencies
 	cd src/sdk/wasmcp-typescript && npm ci
 
-install-deps: install-rust-tools install-ts-deps ## Install all dependencies
+install-python-deps: ## Setup Python test environment
+	@if [ ! -d ".agent/wasmcp-test-env" ]; then \
+		echo "Creating Python test environment..."; \
+		cd .agent && python3.11 -m venv wasmcp-test-env; \
+	fi
+	@echo "Installing Python dependencies..."
+	@cd .agent && source wasmcp-test-env/bin/activate && \
+	pip install --upgrade pip && \
+	pip install pytest && \
+	pip install -e ../src/sdk/wasmcp-python && \
+	pip install -e ../src/sdk/wasmcp-wasi-python
+
+install-deps: install-rust-tools install-ts-deps install-python-deps ## Install all dependencies
 
 # Lint targets
 lint-rust: ## Run Rust linters (clippy and rustfmt check)
@@ -201,7 +213,21 @@ test-rust: test-server test-rust-sdk ## Run all Rust tests
 test-ts: install-ts-deps ## Run TypeScript tests
 	cd src/sdk/wasmcp-typescript && npm test
 
-test-all: test-rust test-ts ## Run all tests
+test-python: install-python-deps ## Run Python SDK tests
+	@echo "Running Python SDK tests..."
+	@cd .agent && source wasmcp-test-env/bin/activate && \
+	cd ../src/sdk/wasmcp-python && python -m pytest tests/ -v && \
+	cd ../../sdk/wasmcp-wasi-python && python -m pytest tests/ -v
+
+test-python-core: install-python-deps ## Run core Python SDK tests only  
+	@cd .agent && source wasmcp-test-env/bin/activate && \
+	cd ../src/sdk/wasmcp-python && python -m pytest tests/ -v
+
+test-python-wasi: install-python-deps ## Run WASI Python SDK tests only
+	@cd .agent && source wasmcp-test-env/bin/activate && \
+	cd ../src/sdk/wasmcp-wasi-python && python -m pytest tests/ -v
+
+test-all: test-rust test-ts test-python ## Run all tests
 
 # CI targets
 ci-setup: install-deps ## Setup CI environment
