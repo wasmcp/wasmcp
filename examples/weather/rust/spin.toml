@@ -22,8 +22,8 @@ key_value_stores = ["default"]
 
 [component.wasmcp-server.dependencies]
 # Link to the local handler component
-"wasmcp:mcp/handler@0.1.0" = { path = "./handler/target/wasm32-wasip1/release/rust_weather.wasm" }
+"wasmcp:mcp/handler@0.1.0" = { path = "./target/wasm32-wasip1/release/rust_weather.wasm" }
 
 [component.wasmcp-server.build]
 command = "make build"
-watch = ["handler/src/**/*.rs", "handler/Cargo.toml", "handler/wit/*.wit"]
+watch = ["src/**/*.rs", "Cargo.toml", "wit/*.wit"]

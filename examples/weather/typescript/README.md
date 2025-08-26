@@ -4,125 +4,86 @@ An MCP server written in TypeScript
 
 ## Structure
 
-This is a Spin application that implements the Model Context Protocol (MCP) using WebAssembly components.
+This is an FTL tool that implements the Model Context Protocol (MCP) using WebAssembly components.
 
 - `handler/` - The TypeScript implementation of your MCP handler
+- `ftl.toml` - FTL configuration file
 - `spin.toml` - Spin application manifest
-- `Makefile` - Build and development commands
 
 ## Development
 
 ### Prerequisites
 
 - Node.js >= 20.0.0
-- Spin CLI
-- @bytecodealliance/jco (will be installed automatically)
+- FTL CLI
 
 ### Building
 
 ```bash
-# Build the handler component
+ftl build
+# or
 make build
-
-# Compose with gateway
-make compose
 ```
 
 ### Testing
 
-The handler includes comprehensive unit tests for all tools:
-
 ```bash
+ftl test
+# or
 make test
 ```
 
-Tests cover:
-- Tool metadata (name, description)
-- Input schema validation
-- Successful execution paths
-- Error handling for invalid inputs
-
 ### Running Locally
 
-#### With Wasmtime (standalone WASI runtime)
 ```bash
-wasmtime serve -S cli -S http composed.wasm
+ftl serve
+# or
+make serve
 ```
 
-The MCP server will be available at `http://localhost:8080`
-
-#### With Spin
-```bash
-spin up
-```
-
-The MCP server will be available at `http://localhost:3000/mcp`
+The tool will be available at `http://localhost:3000/mcp`
 
 ### Example Usage
 
 ```bash
-# List available tools
-curl -X POST http://localhost:8080 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "tools/list",
-    "id": 1
-  }'
-
-# Call the weather tool
-curl -X POST http://localhost:8080 \
+curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "weather",
+      "name": "typescript_weather",
       "arguments": {
-        "location": "San Francisco"
+        "input": "Hello, world!"
       }
     },
-    "id": 2
+    "id": 1
   }'
 ```
 
-## Implementing Your Tools
+## Deployment
 
-Edit `handler/src/index.ts` to add new tools:
-
-```typescript
-import { createTool, createHandler, z } from 'wasmcp';
-
-const myTool = createTool({
-  name: 'my_tool',
-  description: 'Description of my tool',
-  schema: z.object({
-    param: z.string().describe('Parameter description')
-  }),
-  execute: async (args) => {
-    // Your tool logic here
-    return `Result for ${args.param}`;
-  }
-});
-
-// Add to handler
-export const handler = createHandler({
-  tools: [echoTool, weatherTool, myTool]
-});
+```bash
+ftl deploy
+# or
+make deploy
 ```
+
+## Implementing Your Tool
+
+Edit `handler/src/index.ts` to implement your tool's functionality:
+
+1. Modify `listTools()` to define your tools
+2. Implement the tool logic in `callTool()`
+3. Optionally implement resources and prompts
+
+## Type Safety
+
+This template uses `jco` to generate TypeScript types from the WIT interface definition. The types are generated in `handler/src/generated/` when you run `npm run build`.
 
 ## Configuration
 
-### Spin Configuration
-
-Edit `spin.toml` to configure:
-- Component source and version
-- Environment variables
-- Build commands
-
-### Package Configuration
-
-Edit `handler/package.json` to:
-- Add dependencies
-- Configure build scripts
-- Update package metadata
+Edit `ftl.toml` to configure:
+- Allowed external hosts
+- Build optimization flags
+- Other runtime settings

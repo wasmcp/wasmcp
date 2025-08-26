@@ -21,11 +21,9 @@ This is a Spin application that implements the Model Context Protocol (MCP) usin
 ### Building
 
 ```bash
-# Build the handler component
 make build
-
-# Compose with gateway
-make compose
+# or
+spin build
 ```
 
 ### Testing
@@ -44,16 +42,10 @@ Tests cover:
 
 ### Running Locally
 
-#### With Wasmtime (standalone WASI runtime)
-```bash
-wasmtime serve -S cli -S http composed.wasm
-```
-
-The MCP server will be available at `http://localhost:8080`
-
-#### With Spin
 ```bash
 spin up
+# or
+make up
 ```
 
 The MCP server will be available at `http://localhost:3000/mcp`
@@ -62,7 +54,7 @@ The MCP server will be available at `http://localhost:3000/mcp`
 
 ```bash
 # List available tools
-curl -X POST http://localhost:8080 \
+curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -71,7 +63,7 @@ curl -X POST http://localhost:8080 \
   }'
 
 # Call the echo tool
-curl -X POST http://localhost:8080 \
+curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",

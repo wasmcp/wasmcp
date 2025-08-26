@@ -11,22 +11,22 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 install: ## Install dependencies
-	cd handler && npm install
+	npm install
 
 build: install ## Build the handler component
-	cd handler && npm run build
+	npm run build
 
 test: install ## Run tests
-	cd handler && npm test
+	npm test
 
 clean: ## Clean build artifacts
-	cd handler && npm run clean
-	cd handler && rm -rf node_modules
+	npm run clean
+	rm -rf node_modules
 	rm -f composed.wasm
 
 compose: build ## Compose handler with server using wac plug
 	@echo "Composing handler with server..."
-	wac plug --plug handler/dist/handler.wasm wasmcp-server.wasm -o composed.wasm
+	wac plug --plug dist/handler.wasm wasmcp-server.wasm -o composed.wasm
 	@echo "✅ Created composed.wasm"
 
 run: build ## Run with Spin (handles dependencies automatically)
