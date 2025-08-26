@@ -2,7 +2,7 @@
 
 from typing import Any, Callable, Dict, Optional
 
-from .exports import register_handler
+from .wit.exports import set_handler
 from .tools import Tool
 from .resources import Resource
 from .prompts import Prompt
@@ -37,7 +37,7 @@ class WasmcpHandler:
     def _setup_exports(self):
         """Set up WIT exports for this handler."""
         # Register this handler globally for the export bridge
-        register_handler(self)
+        set_handler(self)
     
     @property
     def tool(self):

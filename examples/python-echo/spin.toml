@@ -1,22 +1,30 @@
 spin_manifest_version = 2
 
 [application]
-name = "echo-handler"
-version = "1.0.0"
-authors = ["wasmcp"]
-description = "Example echo handler for wasmcp"
-
-[variables]
-mcp_handler_name = { default = "echo-handler" }
+name = "python-echo"
+version = "0.1.0"
+authors = ["wasmcp contributors"]
+description = "An MCP server written in Python with echo and weather tools"
 
 [[trigger.http]]
 route = "/mcp"
-component = "echo-handler"
+component = "wasmcp-spin"
 
-[component.echo-handler]
-source = "app.wasm"
-allowed_outbound_hosts = []
+[component.wasmcp-spin]
+# Using the local gateway component
+source = "wasmcp-spin.wasm"
+allowed_outbound_hosts = [
+    # Add external hosts here if implementing real weather API
+    # "https://api.openweathermap.org",
+    # "https://geocoding-api.open-meteo.com"
+]
+dependencies_inherit_configuration = true
+key_value_stores = ["default"]
 
-[component.echo-handler.build]
-command = "componentize-py -w ../../wit -o app.wasm componentize app"
-watch = ["*.py", "requirements.txt"]
+[component.wasmcp-spin.dependencies]
+# Link to the local handler component
+"wasmcp:mcp/handler@0.1.0" = { path = "./handler/app.wasm" }
+
+[component.wasmcp-spin.build]
+command = "make build"
+watch = ["handler/src/**/*.py", "handler/requirements.txt", "handler/componentize-py.toml"]

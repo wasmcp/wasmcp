@@ -1,2 +1,0 @@
-spin-sdk>=3.3.0
-wasmcp==0.1.0
