@@ -12,7 +12,7 @@ component = "wasmcp-spin"
 
 [component.wasmcp-spin]
 # Using the local gateway component
-source = "wasmcp-spin.wasm"
+source = "wasmcp-server.wasm"
 allowed_outbound_hosts = [
     # Add external hosts here if implementing real weather API
     # "https://api.openweathermap.org",

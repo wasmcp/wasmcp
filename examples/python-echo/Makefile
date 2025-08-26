@@ -52,8 +52,20 @@ compose: build ## Compose handler with gateway using wac plug
 	wac plug wasmcp-server.wasm --plug $(HANDLER_WASM) -o composed.wasm
 	@echo "✅ Created composed.wasm"
 
-run: build ## Run with Spin (handles dependencies automatically)
-	spin up
+kill-port: ## Kill any process using port 3444
+	@echo "Checking for processes on port 3444..."
+	@-lsof -ti:3444 | xargs kill -9 2>/dev/null || true
+	@echo "Port 3444 is now free"
+
+run: kill-port build ## Run with Spin (handles dependencies automatically)
+	spin up --listen 127.0.0.1:3444
+
+curl: ## Test tools/list endpoint
+	@curl -s --connect-timeout 5 --max-time 10 \
+		-H "Content-Type: application/json" \
+		-X POST \
+		-d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+		http://127.0.0.1:3444/mcp | python3 -m json.tool || echo "Error: Could not connect to server on port 3444"
 
 run-wasmtime: compose ## Run with wasmtime (requires manual composition)
 	wasmtime serve -Scli -Skeyvalue -Shttp composed.wasm
