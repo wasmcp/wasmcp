@@ -143,6 +143,7 @@ impl wasmcp::AsyncToolHandler for WeatherTool {
 
 // Generate the MCP handler implementation
 #[cfg(target_arch = "wasm32")]
-wasmcp::create_handler!(
-    tools: [EchoTool, WeatherTool],
-);
+#[wasmcp::mcp_handler(
+    tools(EchoTool, WeatherTool),
+)]
+mod handler {}
