@@ -1,0 +1,2 @@
+[console_scripts]
+wasmcp-build = wasmcp.build:main

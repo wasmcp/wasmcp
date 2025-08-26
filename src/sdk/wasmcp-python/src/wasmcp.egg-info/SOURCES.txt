@@ -1,6 +1,10 @@
+MANIFEST.in
 README.md
 pyproject.toml
 src/wasmcp/__init__.py
+src/wasmcp/__main__.py
+src/wasmcp/build.py
+src/wasmcp/componentize-py.toml
 src/wasmcp/exports.py
 src/wasmcp/handler.py
 src/wasmcp/prompts.py
@@ -11,8 +15,15 @@ src/wasmcp/tools.py
 src/wasmcp.egg-info/PKG-INFO
 src/wasmcp.egg-info/SOURCES.txt
 src/wasmcp.egg-info/dependency_links.txt
+src/wasmcp.egg-info/entry_points.txt
 src/wasmcp.egg-info/requires.txt
 src/wasmcp.egg-info/top_level.txt
+src/wasmcp/../../wit/mcp.wit
+src/wasmcp/../../wit/world.wit
+src/wasmcp/wit/wit_world/__init__.py
+src/wasmcp/wit/wit_world/types.py
+src/wasmcp/wit/wit_world/exports/__init__.py
+src/wasmcp/wit/wit_world/exports/handler.py
 tests/test_exports.py
 tests/test_handler.py
 tests/test_integration.py
@@ -20,3 +31,5 @@ tests/test_prompts.py
 tests/test_resources.py
 tests/test_schema.py
 tests/test_tools.py
+wit/mcp.wit
+wit/world.wit

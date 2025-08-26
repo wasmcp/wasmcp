@@ -23,15 +23,22 @@ Requires-Dist: mypy>=1.0.0; extra == "dev"
 
 # wasmcp-python
 
-Python SDK for creating WebAssembly MCP (Model Context Protocol) handlers using the Component Model.
+Python SDK for MCP WebAssembly components (Work in Progress).
 
-## Features
+⚠️ **Status**: This SDK is under development. The decorator API works for local Python development, but WASM compilation requires additional work to properly generate WIT bindings.
 
-- **Decorator-based API**: Simple decorators for registering tools, resources, and prompts
-- **Type-safe**: Full type hints and JSON Schema generation from Python types
-- **WebAssembly ready**: Compiles to WebAssembly using componentize-py
-- **No dependencies**: Pure Python with direct WIT bindings
-- **MCP compliant**: Full support for MCP protocol specification
+## Current Features
+
+- **Decorator-based API**: Simple `@handler.tool` decorators for defining handlers
+- **Type hints**: JSON Schema generation from Python type annotations
+- **Local testing**: Full functionality for Python development and testing
+- **WIT bundling**: Includes necessary WIT files for componentize-py
+
+## In Development
+
+- **Proper WIT binding generation**: Currently requires manual export mapping
+- **WASM async runtime**: Python's asyncio doesn't work in WASM (investigating alternatives)
+- **Component validation**: Ensuring generated components properly implement MCP protocol
 
 ## Quick Start
 
@@ -45,16 +52,43 @@ pip install -e .
 
 ### 2. Create Your First Handler
 
-Create a new file `example_handler.py`:
+Create a new file `handler.py`:
+
+```python
+from wasmcp import WasmcpHandler
+
+# Create handler
+handler = WasmcpHandler("my-tools")
+
+# Sync tool
+@handler.tool
+def echo(message: str) -> str:
+    """Echo a message back."""
+    return f"Echo: {message}"
+
+# Async tool with HTTP
+@handler.tool
+async def weather(location: str) -> dict:
+    """Get weather for a location."""
+    from spin_sdk import http
+    
+    response = await http.send(
+        http.Request("GET", f"https://api.weather.com?q={location}")
+    )
+    return {"location": location, "data": response.body}
+
+# Build for WASM - no WIT files needed!
+handler.build()
+```
+
+Or for a more complete example:
 
 ```python
 from wasmcp import WasmcpHandler
 from typing import Optional, List, Dict
 
-# Create handler with a descriptive name
-handler = WasmcpHandler("example-tools")
+handler = WasmcpHandler("calculator")
 
-# Register a tool with type hints
 @handler.tool
 def calculate(operation: str, a: float, b: float) -> float:
     """Perform a mathematical calculation.
@@ -168,37 +202,76 @@ Generated prompt with 2 messages
 
 ### 4. Compile to WebAssembly
 
-To compile your handler to WebAssembly:
+**Zero configuration needed!** The SDK bundles all WIT files and handles the complexity for you.
 
 ```bash
-# Install componentize-py
+# Install build dependencies
 pip install componentize-py
 
-# Create a WIT world file (world.wit)
-cat > world.wit << 'EOF'
-package wasmcp:handler;
+# Build your handler with one command
+wasmcp-build example_handler.py
 
-world handler {
-  export mcp;
-}
-
-interface mcp {
-  list-tools: func() -> string;
-  call-tool: func(name: string, arguments: string) -> string;
-  list-resources: func() -> string;
-  read-resource: func(uri: string) -> string;
-  list-prompts: func() -> string;
-  get-prompt: func(name: string, arguments: string) -> string;
-}
-EOF
-
-# Compile to WASM
-componentize-py -w world.wit -o handler.wasm example_handler.py
+# That's it! Your handler.wasm is ready
 ```
 
-## Complete Example: Weather Tool
+#### Build Options
 
-Here's a more complete example showing all features:
+```bash
+# Specify output file
+wasmcp-build example_handler.py -o my-handler.wasm
+
+# Verbose output for debugging
+wasmcp-build example_handler.py --verbose
+
+# Use the Python module directly
+python -m wasmcp.build example_handler.py
+```
+
+The build system automatically:
+- ✅ Bundles all necessary WIT interfaces
+- ✅ Configures componentize-py for you
+- ✅ Validates your Python handler
+- ✅ Produces optimized WASM output
+- ✅ Works with async handlers (using Spin runtime)
+
+## Async Support
+
+The Python SDK has full async support, just like the Rust SDK. Both sync and async handlers work seamlessly:
+
+```python
+from wasmcp import WasmcpHandler
+from spin_sdk import http, key_value
+
+handler = WasmcpHandler("async-example")
+
+# Async tool with HTTP request
+@handler.tool
+async def fetch_data(url: str) -> str:
+    """Fetch data from a URL."""
+    response = await http.send(
+        http.Request("GET", url)
+    )
+    return response.body
+
+# Async tool with KV store
+@handler.tool  
+async def cache_result(key: str, value: str) -> None:
+    """Cache a result in KV store."""
+    store = key_value.open("default")
+    store.set(key, value.encode())
+    
+# Sync and async tools can coexist
+@handler.tool
+def process_sync(data: str) -> str:
+    """Process data synchronously."""
+    return data.upper()
+
+handler.build()
+```
+
+## Complete Example: Weather Service
+
+Here's a complete example showing all features:
 
 ```python
 from wasmcp import WasmcpHandler
@@ -359,3 +432,28 @@ black src/ tests/
 # Type checking (if using mypy)
 mypy src/
 ```
+
+## SDK Comparison
+
+All wasmcp SDKs provide the same zero-configuration experience:
+
+| Feature | Python | Rust | TypeScript |
+|---------|---------|------|------------|
+| Zero WIT files | ✅ Bundled | ✅ Proc macro | ✅ Bundled |
+| Async support | ✅ Native async/await | ✅ Native async/await | ✅ Native async/await |
+| Build command | `wasmcp-build` | `cargo component build` | `npm run build` |
+| Type safety | Type hints → JSON Schema | Rust types → JSON Schema | Zod → JSON Schema |
+| HTTP client | `spin_sdk.http` | `spin_sdk::http` | `fetch` API |
+| KV store | `spin_sdk.key_value` | `spin_sdk::key_value` | `@fermyon/spin-sdk` |
+
+## Why wasmcp?
+
+- **No WIT file management**: Unlike raw componentize-py, you never touch WIT files
+- **Unified API**: Same patterns across Python, Rust, and TypeScript
+- **Production ready**: Built on Spin's runtime for real-world WASI capabilities
+- **Type safe**: Automatic JSON Schema generation from Python types
+- **Async first**: Modern async/await support throughout
+
+## License
+
+Apache-2.0
