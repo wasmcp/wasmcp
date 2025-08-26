@@ -1,4 +1,4 @@
-# WasmCP Examples
+# wasmcp examples
 
 Complete, working examples of MCP (Model Context Protocol) servers running as WebAssembly components.
 
