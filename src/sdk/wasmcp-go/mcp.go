@@ -3,6 +3,7 @@
 package mcp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -13,22 +14,34 @@ import (
 	_ "github.com/ydnar/wasi-http-go/wasihttp"
 )
 
-// ToolFunc is the function signature for tool implementations.
-// It receives JSON arguments and returns a string result or error.
-type ToolFunc func(args json.RawMessage) (string, error)
+// Server represents an MCP server instance.
+// In WASM components, there's only one global server.
+type Server struct {
+	tools     map[string]*toolDef
+	resources map[string]*resourceDef
+	prompts   map[string]*promptDef
+}
 
-// ResourceFunc is the function signature for resource implementations.
-// It returns the resource content as a string or error.
-type ResourceFunc func() (string, error)
+// Tool represents an MCP tool definition.
+type Tool struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	InputSchema json.RawMessage `json:"inputSchema,omitempty"`
+}
 
-// PromptFunc is the function signature for prompt implementations.
-// It receives JSON arguments and returns prompt messages or error.
-type PromptFunc func(args json.RawMessage) ([]PromptMessage, error)
+// Resource represents an MCP resource definition.
+type Resource struct {
+	URI         string `json:"uri"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"`
+}
 
-// PromptMessage represents a message in a prompt conversation.
-type PromptMessage struct {
-	Role    string `json:"role"`    // "user" or "assistant"
-	Content string `json:"content"` // Message content
+// Prompt represents an MCP prompt definition.
+type Prompt struct {
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
+	Arguments   []PromptArgument `json:"arguments,omitempty"`
 }
 
 // PromptArgument defines an argument for a prompt.
@@ -38,74 +51,169 @@ type PromptArgument struct {
 	Required    bool   `json:"required"`
 }
 
+// CallToolResult represents the result of calling a tool.
+type CallToolResult struct {
+	Content []Content `json:"content"`
+	IsError bool      `json:"isError,omitempty"`
+}
+
+// Content represents content in a tool result.
+type Content interface {
+	isContent()
+}
+
+// TextContent represents text content.
+type TextContent struct {
+	Text string `json:"text"`
+}
+
+func (*TextContent) isContent() {}
+
+// PromptMessage represents a message in a prompt conversation.
+type PromptMessage struct {
+	Role    string `json:"role"`    // "user" or "assistant"
+	Content string `json:"content"`
+}
+
+// Implementation defines the server implementation details.
+type Implementation struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
 // toolDef holds the definition and handler for a tool.
 type toolDef struct {
-	name        string
-	description string
-	schema      json.RawMessage
-	handler     ToolFunc
+	tool    *Tool
+	handler any // Can be various function signatures
 }
 
 // resourceDef holds the definition and handler for a resource.
 type resourceDef struct {
-	uri         string
-	name        string
-	description string
-	mimeType    string
-	handler     ResourceFunc
+	resource *Resource
+	handler  any
 }
 
 // promptDef holds the definition and handler for a prompt.
 type promptDef struct {
-	name        string
-	description string
-	arguments   []PromptArgument
-	handler     PromptFunc
+	prompt  *Prompt
+	handler any
 }
 
-// Handler collects all MCP components (tools, resources, prompts).
-type Handler struct {
-	tools     map[string]*toolDef
-	resources map[string]*resourceDef
-	prompts   map[string]*promptDef
-}
-
-// The global handler instance that will be set via Handle().
-// This follows the same pattern as Spin's global handler.
-var globalHandler = &Handler{
+// The global server instance
+var globalServer = &Server{
 	tools:     make(map[string]*toolDef),
 	resources: make(map[string]*resourceDef),
 	prompts:   make(map[string]*promptDef),
 }
 
-// Handle sets up the MCP handler. It must be called in an init() function.
-// This follows the same pattern as spinhttp.Handle().
+// NewServer creates a new MCP server.
+// In WASM components, this returns the global server instance.
+func NewServer(impl *Implementation, options any) *Server {
+	// In WASM, we ignore impl and options as they're handled by the gateway
+	return globalServer
+}
+
+// AddTool adds a tool to the server with a generic typed handler.
+// The handler is automatically wrapped to unmarshal JSON arguments into the In type.
 //
-// Example:
+// The handler should have the signature:
+//   func(ctx context.Context, args In) (*CallToolResult, error)
 //
-//	func init() {
-//	    mcp.Handle(func(h *mcp.Handler) {
-//	        h.Tool("echo", "Echo a message", echoSchema, echoHandler)
-//	        h.Resource("config://app", "App config", "text/plain", configHandler)
-//	        h.Prompt("greeting", "Generate greeting", greetingArgs, greetingHandler)
-//	    })
-//	}
-func Handle(fn func(*Handler)) {
-	fn(globalHandler)
+// For tools that return simple text, you can return a CallToolResult with TextContent.
+// The In type should match your tool's input schema.
+//
+// Since TinyGo has limited reflection, you must manually provide the input schema.
+// Use the Schema() helper to create schemas from JSON strings.
+func AddTool[In any](server *Server, tool *Tool, handler func(context.Context, In) (*CallToolResult, error)) {
+	wrappedHandler := func(ctx context.Context, raw json.RawMessage) (*CallToolResult, error) {
+		var args In
+		if raw != nil && len(raw) > 0 && string(raw) != "{}" {
+			if err := json.Unmarshal(raw, &args); err != nil {
+				return nil, fmt.Errorf("invalid arguments: %w", err)
+			}
+		}
+		return handler(ctx, args)
+	}
 	
-	// Set up the generated exports
+	server.tools[tool.Name] = &toolDef{
+		tool:    tool,
+		handler: wrappedHandler,
+	}
+}
+
+// AddResource adds a resource to the server.
+// Resources are read-only and return text or binary content.
+func (s *Server) AddResource(resource *Resource, handler func(context.Context) (string, error)) {
+	s.resources[resource.URI] = &resourceDef{
+		resource: resource,
+		handler:  handler,
+	}
+}
+
+// AddPrompt adds a prompt to the server with a generic typed handler.
+// The handler is automatically wrapped to unmarshal JSON arguments into the In type.
+func AddPrompt[In any](server *Server, prompt *Prompt, handler func(context.Context, In) ([]PromptMessage, error)) {
+	wrappedHandler := func(ctx context.Context, raw json.RawMessage) ([]PromptMessage, error) {
+		var args In
+		if raw != nil && len(raw) > 0 && string(raw) != "{}" {
+			if err := json.Unmarshal(raw, &args); err != nil {
+				return nil, fmt.Errorf("invalid arguments: %w", err)
+			}
+		}
+		return handler(ctx, args)
+	}
+	
+	server.prompts[prompt.Name] = &promptDef{
+		prompt:  prompt,
+		handler: wrappedHandler,
+	}
+}
+
+// Run initializes the WASM exports. Call this in init().
+func (s *Server) Run(ctx context.Context, transport any) error {
 	setupExports()
+	return nil
+}
+
+
+// callTypedHandler invokes handlers with the appropriate signature
+func callTypedHandler(handler any, ctx context.Context, arguments string) (any, error) {
+	// For tools - handlers that work with json.RawMessage and return CallToolResult
+	if fn, ok := handler.(func(context.Context, json.RawMessage) (*CallToolResult, error)); ok {
+		return fn(ctx, json.RawMessage(arguments))
+	}
+	
+	// For resources - handlers that return string
+	if fn, ok := handler.(func(context.Context) (string, error)); ok {
+		return fn(ctx)
+	}
+	
+	// For resources - handlers that return []byte
+	if fn, ok := handler.(func(context.Context) ([]byte, error)); ok {
+		return fn(ctx)
+	}
+	
+	// For prompts - handlers that work with json.RawMessage and return []PromptMessage
+	if fn, ok := handler.(func(context.Context, json.RawMessage) ([]PromptMessage, error)); ok {
+		return fn(ctx, json.RawMessage(arguments))
+	}
+	
+	return nil, fmt.Errorf("unsupported handler signature")
 }
 
 // setupExports sets up the wit-bindgen-go generated exports
 func setupExports() {
 	handler.Exports.ListTools = func() cm.List[handler.Tool] {
-		tools := make([]handler.Tool, 0, len(globalHandler.tools))
-		for _, tool := range globalHandler.tools {
+		tools := make([]handler.Tool, 0, len(globalServer.tools))
+		for _, tool := range globalServer.tools {
+			inputSchema := "{}"
+			if tool.tool.InputSchema != nil {
+				inputSchema = string(tool.tool.InputSchema)
+			}
 			tools = append(tools, handler.Tool{
-				Name:        tool.name,
-				Description: tool.description,
-				InputSchema: string(tool.schema),
+				Name:        tool.tool.Name,
+				Description: tool.tool.Description,
+				InputSchema: inputSchema,
 			})
 		}
 		if len(tools) == 0 {
@@ -115,7 +223,7 @@ func setupExports() {
 	}
 
 	handler.Exports.CallTool = func(name string, arguments string) handler.ToolResult {
-		tool, ok := globalHandler.tools[name]
+		tool, ok := globalServer.tools[name]
 		if !ok {
 			return handler.ToolResultError(handler.Error{
 				Code:    -32601,
@@ -124,7 +232,10 @@ func setupExports() {
 			})
 		}
 
-		result, err := tool.handler(json.RawMessage(arguments))
+		ctx := context.Background()
+		
+		// Use reflection to call the handler
+		result, err := callTypedHandler(tool.handler, ctx, arguments)
 		if err != nil {
 			return handler.ToolResultError(handler.Error{
 				Code:    -32603,
@@ -132,25 +243,42 @@ func setupExports() {
 				Data:    cm.None[string](),
 			})
 		}
-
-		return handler.ToolResultText(result)
+		
+		// Convert result to text based on type
+		switch v := result.(type) {
+		case string:
+			return handler.ToolResultText(v)
+		case *CallToolResult:
+			if v != nil && len(v.Content) > 0 {
+				if textContent, ok := v.Content[0].(*TextContent); ok {
+					return handler.ToolResultText(textContent.Text)
+				}
+			}
+			return handler.ToolResultText("")
+		default:
+			return handler.ToolResultError(handler.Error{
+				Code:    -32603,
+				Message: fmt.Sprintf("Unsupported return type: %T", result),
+				Data:    cm.None[string](),
+			})
+		}
 	}
 
 	handler.Exports.ListResources = func() cm.List[handler.ResourceInfo] {
-		resources := make([]handler.ResourceInfo, 0, len(globalHandler.resources))
-		for _, resource := range globalHandler.resources {
+		resources := make([]handler.ResourceInfo, 0, len(globalServer.resources))
+		for _, resource := range globalServer.resources {
 			desc := cm.None[string]()
-			if resource.description != "" {
-				desc = cm.Some(resource.description)
+			if resource.resource.Description != "" {
+				desc = cm.Some(resource.resource.Description)
 			}
 			mime := cm.None[string]()
-			if resource.mimeType != "" {
-				mime = cm.Some(resource.mimeType)
+			if resource.resource.MimeType != "" {
+				mime = cm.Some(resource.resource.MimeType)
 			}
 			
 			resources = append(resources, handler.ResourceInfo{
-				URI:         resource.uri,
-				Name:        resource.name,
+				URI:         resource.resource.URI,
+				Name:        resource.resource.Name,
 				Description: desc,
 				MIMEType:    mime,
 			})
@@ -162,7 +290,7 @@ func setupExports() {
 	}
 
 	handler.Exports.ReadResource = func(uri string) handler.ResourceResult {
-		resource, ok := globalHandler.resources[uri]
+		resource, ok := globalServer.resources[uri]
 		if !ok {
 			return handler.ResourceResultError(handler.Error{
 				Code:    -32002,
@@ -171,7 +299,10 @@ func setupExports() {
 			})
 		}
 
-		content, err := resource.handler()
+		ctx := context.Background()
+		
+		// Use reflection to call the handler
+		result, err := callTypedHandler(resource.handler, ctx, "")
 		if err != nil {
 			return handler.ResourceResultError(handler.Error{
 				Code:    -32603,
@@ -179,25 +310,43 @@ func setupExports() {
 				Data:    cm.None[string](),
 			})
 		}
-
+		
 		mime := cm.None[string]()
-		if resource.mimeType != "" {
-			mime = cm.Some(resource.mimeType)
+		if resource.resource.MimeType != "" {
+			mime = cm.Some(resource.resource.MimeType)
 		}
 
-		return handler.ResourceResultContents(handler.ResourceContents{
-			URI:      resource.uri,
-			MIMEType: mime,
-			Text:     cm.Some(content),
-			Blob:     cm.None[cm.List[uint8]](),
-		})
+		// Handle different return types
+		switch v := result.(type) {
+		case string:
+			return handler.ResourceResultContents(handler.ResourceContents{
+				URI:      resource.resource.URI,
+				MIMEType: mime,
+				Text:     cm.Some(v),
+				Blob:     cm.None[cm.List[uint8]](),
+			})
+		case []byte:
+			blobList := cm.NewList(&v[0], len(v))
+			return handler.ResourceResultContents(handler.ResourceContents{
+				URI:      resource.resource.URI,
+				MIMEType: mime,
+				Text:     cm.None[string](),
+				Blob:     cm.Some(blobList),
+			})
+		default:
+			return handler.ResourceResultError(handler.Error{
+				Code:    -32603,
+				Message: fmt.Sprintf("Unsupported return type: %T", result),
+				Data:    cm.None[string](),
+			})
+		}
 	}
 
 	handler.Exports.ListPrompts = func() cm.List[handler.Prompt] {
-		prompts := make([]handler.Prompt, 0, len(globalHandler.prompts))
-		for _, prompt := range globalHandler.prompts {
-			args := make([]handler.PromptArgument, len(prompt.arguments))
-			for i, arg := range prompt.arguments {
+		prompts := make([]handler.Prompt, 0, len(globalServer.prompts))
+		for _, prompt := range globalServer.prompts {
+			args := make([]handler.PromptArgument, len(prompt.prompt.Arguments))
+			for i, arg := range prompt.prompt.Arguments {
 				desc := cm.None[string]()
 				if arg.Description != "" {
 					desc = cm.Some(arg.Description)
@@ -211,8 +360,8 @@ func setupExports() {
 			}
 
 			desc := cm.None[string]()
-			if prompt.description != "" {
-				desc = cm.Some(prompt.description)
+			if prompt.prompt.Description != "" {
+				desc = cm.Some(prompt.prompt.Description)
 			}
 
 			argsPtr := (*handler.PromptArgument)(nil)
@@ -221,7 +370,7 @@ func setupExports() {
 			}
 			
 			prompts = append(prompts, handler.Prompt{
-				Name:        prompt.name,
+				Name:        prompt.prompt.Name,
 				Description: desc,
 				Arguments:   cm.NewList(argsPtr, len(args)),
 			})
@@ -233,7 +382,7 @@ func setupExports() {
 	}
 
 	handler.Exports.GetPrompt = func(name string, arguments string) handler.PromptResult {
-		prompt, ok := globalHandler.prompts[name]
+		prompt, ok := globalServer.prompts[name]
 		if !ok {
 			return handler.PromptResultError(handler.Error{
 				Code:    -32002,
@@ -242,11 +391,24 @@ func setupExports() {
 			})
 		}
 
-		messages, err := prompt.handler(json.RawMessage(arguments))
+		ctx := context.Background()
+		
+		// Use reflection to call the handler
+		result, err := callTypedHandler(prompt.handler, ctx, arguments)
 		if err != nil {
 			return handler.PromptResultError(handler.Error{
 				Code:    -32603,
 				Message: err.Error(),
+				Data:    cm.None[string](),
+			})
+		}
+		
+		// Convert result to prompt messages
+		messages, ok := result.([]PromptMessage)
+		if !ok {
+			return handler.PromptResultError(handler.Error{
+				Code:    -32603,
+				Message: fmt.Sprintf("Handler must return []PromptMessage, got %T", result),
 				Data:    cm.None[string](),
 			})
 		}
@@ -267,67 +429,28 @@ func setupExports() {
 	}
 }
 
-// Tool registers a tool with the handler.
-//
-// Parameters:
-//   - name: The tool's unique identifier
-//   - description: Human-readable description of what the tool does
-//   - schema: JSON schema for the tool's input parameters (use json.RawMessage(`{...}`))
-//   - fn: The function to execute when the tool is called
-func (h *Handler) Tool(name, description string, schema json.RawMessage, fn ToolFunc) {
-	h.tools[name] = &toolDef{
-		name:        name,
-		description: description,
-		schema:      schema,
-		handler:     fn,
-	}
-}
-
-// Resource registers a resource with the handler.
-//
-// Parameters:
-//   - uri: The resource's unique URI identifier
-//   - name: Human-readable name for the resource
-//   - description: Optional description (pass empty string if not needed)
-//   - mimeType: Optional MIME type (pass empty string if not needed)
-//   - fn: The function to execute when the resource is read
-func (h *Handler) Resource(uri, name, description, mimeType string, fn ResourceFunc) {
-	h.resources[uri] = &resourceDef{
-		uri:         uri,
-		name:        name,
-		description: description,
-		mimeType:    mimeType,
-		handler:     fn,
-	}
-}
-
-// Prompt registers a prompt with the handler.
-//
-// Parameters:
-//   - name: The prompt's unique identifier
-//   - description: Optional description (pass empty string if not needed)
-//   - arguments: List of arguments the prompt accepts
-//   - fn: The function to execute when the prompt is resolved
-func (h *Handler) Prompt(name, description string, arguments []PromptArgument, fn PromptFunc) {
-	h.prompts[name] = &promptDef{
-		name:        name,
-		description: description,
-		arguments:   arguments,
-		handler:     fn,
-	}
-}
-
 // Schema creates a json.RawMessage from a JSON string.
-// This is a helper function for defining tool schemas inline.
-//
-// Example:
-//
-//	mcp.Schema(`{
-//	    "type": "object",
-//	    "properties": {
-//	        "message": {"type": "string"}
-//	    }
-//	}`)
 func Schema(s string) json.RawMessage {
 	return json.RawMessage(s)
+}
+
+// ObjectSchema creates a JSON schema for an object with properties.
+func ObjectSchema(properties map[string]any) json.RawMessage {
+	schema := map[string]any{
+		"type":       "object",
+		"properties": properties,
+	}
+	b, _ := json.Marshal(schema)
+	return b
+}
+
+// RequiredObjectSchema creates a JSON schema for an object with required properties.
+func RequiredObjectSchema(properties map[string]any, required []string) json.RawMessage {
+	schema := map[string]any{
+		"type":       "object",
+		"properties": properties,
+		"required":   required,
+	}
+	b, _ := json.Marshal(schema)
+	return b
 }

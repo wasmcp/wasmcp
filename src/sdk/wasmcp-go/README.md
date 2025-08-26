@@ -14,64 +14,96 @@ import mcp "github.com/fastertools/wasmcp/src/sdk/wasmcp-go"
 
 ## Usage
 
+### Basic Example
+
 ```go
 package main
 
 import (
-    "encoding/json"
-    "fmt"
-    
+    "context"
     mcp "github.com/fastertools/wasmcp/src/sdk/wasmcp-go"
 )
 
 func init() {
-    mcp.Handle(func(h *mcp.Handler) {
-        // Register a simple tool
-        h.Tool("echo", "Echo a message", mcp.Schema(`{
+    server := mcp.NewServer(
+        &mcp.Implementation{Name: "my-server", Version: "v1.0.0"},
+        nil,
+    )
+    
+    // Add a simple tool
+    mcp.AddTool(server, &mcp.Tool{
+        Name:        "echo",
+        Description: "Echo a message",
+        InputSchema: mcp.Schema(`{
             "type": "object",
             "properties": {
                 "message": {"type": "string"}
             },
             "required": ["message"]
-        }`), echoHandler)
-        
-        // Register a tool that makes HTTP requests
-        h.Tool("weather", "Get weather", mcp.Schema(`{
-            "type": "object", 
-            "properties": {
-                "location": {"type": "string"}
-            }
-        }`), weatherHandler)
+        }`),
+    }, func(ctx context.Context, args map[string]any) (string, error) {
+        message := args["message"].(string)
+        return "Echo: " + message, nil
     })
-}
-
-func echoHandler(args json.RawMessage) (string, error) {
-    var params struct {
-        Message string `json:"message"`
-    }
-    if err := json.Unmarshal(args, &params); err != nil {
-        return "", err
-    }
-    return fmt.Sprintf("Echo: %s", params.Message), nil
-}
-
-func weatherHandler(args json.RawMessage) (string, error) {
-    var params struct {
-        Location string `json:"location"`
-    }
-    json.Unmarshal(args, &params)
     
-    // Use the built-in HTTP client
-    resp, err := mcp.DefaultHTTPClient.Get(fmt.Sprintf("https://api.weather.com/%s", params.Location))
-    if err != nil {
-        return "", err
-    }
-    
-    return resp, nil
+    server.Run(context.Background(), nil)
 }
 
 func main() {} // Required for TinyGo
 ```
+
+### Typed Handlers
+
+For better type safety, use typed handlers with structs:
+
+```go
+type EchoArgs struct {
+    Message string `json:"message"`
+}
+
+func Echo(ctx context.Context, args EchoArgs) (string, error) {
+    return "Echo: " + args.Message, nil
+}
+
+func init() {
+    server := mcp.NewServer(
+        &mcp.Implementation{Name: "my-server", Version: "v1.0.0"},
+        nil,
+    )
+    
+    mcp.AddTool(server, &mcp.Tool{
+        Name:        "echo",
+        Description: "Echo a message",
+        InputSchema: mcp.Schema(`{
+            "type": "object",
+            "properties": {
+                "message": {"type": "string", "description": "Message to echo"}
+            },
+            "required": ["message"]
+        }`),
+    }, mcp.TypedHandler(Echo))
+    
+    server.Run(context.Background(), nil)
+}
+```
+
+### Schema Generation
+
+Since TinyGo has limited reflection support, schemas must be defined manually or generated at build time. We recommend:
+
+1. **Manual schemas** - Use `mcp.Schema()` with JSON strings (shown above)
+2. **Build-time generation** - Use a code generator (coming soon):
+   ```bash
+   # Future feature
+   go run github.com/fastertools/wasmcp/cmd/mcp-gen ./...
+   ```
+   This will generate schemas from struct tags:
+   ```go
+   type WeatherArgs struct {
+       Location string `json:"location" mcp:"required,description:City name"`
+       Units    string `json:"units" mcp:"enum:celsius|fahrenheit,default:celsius"`
+   }
+   ```
 
 ## Building
 
