@@ -1,5 +1,5 @@
 [package]
-name = "{{project-name | snake_case}}"
+name = "rust_demo"
 version = "0.1.0"
 edition = "2021"
 
@@ -20,7 +20,7 @@ futures = "0.3"
 crate-type = ["cdylib"]
 
 [package.metadata.component]
-package = "{{project-name | kebab_case}}:handler"
+package = "rust-demo:handler"
 
 [package.metadata.component.target]
 path = "wit"
