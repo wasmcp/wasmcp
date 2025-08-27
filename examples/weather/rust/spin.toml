@@ -1,29 +1,24 @@
 spin_manifest_version = 2
 
 [application]
-name = "weather-rust-fresh"
+name = "rust"
 version = "0.1.0"
 authors = ["Ian McDonald <bowlofarugula@gmail.com>"]
-description = "An MCP server written in Rust"
+description = "An MCP server with weather fetching capabilities, implemented in Rust."
 
 [[trigger.http]]
 route = "/mcp"
-component = "wasmcp-server"
+component = "composed"
 
-[component.wasmcp-server]
-# Using the local server component
-source = "wasmcp-server.wasm"
+[component.composed]
+# Using the composed component (handler + null components + server)
+source = "composed.wasm"
 allowed_outbound_hosts = [
     "https://geocoding-api.open-meteo.com",
     "https://api.open-meteo.com"
 ]
-dependencies_inherit_configuration = true
 key_value_stores = ["default"]
 
-[component.wasmcp-server.dependencies]
-# Link to the local handler component
-"wasmcp:mcp/handler@0.1.0" = { path = "./target/wasm32-wasip1/release/weather_rust_fresh.wasm" }
-
-[component.wasmcp-server.build]
+[component.composed.build]
 command = "make build"
 watch = ["src/**/*.rs", "Cargo.toml", "wit/*.wit"]

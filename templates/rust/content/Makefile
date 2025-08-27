@@ -10,9 +10,19 @@ help: ## Show this help message
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-build: ## Build the handler component (tools only by default)
+build-handler: ## Build just the handler component
 	cargo component build --release --target wasm32-wasip1
 	@echo "✅ Built handler component"
+
+build: build-handler get-deps ## Build and compose everything into composed.wasm
+	@echo "Composing handler with null components and server..."
+	wac compose compose.wac \
+		-d {{project-name | kebab_case}}:handler=$(HANDLER_WASM) \
+		-d fastertools:null-resources=null-resources.wasm \
+		-d fastertools:null-prompts=null-prompts.wasm \
+		-d fastertools:wasmcp-server=wasmcp-server.wasm \
+		-o $(COMPOSED_WASM)
+	@echo "✅ Created composed.wasm ($$( ls -lh $(COMPOSED_WASM) | awk '{print $$5}' ))"
 
 test: ## Run tests
 	cargo test
@@ -35,17 +45,10 @@ get-deps: ## Download all dependencies from registry if not available locally
 		wkg get fastertools:wasmcp-server@0.1.0 -o wasmcp-server.wasm; \
 	fi
 
-compose: build get-deps ## Compose handler with null components and server using WAC
-	@echo "Composing handler with null components and server..."
-	wac compose compose.wac \
-		-d {{project-name | kebab_case}}:handler=$(HANDLER_WASM) \
-		-d fastertools:null-resources=null-resources.wasm \
-		-d fastertools:null-prompts=null-prompts.wasm \
-		-d fastertools:wasmcp-server=wasmcp-server.wasm \
-		-o $(COMPOSED_WASM)
-	@echo "✅ Created composed.wasm ($$( ls -lh $(COMPOSED_WASM) | awk '{print $$5}' ))"
+run: build ## Build and run with wasmtime serve
+	wasmtime serve -Scli composed.wasm
 
-run: compose ## Run with wasmtime serve
+serve: ## Serve already built composed.wasm
 	wasmtime serve -Scli composed.wasm
 
 # Testing the composed component

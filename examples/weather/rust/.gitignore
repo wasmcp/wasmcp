@@ -3,3 +3,4 @@ Cargo.lock
 .ftl/
 composed.wasm
 .spin/
+.spin-aka/

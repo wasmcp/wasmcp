@@ -1,4 +1,4 @@
-package weather-rust-fresh:handler@0.1.0;
+package rust:handler@0.1.0;
 
 /// MCP handler that provides tool capabilities
 /// Resources and prompts will be provided by null components during composition

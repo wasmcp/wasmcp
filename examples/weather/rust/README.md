@@ -1,6 +1,6 @@
-# weather-rust-fresh
+# rust
 
-An MCP server written in Rust
+An MCP server with weather fetching capabilities, implemented in Rust.
 
 ## Architecture
 

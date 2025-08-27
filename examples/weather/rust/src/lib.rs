@@ -293,9 +293,9 @@ impl bindings::exports::fastertools::mcp::core::Guest for Component {
                 completions: None,
             },
             server_info: bindings::fastertools::mcp::session::ImplementationInfo {
-                name: "weather_rust_fresh".to_string(),
+                name: "rust".to_string(),
                 version: "0.1.0".to_string(),
-                title: Some("weather-rust-fresh Handler".to_string()),
+                title: Some("rust Handler".to_string()),
             },
             instructions: None,
             meta: None,

@@ -1,10 +1,10 @@
-// Composition for weather-rust-fresh handler with null components
-package weather-rust-fresh:app@1.0.0;
+// Composition for rust handler with null components
+package rust:app@1.0.0;
 
 // Instantiate components using package names (resolved via -d flags)
 // The ... syntax creates implicit imports - WAC will automatically 
 // import what each component needs from the registry
-let handler = new weather-rust-fresh:handler { ... };
+let handler = new rust:handler { ... };
 let nullresources = new fastertools:null-resources { ... };
 let nullprompts = new fastertools:null-prompts { ... };
 
