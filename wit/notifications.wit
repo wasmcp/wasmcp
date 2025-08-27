@@ -11,10 +11,10 @@ interface notifications {
     record progress-notification {
         /// Token identifying the operation
         progress-token: progress-token,
-        /// Current progress value
-        progress: u32,
-        /// Total expected progress (if known)
-        total: option<u32>,
+        /// Current progress value (can be fractional)
+        progress: f64,
+        /// Total expected progress (if known, can be fractional)
+        total: option<f64>,
         /// Optional progress message
         message: option<string>,
         /// Extension metadata

@@ -3,7 +3,7 @@ package fastertools:mcp@0.1.1;
 /// Resource discovery, reading, and subscription for MCP
 
 interface resources {
-    use types.{mcp-error, base-metadata, annotations, meta-fields, cursor, resource-contents, progress-token};
+    use types.{mcp-error, base-metadata, annotations, meta-fields, cursor, resource-contents, progress-token, resource-template};
 
     /// A resource that can be read by the client
     record mcp-resource {
@@ -17,22 +17,6 @@ interface resources {
         mime-type: option<string>,
         /// Size in bytes (before encoding)
         size: option<u64>,
-        /// Client hints
-        annotations: option<annotations>,
-        /// Extension metadata
-        meta: option<meta-fields>,
-    }
-
-    /// Template for constructing resource URIs
-    record resource-template {
-        /// Base metadata (name and optional title)
-        base: base-metadata,
-        /// URI template (RFC 6570)
-        uri-template: string,
-        /// Description of what this template provides
-        description: option<string>,
-        /// MIME type for all matching resources
-        mime-type: option<string>,
         /// Client hints
         annotations: option<annotations>,
         /// Extension metadata

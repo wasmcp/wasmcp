@@ -106,10 +106,28 @@ interface types {
         meta: option<meta-fields>,
     }
 
-    /// JSON value representation as a string
-    /// WIT doesn't support recursive types, so we serialize JSON as strings
-    /// The string should contain valid JSON that can be parsed/serialized
-    type json-value = string;
+    /// JSON value representation
+    /// Note: WIT doesn't support recursive types, so arrays/objects contain JSON strings
+    variant json-value {
+        null,
+        boolean(bool),
+        integer(s64),
+        number(f64),
+        str(string),
+        /// Array and object values are JSON-encoded strings due to WIT limitations
+        array(string),
+        object(string),
+    }
+    
+    /// JSON Schema for validation and type information
+    record json-schema {
+        schema-type: option<string>,
+        properties: option<string>, // JSON-encoded object
+        required: option<list<string>>,
+        description: option<string>,
+        // Additional schema fields as JSON string
+        additional: option<string>,
+    }
 
     /// Standard JSON-RPC and MCP error codes
     variant error-code {
@@ -144,4 +162,41 @@ interface types {
 
     /// Progress token for tracking long-running operations
     type progress-token = string;
+    
+    /// Message role for LLM interactions
+    enum message-role {
+        user,
+        assistant,
+        system,
+    }
+    
+    /// Model selection preferences for LLM sampling
+    record model-preferences {
+        /// Hints for model selection
+        hints: option<list<model-hint>>,
+        /// Priority for cost optimization (0.0-1.0)
+        cost-priority: option<f64>,
+        /// Priority for speed (0.0-1.0)
+        speed-priority: option<f64>,
+        /// Priority for intelligence/capability (0.0-1.0)
+        intelligence-priority: option<f64>,
+    }
+    
+    /// Hint for model selection
+    record model-hint {
+        /// Name pattern to match (e.g., "claude", "gpt-4")
+        name: option<string>,
+    }
+    
+    /// Resource template with URI template support (RFC 6570)
+    record resource-template {
+        /// URI template that can be expanded with variables
+        uri-template: string,
+        /// Identifier for the template
+        name: string,
+        /// Human-readable description
+        description: option<string>,
+        /// Expected MIME type of resources
+        mime-type: option<string>,
+    }
 }

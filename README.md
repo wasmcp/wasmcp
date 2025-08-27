@@ -203,6 +203,24 @@ All implement the same tools and work identically from the client's perspective.
 
 The server handles HTTP and MCP protocol. You just implement tools.
 
+## Component Portability
+
+The WIT interfaces in `wit/fastertools/mcp/*.wit` are a complete, systematic capture of the MCP specification - every type, method, and capability is represented. This enables true portability:
+
+- **With I/O** (HTTP, filesystem): Requires WASI runtime (Wasmtime, Spin, WasmEdge)
+- **Pure computation**: Runs anywhere WebAssembly runs
+
+A handler that only transforms data (no external I/O) becomes a pure computational component that can run in browsers, embedded systems, or any WebAssembly host - it just exports functions that transform MCP requests to responses.
+
+The composition process (`handler + server = composed.wasm`) produces a standard WASI component that runs directly on any compliant runtime:
+
+```bash
+# Direct execution - no frameworks or adapters needed
+wasmtime serve -Scli composed.wasm
+```
+
+Because the MCP protocol is fully captured in WIT, any WebAssembly host can implement these interfaces to become MCP-compatible.
+
 ## Templates
 
 ```bash

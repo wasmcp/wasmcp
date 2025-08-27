@@ -1,0 +1,1541 @@
+// Generated from JSON Schema
+// Generator: @wasmcp/schema-to-wit v0.1.0
+
+package wasmcp:mcp@0.1.0;
+
+interface types {
+  /// MCP protocol error
+  record mcp-error {
+    code: s32,
+    message: string,
+    data: option<string>,
+  }
+
+  /// Optional annotations for the client. The client can use annotations to inform how objects are used or displayed
+  record annotations {
+    /// Describes who the intended customer of this object or data is.
+    /// 
+    /// It can include multiple entries to indicate content useful for multiple audiences (e.g., `["user", "assistant"]`).
+    audience: option<list<role>>,
+    /// The moment the resource was last modified, as an ISO 8601 formatted string.
+    /// 
+    /// Should be an ISO 8601 formatted string (e.g., "2025-01-12T15:00:58Z").
+    /// 
+    /// Examples: last activity timestamp in an open file, timestamp when the resource
+    /// was attached, etc.
+    last-modified: option<string>,
+    /// Describes how important this data is for operating the server.
+    /// 
+    /// A value of 1 means "most important," and indicates that the data is
+    /// effectively required, while 0 means "least important," and indicates that
+    /// the data is entirely optional.
+    priority: option<f64>,
+  }
+
+  /// Audio provided to or from an LLM.
+  record audio-content {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// Optional annotations for the client.
+    annotations: option<annotations>,
+    /// The base64-encoded audio data.
+    data: list<u8>,
+    /// The MIME type of the audio. Different providers may support different audio types.
+    mime-type: string,
+    type-field: string,
+  }
+
+  /// Base interface for metadata with name (identifier) and title (display name) properties.
+  record base-metadata {
+    /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn't present).
+    name: string,
+    /// Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+    /// even by those unfamiliar with domain-specific terminology.
+    /// 
+    /// If not provided, the name should be used for display (except for Tool,
+    /// where `annotations.title` should be given precedence over using `name`,
+    /// if present).
+    title: option<string>,
+  }
+
+  record blob-resource-contents {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// A base64-encoded string representing the binary data of the item.
+    blob: list<u8>,
+    /// The MIME type of this resource, if known.
+    mime-type: option<string>,
+    /// The URI of this resource.
+    uri: string,
+  }
+
+  record boolean-schema {
+    default: option<bool>,
+    description: option<string>,
+    title: option<string>,
+    type-field: string,
+  }
+
+  /// Used by the client to invoke a tool provided by the server.
+  record call-tool-request {
+    method-field: string,
+    params: call-tool-request-params,
+  }
+
+  record call-tool-request-params {
+    arguments: option<list<tuple<string, string>>>,
+    name: string,
+  }
+
+  /// The server's response to a tool call.
+  record call-tool-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// A list of content objects that represent the unstructured result of the tool call.
+    content: list<content-block>,
+    /// Whether the tool call ended in an error.
+    /// 
+    /// If not set, this is assumed to be false (the call was successful).
+    /// 
+    /// Any errors that originate from the tool SHOULD be reported inside the result
+    /// object, with `isError` set to true, _not_ as an MCP protocol-level error
+    /// response. Otherwise, the LLM would not be able to see that an error occurred
+    /// and self-correct.
+    /// 
+    /// However, any errors in _finding_ the tool, an error indicating that the
+    /// server does not support tool calls, or any other exceptional conditions,
+    /// should be reported as an MCP error response.
+    is-error: option<bool>,
+    /// An optional JSON object that represents the structured result of the tool call.
+    structured-content: option<list<tuple<string, string>>>,
+  }
+
+  /// This notification can be sent by either side to indicate that it is cancelling a previously-issued request.
+  /// 
+  /// The request SHOULD still be in-flight, but due to communication latency, it is always possible that this notification MAY arrive after the request has already finished.
+  /// 
+  /// This notification indicates that the result will be unused, so any associated processing SHOULD cease.
+  /// 
+  /// A client MUST NOT attempt to cancel its `initialize` request.
+  record cancelled-notification {
+    method-field: string,
+    params: cancelled-notification-params,
+  }
+
+  record cancelled-notification-params {
+    /// An optional string describing the reason for the cancellation. This MAY be logged or presented to the user.
+    reason: option<string>,
+    /// The ID of the request to cancel.
+    /// 
+    /// This MUST correspond to the ID of a request previously issued in the same direction.
+    request-id: request-id,
+  }
+
+  /// Capabilities a client may support. Known capabilities are defined here, in this schema, but this is not a closed set: any client can define its own, additional capabilities.
+  record client-capabilities {
+    /// Present if the client supports elicitation from the server.
+    elicitation: option<string>,
+    /// Experimental, non-standard capabilities that the client supports.
+    experimental: option<list<tuple<string, string>>>,
+    /// Present if the client supports listing roots.
+    roots: option<client-capabilities-roots>,
+    /// Present if the client supports sampling from an LLM.
+    sampling: option<string>,
+  }
+
+  /// Present if the client supports elicitation from the server.
+  record client-capabilities-elicitation {
+  }
+
+  /// Present if the client supports listing roots.
+  record client-capabilities-roots {
+    /// Whether the client supports notifications for changes to the roots list.
+    list-changed: option<bool>,
+  }
+
+  /// Present if the client supports sampling from an LLM.
+  record client-capabilities-sampling {
+  }
+
+  variant client-notification {
+    cancelled-notification(cancelled-notification),
+    initialized-notification(initialized-notification),
+    progress-notification(progress-notification),
+    roots-list-changed-notification(roots-list-changed-notification),
+  }
+
+  variant client-request {
+    initialize-request(initialize-request),
+    ping-request(ping-request),
+    list-resources-request(list-resources-request),
+    list-resource-templates-request(list-resource-templates-request),
+    read-resource-request(read-resource-request),
+    subscribe-request(subscribe-request),
+    unsubscribe-request(unsubscribe-request),
+    list-prompts-request(list-prompts-request),
+    get-prompt-request(get-prompt-request),
+    list-tools-request(list-tools-request),
+    call-tool-request(call-tool-request),
+    set-level-request(set-level-request),
+    complete-request(complete-request),
+  }
+
+  variant client-result {
+    result-field(result-field),
+    create-message-result(create-message-result),
+    list-roots-result(list-roots-result),
+    elicit-result(elicit-result),
+  }
+
+  /// A request from the client to the server, to ask for completion options.
+  record complete-request {
+    method-field: string,
+    params: complete-request-params,
+  }
+
+  record complete-request-params {
+    /// The argument's information
+    argument: complete-request-params-argument,
+    /// Additional, optional context for completions
+    context: option<complete-request-params-context>,
+    ref: complete-request-params-ref,
+  }
+
+  /// The argument's information
+  record complete-request-params-argument {
+    /// The name of the argument
+    name: string,
+    /// The value of the argument to use for completion matching.
+    value: string,
+  }
+
+  /// Additional, optional context for completions
+  record complete-request-params-context {
+    /// Previously-resolved variables in a URI template or prompt.
+    arguments: option<list<tuple<string, string>>>,
+  }
+
+  variant complete-request-params-ref {
+    prompt-reference(prompt-reference),
+    resource-template-reference(resource-template-reference),
+  }
+
+  /// The server's response to a completion/complete request
+  record complete-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    completion: complete-result-completion,
+  }
+
+  record complete-result-completion {
+    /// Indicates whether there are additional completion options beyond those provided in the current response, even if the exact total is unknown.
+    has-more: option<bool>,
+    /// The total number of completion options available. This can exceed the number of values actually sent in the response.
+    total: option<s64>,
+    /// An array of completion values. Must not exceed 100 items.
+    values: list<string>,
+  }
+
+  variant content-block {
+    text-content(text-content),
+    image-content(image-content),
+    audio-content(audio-content),
+    resource-link(resource-link),
+    embedded-resource(embedded-resource),
+  }
+
+  /// A request from the server to sample an LLM via the client. The client has full discretion over which model to select. The client should also inform the user before beginning sampling, to allow them to inspect the request (human in the loop) and decide whether to approve it.
+  record create-message-request {
+    method-field: string,
+    params: create-message-request-params,
+  }
+
+  record create-message-request-params {
+    /// A request to include context from one or more MCP servers (including the caller), to be attached to the prompt. The client MAY ignore this request.
+    include-context: option<string>,
+    /// The maximum number of tokens to sample, as requested by the server. The client MAY choose to sample fewer tokens than requested.
+    max-tokens: s64,
+    messages: list<sampling-message>,
+    /// Optional metadata to pass through to the LLM provider. The format of this metadata is provider-specific.
+    metadata: option<string>,
+    /// The server's preferences for which model to select. The client MAY ignore these preferences.
+    model-preferences: option<model-preferences>,
+    stop-sequences: option<list<string>>,
+    /// An optional system prompt the server wants to use for sampling. The client MAY modify or omit this prompt.
+    system-prompt: option<string>,
+    temperature: option<f64>,
+  }
+
+  /// Optional metadata to pass through to the LLM provider. The format of this metadata is provider-specific.
+  record create-message-request-params-metadata {
+  }
+
+  /// The client's response to a sampling/create_message request from the server. The client should inform the user before returning the sampled message, to allow them to inspect the response (human in the loop) and decide whether to allow the server to see it.
+  record create-message-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    content: create-message-result-content,
+    /// The name of the model that generated the message.
+    model: string,
+    role: role,
+    /// The reason why sampling stopped, if known.
+    stop-reason: option<string>,
+  }
+
+  variant create-message-result-content {
+    text-content(text-content),
+    image-content(image-content),
+    audio-content(audio-content),
+  }
+
+  /// A request from the server to elicit additional information from the user via the client.
+  record elicit-request {
+    method-field: string,
+    params: elicit-request-params,
+  }
+
+  record elicit-request-params {
+    /// The message to present to the user.
+    message: string,
+    /// A restricted subset of JSON Schema.
+    /// Only top-level properties are allowed, without nesting.
+    requested-schema: elicit-request-params-requested-schema,
+  }
+
+  /// A restricted subset of JSON Schema.
+  /// Only top-level properties are allowed, without nesting.
+  record elicit-request-params-requested-schema {
+    properties: list<tuple<string, primitive-schema-definition>>,
+    required: option<list<string>>,
+    type-field: string,
+  }
+
+  /// The client's response to an elicitation request.
+  record elicit-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// The user action in response to the elicitation.
+    /// - "accept": User submitted the form/confirmed the action
+    /// - "decline": User explicitly declined the action
+    /// - "cancel": User dismissed without making an explicit choice
+    action: string,
+    /// The submitted form data, only present when action is "accept".
+    /// Contains values matching the requested schema.
+    content: option<list<tuple<string, string>>>,
+  }
+
+  /// The contents of a resource, embedded into a prompt or tool call result.
+  /// 
+  /// It is up to the client how best to render embedded resources for the benefit
+  /// of the LLM and/or the user.
+  record embedded-resource {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// Optional annotations for the client.
+    annotations: option<annotations>,
+    resource-field: embedded-resource-resource,
+    type-field: string,
+  }
+
+  variant embedded-resource-resource {
+    text-resource-contents(text-resource-contents),
+    blob-resource-contents(blob-resource-contents),
+  }
+
+  record enum-schema {
+    description: option<string>,
+    enum-field: list<string>,
+    enum-names: option<list<string>>,
+    title: option<string>,
+    type-field: string,
+  }
+
+  /// Used by the client to get a prompt provided by the server.
+  record get-prompt-request {
+    method-field: string,
+    params: get-prompt-request-params,
+  }
+
+  record get-prompt-request-params {
+    /// Arguments to use for templating the prompt.
+    arguments: option<list<tuple<string, string>>>,
+    /// The name of the prompt or prompt template.
+    name: string,
+  }
+
+  /// The server's response to a prompts/get request from the client.
+  record get-prompt-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// An optional description for the prompt.
+    description: option<string>,
+    messages: list<prompt-message>,
+  }
+
+  /// An image provided to or from an LLM.
+  record image-content {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// Optional annotations for the client.
+    annotations: option<annotations>,
+    /// The base64-encoded image data.
+    data: list<u8>,
+    /// The MIME type of the image. Different providers may support different image types.
+    mime-type: string,
+    type-field: string,
+  }
+
+  /// Describes the name and version of an MCP implementation, with an optional title for UI representation.
+  record implementation {
+    /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn't present).
+    name: string,
+    /// Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+    /// even by those unfamiliar with domain-specific terminology.
+    /// 
+    /// If not provided, the name should be used for display (except for Tool,
+    /// where `annotations.title` should be given precedence over using `name`,
+    /// if present).
+    title: option<string>,
+    version: string,
+  }
+
+  /// This request is sent from the client to the server when it first connects, asking it to begin initialization.
+  record initialize-request {
+    method-field: string,
+    params: initialize-request-params,
+  }
+
+  record initialize-request-params {
+    capabilities: client-capabilities,
+    client-info: implementation,
+    /// The latest version of the Model Context Protocol that the client supports. The client MAY decide to support older versions as well.
+    protocol-version: string,
+  }
+
+  /// After receiving an initialize request from the client, the server sends this response.
+  record initialize-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    capabilities: server-capabilities,
+    /// Instructions describing how to use the server and its features.
+    /// 
+    /// This can be used by clients to improve the LLM's understanding of available tools, resources, etc. It can be thought of like a "hint" to the model. For example, this information MAY be added to the system prompt.
+    instructions: option<string>,
+    /// The version of the Model Context Protocol that the server wants to use. This may not match the version that the client requested. If the client cannot support this version, it MUST disconnect.
+    protocol-version: string,
+    server-info: implementation,
+  }
+
+  /// This notification is sent from the client to the server after initialization has finished.
+  record initialized-notification {
+    method-field: string,
+    params: option<initialized-notification-params>,
+  }
+
+  record initialized-notification-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+  }
+
+  /// A response to a request that indicates an error occurred.
+  record jsonrpcerror {
+    error: jsonrpcerror-error,
+    id: request-id,
+    jsonrpc: string,
+  }
+
+  record jsonrpcerror-error {
+    /// The error type that occurred.
+    code: s64,
+    /// Additional information about the error. The value of this member is defined by the sender (e.g. detailed error information, nested errors etc.).
+    data: option<string>,
+    /// A short description of the error. The message SHOULD be limited to a concise single sentence.
+    message: string,
+  }
+
+  /// Refers to any valid JSON-RPC object that can be decoded off the wire, or encoded to be sent.
+  variant jsonrpcmessage {
+    jsonrpcrequest(jsonrpcrequest),
+    jsonrpcnotification(jsonrpcnotification),
+    jsonrpcresponse(jsonrpcresponse),
+    jsonrpcerror(jsonrpcerror),
+  }
+
+  /// A notification which does not expect a response.
+  record jsonrpcnotification {
+    jsonrpc: string,
+    method-field: string,
+    params: option<jsonrpcnotification-params>,
+  }
+
+  record jsonrpcnotification-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+  }
+
+  /// A request that expects a response.
+  record jsonrpcrequest {
+    id: request-id,
+    jsonrpc: string,
+    method-field: string,
+    params: option<jsonrpcrequest-params>,
+  }
+
+  record jsonrpcrequest-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<jsonrpcrequest-params-meta>,
+  }
+
+  /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+  record jsonrpcrequest-params-meta {
+    /// If specified, the caller is requesting out-of-band progress notifications for this request (as represented by notifications/progress). The value of this parameter is an opaque token that will be attached to any subsequent notifications. The receiver is not obligated to provide these notifications.
+    progress-token: option<progress-token>,
+  }
+
+  /// A successful (non-error) response to a request.
+  record jsonrpcresponse {
+    id: request-id,
+    jsonrpc: string,
+    result-field: result-field,
+  }
+
+  /// Sent from the client to request a list of prompts and prompt templates the server has.
+  record list-prompts-request {
+    method-field: string,
+    params: option<list-prompts-request-params>,
+  }
+
+  record list-prompts-request-params {
+    /// An opaque token representing the current pagination position.
+    /// If provided, the server should return results starting after this cursor.
+    cursor: option<string>,
+  }
+
+  /// The server's response to a prompts/list request from the client.
+  record list-prompts-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// An opaque token representing the pagination position after the last returned result.
+    /// If present, there may be more results available.
+    next-cursor: option<string>,
+    prompts: list<prompt>,
+  }
+
+  /// Sent from the client to request a list of resource templates the server has.
+  record list-resource-templates-request {
+    method-field: string,
+    params: option<list-resource-templates-request-params>,
+  }
+
+  record list-resource-templates-request-params {
+    /// An opaque token representing the current pagination position.
+    /// If provided, the server should return results starting after this cursor.
+    cursor: option<string>,
+  }
+
+  /// The server's response to a resources/templates/list request from the client.
+  record list-resource-templates-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// An opaque token representing the pagination position after the last returned result.
+    /// If present, there may be more results available.
+    next-cursor: option<string>,
+    resource-templates: list<resource-template>,
+  }
+
+  /// Sent from the client to request a list of resources the server has.
+  record list-resources-request {
+    method-field: string,
+    params: option<list-resources-request-params>,
+  }
+
+  record list-resources-request-params {
+    /// An opaque token representing the current pagination position.
+    /// If provided, the server should return results starting after this cursor.
+    cursor: option<string>,
+  }
+
+  /// The server's response to a resources/list request from the client.
+  record list-resources-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// An opaque token representing the pagination position after the last returned result.
+    /// If present, there may be more results available.
+    next-cursor: option<string>,
+    resources: list<resource-field>,
+  }
+
+  /// Sent from the server to request a list of root URIs from the client. Roots allow
+  /// servers to ask for specific directories or files to operate on. A common example
+  /// for roots is providing a set of repositories or directories a server should operate
+  /// on.
+  /// 
+  /// This request is typically used when the server needs to understand the file system
+  /// structure or access specific locations that the client has permission to read from.
+  record list-roots-request {
+    method-field: string,
+    params: option<list-roots-request-params>,
+  }
+
+  record list-roots-request-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list-roots-request-params-meta>,
+  }
+
+  /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+  record list-roots-request-params-meta {
+    /// If specified, the caller is requesting out-of-band progress notifications for this request (as represented by notifications/progress). The value of this parameter is an opaque token that will be attached to any subsequent notifications. The receiver is not obligated to provide these notifications.
+    progress-token: option<progress-token>,
+  }
+
+  /// The client's response to a roots/list request from the server.
+  /// This result contains an array of Root objects, each representing a root directory
+  /// or file that the server can operate on.
+  record list-roots-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    roots: list<root>,
+  }
+
+  /// Sent from the client to request a list of tools the server has.
+  record list-tools-request {
+    method-field: string,
+    params: option<list-tools-request-params>,
+  }
+
+  record list-tools-request-params {
+    /// An opaque token representing the current pagination position.
+    /// If provided, the server should return results starting after this cursor.
+    cursor: option<string>,
+  }
+
+  /// The server's response to a tools/list request from the client.
+  record list-tools-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// An opaque token representing the pagination position after the last returned result.
+    /// If present, there may be more results available.
+    next-cursor: option<string>,
+    tools: list<tool>,
+  }
+
+  enum logging-level {
+    alert,
+    critical,
+    debug,
+    emergency,
+    error,
+    info,
+    notice,
+    warning,
+  }
+
+  /// Notification of a log message passed from server to client. If no logging/setLevel request has been sent from the client, the server MAY decide which messages to send automatically.
+  record logging-message-notification {
+    method-field: string,
+    params: logging-message-notification-params,
+  }
+
+  record logging-message-notification-params {
+    /// The data to be logged, such as a string message or an object. Any JSON serializable type is allowed here.
+    data: string,
+    /// The severity of this log message.
+    level: logging-level,
+    /// An optional name of the logger issuing this message.
+    logger: option<string>,
+  }
+
+  /// Hints to use for model selection.
+  /// 
+  /// Keys not declared here are currently left unspecified by the spec and are up
+  /// to the client to interpret.
+  record model-hint {
+    /// A hint for a model name.
+    /// 
+    /// The client SHOULD treat this as a substring of a model name; for example:
+    ///  - `claude-3-5-sonnet` should match `claude-3-5-sonnet-20241022`
+    ///  - `sonnet` should match `claude-3-5-sonnet-20241022`, `claude-3-sonnet-20240229`, etc.
+    ///  - `claude` should match any Claude model
+    /// 
+    /// The client MAY also map the string to a different provider's model name or a different model family, as long as it fills a similar niche; for example:
+    ///  - `gemini-1.5-flash` could match `claude-3-haiku-20240307`
+    name: option<string>,
+  }
+
+  /// The server's preferences for model selection, requested of the client during sampling.
+  /// 
+  /// Because LLMs can vary along multiple dimensions, choosing the "best" model is
+  /// rarely straightforward.  Different models excel in different areas—some are
+  /// faster but less capable, others are more capable but more expensive, and so
+  /// on. This interface allows servers to express their priorities across multiple
+  /// dimensions to help clients make an appropriate selection for their use case.
+  /// 
+  /// These preferences are always advisory. The client MAY ignore them. It is also
+  /// up to the client to decide how to interpret these preferences and how to
+  /// balance them against other considerations.
+  record model-preferences {
+    /// How much to prioritize cost when selecting a model. A value of 0 means cost
+    /// is not important, while a value of 1 means cost is the most important
+    /// factor.
+    cost-priority: option<f64>,
+    /// Optional hints to use for model selection.
+    /// 
+    /// If multiple hints are specified, the client MUST evaluate them in order
+    /// (such that the first match is taken).
+    /// 
+    /// The client SHOULD prioritize these hints over the numeric priorities, but
+    /// MAY still use the priorities to select from ambiguous matches.
+    hints: option<list<model-hint>>,
+    /// How much to prioritize intelligence and capabilities when selecting a
+    /// model. A value of 0 means intelligence is not important, while a value of 1
+    /// means intelligence is the most important factor.
+    intelligence-priority: option<f64>,
+    /// How much to prioritize sampling speed (latency) when selecting a model. A
+    /// value of 0 means speed is not important, while a value of 1 means speed is
+    /// the most important factor.
+    speed-priority: option<f64>,
+  }
+
+  record notification {
+    method-field: string,
+    params: option<notification-params>,
+  }
+
+  record notification-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+  }
+
+  record number-schema {
+    description: option<string>,
+    maximum: option<s64>,
+    minimum: option<s64>,
+    title: option<string>,
+    type-field: string,
+  }
+
+  record paginated-request {
+    method-field: string,
+    params: option<paginated-request-params>,
+  }
+
+  record paginated-request-params {
+    /// An opaque token representing the current pagination position.
+    /// If provided, the server should return results starting after this cursor.
+    cursor: option<string>,
+  }
+
+  record paginated-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// An opaque token representing the pagination position after the last returned result.
+    /// If present, there may be more results available.
+    next-cursor: option<string>,
+  }
+
+  /// A ping, issued by either the server or the client, to check that the other party is still alive. The receiver must promptly respond, or else may be disconnected.
+  record ping-request {
+    method-field: string,
+    params: option<ping-request-params>,
+  }
+
+  record ping-request-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<ping-request-params-meta>,
+  }
+
+  /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+  record ping-request-params-meta {
+    /// If specified, the caller is requesting out-of-band progress notifications for this request (as represented by notifications/progress). The value of this parameter is an opaque token that will be attached to any subsequent notifications. The receiver is not obligated to provide these notifications.
+    progress-token: option<progress-token>,
+  }
+
+  /// Restricted schema definitions that only allow primitive types
+  /// without nested objects or arrays.
+  variant primitive-schema-definition {
+    string-schema(string-schema),
+    number-schema(number-schema),
+    boolean-schema(boolean-schema),
+    enum-schema(enum-schema),
+  }
+
+  /// An out-of-band notification used to inform the receiver of a progress update for a long-running request.
+  record progress-notification {
+    method-field: string,
+    params: progress-notification-params,
+  }
+
+  record progress-notification-params {
+    /// An optional message describing the current progress.
+    message: option<string>,
+    /// The progress thus far. This should increase every time progress is made, even if the total is unknown.
+    progress: f64,
+    /// The progress token which was given in the initial request, used to associate this notification with the request that is proceeding.
+    progress-token: progress-token,
+    /// Total number of items to process (or total progress required), if known.
+    total: option<f64>,
+  }
+
+  variant progress-token {
+    string-field(string),
+    integer(s64),
+  }
+
+  /// A prompt or prompt template that the server offers.
+  record prompt {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// A list of arguments to use for templating the prompt.
+    arguments: option<list<prompt-argument>>,
+    /// An optional description of what this prompt provides
+    description: option<string>,
+    /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn't present).
+    name: string,
+    /// Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+    /// even by those unfamiliar with domain-specific terminology.
+    /// 
+    /// If not provided, the name should be used for display (except for Tool,
+    /// where `annotations.title` should be given precedence over using `name`,
+    /// if present).
+    title: option<string>,
+  }
+
+  /// Describes an argument that a prompt can accept.
+  record prompt-argument {
+    /// A human-readable description of the argument.
+    description: option<string>,
+    /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn't present).
+    name: string,
+    /// Whether this argument must be provided.
+    required: option<bool>,
+    /// Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+    /// even by those unfamiliar with domain-specific terminology.
+    /// 
+    /// If not provided, the name should be used for display (except for Tool,
+    /// where `annotations.title` should be given precedence over using `name`,
+    /// if present).
+    title: option<string>,
+  }
+
+  /// An optional notification from the server to the client, informing it that the list of prompts it offers has changed. This may be issued by servers without any previous subscription from the client.
+  record prompt-list-changed-notification {
+    method-field: string,
+    params: option<prompt-list-changed-notification-params>,
+  }
+
+  record prompt-list-changed-notification-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+  }
+
+  /// Describes a message returned as part of a prompt.
+  /// 
+  /// This is similar to `SamplingMessage`, but also supports the embedding of
+  /// resources from the MCP server.
+  record prompt-message {
+    content: content-block,
+    role: role,
+  }
+
+  /// Identifies a prompt.
+  record prompt-reference {
+    /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn't present).
+    name: string,
+    /// Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+    /// even by those unfamiliar with domain-specific terminology.
+    /// 
+    /// If not provided, the name should be used for display (except for Tool,
+    /// where `annotations.title` should be given precedence over using `name`,
+    /// if present).
+    title: option<string>,
+    type-field: string,
+  }
+
+  /// Sent from the client to the server, to read a specific resource URI.
+  record read-resource-request {
+    method-field: string,
+    params: read-resource-request-params,
+  }
+
+  record read-resource-request-params {
+    /// The URI of the resource to read. The URI can use any protocol; it is up to the server how to interpret it.
+    uri: string,
+  }
+
+  /// The server's response to a resources/read request from the client.
+  record read-resource-result {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    contents: list<read-resource-result-contents-item>,
+  }
+
+  variant read-resource-result-contents-item {
+    text-resource-contents(text-resource-contents),
+    blob-resource-contents(blob-resource-contents),
+  }
+
+  record request {
+    method-field: string,
+    params: option<request-params>,
+  }
+
+  record request-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<request-params-meta>,
+  }
+
+  /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+  record request-params-meta {
+    /// If specified, the caller is requesting out-of-band progress notifications for this request (as represented by notifications/progress). The value of this parameter is an opaque token that will be attached to any subsequent notifications. The receiver is not obligated to provide these notifications.
+    progress-token: option<progress-token>,
+  }
+
+  variant request-id {
+    string-field(string),
+    integer(s64),
+  }
+
+  /// A known resource that the server is capable of reading.
+  record resource-field {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// Optional annotations for the client.
+    annotations: option<annotations>,
+    /// A description of what this resource represents.
+    /// 
+    /// This can be used by clients to improve the LLM's understanding of available resources. It can be thought of like a "hint" to the model.
+    description: option<string>,
+    /// The MIME type of this resource, if known.
+    mime-type: option<string>,
+    /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn't present).
+    name: string,
+    /// The size of the raw resource content, in bytes (i.e., before base64 encoding or any tokenization), if known.
+    /// 
+    /// This can be used by Hosts to display file sizes and estimate context window usage.
+    size: option<s64>,
+    /// Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+    /// even by those unfamiliar with domain-specific terminology.
+    /// 
+    /// If not provided, the name should be used for display (except for Tool,
+    /// where `annotations.title` should be given precedence over using `name`,
+    /// if present).
+    title: option<string>,
+    /// The URI of this resource.
+    uri: string,
+  }
+
+  /// The contents of a specific resource or sub-resource.
+  record resource-contents {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// The MIME type of this resource, if known.
+    mime-type: option<string>,
+    /// The URI of this resource.
+    uri: string,
+  }
+
+  /// A resource that the server is capable of reading, included in a prompt or tool call result.
+  /// 
+  /// Note: resource links returned by tools are not guaranteed to appear in the results of `resources/list` requests.
+  record resource-link {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// Optional annotations for the client.
+    annotations: option<annotations>,
+    /// A description of what this resource represents.
+    /// 
+    /// This can be used by clients to improve the LLM's understanding of available resources. It can be thought of like a "hint" to the model.
+    description: option<string>,
+    /// The MIME type of this resource, if known.
+    mime-type: option<string>,
+    /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn't present).
+    name: string,
+    /// The size of the raw resource content, in bytes (i.e., before base64 encoding or any tokenization), if known.
+    /// 
+    /// This can be used by Hosts to display file sizes and estimate context window usage.
+    size: option<s64>,
+    /// Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+    /// even by those unfamiliar with domain-specific terminology.
+    /// 
+    /// If not provided, the name should be used for display (except for Tool,
+    /// where `annotations.title` should be given precedence over using `name`,
+    /// if present).
+    title: option<string>,
+    type-field: string,
+    /// The URI of this resource.
+    uri: string,
+  }
+
+  /// An optional notification from the server to the client, informing it that the list of resources it can read from has changed. This may be issued by servers without any previous subscription from the client.
+  record resource-list-changed-notification {
+    method-field: string,
+    params: option<resource-list-changed-notification-params>,
+  }
+
+  record resource-list-changed-notification-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+  }
+
+  /// A template description for resources available on the server.
+  record resource-template {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// Optional annotations for the client.
+    annotations: option<annotations>,
+    /// A description of what this template is for.
+    /// 
+    /// This can be used by clients to improve the LLM's understanding of available resources. It can be thought of like a "hint" to the model.
+    description: option<string>,
+    /// The MIME type for all resources that match this template. This should only be included if all resources matching this template have the same type.
+    mime-type: option<string>,
+    /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn't present).
+    name: string,
+    /// Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+    /// even by those unfamiliar with domain-specific terminology.
+    /// 
+    /// If not provided, the name should be used for display (except for Tool,
+    /// where `annotations.title` should be given precedence over using `name`,
+    /// if present).
+    title: option<string>,
+    /// A URI template (according to RFC 6570) that can be used to construct resource URIs.
+    uri-template: string,
+  }
+
+  /// A reference to a resource or resource template definition.
+  record resource-template-reference {
+    type-field: string,
+    /// The URI or URI template of the resource.
+    uri: string,
+  }
+
+  /// A notification from the server to the client, informing it that a resource has changed and may need to be read again. This should only be sent if the client previously sent a resources/subscribe request.
+  record resource-updated-notification {
+    method-field: string,
+    params: resource-updated-notification-params,
+  }
+
+  record resource-updated-notification-params {
+    /// The URI of the resource that has been updated. This might be a sub-resource of the one that the client actually subscribed to.
+    uri: string,
+  }
+
+  record result-field {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+  }
+
+  enum role {
+    assistant,
+    user,
+  }
+
+  /// Represents a root directory or file that the server can operate on.
+  record root {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// An optional name for the root. This can be used to provide a human-readable
+    /// identifier for the root, which may be useful for display purposes or for
+    /// referencing the root in other parts of the application.
+    name: option<string>,
+    /// The URI identifying the root. This *must* start with file:// for now.
+    /// This restriction may be relaxed in future versions of the protocol to allow
+    /// other URI schemes.
+    uri: string,
+  }
+
+  /// A notification from the client to the server, informing it that the list of roots has changed.
+  /// This notification should be sent whenever the client adds, removes, or modifies any root.
+  /// The server should then request an updated list of roots using the ListRootsRequest.
+  record roots-list-changed-notification {
+    method-field: string,
+    params: option<roots-list-changed-notification-params>,
+  }
+
+  record roots-list-changed-notification-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+  }
+
+  /// Describes a message issued to or received from an LLM API.
+  record sampling-message {
+    content: sampling-message-content,
+    role: role,
+  }
+
+  variant sampling-message-content {
+    text-content(text-content),
+    image-content(image-content),
+    audio-content(audio-content),
+  }
+
+  /// Capabilities that a server may support. Known capabilities are defined here, in this schema, but this is not a closed set: any server can define its own, additional capabilities.
+  record server-capabilities {
+    /// Present if the server supports argument autocompletion suggestions.
+    completions: option<string>,
+    /// Experimental, non-standard capabilities that the server supports.
+    experimental: option<list<tuple<string, string>>>,
+    /// Present if the server supports sending log messages to the client.
+    logging: option<string>,
+    /// Present if the server offers any prompt templates.
+    prompts: option<server-capabilities-prompts>,
+    /// Present if the server offers any resources to read.
+    resources: option<server-capabilities-resources>,
+    /// Present if the server offers any tools to call.
+    tools: option<server-capabilities-tools>,
+  }
+
+  /// Present if the server supports argument autocompletion suggestions.
+  record server-capabilities-completions {
+  }
+
+  /// Present if the server supports sending log messages to the client.
+  record server-capabilities-logging {
+  }
+
+  /// Present if the server offers any prompt templates.
+  record server-capabilities-prompts {
+    /// Whether this server supports notifications for changes to the prompt list.
+    list-changed: option<bool>,
+  }
+
+  /// Present if the server offers any resources to read.
+  record server-capabilities-resources {
+    /// Whether this server supports notifications for changes to the resource list.
+    list-changed: option<bool>,
+    /// Whether this server supports subscribing to resource updates.
+    subscribe: option<bool>,
+  }
+
+  /// Present if the server offers any tools to call.
+  record server-capabilities-tools {
+    /// Whether this server supports notifications for changes to the tool list.
+    list-changed: option<bool>,
+  }
+
+  variant server-notification {
+    cancelled-notification(cancelled-notification),
+    progress-notification(progress-notification),
+    resource-list-changed-notification(resource-list-changed-notification),
+    resource-updated-notification(resource-updated-notification),
+    prompt-list-changed-notification(prompt-list-changed-notification),
+    tool-list-changed-notification(tool-list-changed-notification),
+    logging-message-notification(logging-message-notification),
+  }
+
+  variant server-request {
+    ping-request(ping-request),
+    create-message-request(create-message-request),
+    list-roots-request(list-roots-request),
+    elicit-request(elicit-request),
+  }
+
+  variant server-result {
+    result-field(result-field),
+    initialize-result(initialize-result),
+    list-resources-result(list-resources-result),
+    list-resource-templates-result(list-resource-templates-result),
+    read-resource-result(read-resource-result),
+    list-prompts-result(list-prompts-result),
+    get-prompt-result(get-prompt-result),
+    list-tools-result(list-tools-result),
+    call-tool-result(call-tool-result),
+    complete-result(complete-result),
+  }
+
+  /// A request from the client to the server, to enable or adjust logging.
+  record set-level-request {
+    method-field: string,
+    params: set-level-request-params,
+  }
+
+  record set-level-request-params {
+    /// The level of logging that the client wants to receive from the server. The server should send all logs at this level and higher (i.e., more severe) to the client as notifications/message.
+    level: logging-level,
+  }
+
+  record string-schema {
+    description: option<string>,
+    format: option<string>,
+    max-length: option<s64>,
+    min-length: option<s64>,
+    title: option<string>,
+    type-field: string,
+  }
+
+  /// Sent from the client to request resources/updated notifications from the server whenever a particular resource changes.
+  record subscribe-request {
+    method-field: string,
+    params: subscribe-request-params,
+  }
+
+  record subscribe-request-params {
+    /// The URI of the resource to subscribe to. The URI can use any protocol; it is up to the server how to interpret it.
+    uri: string,
+  }
+
+  /// Text provided to or from an LLM.
+  record text-content {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// Optional annotations for the client.
+    annotations: option<annotations>,
+    /// The text content of the message.
+    text: string,
+    type-field: string,
+  }
+
+  record text-resource-contents {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// The MIME type of this resource, if known.
+    mime-type: option<string>,
+    /// The text of the item. This must only be set if the item can actually be represented as text (not binary data).
+    text: string,
+    /// The URI of this resource.
+    uri: string,
+  }
+
+  /// Definition for a tool the client can call.
+  record tool {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+    /// Optional additional tool information.
+    /// 
+    /// Display name precedence order is: title, annotations.title, then name.
+    annotations: option<tool-annotations>,
+    /// A human-readable description of the tool.
+    /// 
+    /// This can be used by clients to improve the LLM's understanding of available tools. It can be thought of like a "hint" to the model.
+    description: option<string>,
+    /// A JSON Schema object defining the expected parameters for the tool.
+    input-schema: tool-input-schema,
+    /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn't present).
+    name: string,
+    /// An optional JSON Schema object defining the structure of the tool's output returned in
+    /// the structuredContent field of a CallToolResult.
+    output-schema: option<tool-output-schema>,
+    /// Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+    /// even by those unfamiliar with domain-specific terminology.
+    /// 
+    /// If not provided, the name should be used for display (except for Tool,
+    /// where `annotations.title` should be given precedence over using `name`,
+    /// if present).
+    title: option<string>,
+  }
+
+  /// A JSON Schema object defining the expected parameters for the tool.
+  record tool-input-schema {
+    properties: option<list<tuple<string, string>>>,
+    required: option<list<string>>,
+    type-field: string,
+  }
+
+  /// An optional JSON Schema object defining the structure of the tool's output returned in
+  /// the structuredContent field of a CallToolResult.
+  record tool-output-schema {
+    properties: option<list<tuple<string, string>>>,
+    required: option<list<string>>,
+    type-field: string,
+  }
+
+  /// Additional properties describing a Tool to clients.
+  /// 
+  /// NOTE: all properties in ToolAnnotations are **hints**.
+  /// They are not guaranteed to provide a faithful description of
+  /// tool behavior (including descriptive properties like `title`).
+  /// 
+  /// Clients should never make tool use decisions based on ToolAnnotations
+  /// received from untrusted servers.
+  record tool-annotations {
+    /// If true, the tool may perform destructive updates to its environment.
+    /// If false, the tool performs only additive updates.
+    /// 
+    /// (This property is meaningful only when `readOnlyHint == false`)
+    /// 
+    /// Default: true
+    destructive-hint: option<bool>,
+    /// If true, calling the tool repeatedly with the same arguments
+    /// will have no additional effect on the its environment.
+    /// 
+    /// (This property is meaningful only when `readOnlyHint == false`)
+    /// 
+    /// Default: false
+    idempotent-hint: option<bool>,
+    /// If true, this tool may interact with an "open world" of external
+    /// entities. If false, the tool's domain of interaction is closed.
+    /// For example, the world of a web search tool is open, whereas that
+    /// of a memory tool is not.
+    /// 
+    /// Default: true
+    open-world-hint: option<bool>,
+    /// If true, the tool does not modify its environment.
+    /// 
+    /// Default: false
+    read-only-hint: option<bool>,
+    /// A human-readable title for the tool.
+    title: option<string>,
+  }
+
+  /// An optional notification from the server to the client, informing it that the list of tools it offers has changed. This may be issued by servers without any previous subscription from the client.
+  record tool-list-changed-notification {
+    method-field: string,
+    params: option<tool-list-changed-notification-params>,
+  }
+
+  record tool-list-changed-notification-params {
+    /// See [specification/2025-06-18/basic/index#general-fields] for notes on _meta usage.
+    meta: option<list<tuple<string, string>>>,
+  }
+
+  /// Sent from the client to request cancellation of resources/updated notifications from the server. This should follow a previous resources/subscribe request.
+  record unsubscribe-request {
+    method-field: string,
+    params: unsubscribe-request-params,
+  }
+
+  record unsubscribe-request-params {
+    /// The URI of the resource to unsubscribe from.
+    uri: string,
+  }
+}
+
+interface tools {
+  use types.{mcp-error, call-tool-request, call-tool-result, list-tools-request, list-tools-result};
+
+  /// tools/call
+  /// Used by the client to invoke a tool provided by the server.
+  call: func(request: call-tool-request) -> result<call-tool-result, mcp-error>;
+
+  /// tools/list
+  /// Sent from the client to request a list of tools the server has.
+  list-field: func(request: list-tools-request) -> result<list-tools-result, mcp-error>;
+
+}
+
+
+interface notifications {
+  use types.{mcp-error, cancelled-notifications-request, cancelled-notifications-result, initialized-notifications-request, initialized-notifications-result, message-notifications-request, message-notifications-result, progress-notifications-request, progress-notifications-result};
+
+  /// notifications/cancelled
+  /// This notification can be sent by either side to indicate that it is cancelling a previously-issued request.
+  /// 
+  /// The request SHOULD still be in-flight, but due to communication latency, it is always possible that this notification MAY arrive after the request has already finished.
+  /// 
+  /// This notification indicates that the result will be unused, so any associated processing SHOULD cease.
+  /// 
+  /// A client MUST NOT attempt to cancel its `initialize` request.
+  cancelled: func(request: cancelled-notifications-request) -> result<cancelled-notifications-result, mcp-error>;
+
+  /// notifications/initialized
+  /// This notification is sent from the client to the server after initialization has finished.
+  initialized: func(request: initialized-notifications-request) -> result<initialized-notifications-result, mcp-error>;
+
+  /// notifications/message
+  /// Notification of a log message passed from server to client. If no logging/setLevel request has been sent from the client, the server MAY decide which messages to send automatically.
+  message: func(request: message-notifications-request) -> result<message-notifications-result, mcp-error>;
+
+  /// notifications/progress
+  /// An out-of-band notification used to inform the receiver of a progress update for a long-running request.
+  progress: func(request: progress-notifications-request) -> result<progress-notifications-result, mcp-error>;
+
+}
+
+
+interface completion {
+  use types.{mcp-error, complete-completion-request, complete-completion-result};
+
+  /// completion/complete
+  /// A request from the client to the server, to ask for completion options.
+  complete: func(request: complete-completion-request) -> result<complete-completion-result, mcp-error>;
+
+}
+
+
+interface sampling {
+  use types.{mcp-error, create-message-sampling-request, create-message-sampling-result};
+
+  /// sampling/createMessage
+  /// A request from the server to sample an LLM via the client. The client has full discretion over which model to select. The client should also inform the user before beginning sampling, to allow them to inspect the request (human in the loop) and decide whether to approve it.
+  create-message: func(request: create-message-sampling-request) -> result<create-message-sampling-result, mcp-error>;
+
+}
+
+
+interface elicitation {
+  use types.{mcp-error, create-elicitation-request, create-elicitation-result};
+
+  /// elicitation/create
+  /// A request from the server to elicit additional information from the user via the client.
+  create: func(request: create-elicitation-request) -> result<create-elicitation-result, mcp-error>;
+
+}
+
+
+interface prompts {
+  use types.{mcp-error, get-prompts-request, get-prompts-result, list-prompts-request, list-prompts-result};
+
+  /// prompts/get
+  /// Used by the client to get a prompt provided by the server.
+  get: func(request: get-prompts-request) -> result<get-prompts-result, mcp-error>;
+
+  /// prompts/list
+  /// Sent from the client to request a list of prompts and prompt templates the server has.
+  list-field: func(request: list-prompts-request) -> result<list-prompts-result, mcp-error>;
+
+}
+
+
+interface resources {
+  use types.{mcp-error, list-resources-request, list-resources-result, read-resources-request, read-resources-result, subscribe-resources-request, subscribe-resources-result, unsubscribe-resources-request, unsubscribe-resources-result};
+
+  /// resources/list
+  /// Sent from the client to request a list of resources the server has.
+  list-field: func(request: list-resources-request) -> result<list-resources-result, mcp-error>;
+
+  /// resources/read
+  /// Sent from the client to the server, to read a specific resource URI.
+  read: func(request: read-resources-request) -> result<read-resources-result, mcp-error>;
+
+  /// resources/subscribe
+  /// Sent from the client to request resources/updated notifications from the server whenever a particular resource changes.
+  subscribe: func(request: subscribe-resources-request) -> result<subscribe-resources-result, mcp-error>;
+
+  /// resources/unsubscribe
+  /// Sent from the client to request cancellation of resources/updated notifications from the server. This should follow a previous resources/subscribe request.
+  unsubscribe: func(request: unsubscribe-resources-request) -> result<unsubscribe-resources-result, mcp-error>;
+
+}
+
+
+interface roots {
+  use types.{mcp-error, list-roots-request, list-roots-result};
+
+  /// roots/list
+  /// Sent from the server to request a list of root URIs from the client. Roots allow
+  /// servers to ask for specific directories or files to operate on. A common example
+  /// for roots is providing a set of repositories or directories a server should operate
+  /// on.
+  /// 
+  /// This request is typically used when the server needs to understand the file system
+  /// structure or access specific locations that the client has permission to read from.
+  list-field: func(request: list-roots-request) -> result<list-roots-result, mcp-error>;
+
+}
+
+
+interface logging {
+  use types.{mcp-error, set-level-logging-request, set-level-logging-result};
+
+  /// logging/setLevel
+  /// A request from the client to the server, to enable or adjust logging.
+  set-level: func(request: set-level-logging-request) -> result<set-level-logging-result, mcp-error>;
+
+}
+
+
+interface tools-handler {
+  use types.{mcp-error, call-tool-request, call-tool-result, list-tools-request, list-tools-result};
+
+  /// Handle tools/call
+  handle-call: func(request: call-tool-request) -> result<call-tool-result, mcp-error>;
+
+  /// Handle tools/list
+  handle-list-field: func(request: list-tools-request) -> result<list-tools-result, mcp-error>;
+
+}
+
+
+interface notifications-handler {
+  use types.{mcp-error, cancelled-notifications-request, cancelled-notifications-result, initialized-notifications-request, initialized-notifications-result, message-notifications-request, message-notifications-result, progress-notifications-request, progress-notifications-result};
+
+  /// Handle notifications/cancelled
+  handle-cancelled: func(request: cancelled-notifications-request) -> result<cancelled-notifications-result, mcp-error>;
+
+  /// Handle notifications/initialized
+  handle-initialized: func(request: initialized-notifications-request) -> result<initialized-notifications-result, mcp-error>;
+
+  /// Handle notifications/message
+  handle-message: func(request: message-notifications-request) -> result<message-notifications-result, mcp-error>;
+
+  /// Handle notifications/progress
+  handle-progress: func(request: progress-notifications-request) -> result<progress-notifications-result, mcp-error>;
+
+}
+
+
+interface completion-handler {
+  use types.{mcp-error, complete-completion-request, complete-completion-result};
+
+  /// Handle completion/complete
+  handle-complete: func(request: complete-completion-request) -> result<complete-completion-result, mcp-error>;
+
+}
+
+
+interface sampling-handler {
+  use types.{mcp-error, create-message-sampling-request, create-message-sampling-result};
+
+  /// Handle sampling/createMessage
+  handle-create-message: func(request: create-message-sampling-request) -> result<create-message-sampling-result, mcp-error>;
+
+}
+
+
+interface elicitation-handler {
+  use types.{mcp-error, create-elicitation-request, create-elicitation-result};
+
+  /// Handle elicitation/create
+  handle-create: func(request: create-elicitation-request) -> result<create-elicitation-result, mcp-error>;
+
+}
+
+
+interface prompts-handler {
+  use types.{mcp-error, get-prompts-request, get-prompts-result, list-prompts-request, list-prompts-result};
+
+  /// Handle prompts/get
+  handle-get: func(request: get-prompts-request) -> result<get-prompts-result, mcp-error>;
+
+  /// Handle prompts/list
+  handle-list-field: func(request: list-prompts-request) -> result<list-prompts-result, mcp-error>;
+
+}
+
+
+interface resources-handler {
+  use types.{mcp-error, list-resources-request, list-resources-result, read-resources-request, read-resources-result, subscribe-resources-request, subscribe-resources-result, unsubscribe-resources-request, unsubscribe-resources-result};
+
+  /// Handle resources/list
+  handle-list-field: func(request: list-resources-request) -> result<list-resources-result, mcp-error>;
+
+  /// Handle resources/read
+  handle-read: func(request: read-resources-request) -> result<read-resources-result, mcp-error>;
+
+  /// Handle resources/subscribe
+  handle-subscribe: func(request: subscribe-resources-request) -> result<subscribe-resources-result, mcp-error>;
+
+  /// Handle resources/unsubscribe
+  handle-unsubscribe: func(request: unsubscribe-resources-request) -> result<unsubscribe-resources-result, mcp-error>;
+
+}
+
+
+interface roots-handler {
+  use types.{mcp-error, list-roots-request, list-roots-result};
+
+  /// Handle roots/list
+  handle-list-field: func(request: list-roots-request) -> result<list-roots-result, mcp-error>;
+
+}
+
+
+interface logging-handler {
+  use types.{mcp-error, set-level-logging-request, set-level-logging-result};
+
+  /// Handle logging/setLevel
+  handle-set-level: func(request: set-level-logging-request) -> result<set-level-logging-result, mcp-error>;
+
+}
+
+

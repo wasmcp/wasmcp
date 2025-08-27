@@ -1,13 +1,5 @@
 package wasmcp:server@0.1.0;
 
-/// World for the MCP server component that bridges HTTP to MCP protocol
-/// The server imports handlers as optional capabilities
-world mcp-server {
-    /// Core handler is always required
-    import fastertools:mcp/core@0.1.1;
-    
-    /// Optional capability imports - server will detect what's available
-    import fastertools:mcp/tool-handler@0.1.1;
-    import fastertools:mcp/resource-handler@0.1.1; 
-    import fastertools:mcp/prompt-handler@0.1.1;
-}
+/// This server component uses the standard MCP server world
+/// It implements an HTTP/SSE transport bridge to MCP handlers
+use fastertools:mcp/mcp-server@0.1.1;

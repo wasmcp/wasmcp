@@ -3,7 +3,7 @@ package fastertools:mcp@0.1.1;
 /// Tool discovery and execution for MCP
 
 interface tools {
-    use types.{content-block, json-value, mcp-error, base-metadata, meta-fields, cursor, progress-token};
+    use types.{content-block, json-value, json-schema, mcp-error, base-metadata, meta-fields, cursor, progress-token};
 
     /// Behavioral hints about tool operations
     record tool-annotations {
@@ -18,10 +18,6 @@ interface tools {
         /// Tool interacts with external entities
         open-world-hint: option<bool>,
     }
-
-    /// JSON Schema representation for tool parameters
-    /// The schema is provided as a JSON string to handle complex nested schemas
-    type json-schema = json-value;
 
     /// Tool definition with metadata and schema
     record tool {
