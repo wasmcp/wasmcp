@@ -1,0 +1,119 @@
+package fastertools:mcp@0.1.0;
+
+/// Notification system for MCP events and updates
+
+interface notifications {
+    use types.{mcp-error, meta-fields, progress-token};
+
+    /// Notification types that can be sent
+
+    /// Notification that a long-running operation has progress
+    record progress-notification {
+        /// Token identifying the operation
+        progress-token: progress-token,
+        /// Current progress value
+        progress: u32,
+        /// Total expected progress (if known)
+        total: option<u32>,
+        /// Optional progress message
+        message: option<string>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Notification that an operation was cancelled
+    record cancelled-notification {
+        /// ID of the cancelled request
+        request-id: string,
+        /// Optional cancellation reason
+        reason: option<string>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Notification that the tools list has changed
+    record tools-list-changed {
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Notification that the resources list has changed
+    record resources-list-changed {
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Notification that the prompts list has changed
+    record prompts-list-changed {
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Notification that a subscribed resource has been updated
+    record resource-updated {
+        /// URI of the updated resource
+        uri: string,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Notification that the roots list has changed
+    record roots-list-changed {
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Log levels for logging notifications
+    enum log-level {
+        debug,
+        info,
+        notice,
+        warning,
+        error,
+        critical,
+        alert,
+        emergency,
+    }
+
+    /// Log message notification
+    record log-message {
+        /// Severity level
+        level: log-level,
+        /// Optional logger name
+        logger: option<string>,
+        /// Log message or data
+        message: string,
+        /// Additional structured data
+        data: option<list<tuple<string, string>>>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// All possible notification types
+    variant notification {
+        /// Progress update for long-running operation
+        progress(progress-notification),
+        /// Operation was cancelled
+        cancelled(cancelled-notification),
+        /// Tools list changed
+        tools-list-changed(tools-list-changed),
+        /// Resources list changed
+        resources-list-changed(resources-list-changed),
+        /// Prompts list changed
+        prompts-list-changed(prompts-list-changed),
+        /// Subscribed resource was updated
+        resource-updated(resource-updated),
+        /// Roots list changed
+        roots-list-changed(roots-list-changed),
+        /// Log message from server
+        log-message(log-message),
+    }
+
+    /// Notification operations
+    
+    /// Send a notification to the client
+    send-notification: func(notification: notification) -> result<_, mcp-error>;
+    
+    /// Set the minimum log level for log notifications
+    set-log-level: func(level: log-level) -> result<_, mcp-error>;
+}

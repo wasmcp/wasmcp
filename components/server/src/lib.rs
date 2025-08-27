@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 mod bindings;
 
 // Import the MCP protocol types and handler interface
-use bindings::mcp::protocol::{
+use bindings::fastertools::mcp::{
     handler,
     session::InitializeRequest,
     tools::{ListToolsRequest, CallToolRequest},
@@ -69,7 +69,7 @@ impl From<McpError> for JsonRpcError {
         JsonRpcError {
             code,
             message: err.message,
-            data: err.data.and_then(|s| serde_json::from_str(&s).ok()),
+            data: err.data.and_then(|s: String| serde_json::from_str(&s).ok()),
         }
     }
 }

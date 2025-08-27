@@ -5,8 +5,5 @@ package wasmcp:server@0.1.0;
 world mcp-server {
     /// Import the core MCP handler interface
     /// This will be satisfied by user-provided handler components
-    import mcp:protocol/handler@0.1.0;
-    
-    /// Import notification capabilities for the server to use
-    import mcp:protocol/notifications@0.1.0;
+    import fastertools:mcp/handler@0.1.0;
 }

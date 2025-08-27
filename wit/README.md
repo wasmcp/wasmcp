@@ -1,74 +1,71 @@
-# WIT Interfaces
+# MCP WIT Definitions
 
-WebAssembly Interface Types defining the MCP component model.
+This directory contains the WebAssembly Interface Types (WIT) definitions for the Model Context Protocol.
 
-## Files
-
-- `mcp.wit` - MCP handler interface and `mcp-handler` world
-
-## Interface
-
-```wit
-interface handler {
-  // Tools
-  list-tools: func() -> list<tool>
-  call-tool: func(name: string, arguments: string) -> tool-result
-  
-  // Resources  
-  list-resources: func() -> list<resource-info>
-  read-resource: func(uri: string) -> resource-result
-  
-  // Prompts
-  list-prompts: func() -> list<prompt>
-  get-prompt: func(name: string, arguments: string) -> prompt-result
-}
-
-world mcp-handler {
-  export handler
-}
-```
-
-## Component Model
+## Structure
 
 ```
-┌─────────────┐         ┌──────────────┐
-│   Gateway   │ imports │   Handler    │
-│  Component  │────────►│  Component   │
-│(wasmcp-server)│ handler │ (Your Code)  │
-└─────────────┘         └──────────────┘
+deps/mcp/
+├── types.wit        # Core types: errors, content blocks, metadata
+├── session.wit      # Session lifecycle and capability negotiation
+├── tools.wit        # Tool discovery and execution
+├── resources.wit    # Resource management 
+├── prompts.wit      # Prompt templates
+├── notifications.wit # Event notifications
+└── handler.wit      # Handler interface that implementations must provide
 ```
 
-Gateway imports the handler interface. Your component exports it.
+## Architecture
 
-## Usage
+The MCP protocol is split between a server component that handles HTTP/JSON-RPC and handler implementations that provide the actual functionality:
 
-### Rust
-The `wasmcp` crate's proc macro embeds this automatically:
+```
+HTTP Request → Server Component → Handler Implementation
+                (JSON-RPC)         (WIT Interface)
+```
+
+The server component (`wasmcp-server`) handles:
+- HTTP request/response
+- JSON-RPC 2.0 protocol
+- JSON serialization/deserialization
+- Error code mapping
+
+Handler implementations only need to implement the `handler` interface functions.
+
+## Using These Interfaces
+
+### In a Rust SDK
+
 ```rust
-#[mcp_handler(tools(MyTool))]
-mod handler {}
+// The SDK will generate bindings from these WIT files
+use bindings::mcp::protocol::handler;
+
+impl handler::Host for MyHandler {
+    fn handle_list_tools(request: &ListToolsRequest) -> Result<ListToolsResponse> {
+        // Your implementation
+    }
+}
 ```
 
-### TypeScript
-The `wasmcp` npm package bundles this:
-```typescript
-import { createHandler } from 'wasmcp';
-```
+### In Other Languages
 
-### Direct Use
-```bash
-# Generate bindings
-wit-bindgen rust wit/mcp.wit
+Any language with component model support can use these WIT definitions to implement MCP servers. The language toolchain will generate appropriate bindings from these files.
 
-# Build component
-wasm-tools component new module.wasm -o component.wasm --adapt wasi_snapshot_preview1.wasm
-```
+## Compatibility
 
-## Versioning
+- WIT Version: Based on component model preview2
+- MCP Protocol: Draft specification (2024)
+- Dependencies: None (self-contained)
 
-Interface version: `0.1.0`  
-Protocol compatibility: MCP 2025-03-26
+## Type Mappings
 
-## License
+| MCP Type | WIT Type | Notes |
+|----------|----------|-------|
+| JSON values | `json-value` (string) | WIT lacks recursive types, so JSON is passed as strings |
+| Binary data | `list<u8>` | Used for images, audio content |
+| Metadata | `list<tuple<string, string>>` | Extensible key-value pairs |
+| Errors | `variant error-code` | Maps to JSON-RPC error codes |
 
-Apache-2.0
+## Synchronization
+
+These WIT files are the source of truth. Run `make sync-wit` from the repository root to sync them to all SDKs and components.

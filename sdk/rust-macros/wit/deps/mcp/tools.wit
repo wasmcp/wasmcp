@@ -1,0 +1,94 @@
+package mcp:protocol@0.1.0;
+
+/// Tool discovery and execution for MCP
+
+interface tools {
+    use types.{content-block, json-value, mcp-error, base-metadata, meta-fields, cursor, progress-token};
+
+    /// Behavioral hints about tool operations
+    record tool-annotations {
+        /// Human-readable title for display
+        title: option<string>,
+        /// Tool does not modify environment
+        read-only-hint: option<bool>,
+        /// Tool may perform destructive updates (meaningful when not read-only)
+        destructive-hint: option<bool>,
+        /// Repeated calls with same args have no additional effect
+        idempotent-hint: option<bool>,
+        /// Tool interacts with external entities
+        open-world-hint: option<bool>,
+    }
+
+    /// JSON Schema representation for tool parameters
+    /// The schema is provided as a JSON string to handle complex nested schemas
+    type json-schema = json-value;
+
+    /// Tool definition with metadata and schema
+    record tool {
+        /// Base metadata (name and optional title)
+        base: base-metadata,
+        /// Human-readable description of what the tool does
+        description: option<string>,
+        /// JSON Schema for input parameters
+        input-schema: json-schema,
+        /// Optional schema for structured output
+        output-schema: option<json-schema>,
+        /// Behavioral hints for clients
+        annotations: option<tool-annotations>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Result from executing a tool
+    record tool-result {
+        /// Unstructured content blocks (text, images, etc.)
+        content: list<content-block>,
+        /// Optional structured JSON output
+        structured-content: option<json-value>,
+        /// Whether the tool execution resulted in an error
+        /// If true, content should contain error details
+        is-error: option<bool>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Request to list available tools
+    record list-tools-request {
+        /// Pagination cursor from previous response
+        cursor: option<cursor>,
+        /// Optional progress tracking token
+        progress-token: option<progress-token>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Response with list of available tools
+    record list-tools-response {
+        /// Available tools
+        tools: list<tool>,
+        /// Cursor for next page if more tools exist
+        next-cursor: option<cursor>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Request to execute a tool
+    record call-tool-request {
+        /// Name of the tool to execute
+        name: string,
+        /// Arguments as JSON object
+        arguments: option<json-value>,
+        /// Optional progress tracking token
+        progress-token: option<progress-token>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Tool operations
+    
+    /// List available tools with optional pagination
+    list-tools: func(request: list-tools-request) -> result<list-tools-response, mcp-error>;
+    
+    /// Execute a tool with the provided arguments
+    call-tool: func(request: call-tool-request) -> result<tool-result, mcp-error>;
+}

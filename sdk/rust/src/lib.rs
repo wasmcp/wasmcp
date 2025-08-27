@@ -1,283 +1,219 @@
 //! Rust SDK for building MCP (Model Context Protocol) WebAssembly components
 //!
-//! This crate provides the core traits and macros for implementing MCP handlers in Rust.
+//! This crate provides an ergonomic, attribute-based API for implementing MCP servers in Rust.
+//!
+//! # Example
+//!
+//! ```rust
+//! use wasmcp::prelude::*;
+//!
+//! #[mcp::main]
+//! struct MyServer;
+//!
+//! #[mcp::tool]
+//! /// Add two numbers together
+//! fn add(a: i32, b: i32) -> Result<i32> {
+//!     Ok(a + b)
+//! }
+//!
+//! #[mcp::resource("file://{path}")]
+//! /// Read a file from the filesystem  
+//! fn read_file(path: String) -> Result<String> {
+//!     std::fs::read_to_string(path)
+//!         .map_err(|e| e.to_string())
+//! }
+//! ```
 
-#![warn(
-    clippy::all,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo,
-    missing_docs,
-    missing_debug_implementations,
-    rust_2018_idioms
-)]
-#![allow(
-    clippy::module_name_repetitions,
-    clippy::must_use_candidate,
-    clippy::missing_panics_doc,
-    clippy::missing_errors_doc
-)]
+#![warn(missing_docs)]
+#![allow(clippy::module_name_repetitions)]
 
-use serde_json::Value;
-
-/// Trait for implementing MCP tools.
-///
-/// Tools are functions that can be called by MCP clients to perform specific actions.
-pub trait ToolHandler: Sized {
-    /// The name of the tool as it will appear to MCP clients.
-    const NAME: &'static str;
-
-    /// A human-readable description of what the tool does.
-    const DESCRIPTION: &'static str;
-
-    /// Returns the JSON schema describing the tool's input parameters.
-    fn input_schema() -> Value;
-
-    /// Executes the tool with the given arguments.
-    fn execute(args: Value) -> Result<String, String>;
-}
-
-/// Trait for implementing MCP resources.
-///
-/// Resources are data sources that can be read by MCP clients.
-pub trait ResourceHandler: Sized {
-    /// The URI that uniquely identifies this resource.
-    const URI: &'static str;
-
-    /// The human-readable name of the resource.
-    const NAME: &'static str;
-
-    /// Optional description of the resource.
-    const DESCRIPTION: Option<&'static str> = None;
-
-    /// Optional MIME type of the resource content.
-    const MIME_TYPE: Option<&'static str> = None;
-
-    /// Reads and returns the resource content.
-    fn read() -> Result<String, String>;
-}
-
-/// Trait for implementing MCP prompts.
-///
-/// Prompts are templates that can be resolved with arguments to produce messages.
-pub trait PromptHandler: Sized {
-    /// The name of the prompt as it will appear to MCP clients.
-    const NAME: &'static str;
-
-    /// Optional description of what the prompt does.
-    const DESCRIPTION: Option<&'static str> = None;
-
-    /// The type that defines the prompt's arguments.
-    type Arguments: PromptArguments;
-
-    /// Resolves the prompt with the given arguments to produce messages.
-    fn resolve(args: Value) -> Result<Vec<PromptMessage>, String>;
-}
-
-/// Async trait for implementing MCP tools.
-///
-/// Tools are functions that can be called by MCP clients to perform specific actions.
-/// This async version allows for non-blocking operations like network requests, file I/O, etc.
-pub trait AsyncToolHandler: Sized {
-    /// The name of the tool as it will appear to MCP clients.
-    const NAME: &'static str;
-
-    /// A human-readable description of what the tool does.
-    const DESCRIPTION: &'static str;
-
-    /// Returns the JSON schema describing the tool's input parameters.
-    fn input_schema() -> Value;
-
-    /// Executes the tool with the given arguments asynchronously.
-    fn execute_async(args: Value) -> impl std::future::Future<Output = Result<String, String>>;
-}
-
-/// Async trait for implementing MCP resources.
-///
-/// Resources are data sources that can be read by MCP clients.
-/// This async version allows for non-blocking operations like database queries, file reads, etc.
-pub trait AsyncResourceHandler: Sized {
-    /// The URI that uniquely identifies this resource.
-    const URI: &'static str;
-
-    /// The human-readable name of the resource.
-    const NAME: &'static str;
-
-    /// Optional description of the resource.
-    const DESCRIPTION: Option<&'static str> = None;
-
-    /// Optional MIME type of the resource content.
-    const MIME_TYPE: Option<&'static str> = None;
-
-    /// Reads and returns the resource content asynchronously.
-    fn read_async() -> impl std::future::Future<Output = Result<String, String>>;
-}
-
-/// Async trait for implementing MCP prompts.
-///
-/// Prompts are templates that can be resolved with arguments to produce messages.
-/// This async version allows for non-blocking operations like external API calls, etc.
-pub trait AsyncPromptHandler: Sized {
-    /// The name of the prompt as it will appear to MCP clients.
-    const NAME: &'static str;
-
-    /// Optional description of what the prompt does.
-    const DESCRIPTION: Option<&'static str> = None;
-
-    /// The type that defines the prompt's arguments.
-    type Arguments: PromptArguments;
-
-    /// Resolves the prompt with the given arguments to produce messages asynchronously.
-    fn resolve_async(args: Value) -> impl std::future::Future<Output = Result<Vec<PromptMessage>, String>>;
-}
-
-/// Automatic bridging from async to sync for tools
-/// This allows async implementations to work with the sync WIT interface
-/// The async runtime is managed by the WASM component host (e.g., Spin)
-impl<T: AsyncToolHandler> ToolHandler for T {
-    const NAME: &'static str = T::NAME;
-    const DESCRIPTION: &'static str = T::DESCRIPTION;
-
-    fn input_schema() -> Value {
-        T::input_schema()
-    }
-
-    fn execute(args: Value) -> Result<String, String> {
-        // Use spin_executor::run which is the WASM-compatible way to block on async operations
-        spin_executor::run(T::execute_async(args))
-    }
-}
-
-/// Internal trait to check if a type implements AsyncToolHandler.
-/// This is used by the macro to determine whether to use async execution.
+// WIT bindings generated directly
 #[doc(hidden)]
-pub trait MaybeAsyncToolHandler {
-    const IS_ASYNC: bool;
-    const NAME: &'static str;
+pub mod bindings {
+    #![allow(warnings)]
+    wit_bindgen::generate!({
+        world: "rust-handler",
+        path: "./wit",
+        generate_all,
+        additional_derives: [
+            serde::Serialize,
+            serde::Deserialize,
+            Clone,
+        ],
+    });
 }
 
-// Implementation for sync tools
-impl<T: ToolHandler> MaybeAsyncToolHandler for T {
-    const IS_ASYNC: bool = false;
-    const NAME: &'static str = T::NAME;
+// Re-export proc macros under mcp namespace
+pub mod mcp {
+    pub use wasmcp_macros::{main, tool, resource, prompt};
 }
 
-/// Automatic bridging from async to sync for resources
-/// This allows async implementations to work with the sync WIT interface
-/// The async runtime is managed by the WASM component host (e.g., Spin)
-impl<T: AsyncResourceHandler> ResourceHandler for T {
-    const URI: &'static str = T::URI;
-    const NAME: &'static str = T::NAME;
-    const DESCRIPTION: Option<&'static str> = T::DESCRIPTION;
-    const MIME_TYPE: Option<&'static str> = T::MIME_TYPE;
+// Prelude for convenience imports
+pub mod prelude {
+    pub use crate::mcp;
+    pub use crate::{Result, Error, Prompt};
+    pub use serde::{Serialize, Deserialize};
+    pub use serde_json::{json, Value};
+}
 
-    fn read() -> Result<String, String> {
-        // Use spin_executor::run which is the WASM-compatible way to block on async operations
-        spin_executor::run(T::read_async())
+// Re-export commonly used types from bindings
+pub use bindings::exports::mcp::protocol::handler::Guest;
+pub use bindings::mcp::protocol::session::*;
+pub use bindings::mcp::protocol::tools::*;
+pub use bindings::mcp::protocol::resources::*;
+pub use bindings::mcp::protocol::prompts::*;
+pub use bindings::mcp::protocol::types::*;
+
+/// Result type for MCP operations
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+/// Error type for MCP operations
+#[derive(Debug)]
+pub struct Error {
+    message: String,
+}
+
+impl Error {
+    /// Create a new error with a message
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
     }
 }
 
-/// Automatic bridging from async to sync for prompts
-/// This allows async implementations to work with the sync WIT interface
-/// The async runtime is managed by the WASM component host (e.g., Spin)
-impl<T: AsyncPromptHandler> PromptHandler for T {
-    const NAME: &'static str = T::NAME;
-    const DESCRIPTION: Option<&'static str> = T::DESCRIPTION;
-    type Arguments = T::Arguments;
-
-    fn resolve(args: Value) -> Result<Vec<PromptMessage>, String> {
-        // Use spin_executor::run which is the WASM-compatible way to block on async operations
-        spin_executor::run(T::resolve_async(args))
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
     }
 }
 
-/// Trait for defining prompt arguments.
-///
-/// This allows compile-time validation of prompt parameters.
-pub trait PromptArguments {
-    /// Returns the schema defining the prompt's arguments.
-    fn schema() -> Vec<PromptArgument>;
+impl std::error::Error for Error {}
+
+impl From<String> for Error {
+    fn from(s: String) -> Self {
+        Self::new(s)
+    }
 }
 
-/// Represents a single argument for a prompt.
-#[derive(Clone, Debug)]
-pub struct PromptArgument {
-    /// The name of the argument.
-    pub name: &'static str,
-    /// Optional description of what the argument is for.
-    pub description: Option<&'static str>,
-    /// Whether this argument is required or optional.
-    pub required: bool,
+impl From<&str> for Error {
+    fn from(s: &str) -> Self {
+        Self::new(s)
+    }
 }
 
-/// Represents a message in a prompt conversation.
-#[derive(Clone, Debug)]
-pub struct PromptMessage {
-    /// The role of the message sender.
-    pub role: PromptRole,
-    /// The content of the message.
-    pub content: String,
+/// A prompt that can be returned by prompt functions
+pub struct Prompt {
+    messages: Vec<PromptMessage>,
 }
 
-/// The role of a participant in a prompt conversation.
-#[derive(Clone, Copy, Debug)]
-pub enum PromptRole {
-    /// A user message.
-    User,
-    /// An assistant/AI message.
-    Assistant,
+impl Prompt {
+    /// Create a new prompt with the given messages
+    pub fn new(messages: Vec<PromptMessage>) -> Self {
+        Self { messages }
+    }
+    
+    /// Convert the prompt into messages for the handler
+    pub fn into_messages(self) -> Vec<PromptMessage> {
+        self.messages
+    }
 }
 
-// Re-export dependencies needed by the macro
-#[doc(hidden)]
-pub use spin_executor;
-#[doc(hidden)]
-pub use wit_bindgen;
-
-/// Re-export the proc macro for creating MCP handlers.
-/// 
-/// This macro generates all necessary WebAssembly bindings and handler logic
-/// automatically, without needing any local WIT files in your project.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use wasmcp::mcp_handler;
-///
-/// #[mcp_handler(
-///     tools(EchoTool, CalculatorTool),
-///     resources(ConfigResource),
-///     prompts(GreetingPrompt),
-/// )]
-/// mod handler {}
-/// ```
-pub use wasmcp_macro::mcp_handler;
-
-/// Legacy macro for backwards compatibility (deprecated).
-/// Please use the `#[mcp_handler]` attribute macro instead.
+/// Macro for building prompts
 #[macro_export]
-#[deprecated(since = "0.2.0", note = "Use the #[mcp_handler] attribute macro instead")]
-macro_rules! create_handler {
-    (
-        $(tools: [$($tool:ty),* $(,)?],)?
-        $(resources: [$($resource:ty),* $(,)?],)?
-        $(prompts: [$($prompt:ty),* $(,)?])?
-    ) => {
-        compile_error!("create_handler! macro is deprecated. Use #[mcp_handler(...)] attribute macro instead.");
+macro_rules! prompt {
+    (system: $system:expr, user: $user:expr $(, $($rest:tt)*)?) => {
+        $crate::Prompt::new(vec![
+            $crate::PromptMessage {
+                role: $crate::Role::User,
+                content: vec![$crate::ContentBlock::Text($crate::TextContent {
+                    text: format!($system),
+                    annotations: None,
+                    meta: None,
+                })],
+                meta: None,
+            },
+            $crate::PromptMessage {
+                role: $crate::Role::User,
+                content: vec![$crate::ContentBlock::Text($crate::TextContent {
+                    text: format!($user $(, $($rest)*)?),
+                    annotations: None,
+                    meta: None,
+                })],
+                meta: None,
+            },
+        ])
+    };
+    (user: $user:expr $(, $($rest:tt)*)?) => {
+        $crate::Prompt::new(vec![
+            $crate::PromptMessage {
+                role: $crate::Role::User,
+                content: vec![$crate::ContentBlock::Text($crate::TextContent {
+                    text: format!($user $(, $($rest)*)?),
+                    annotations: None,
+                    meta: None,
+                })],
+                meta: None,
+            },
+        ])
     };
 }
 
-/// Re-export of `serde_json`'s `json!` macro for convenience.
-pub use serde_json::json;
-/// Re-export of `serde_json::Value` as `Json` for convenience.
-pub use serde_json::Value as Json;
-
-// Derive macro for easy argument schemas (could be in separate crate)
-// Example usage:
-// #[derive(PromptArgs)]
-// struct GreetingArgs {
-//     #[arg(description = "Name to greet")]
-//     name: String,
-//     #[arg(description = "Use formal greeting", required = false)]
-//     formal: Option<bool>,
-// }
+/// Runtime support module (used by proc macros)
+#[doc(hidden)]
+pub mod runtime {
+    use super::*;
+    use std::sync::Arc;
+    
+    /// Registration data for a tool
+    pub struct ToolRegistration {
+        pub name: String,
+        pub description: String,
+        pub schema: String,
+        pub handler: Box<dyn Fn(serde_json::Value) -> std::result::Result<serde_json::Value, Box<dyn std::error::Error>> + Send + Sync>,
+    }
+    
+    /// Registration data for a resource
+    pub struct ResourceRegistration {
+        pub name: String,
+        pub uri_pattern: String,
+        pub description: String,
+        pub mime_type: Option<String>,
+        pub handler: Box<dyn Fn(String) -> std::result::Result<String, Box<dyn std::error::Error>> + Send + Sync>,
+    }
+    
+    /// Registration data for a prompt
+    pub struct PromptRegistration {
+        pub name: String,
+        pub description: String,
+        pub handler: Box<dyn Fn(serde_json::Value) -> std::result::Result<Vec<PromptMessage>, Box<dyn std::error::Error>> + Send + Sync>,
+    }
+    
+    /// Check if a URI matches a pattern
+    pub fn uri_matches(pattern: &str, uri: &str) -> bool {
+        // Simple implementation - in production this would handle {param} extraction
+        if !pattern.contains('{') {
+            return pattern == uri;
+        }
+        
+        // Very basic pattern matching
+        let pattern_parts: Vec<&str> = pattern.split('/').collect();
+        let uri_parts: Vec<&str> = uri.split('/').collect();
+        
+        if pattern_parts.len() != uri_parts.len() {
+            return false;
+        }
+        
+        for (p, u) in pattern_parts.iter().zip(uri_parts.iter()) {
+            if p.starts_with('{') && p.ends_with('}') {
+                // This is a parameter, accept any value
+                continue;
+            }
+            if p != u {
+                return false;
+            }
+        }
+        
+        true
+    }
+}

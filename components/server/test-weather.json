@@ -1,0 +1,9 @@
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "weather",
+    "arguments": "{\"location\":\"San Francisco\"}"
+  },
+  "id": 3
+}

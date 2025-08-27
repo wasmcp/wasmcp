@@ -10,12 +10,57 @@ sync-versions: ## Sync versions across the repository
 	@echo "Syncing versions..."
 	@./scripts/sync-versions.sh
 
-sync-wit: ## Sync WIT files from root to all templates
-	@echo "Syncing WIT files to templates..."
-	@cp wit/mcp.wit templates/rust/content/handler/wit/mcp.wit
-	@cp wit/mcp.wit templates/javascript/content/handler/wit/mcp.wit
-	@cp wit/mcp.wit templates/typescript/content/handler/wit/mcp.wit
-	@echo "✅ WIT files synced to all templates"
+sync-wit: ## Sync WIT files from root to all components and SDKs
+	@echo "🔄 Syncing WIT files from /wit to all components and SDKs..."
+	@# Sync to components/server
+	@if [ -d components/server ]; then \
+		echo "  📦 Syncing to components/server/wit"; \
+		rm -rf components/server/wit/deps/mcp 2>/dev/null || true; \
+		mkdir -p components/server/wit/deps; \
+		cp -r wit/deps/mcp components/server/wit/deps/; \
+		[ -f wit/world.wit ] && cp wit/world.wit components/server/wit/ || true; \
+	fi
+	@# Sync to sdks/rust
+	@if [ -d sdks/rust ]; then \
+		echo "  📦 Syncing to sdks/rust/wit"; \
+		rm -rf sdks/rust/wit/deps/mcp 2>/dev/null || true; \
+		mkdir -p sdks/rust/wit/deps; \
+		cp -r wit/deps/mcp sdks/rust/wit/deps/; \
+	fi
+	@# Sync to sdks/python
+	@if [ -d sdks/python ]; then \
+		echo "  📦 Syncing to sdks/python/wit"; \
+		rm -rf sdks/python/wit/deps/mcp 2>/dev/null || true; \
+		mkdir -p sdks/python/wit/deps; \
+		cp -r wit/deps/mcp sdks/python/wit/deps/; \
+	fi
+	@# Sync to sdks/go
+	@if [ -d sdks/go ]; then \
+		echo "  📦 Syncing to sdks/go/wit"; \
+		rm -rf sdks/go/wit/deps/mcp 2>/dev/null || true; \
+		mkdir -p sdks/go/wit/deps; \
+		cp -r wit/deps/mcp sdks/go/wit/deps/; \
+	fi
+	@# Legacy SDK directories (sdk/rust, sdk/typescript, etc)
+	@if [ -d sdk/rust ]; then \
+		echo "  📦 Syncing to sdk/rust/wit"; \
+		rm -rf sdk/rust/wit/deps/mcp 2>/dev/null || true; \
+		mkdir -p sdk/rust/wit/deps; \
+		cp -r wit/deps/mcp sdk/rust/wit/deps/; \
+	fi
+	@if [ -d sdk/typescript ]; then \
+		echo "  📦 Syncing to sdk/typescript/wit"; \
+		rm -rf sdk/typescript/wit/deps/mcp 2>/dev/null || true; \
+		mkdir -p sdk/typescript/wit/deps; \
+		cp -r wit/deps/mcp sdk/typescript/wit/deps/; \
+	fi
+	@if [ -d sdk/go ]; then \
+		echo "  📦 Syncing to sdk/go/wit"; \
+		rm -rf sdk/go/wit/deps/mcp 2>/dev/null || true; \
+		mkdir -p sdk/go/wit/deps; \
+		cp -r wit/deps/mcp sdk/go/wit/deps/; \
+	fi
+	@echo "✨ WIT files synchronized successfully!"
 
 validate-versions: ## Check if versions are in sync
 	@echo "Validating versions..."
@@ -31,10 +76,10 @@ validate-versions: ## Check if versions are in sync
 validate-wit: ## Check if WIT files are in sync
 	@echo "Validating WIT files..."
 	@$(MAKE) sync-wit > /dev/null 2>&1
-	@# Check only for modifications (M), not additions (A) or untracked (??)
-	@if [ -n "$$(git status --porcelain templates/*/content/handler/wit/mcp.wit | grep '^[[:space:]]*M')" ]; then \
+	@# Check for any modifications in WIT directories
+	@if [ -n "$$(git status --porcelain '*/wit/deps/mcp/*.wit' | grep '^[[:space:]]*M')" ]; then \
 		echo "❌ WIT files are out of sync!"; \
-		git status --short templates/*/content/handler/wit/mcp.wit | grep '^[[:space:]]*M'; \
+		git status --short '*/wit/deps/mcp/*.wit' | grep '^[[:space:]]*M'; \
 		echo "Run 'make sync-wit' to fix"; \
 		exit 1; \
 	else \
