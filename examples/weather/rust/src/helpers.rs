@@ -1,4 +1,4 @@
-// Thin trait-based helpers for MCP - using associated functions for clean async
+// Thin trait-based helpers for MCP - async by default for modern Rust
 use crate::bindings::fastertools::mcp::{
     tools::{CallToolRequest, ListToolsRequest, ListToolsResponse, Tool as McpTool, ToolResult},
     types::{ContentBlock, ErrorCode, McpError, TextContent},
@@ -6,29 +6,8 @@ use crate::bindings::fastertools::mcp::{
 use serde_json::Value;
 use std::future::Future;
 
-/// Trait for synchronous tools
+/// Trait for MCP tools - async by default
 pub trait Tool: Sized {
-    /// The tool's name
-    const NAME: &'static str;
-    
-    /// The tool's description  
-    const DESCRIPTION: &'static str;
-    
-    /// Get the JSON schema for this tool's input
-    fn input_schema() -> Value {
-        serde_json::json!({
-            "type": "object",
-            "properties": {},
-            "required": []
-        })
-    }
-    
-    /// Execute the tool with the given arguments
-    fn execute(args: Value) -> Result<ToolResult, McpError>;
-}
-
-/// Trait for async tools
-pub trait AsyncTool: Sized {
     /// The tool's name
     const NAME: &'static str;
     
@@ -44,24 +23,8 @@ pub trait AsyncTool: Sized {
         })
     }
     
-    /// Execute the tool asynchronously with the given arguments
-    fn execute_async(args: Value) -> impl Future<Output = Result<ToolResult, McpError>>;
-}
-
-/// Automatic bridging from async to sync
-/// This allows async tools to be used wherever sync tools are expected
-impl<T: AsyncTool> Tool for T {
-    const NAME: &'static str = T::NAME;
-    const DESCRIPTION: &'static str = T::DESCRIPTION;
-
-    fn input_schema() -> Value {
-        T::input_schema()
-    }
-
-    fn execute(args: Value) -> Result<ToolResult, McpError> {
-        // Block on the async execution using spin's executor
-        spin_sdk::http::run(T::execute_async(args))
-    }
+    /// Execute the tool with the given arguments (async by default)
+    fn execute(args: Value) -> impl Future<Output = Result<ToolResult, McpError>>;
 }
 
 /// Helper macro to register tools in a clean way
@@ -112,7 +75,8 @@ macro_rules! register_tools {
                 match request.name.as_str() {
                     $(
                         <$tool as $crate::helpers::Tool>::NAME => {
-                            <$tool as $crate::helpers::Tool>::execute(args)
+                            // Always use spin's executor to run the async function
+                            spin_sdk::http::run(<$tool as $crate::helpers::Tool>::execute(args))
                         }
                     ),*
                     _ => Err($crate::bindings::fastertools::mcp::types::McpError {

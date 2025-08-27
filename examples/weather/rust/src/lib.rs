@@ -2,7 +2,7 @@ mod bindings;
 #[macro_use]
 mod helpers;
 
-use helpers::{Tool, AsyncTool, IntoToolResult, text_result};
+use helpers::{Tool, IntoToolResult, text_result};
 use serde::Deserialize;
 use serde_json::Value;
 use spin_sdk::http::{Request, send};
@@ -10,7 +10,7 @@ use futures::future::join_all;
 
 pub struct Component;
 
-// Simple synchronous tool
+// Simple tool (doesn't await but still async)
 struct EchoTool;
 
 impl Tool for EchoTool {
@@ -30,7 +30,7 @@ impl Tool for EchoTool {
         })
     }
     
-    fn execute(args: Value) -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
+    async fn execute(args: Value) -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
         let message = args.get("message")
             .and_then(|v| v.as_str())
             .ok_or_else(|| bindings::fastertools::mcp::types::McpError {
@@ -39,6 +39,7 @@ impl Tool for EchoTool {
                 data: None,
             })?;
             
+        // No awaits here - returns immediately but that's fine!
         Ok(format!("Echo: {}", message).into_result())
     }
 }
@@ -46,7 +47,7 @@ impl Tool for EchoTool {
 // Weather tool with real async HTTP request
 struct WeatherTool;
 
-impl AsyncTool for WeatherTool {
+impl Tool for WeatherTool {
     const NAME: &'static str = "get_weather";
     const DESCRIPTION: &'static str = "Get current weather for a location";
     
@@ -63,7 +64,7 @@ impl AsyncTool for WeatherTool {
         })
     }
     
-    async fn execute_async(args: Value) -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
+    async fn execute(args: Value) -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
         let location = args.get("location")
             .and_then(|v| v.as_str())
             .ok_or_else(|| bindings::fastertools::mcp::types::McpError {
@@ -82,7 +83,7 @@ impl AsyncTool for WeatherTool {
 // Multi-weather tool demonstrating concurrent requests
 struct MultiWeatherTool;
 
-impl AsyncTool for MultiWeatherTool {
+impl Tool for MultiWeatherTool {
     const NAME: &'static str = "multi_weather";
     const DESCRIPTION: &'static str = "Get weather for multiple cities concurrently";
     
@@ -104,7 +105,7 @@ impl AsyncTool for MultiWeatherTool {
         })
     }
     
-    async fn execute_async(args: Value) -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
+    async fn execute(args: Value) -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
         let cities = args.get("cities")
             .and_then(|v| v.as_array())
             .ok_or_else(|| bindings::fastertools::mcp::types::McpError {
@@ -294,9 +295,9 @@ impl bindings::exports::fastertools::mcp::core::Guest for Component {
                 completions: None,
             },
             server_info: bindings::fastertools::mcp::session::ImplementationInfo {
-                name: "test_fresh_rust".to_string(),
+                name: "test_async_single".to_string(),
                 version: "0.1.0".to_string(),
-                title: Some("test-fresh-rust Handler".to_string()),
+                title: Some("test-async-single Handler".to_string()),
             },
             instructions: None,
             meta: None,

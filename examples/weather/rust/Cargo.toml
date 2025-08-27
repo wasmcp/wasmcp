@@ -1,5 +1,5 @@
 [package]
-name = "test_fresh_rust"
+name = "test_async_single"
 version = "0.1.0"
 edition = "2021"
 
@@ -19,7 +19,7 @@ urlencoding = "2.1"
 lazy_static = "1.5"
 
 [package.metadata.component]
-package = "test-fresh-rust:handler"
+package = "test-async-single:handler"
 
 [package.metadata.component.bindings]
 derives = ["Clone"]
