@@ -1,4 +1,4 @@
-# {{project-name | title_case}}
+# {{project-name | kebab_case}}
 
 {{project-description}}
 

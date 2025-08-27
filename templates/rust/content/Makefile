@@ -2,9 +2,6 @@
 
 # Component paths
 HANDLER_WASM = target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm
-NULL_RESOURCES_URL = https://github.com/fastertools/wasmcp/releases/latest/download/null-resources.wasm
-NULL_PROMPTS_URL = https://github.com/fastertools/wasmcp/releases/latest/download/null-prompts.wasm
-SERVER_WASM = wasmcp-server.wasm
 COMPOSED_WASM = composed.wasm
 
 help: ## Show this help message
@@ -22,27 +19,29 @@ test: ## Run tests
 
 clean: ## Clean build artifacts
 	cargo clean
-	rm -f $(COMPOSED_WASM) null-resources.wasm null-prompts.wasm
+	rm -f $(COMPOSED_WASM) null-resources.wasm null-prompts.wasm wasmcp-server.wasm
 
-get-nulls: ## Download null components if not available locally
+get-deps: ## Download all dependencies from registry if not available locally
 	@if [ ! -f null-resources.wasm ]; then \
-		echo "Downloading null-resources.wasm..."; \
-		curl -L $(NULL_RESOURCES_URL) -o null-resources.wasm; \
+		echo "Downloading null-resources component from registry..."; \
+		wkg get fastertools:null-resources@0.1.0 -o null-resources.wasm; \
 	fi
 	@if [ ! -f null-prompts.wasm ]; then \
-		echo "Downloading null-prompts.wasm..."; \
-		curl -L $(NULL_PROMPTS_URL) -o null-prompts.wasm; \
+		echo "Downloading null-prompts component from registry..."; \
+		wkg get fastertools:null-prompts@0.1.0 -o null-prompts.wasm; \
+	fi
+	@if [ ! -f wasmcp-server.wasm ]; then \
+		echo "Downloading server component from registry..."; \
+		wkg get fastertools:wasmcp-server@0.1.0 -o wasmcp-server.wasm; \
 	fi
 
-compose: build get-nulls ## Compose handler with null components and server using WAC
-	@if [ ! -f $(SERVER_WASM) ]; then echo "Error: $(SERVER_WASM) not found."; exit 1; fi
+compose: build get-deps ## Compose handler with null components and server using WAC
 	@echo "Composing handler with null components and server..."
 	wac compose compose.wac \
 		-d {{project-name | kebab_case}}:handler=$(HANDLER_WASM) \
 		-d fastertools:null-resources=null-resources.wasm \
 		-d fastertools:null-prompts=null-prompts.wasm \
-		-d wasmcp:server=$(SERVER_WASM) \
-		--registry https://ghcr.io \
+		-d fastertools:wasmcp-server=wasmcp-server.wasm \
 		-o $(COMPOSED_WASM)
 	@echo "✅ Created composed.wasm ($$( ls -lh $(COMPOSED_WASM) | awk '{print $$5}' ))"
 
@@ -54,7 +53,7 @@ test-init: ## Test initialize endpoint
 	@echo "Testing initialize..."
 	@curl -s -X POST http://localhost:8080/mcp \
 		-H "Content-Type: application/json" \
-		-d '{"jsonrpc":"2.0","method":"initialize","params":{"protocol_version":"2025-06-18","capabilities":{},"client_info":{"name":"test","version":"1.0"}},"id":1}' | python3 -m json.tool
+		-d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}},"id":1}' | python3 -m json.tool
 
 test-tools: ## Test tools/list endpoint
 	@echo "Testing tools/list..."

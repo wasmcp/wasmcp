@@ -2,7 +2,7 @@ mod bindings;
 
 pub struct Component;
 
-// Implement the core interface for initialization
+// Manually implement all the traits using raw bindings
 impl bindings::exports::fastertools::mcp::core::Guest for Component {
     fn handle_initialize(_request: bindings::fastertools::mcp::session::InitializeRequest) 
         -> Result<bindings::fastertools::mcp::session::InitializeResponse, bindings::fastertools::mcp::types::McpError> {
@@ -12,7 +12,6 @@ impl bindings::exports::fastertools::mcp::core::Guest for Component {
                 tools: Some(bindings::fastertools::mcp::session::ToolsCapability { 
                     list_changed: Some(false) 
                 }),
-                // Not implementing resources or prompts - null components will handle these
                 resources: None,
                 prompts: None,
                 experimental: None,
@@ -20,9 +19,9 @@ impl bindings::exports::fastertools::mcp::core::Guest for Component {
                 completions: None,
             },
             server_info: bindings::fastertools::mcp::session::ImplementationInfo {
-                name: "rust".to_string(),
+                name: "rust_weather".to_string(),
                 version: "0.1.0".to_string(),
-                title: Some("rust Handler".to_string()),
+                title: Some("Rust Weather Example".to_string()),
             },
             instructions: None,
             meta: None,
@@ -42,7 +41,6 @@ impl bindings::exports::fastertools::mcp::core::Guest for Component {
     }
 }
 
-// Implement the tool handler interface
 impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
     fn handle_list_tools(_request: bindings::fastertools::mcp::tools::ListToolsRequest) 
         -> Result<bindings::fastertools::mcp::tools::ListToolsResponse, bindings::fastertools::mcp::types::McpError> {
@@ -70,7 +68,6 @@ impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
                     annotations: None,
                     meta: None,
                 },
-                // Add more tools here
             ],
             next_cursor: None,
             meta: None,
@@ -79,7 +76,6 @@ impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
     
     fn handle_call_tool(request: bindings::fastertools::mcp::tools::CallToolRequest) 
         -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
-        // Parse the arguments (they come as a JSON string)
         let args = if let Some(args_str) = &request.arguments {
             serde_json::from_str::<serde_json::Value>(args_str)
                 .map_err(|e| bindings::fastertools::mcp::types::McpError {
@@ -121,7 +117,7 @@ impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
                         data: None,
                     })?;
                 
-                // Simple mock weather response - replace with real API call
+                // For now, just return a static response to test
                 Ok(bindings::fastertools::mcp::tools::ToolResult {
                     content: vec![bindings::fastertools::mcp::types::ContentBlock::Text(
                         bindings::fastertools::mcp::types::TextContent {
@@ -144,7 +140,4 @@ impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
     }
 }
 
-// Export the component
-// The WIT world (tools-handler) determines what interfaces are required
-// Resources and prompts will be provided by null components during composition
 bindings::export!(Component with_types_in bindings);

@@ -22,7 +22,7 @@ impl bindings::exports::fastertools::mcp::core::Guest for Component {
             server_info: bindings::fastertools::mcp::session::ImplementationInfo {
                 name: "{{project-name | snake_case}}".to_string(),
                 version: "0.1.0".to_string(),
-                title: Some("{{project-name | title_case}} Handler".to_string()),
+                title: Some("{{project-name | kebab_case}} Handler".to_string()),
             },
             instructions: None,
             meta: None,
@@ -50,11 +50,22 @@ impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
             tools: vec![
                 bindings::fastertools::mcp::tools::Tool {
                     base: bindings::fastertools::mcp::types::BaseMetadata {
-                        name: "example_tool".to_string(),
-                        title: Some("Example Tool".to_string()),
+                        name: "echo".to_string(),
+                        title: Some("Echo Tool".to_string()),
                     },
-                    description: Some("An example tool that demonstrates the pattern".to_string()),
+                    description: Some("Echo a message back to the user".to_string()),
                     input_schema: r#"{"type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]}"#.to_string(),
+                    output_schema: None,
+                    annotations: None,
+                    meta: None,
+                },
+                bindings::fastertools::mcp::tools::Tool {
+                    base: bindings::fastertools::mcp::types::BaseMetadata {
+                        name: "get_weather".to_string(),
+                        title: Some("Weather Tool".to_string()),
+                    },
+                    description: Some("Get weather information for a location".to_string()),
+                    input_schema: r#"{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}"#.to_string(),
                     output_schema: None,
                     annotations: None,
                     meta: None,
@@ -81,7 +92,7 @@ impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
         };
         
         match request.name.as_str() {
-            "example_tool" => {
+            "echo" => {
                 let message = args["message"].as_str()
                     .ok_or_else(|| bindings::fastertools::mcp::types::McpError {
                         code: bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
@@ -89,13 +100,32 @@ impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
                         data: None,
                     })?;
                 
-                // Implement your tool logic here
-                let result = format!("Processed: {}", message);
-                
                 Ok(bindings::fastertools::mcp::tools::ToolResult {
                     content: vec![bindings::fastertools::mcp::types::ContentBlock::Text(
                         bindings::fastertools::mcp::types::TextContent {
-                            text: result,
+                            text: format!("Echo: {}", message),
+                            annotations: None,
+                            meta: None,
+                        }
+                    )],
+                    is_error: Some(false),
+                    structured_content: None,
+                    meta: None,
+                })
+            },
+            "get_weather" => {
+                let location = args["location"].as_str()
+                    .ok_or_else(|| bindings::fastertools::mcp::types::McpError {
+                        code: bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
+                        message: "Missing location field".to_string(),
+                        data: None,
+                    })?;
+                
+                // Simple mock weather response - replace with real API call
+                Ok(bindings::fastertools::mcp::tools::ToolResult {
+                    content: vec![bindings::fastertools::mcp::types::ContentBlock::Text(
+                        bindings::fastertools::mcp::types::TextContent {
+                            text: format!("Weather for {}: 20°C, Sunny", location),
                             annotations: None,
                             meta: None,
                         }

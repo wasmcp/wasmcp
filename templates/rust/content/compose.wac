@@ -9,7 +9,7 @@ let nullresources = new fastertools:null-resources { ... };
 let nullprompts = new fastertools:null-prompts { ... };
 
 // Instantiate the server and wire the handlers
-let server = new wasmcp:server {
+let server = new fastertools:wasmcp-server {
     // Use our handler's core and tool implementations
     "fastertools:mcp/core@0.1.1": handler["fastertools:mcp/core@0.1.1"],
     "fastertools:mcp/tool-handler@0.1.1": handler["fastertools:mcp/tool-handler@0.1.1"],

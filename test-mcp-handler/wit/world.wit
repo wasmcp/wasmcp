@@ -1,0 +1,8 @@
+package test-mcp-handler:component;
+
+world mcp-server {
+    export fastertools:mcp/core@0.1.1;
+    export fastertools:mcp/tool-handler@0.1.1;
+    export fastertools:mcp/resource-handler@0.1.1;
+    export fastertools:mcp/prompt-handler@0.1.1;
+}

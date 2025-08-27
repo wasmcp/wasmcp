@@ -1,15 +1,15 @@
-// Composition for rust handler with null components
-package rust:app@1.0.0;
+// Composition for {{project-name}} handler with null components
+package {{project-name | kebab_case}}:app@1.0.0;
 
 // Instantiate components using package names (resolved via -d flags)
 // The ... syntax creates implicit imports - WAC will automatically 
 // import what each component needs from the registry
-let handler = new rust:handler { ... };
+let handler = new {{project-name | kebab_case}}:handler { ... };
 let nullresources = new fastertools:null-resources { ... };
 let nullprompts = new fastertools:null-prompts { ... };
 
 // Instantiate the server and wire the handlers
-let server = new fastertools:wasmcp-server {
+let server = new wasmcp:server {
     // Use our handler's core and tool implementations
     "fastertools:mcp/core@0.1.1": handler["fastertools:mcp/core@0.1.1"],
     "fastertools:mcp/tool-handler@0.1.1": handler["fastertools:mcp/tool-handler@0.1.1"],

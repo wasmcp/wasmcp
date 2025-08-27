@@ -1,14 +1,14 @@
-package example:weather@0.1.0;
+package rust:handler@0.1.0;
 
-/// Weather handler that provides weather-related tools
-/// This component only implements the tool capability
-world weather-tools {
-    // This handler only provides tools, not resources or prompts
+/// MCP handler that provides tool capabilities
+/// Resources and prompts will be provided by null components during composition
+world tools-handler {
+    // Only export what this handler actually implements
+    // The composition will fill in the rest with null components
     export fastertools:mcp/core@0.1.1;
     export fastertools:mcp/tool-handler@0.1.1;
     
-    // No resource or prompt exports - this is a focused tool handler
-    // Resources and prompts must be provided by null components during
-    // composition to satisfy the MCP server world.
-    // This allows the handler to focus only on what it implements
+    // Add more exports here if your handler provides resources or prompts:
+    // export fastertools:mcp/resource-handler@0.1.1;
+    // export fastertools:mcp/prompt-handler@0.1.1;
 }
