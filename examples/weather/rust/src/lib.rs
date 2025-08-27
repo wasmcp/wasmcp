@@ -140,7 +140,4 @@ impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
     }
 }
 
-// This handler only exports tools - no resource or prompt implementations needed!
-// The world definition (weather-tools) determines what interfaces are required
-
 bindings::export!(Component with_types_in bindings);
