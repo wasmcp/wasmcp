@@ -1,17 +1,25 @@
 // Thin trait-based helpers for MCP - async by default for modern Rust
-use crate::bindings::fastertools::mcp::{
-    tools::{CallToolRequest, ListToolsRequest, ListToolsResponse, Tool as McpTool, ToolResult},
-    types::{ContentBlock, ErrorCode, McpError, TextContent},
-};
 use serde_json::Value;
 use std::future::Future;
+
+// Re-export commonly used types for cleaner imports
+pub use crate::bindings::fastertools::mcp::{
+    tools::ToolResult,
+    types::{McpError, ErrorCode},
+};
+
+// Internal imports (not re-exported)
+use crate::bindings::fastertools::mcp::{
+    tools::Tool as McpTool,
+    types::{ContentBlock, TextContent},
+};
 
 /// Trait for MCP tools - async by default
 pub trait Tool: Sized {
     /// The tool's name
     const NAME: &'static str;
     
-    /// The tool's description
+    /// The tool's description  
     const DESCRIPTION: &'static str;
     
     /// Get the JSON schema for this tool's input
@@ -33,7 +41,7 @@ macro_rules! register_tools {
     ($($tool:ty),* $(,)?) => {
         {
             fn handle_list_tools(_request: $crate::bindings::fastertools::mcp::tools::ListToolsRequest) 
-                -> Result<$crate::bindings::fastertools::mcp::tools::ListToolsResponse, $crate::bindings::fastertools::mcp::types::McpError> {
+                -> Result<$crate::bindings::fastertools::mcp::tools::ListToolsResponse, $crate::helpers::McpError> {
                 
                 let tools = vec![
                     $(
@@ -59,12 +67,12 @@ macro_rules! register_tools {
             }
             
             fn handle_call_tool(request: $crate::bindings::fastertools::mcp::tools::CallToolRequest) 
-                -> Result<$crate::bindings::fastertools::mcp::tools::ToolResult, $crate::bindings::fastertools::mcp::types::McpError> {
+                -> Result<$crate::helpers::ToolResult, $crate::helpers::McpError> {
                 
                 let args = if let Some(args_str) = &request.arguments {
                     serde_json::from_str(args_str)
-                        .map_err(|e| $crate::bindings::fastertools::mcp::types::McpError {
-                            code: $crate::bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
+                        .map_err(|e| $crate::helpers::McpError {
+                            code: $crate::helpers::ErrorCode::InvalidParams,
                             message: format!("Invalid arguments: {}", e),
                             data: None,
                         })?
@@ -79,8 +87,8 @@ macro_rules! register_tools {
                             spin_sdk::http::run(<$tool as $crate::helpers::Tool>::execute(args))
                         }
                     ),*
-                    _ => Err($crate::bindings::fastertools::mcp::types::McpError {
-                        code: $crate::bindings::fastertools::mcp::types::ErrorCode::ToolNotFound,
+                    _ => Err($crate::helpers::McpError {
+                        code: $crate::helpers::ErrorCode::ToolNotFound,
                         message: format!("Unknown tool: {}", request.name),
                         data: None,
                     })
@@ -133,15 +141,3 @@ pub fn text_result(text: impl Into<String>) -> ToolResult {
     }
 }
 
-pub fn error_result(message: impl Into<String>) -> ToolResult {
-    ToolResult {
-        content: vec![ContentBlock::Text(TextContent {
-            text: message.into(),
-            annotations: None,
-            meta: None,
-        })],
-        is_error: Some(true),
-        structured_content: None,
-        meta: None,
-    }
-}

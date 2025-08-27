@@ -1,4 +1,4 @@
-# test-async-single
+# weather-rust-fresh
 
 An MCP server written in Rust
 

@@ -2,7 +2,7 @@ mod bindings;
 #[macro_use]
 mod helpers;
 
-use helpers::{Tool, IntoToolResult, text_result};
+use helpers::{Tool, ToolResult, McpError, ErrorCode, IntoToolResult, text_result};
 use serde::Deserialize;
 use serde_json::Value;
 use spin_sdk::http::{Request, send};
@@ -10,7 +10,6 @@ use futures::future::join_all;
 
 pub struct Component;
 
-// Simple tool (doesn't await but still async)
 struct EchoTool;
 
 impl Tool for EchoTool {
@@ -30,21 +29,20 @@ impl Tool for EchoTool {
         })
     }
     
-    async fn execute(args: Value) -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
+    async fn execute(args: Value) -> Result<ToolResult, McpError> {
         let message = args.get("message")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| bindings::fastertools::mcp::types::McpError {
-                code: bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
+            .ok_or_else(|| McpError {
+                code: ErrorCode::InvalidParams,
                 message: "Missing required field: message".to_string(),
                 data: None,
             })?;
             
-        // No awaits here - returns immediately but that's fine!
         Ok(format!("Echo: {}", message).into_result())
     }
 }
 
-// Weather tool with real async HTTP request
+// Weather tool with HTTP request
 struct WeatherTool;
 
 impl Tool for WeatherTool {
@@ -64,11 +62,11 @@ impl Tool for WeatherTool {
         })
     }
     
-    async fn execute(args: Value) -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
+    async fn execute(args: Value) -> Result<ToolResult, McpError> {
         let location = args.get("location")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| bindings::fastertools::mcp::types::McpError {
-                code: bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
+            .ok_or_else(|| McpError {
+                code: ErrorCode::InvalidParams,
                 message: "Missing required field: location".to_string(),
                 data: None,
             })?;
@@ -80,7 +78,7 @@ impl Tool for WeatherTool {
     }
 }
 
-// Multi-weather tool demonstrating concurrent requests
+// Multi-weather tool with concurrent requests
 struct MultiWeatherTool;
 
 impl Tool for MultiWeatherTool {
@@ -105,11 +103,11 @@ impl Tool for MultiWeatherTool {
         })
     }
     
-    async fn execute(args: Value) -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
+    async fn execute(args: Value) -> Result<ToolResult, McpError> {
         let cities = args.get("cities")
             .and_then(|v| v.as_array())
-            .ok_or_else(|| bindings::fastertools::mcp::types::McpError {
-                code: bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
+            .ok_or_else(|| McpError {
+                code: ErrorCode::InvalidParams,
                 message: "Missing or invalid 'cities' field".to_string(),
                 data: None,
             })?;
@@ -119,8 +117,8 @@ impl Tool for MultiWeatherTool {
             .collect();
         
         if city_names.is_empty() {
-            return Err(bindings::fastertools::mcp::types::McpError {
-                code: bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
+            return Err(McpError {
+                code: ErrorCode::InvalidParams,
                 message: "No valid city names provided".to_string(),
                 data: None,
             });
@@ -295,9 +293,9 @@ impl bindings::exports::fastertools::mcp::core::Guest for Component {
                 completions: None,
             },
             server_info: bindings::fastertools::mcp::session::ImplementationInfo {
-                name: "test_async_single".to_string(),
+                name: "weather_rust_fresh".to_string(),
                 version: "0.1.0".to_string(),
-                title: Some("test-async-single Handler".to_string()),
+                title: Some("weather-rust-fresh Handler".to_string()),
             },
             instructions: None,
             meta: None,

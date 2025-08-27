@@ -8930,12 +8930,12 @@ macro_rules! __export_tools_handler_impl {
 pub(crate) use __export_tools_handler_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:test-async-single:handler@0.1.0:tools-handler:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:weather-rust-fresh:handler@0.1.0:tools-handler:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3469] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x89\x1a\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3470] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x8a\x1a\x01A\x02\x01\
 A\x17\x01B.\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01o\x02ss\x01p\x02\
 \x04\0\x0bmeta-fields\x03\0\x03\x01p\x01\x01k\x05\x01ku\x01ks\x01r\x03\x08audien\
 ce\x06\x08priority\x07\x0dlast-modified\x08\x04\0\x0bannotations\x03\0\x09\x01r\x02\
@@ -9007,10 +9007,10 @@ ror\x03\0\0\x02\x03\x02\x01\x0d\x04\0\x12list-tools-request\x03\0\x02\x02\x03\x0
 l-tool-request\x03\0\x06\x02\x03\x02\x01\x10\x04\0\x0btool-result\x03\0\x08\x01j\
 \x01\x05\x01\x01\x01@\x01\x07request\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\
 \x01j\x01\x09\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x10handle-call-tool\x01\
-\x0d\x04\0\"fastertools:mcp/tool-handler@0.1.1\x05\x11\x04\0-test-async-single:h\
-andler/tools-handler@0.1.0\x04\0\x0b\x13\x01\0\x0dtools-handler\x03\0\0\0G\x09pr\
-oducers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x06\
-0.41.0";
+\x0d\x04\0\"fastertools:mcp/tool-handler@0.1.1\x05\x11\x04\0.weather-rust-fresh:\
+handler/tools-handler@0.1.0\x04\0\x0b\x13\x01\0\x0dtools-handler\x03\0\0\0G\x09p\
+roducers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\
+\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {
