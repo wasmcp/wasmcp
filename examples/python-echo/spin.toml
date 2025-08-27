@@ -22,8 +22,8 @@ key_value_stores = ["default"]
 
 [component.wasmcp-spin.dependencies]
 # Link to the local handler component
-"wasmcp:mcp/handler@0.1.0" = { path = "./handler/app.wasm" }
+"wasmcp:mcp/handler@0.1.0" = { path = "minimal.wasm" }
 
 [component.wasmcp-spin.build]
-command = "make build"
+command = "./build_minimal.sh"
 watch = ["handler/src/**/*.py", "handler/requirements.txt", "handler/componentize-py.toml"]
