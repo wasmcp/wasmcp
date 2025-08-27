@@ -3,14 +3,14 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-// Bindings generated from WIT
+// Bindings generated from WIT by cargo-component
 #[allow(warnings)]
 mod bindings;
 
 // Import the MCP protocol types and handler interface
 use bindings::mcp::protocol::{
     handler,
-    session::{InitializeRequest, InitializeResponse},
+    session::InitializeRequest,
     tools::{ListToolsRequest, CallToolRequest},
     resources::{ListResourcesRequest, ReadResourceRequest},
     prompts::{ListPromptsRequest, GetPromptRequest},
@@ -20,6 +20,7 @@ use bindings::mcp::protocol::{
 /// JSON-RPC 2.0 Request
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
+    #[allow(dead_code)]
     jsonrpc: String,
     method: String,
     #[serde(default)]
@@ -192,6 +193,7 @@ fn handle_list_tools(params: Option<Value>) -> Result<Value, McpError> {
             data: None,
         })?
     } else {
+        // Default request with no parameters
         ListToolsRequest {
             cursor: None,
             progress_token: None,
