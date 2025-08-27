@@ -1,11 +1,15 @@
 package example:weather;
 
-world mcp-server {
-    import fastertools:mcp/types@0.1.0;
-    import fastertools:mcp/session@0.1.0;
-    import fastertools:mcp/tools@0.1.0;
-    import fastertools:mcp/resources@0.1.0;
-    import fastertools:mcp/prompts@0.1.0;
+// Export all handlers but only implement tools
+world weather-server {
+    import fastertools:mcp/types@0.1.1;
+    import fastertools:mcp/session@0.1.1;
+    import fastertools:mcp/tools@0.1.1;
+    import fastertools:mcp/resources@0.1.1;
+    import fastertools:mcp/prompts@0.1.1;
     
-    export fastertools:mcp/handler@0.1.0;
+    export fastertools:mcp/core@0.1.1;
+    export fastertools:mcp/tool-handler@0.1.1;
+    export fastertools:mcp/resource-handler@0.1.1;
+    export fastertools:mcp/prompt-handler@0.1.1;
 }

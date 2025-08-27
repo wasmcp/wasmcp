@@ -7,9 +7,12 @@ use serde_json::{json, Value};
 #[allow(warnings)]
 mod bindings;
 
-// Import the MCP protocol types and handler interface
+// Import the MCP protocol types and handler interfaces
 use bindings::fastertools::mcp::{
-    handler,
+    core,
+    tool_handler,
+    resource_handler,
+    prompt_handler,
     session::InitializeRequest,
     tools::{ListToolsRequest, CallToolRequest},
     resources::{ListResourcesRequest, ReadResourceRequest},
@@ -56,14 +59,7 @@ impl From<McpError> for JsonRpcError {
             ErrorCode::MethodNotFound => -32601,
             ErrorCode::InvalidParams => -32602,
             ErrorCode::InternalError => -32603,
-            ErrorCode::ResourceNotFound => -32001,
-            ErrorCode::ToolNotFound => -32002,
-            ErrorCode::PromptNotFound => -32003,
-            ErrorCode::Unauthorized => -32004,
-            ErrorCode::RateLimited => -32005,
-            ErrorCode::Timeout => -32006,
-            ErrorCode::Cancelled => -32007,
-            ErrorCode::CustomCode(c) => c,
+            _ => -32000, // Generic error code for MCP-specific errors
         };
         
         JsonRpcError {
@@ -101,16 +97,24 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
     
     // Route the request to the appropriate handler
     let result = match request.method.as_str() {
+        // Core handlers (always available)
         "initialize" => handle_initialize(request.params),
         "initialized" => handle_initialized(),
         "ping" => handle_ping(),
         "shutdown" => handle_shutdown(),
+        
+        // Tool handlers (check if available)
         "tools/list" => handle_list_tools(request.params),
         "tools/call" => handle_call_tool(request.params),
+        
+        // Resource handlers (check if available)
         "resources/list" => handle_list_resources(request.params),
         "resources/read" => handle_read_resource(request.params),
+        
+        // Prompt handlers (check if available)
         "prompts/list" => handle_list_prompts(request.params),
         "prompts/get" => handle_get_prompt(request.params),
+        
         _ => Err(McpError {
             code: ErrorCode::MethodNotFound,
             message: format!("Method not found: {}", request.method),
@@ -141,7 +145,8 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
         .build())
 }
 
-/// Handle initialize request
+// Core handlers - always available
+
 fn handle_initialize(params: Option<Value>) -> Result<Value, McpError> {
     let request: InitializeRequest = if let Some(p) = params {
         serde_json::from_value(p).map_err(|e| McpError {
@@ -157,7 +162,7 @@ fn handle_initialize(params: Option<Value>) -> Result<Value, McpError> {
         });
     };
     
-    let response = handler::handle_initialize(&request)?;
+    let response = core::handle_initialize(&request)?;
     
     serde_json::to_value(response).map_err(|e| McpError {
         code: ErrorCode::InternalError,
@@ -166,26 +171,25 @@ fn handle_initialize(params: Option<Value>) -> Result<Value, McpError> {
     })
 }
 
-/// Handle initialized notification
 fn handle_initialized() -> Result<Value, McpError> {
-    handler::handle_initialized()?;
+    core::handle_initialized()?;
     Ok(json!({}))
 }
 
-/// Handle ping request
 fn handle_ping() -> Result<Value, McpError> {
-    handler::handle_ping()?;
+    core::handle_ping()?;
     Ok(json!({}))
 }
 
-/// Handle shutdown request
 fn handle_shutdown() -> Result<Value, McpError> {
-    handler::handle_shutdown()?;
+    core::handle_shutdown()?;
     Ok(json!({}))
 }
 
-/// Handle tools/list request
+// Tool handlers - may not be available
+
 fn handle_list_tools(params: Option<Value>) -> Result<Value, McpError> {
+    // Check if tool handler is available (for now we assume it is)
     let request: ListToolsRequest = if let Some(p) = params {
         serde_json::from_value(p).map_err(|e| McpError {
             code: ErrorCode::InvalidParams,
@@ -193,7 +197,6 @@ fn handle_list_tools(params: Option<Value>) -> Result<Value, McpError> {
             data: None,
         })?
     } else {
-        // Default request with no parameters
         ListToolsRequest {
             cursor: None,
             progress_token: None,
@@ -201,7 +204,7 @@ fn handle_list_tools(params: Option<Value>) -> Result<Value, McpError> {
         }
     };
     
-    let response = handler::handle_list_tools(&request)?;
+    let response = tool_handler::handle_list_tools(&request)?;
     
     serde_json::to_value(response).map_err(|e| McpError {
         code: ErrorCode::InternalError,
@@ -210,7 +213,6 @@ fn handle_list_tools(params: Option<Value>) -> Result<Value, McpError> {
     })
 }
 
-/// Handle tools/call request
 fn handle_call_tool(params: Option<Value>) -> Result<Value, McpError> {
     let request: CallToolRequest = if let Some(p) = params {
         serde_json::from_value(p).map_err(|e| McpError {
@@ -226,7 +228,7 @@ fn handle_call_tool(params: Option<Value>) -> Result<Value, McpError> {
         });
     };
     
-    let response = handler::handle_call_tool(&request)?;
+    let response = tool_handler::handle_call_tool(&request)?;
     
     serde_json::to_value(response).map_err(|e| McpError {
         code: ErrorCode::InternalError,
@@ -235,7 +237,8 @@ fn handle_call_tool(params: Option<Value>) -> Result<Value, McpError> {
     })
 }
 
-/// Handle resources/list request  
+// Resource handlers - may not be available
+
 fn handle_list_resources(params: Option<Value>) -> Result<Value, McpError> {
     let request: ListResourcesRequest = if let Some(p) = params {
         serde_json::from_value(p).map_err(|e| McpError {
@@ -251,7 +254,7 @@ fn handle_list_resources(params: Option<Value>) -> Result<Value, McpError> {
         }
     };
     
-    let response = handler::handle_list_resources(&request)?;
+    let response = resource_handler::handle_list_resources(&request)?;
     
     serde_json::to_value(response).map_err(|e| McpError {
         code: ErrorCode::InternalError,
@@ -260,7 +263,6 @@ fn handle_list_resources(params: Option<Value>) -> Result<Value, McpError> {
     })
 }
 
-/// Handle resources/read request
 fn handle_read_resource(params: Option<Value>) -> Result<Value, McpError> {
     let request: ReadResourceRequest = if let Some(p) = params {
         serde_json::from_value(p).map_err(|e| McpError {
@@ -276,7 +278,7 @@ fn handle_read_resource(params: Option<Value>) -> Result<Value, McpError> {
         });
     };
     
-    let response = handler::handle_read_resource(&request)?;
+    let response = resource_handler::handle_read_resource(&request)?;
     
     serde_json::to_value(response).map_err(|e| McpError {
         code: ErrorCode::InternalError,
@@ -285,7 +287,8 @@ fn handle_read_resource(params: Option<Value>) -> Result<Value, McpError> {
     })
 }
 
-/// Handle prompts/list request
+// Prompt handlers - may not be available
+
 fn handle_list_prompts(params: Option<Value>) -> Result<Value, McpError> {
     let request: ListPromptsRequest = if let Some(p) = params {
         serde_json::from_value(p).map_err(|e| McpError {
@@ -301,7 +304,7 @@ fn handle_list_prompts(params: Option<Value>) -> Result<Value, McpError> {
         }
     };
     
-    let response = handler::handle_list_prompts(&request)?;
+    let response = prompt_handler::handle_list_prompts(&request)?;
     
     serde_json::to_value(response).map_err(|e| McpError {
         code: ErrorCode::InternalError,
@@ -310,7 +313,6 @@ fn handle_list_prompts(params: Option<Value>) -> Result<Value, McpError> {
     })
 }
 
-/// Handle prompts/get request
 fn handle_get_prompt(params: Option<Value>) -> Result<Value, McpError> {
     let request: GetPromptRequest = if let Some(p) = params {
         serde_json::from_value(p).map_err(|e| McpError {
@@ -326,7 +328,7 @@ fn handle_get_prompt(params: Option<Value>) -> Result<Value, McpError> {
         });
     };
     
-    let response = handler::handle_get_prompt(&request)?;
+    let response = prompt_handler::handle_get_prompt(&request)?;
     
     serde_json::to_value(response).map_err(|e| McpError {
         code: ErrorCode::InternalError,

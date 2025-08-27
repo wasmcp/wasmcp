@@ -1,4 +1,4 @@
-package mcp:protocol@0.1.0;
+package fastertools:mcp@0.1.1;
 
 /// Notification system for MCP events and updates
 

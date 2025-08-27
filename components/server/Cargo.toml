@@ -25,6 +25,6 @@ path = "wit"
 world = "mcp-server"
 
 [package.metadata.component.target.dependencies]
-"fastertools:mcp" = "0.1.0"
+"fastertools:mcp" = "0.1.1"
 
 [workspace]

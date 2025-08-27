@@ -1,42 +1,68 @@
-package mcp:protocol@0.1.0;
+package fastertools:mcp@0.1.1;
 
-/// Main handler interface that MCP implementations must provide
-
-interface handler {
+/// Core handler interface that all MCP implementations must provide
+/// This contains only the essential session management functions
+interface core {
     use types.{mcp-error};
     use session.{initialize-request, initialize-response};
-    use tools.{list-tools-request, list-tools-response, call-tool-request, tool-result};
-    use resources.{list-resources-request, list-resources-response, list-templates-request, 
-                    list-templates-response, read-resource-request, read-resource-response,
-                    subscribe-request, unsubscribe-request};
-    use prompts.{list-prompts-request, list-prompts-response, get-prompt-request, get-prompt-response};
-    
-    /// Core handler functions that implementations must provide
     
     /// Handle session initialization
+    /// Implementations should declare their capabilities here
     handle-initialize: func(request: initialize-request) -> result<initialize-response, mcp-error>;
     
     /// Handle initialization complete notification
     handle-initialized: func() -> result<_, mcp-error>;
     
-    /// Handle ping request
+    /// Handle ping request for keepalive
     handle-ping: func() -> result<_, mcp-error>;
     
     /// Handle shutdown request
     handle-shutdown: func() -> result<_, mcp-error>;
+}
+
+/// Tool handler capability - implement this to provide tools
+interface tool-handler {
+    use types.{mcp-error};
+    use tools.{list-tools-request, list-tools-response, call-tool-request, tool-result};
     
-    /// Tool operations
+    /// List available tools
     handle-list-tools: func(request: list-tools-request) -> result<list-tools-response, mcp-error>;
+    
+    /// Execute a tool
     handle-call-tool: func(request: call-tool-request) -> result<tool-result, mcp-error>;
+}
+
+/// Resource handler capability - implement this to provide resources
+interface resource-handler {
+    use types.{mcp-error};
+    use resources.{list-resources-request, list-resources-response, list-templates-request, 
+                    list-templates-response, read-resource-request, read-resource-response,
+                    subscribe-request, unsubscribe-request};
     
-    /// Resource operations
+    /// List available resources
     handle-list-resources: func(request: list-resources-request) -> result<list-resources-response, mcp-error>;
-    handle-list-resource-templates: func(request: list-templates-request) -> result<list-templates-response, mcp-error>;
-    handle-read-resource: func(request: read-resource-request) -> result<read-resource-response, mcp-error>;
-    handle-subscribe-resource: func(request: subscribe-request) -> result<_, mcp-error>;
-    handle-unsubscribe-resource: func(request: unsubscribe-request) -> result<_, mcp-error>;
     
-    /// Prompt operations
+    /// List resource templates
+    handle-list-resource-templates: func(request: list-templates-request) -> result<list-templates-response, mcp-error>;
+    
+    /// Read a specific resource
+    handle-read-resource: func(request: read-resource-request) -> result<read-resource-response, mcp-error>;
+    
+    /// Subscribe to resource changes
+    handle-subscribe-resource: func(request: subscribe-request) -> result<_, mcp-error>;
+    
+    /// Unsubscribe from resource changes
+    handle-unsubscribe-resource: func(request: unsubscribe-request) -> result<_, mcp-error>;
+}
+
+/// Prompt handler capability - implement this to provide prompts
+interface prompt-handler {
+    use types.{mcp-error};
+    use prompts.{list-prompts-request, list-prompts-response, get-prompt-request, get-prompt-response};
+    
+    /// List available prompts
     handle-list-prompts: func(request: list-prompts-request) -> result<list-prompts-response, mcp-error>;
+    
+    /// Get a specific prompt
     handle-get-prompt: func(request: get-prompt-request) -> result<get-prompt-response, mcp-error>;
 }

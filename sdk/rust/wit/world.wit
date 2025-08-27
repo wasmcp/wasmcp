@@ -1,7 +1,0 @@
-package wasmcp:rust-sdk@0.1.0;
-
-/// World for Rust MCP handler components
-world rust-handler {
-    /// Export the MCP handler interface
-    export mcp:protocol/handler@0.1.0;
-}

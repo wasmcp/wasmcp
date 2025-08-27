@@ -1,7 +1,12 @@
 mod bindings;
 
 use serde::Deserialize;
-use bindings::exports::fastertools::mcp::handler::Guest;
+use bindings::exports::fastertools::mcp::{
+    core::Guest as CoreGuest, 
+    tool_handler::Guest as ToolGuest,
+    resource_handler::Guest as ResourceGuest,
+    prompt_handler::Guest as PromptGuest,
+};
 use bindings::fastertools::mcp::types;
 use bindings::fastertools::mcp::tools;
 use bindings::fastertools::mcp::session;
@@ -10,7 +15,8 @@ use bindings::fastertools::mcp::prompts;
 
 struct Component;
 
-impl Guest for Component {
+// Implement core handlers (required)
+impl CoreGuest for Component {
     fn handle_initialize(_request: session::InitializeRequest) -> Result<session::InitializeResponse, types::McpError> {
         Ok(session::InitializeResponse {
             protocol_version: "0.1.0".to_string(),
@@ -18,8 +24,8 @@ impl Guest for Component {
                 tools: Some(session::ToolsCapability {
                     list_changed: Some(false),
                 }),
-                resources: None,
-                prompts: None,
+                resources: None,  // We don't provide resources
+                prompts: None,    // We don't provide prompts
                 experimental: None,
                 logging: None,
                 completions: None,
@@ -34,6 +40,21 @@ impl Guest for Component {
         })
     }
 
+    fn handle_initialized() -> Result<(), types::McpError> {
+        Ok(())
+    }
+
+    fn handle_ping() -> Result<(), types::McpError> {
+        Ok(())
+    }
+
+    fn handle_shutdown() -> Result<(), types::McpError> {
+        Ok(())
+    }
+}
+
+// Implement tool handlers (our main functionality)
+impl ToolGuest for Component {
     fn handle_list_tools(_request: tools::ListToolsRequest) -> Result<tools::ListToolsResponse, types::McpError> {
         Ok(tools::ListToolsResponse {
             tools: vec![
@@ -137,34 +158,6 @@ impl Guest for Component {
             })
         }
     }
-
-    // Minimal implementations for other required handlers
-    fn handle_initialized() -> Result<(), types::McpError> { Ok(()) }
-    fn handle_ping() -> Result<(), types::McpError> { Ok(()) }
-    fn handle_shutdown() -> Result<(), types::McpError> { Ok(()) }
-    
-    fn handle_list_resources(_: resources::ListResourcesRequest) -> Result<resources::ListResourcesResponse, types::McpError> {
-        Ok(resources::ListResourcesResponse { resources: vec![], next_cursor: None, meta: None })
-    }
-    
-    fn handle_list_resource_templates(_: resources::ListTemplatesRequest) -> Result<resources::ListTemplatesResponse, types::McpError> {
-        Ok(resources::ListTemplatesResponse { templates: vec![], next_cursor: None, meta: None })
-    }
-    
-    fn handle_read_resource(_: resources::ReadResourceRequest) -> Result<resources::ReadResourceResponse, types::McpError> {
-        Err(types::McpError { code: types::ErrorCode::ResourceNotFound, message: "Not implemented".to_string(), data: None })
-    }
-    
-    fn handle_subscribe_resource(_: resources::SubscribeRequest) -> Result<(), types::McpError> { Ok(()) }
-    fn handle_unsubscribe_resource(_: resources::UnsubscribeRequest) -> Result<(), types::McpError> { Ok(()) }
-    
-    fn handle_list_prompts(_: prompts::ListPromptsRequest) -> Result<prompts::ListPromptsResponse, types::McpError> {
-        Ok(prompts::ListPromptsResponse { prompts: vec![], next_cursor: None, meta: None })
-    }
-    
-    fn handle_get_prompt(_: prompts::GetPromptRequest) -> Result<prompts::GetPromptResponse, types::McpError> {
-        Err(types::McpError { code: types::ErrorCode::PromptNotFound, message: "Not implemented".to_string(), data: None })
-    }
 }
 
 // Async weather fetching with Spin SDK
@@ -214,7 +207,7 @@ async fn get_weather(location: String) -> Result<String, String> {
         .and_then(|r| r.into_iter().next())
         .ok_or_else(|| format!("Location '{}' not found", location))?;
     
-    // Get weather for the coordinates
+    // Get weather for the coordinates  
     let weather_url = format!(
         "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&current_weather=true",
         location_data.latitude,
@@ -250,6 +243,60 @@ async fn get_weather(location: String) -> Result<String, String> {
         weather_description,
         weather.current_weather.windspeed
     ))
+}
+
+// Stub implementations for resource handler (we don't provide resources)
+impl ResourceGuest for Component {
+    fn handle_list_resources(_request: resources::ListResourcesRequest) -> Result<resources::ListResourcesResponse, types::McpError> {
+        Ok(resources::ListResourcesResponse {
+            resources: vec![],
+            next_cursor: None,
+            meta: None,
+        })
+    }
+
+    fn handle_list_resource_templates(_request: resources::ListTemplatesRequest) -> Result<resources::ListTemplatesResponse, types::McpError> {
+        Ok(resources::ListTemplatesResponse {
+            templates: vec![],
+            next_cursor: None,
+            meta: None,
+        })
+    }
+
+    fn handle_read_resource(_request: resources::ReadResourceRequest) -> Result<resources::ReadResourceResponse, types::McpError> {
+        Err(types::McpError {
+            code: types::ErrorCode::ResourceNotFound,
+            message: "This server does not provide resources".to_string(),
+            data: None,
+        })
+    }
+
+    fn handle_subscribe_resource(_request: resources::SubscribeRequest) -> Result<(), types::McpError> {
+        Ok(())
+    }
+
+    fn handle_unsubscribe_resource(_request: resources::UnsubscribeRequest) -> Result<(), types::McpError> {
+        Ok(())
+    }
+}
+
+// Stub implementations for prompt handler (we don't provide prompts)
+impl PromptGuest for Component {
+    fn handle_list_prompts(_request: prompts::ListPromptsRequest) -> Result<prompts::ListPromptsResponse, types::McpError> {
+        Ok(prompts::ListPromptsResponse {
+            prompts: vec![],
+            next_cursor: None,
+            meta: None,
+        })
+    }
+
+    fn handle_get_prompt(_request: prompts::GetPromptRequest) -> Result<prompts::GetPromptResponse, types::McpError> {
+        Err(types::McpError {
+            code: types::ErrorCode::PromptNotFound,
+            message: "This server does not provide prompts".to_string(),
+            data: None,
+        })
+    }
 }
 
 bindings::export!(Component with_types_in bindings);

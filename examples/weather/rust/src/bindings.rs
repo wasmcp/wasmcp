@@ -894,7 +894,7 @@ pub mod fastertools {
                     };
                     let ptr17 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "initialize"]
                         fn wit_import18(_: *mut u8, _: *mut u8);
@@ -1399,7 +1399,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "initialized"]
                         fn wit_import1(_: *mut u8);
@@ -1513,7 +1513,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "ping"]
                         fn wit_import1(_: *mut u8);
@@ -1627,7 +1627,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "shutdown"]
                         fn wit_import1(_: *mut u8);
@@ -1985,7 +1985,7 @@ pub mod fastertools {
                     };
                     let ptr10 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/tools@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/tools@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "list-tools"]
                         fn wit_import11(
@@ -2614,7 +2614,7 @@ pub mod fastertools {
                     };
                     let ptr11 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/tools@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/tools@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "call-tool"]
                         fn wit_import12(
@@ -4424,7 +4424,7 @@ pub mod fastertools {
                     };
                     let ptr10 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/resources@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/resources@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "list-resources"]
                         fn wit_import11(
@@ -5042,7 +5042,7 @@ pub mod fastertools {
                     };
                     let ptr10 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/resources@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/resources@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "list-resource-templates"]
                         fn wit_import11(
@@ -5636,7 +5636,7 @@ pub mod fastertools {
                     };
                     let ptr9 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/resources@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/resources@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "read-resource"]
                         fn wit_import10(
@@ -6162,7 +6162,7 @@ pub mod fastertools {
                     };
                     let ptr7 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/resources@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/resources@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "subscribe-resource"]
                         fn wit_import8(
@@ -6356,7 +6356,7 @@ pub mod fastertools {
                     };
                     let ptr7 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/resources@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/resources@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "unsubscribe-resource"]
                         fn wit_import8(
@@ -6742,7 +6742,7 @@ pub mod fastertools {
                     };
                     let ptr10 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/prompts@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/prompts@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "list-prompts"]
                         fn wit_import11(
@@ -7371,7 +7371,7 @@ pub mod fastertools {
                     };
                     let ptr14 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/prompts@0.1.0")]
+                    #[link(wasm_import_module = "fastertools:mcp/prompts@0.1.1")]
                     unsafe extern "C" {
                         #[link_name = "get-prompt"]
                         fn wit_import15(
@@ -8837,9 +8837,10 @@ pub mod fastertools {
 pub mod exports {
     pub mod fastertools {
         pub mod mcp {
-            /// Main handler interface that MCP implementations must provide
+            /// Core handler interface that all MCP implementations must provide
+            /// This contains only the essential session management functions
             #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-            pub mod handler {
+            pub mod core {
                 #[used]
                 #[doc(hidden)]
                 static __FORCE_SECTION_REF: fn() = super::super::super::super::__link_custom_section_describing_imports;
@@ -8847,22 +8848,6 @@ pub mod exports {
                 pub type McpError = super::super::super::super::fastertools::mcp::types::McpError;
                 pub type InitializeRequest = super::super::super::super::fastertools::mcp::session::InitializeRequest;
                 pub type InitializeResponse = super::super::super::super::fastertools::mcp::session::InitializeResponse;
-                pub type ListToolsRequest = super::super::super::super::fastertools::mcp::tools::ListToolsRequest;
-                pub type ListToolsResponse = super::super::super::super::fastertools::mcp::tools::ListToolsResponse;
-                pub type CallToolRequest = super::super::super::super::fastertools::mcp::tools::CallToolRequest;
-                pub type ToolResult = super::super::super::super::fastertools::mcp::tools::ToolResult;
-                pub type ListResourcesRequest = super::super::super::super::fastertools::mcp::resources::ListResourcesRequest;
-                pub type ListResourcesResponse = super::super::super::super::fastertools::mcp::resources::ListResourcesResponse;
-                pub type ListTemplatesRequest = super::super::super::super::fastertools::mcp::resources::ListTemplatesRequest;
-                pub type ListTemplatesResponse = super::super::super::super::fastertools::mcp::resources::ListTemplatesResponse;
-                pub type ReadResourceRequest = super::super::super::super::fastertools::mcp::resources::ReadResourceRequest;
-                pub type ReadResourceResponse = super::super::super::super::fastertools::mcp::resources::ReadResourceResponse;
-                pub type SubscribeRequest = super::super::super::super::fastertools::mcp::resources::SubscribeRequest;
-                pub type UnsubscribeRequest = super::super::super::super::fastertools::mcp::resources::UnsubscribeRequest;
-                pub type ListPromptsRequest = super::super::super::super::fastertools::mcp::prompts::ListPromptsRequest;
-                pub type ListPromptsResponse = super::super::super::super::fastertools::mcp::prompts::ListPromptsResponse;
-                pub type GetPromptRequest = super::super::super::super::fastertools::mcp::prompts::GetPromptRequest;
-                pub type GetPromptResponse = super::super::super::super::fastertools::mcp::prompts::GetPromptResponse;
                 #[doc(hidden)]
                 #[allow(non_snake_case)]
                 pub unsafe fn _export_handle_initialize_cabi<T: Guest>(
@@ -10252,6 +10237,85 @@ pub mod exports {
                         }
                     }
                 }
+                pub trait Guest {
+                    /// Handle session initialization
+                    /// Implementations should declare their capabilities here
+                    fn handle_initialize(
+                        request: InitializeRequest,
+                    ) -> Result<InitializeResponse, McpError>;
+                    /// Handle initialization complete notification
+                    fn handle_initialized() -> Result<(), McpError>;
+                    /// Handle ping request for keepalive
+                    fn handle_ping() -> Result<(), McpError>;
+                    /// Handle shutdown request
+                    fn handle_shutdown() -> Result<(), McpError>;
+                }
+                #[doc(hidden)]
+                macro_rules! __export_fastertools_mcp_core_0_1_1_cabi {
+                    ($ty:ident with_types_in $($path_to_types:tt)*) => {
+                        const _ : () = { #[unsafe (export_name =
+                        "fastertools:mcp/core@0.1.1#handle-initialize")] unsafe extern
+                        "C" fn export_handle_initialize(arg0 : * mut u8,) -> * mut u8 {
+                        unsafe { $($path_to_types)*::
+                        _export_handle_initialize_cabi::<$ty > (arg0) } } #[unsafe
+                        (export_name =
+                        "cabi_post_fastertools:mcp/core@0.1.1#handle-initialize")] unsafe
+                        extern "C" fn _post_return_handle_initialize(arg0 : * mut u8,) {
+                        unsafe { $($path_to_types)*::
+                        __post_return_handle_initialize::<$ty > (arg0) } } #[unsafe
+                        (export_name = "fastertools:mcp/core@0.1.1#handle-initialized")]
+                        unsafe extern "C" fn export_handle_initialized() -> * mut u8 {
+                        unsafe { $($path_to_types)*::
+                        _export_handle_initialized_cabi::<$ty > () } } #[unsafe
+                        (export_name =
+                        "cabi_post_fastertools:mcp/core@0.1.1#handle-initialized")]
+                        unsafe extern "C" fn _post_return_handle_initialized(arg0 : * mut
+                        u8,) { unsafe { $($path_to_types)*::
+                        __post_return_handle_initialized::<$ty > (arg0) } } #[unsafe
+                        (export_name = "fastertools:mcp/core@0.1.1#handle-ping")] unsafe
+                        extern "C" fn export_handle_ping() -> * mut u8 { unsafe {
+                        $($path_to_types)*:: _export_handle_ping_cabi::<$ty > () } }
+                        #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/core@0.1.1#handle-ping")] unsafe
+                        extern "C" fn _post_return_handle_ping(arg0 : * mut u8,) { unsafe
+                        { $($path_to_types)*:: __post_return_handle_ping::<$ty > (arg0) }
+                        } #[unsafe (export_name =
+                        "fastertools:mcp/core@0.1.1#handle-shutdown")] unsafe extern "C"
+                        fn export_handle_shutdown() -> * mut u8 { unsafe {
+                        $($path_to_types)*:: _export_handle_shutdown_cabi::<$ty > () } }
+                        #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/core@0.1.1#handle-shutdown")] unsafe
+                        extern "C" fn _post_return_handle_shutdown(arg0 : * mut u8,) {
+                        unsafe { $($path_to_types)*:: __post_return_handle_shutdown::<$ty
+                        > (arg0) } } };
+                    };
+                }
+                #[doc(hidden)]
+                pub(crate) use __export_fastertools_mcp_core_0_1_1_cabi;
+                #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+                #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
+                struct _RetArea(
+                    [::core::mem::MaybeUninit<
+                        u8,
+                    >; 16 + 19 * ::core::mem::size_of::<*const u8>()],
+                );
+                static mut _RET_AREA: _RetArea = _RetArea(
+                    [::core::mem::MaybeUninit::uninit(); 16
+                        + 19 * ::core::mem::size_of::<*const u8>()],
+                );
+            }
+            /// Tool handler capability - implement this to provide tools
+            #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
+            pub mod tool_handler {
+                #[used]
+                #[doc(hidden)]
+                static __FORCE_SECTION_REF: fn() = super::super::super::super::__link_custom_section_describing_imports;
+                use super::super::super::super::_rt;
+                pub type McpError = super::super::super::super::fastertools::mcp::types::McpError;
+                pub type ListToolsRequest = super::super::super::super::fastertools::mcp::tools::ListToolsRequest;
+                pub type ListToolsResponse = super::super::super::super::fastertools::mcp::tools::ListToolsResponse;
+                pub type CallToolRequest = super::super::super::super::fastertools::mcp::tools::CallToolRequest;
+                pub type ToolResult = super::super::super::super::fastertools::mcp::tools::ToolResult;
                 #[doc(hidden)]
                 #[allow(non_snake_case)]
                 pub unsafe fn _export_handle_list_tools_cabi<T: Guest>(
@@ -13381,6 +13445,76 @@ pub mod exports {
                         }
                     }
                 }
+                pub trait Guest {
+                    /// List available tools
+                    fn handle_list_tools(
+                        request: ListToolsRequest,
+                    ) -> Result<ListToolsResponse, McpError>;
+                    /// Execute a tool
+                    fn handle_call_tool(
+                        request: CallToolRequest,
+                    ) -> Result<ToolResult, McpError>;
+                }
+                #[doc(hidden)]
+                macro_rules! __export_fastertools_mcp_tool_handler_0_1_1_cabi {
+                    ($ty:ident with_types_in $($path_to_types:tt)*) => {
+                        const _ : () = { #[unsafe (export_name =
+                        "fastertools:mcp/tool-handler@0.1.1#handle-list-tools")] unsafe
+                        extern "C" fn export_handle_list_tools(arg0 : i32, arg1 : * mut
+                        u8, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5 : usize, arg6
+                        : i32, arg7 : * mut u8, arg8 : usize,) -> * mut u8 { unsafe {
+                        $($path_to_types)*:: _export_handle_list_tools_cabi::<$ty >
+                        (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) } }
+                        #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/tool-handler@0.1.1#handle-list-tools")]
+                        unsafe extern "C" fn _post_return_handle_list_tools(arg0 : * mut
+                        u8,) { unsafe { $($path_to_types)*::
+                        __post_return_handle_list_tools::<$ty > (arg0) } } #[unsafe
+                        (export_name =
+                        "fastertools:mcp/tool-handler@0.1.1#handle-call-tool")] unsafe
+                        extern "C" fn export_handle_call_tool(arg0 : * mut u8, arg1 :
+                        usize, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 : i32,
+                        arg6 : * mut u8, arg7 : usize, arg8 : i32, arg9 : * mut u8, arg10
+                        : usize,) -> * mut u8 { unsafe { $($path_to_types)*::
+                        _export_handle_call_tool_cabi::<$ty > (arg0, arg1, arg2, arg3,
+                        arg4, arg5, arg6, arg7, arg8, arg9, arg10) } } #[unsafe
+                        (export_name =
+                        "cabi_post_fastertools:mcp/tool-handler@0.1.1#handle-call-tool")]
+                        unsafe extern "C" fn _post_return_handle_call_tool(arg0 : * mut
+                        u8,) { unsafe { $($path_to_types)*::
+                        __post_return_handle_call_tool::<$ty > (arg0) } } };
+                    };
+                }
+                #[doc(hidden)]
+                pub(crate) use __export_fastertools_mcp_tool_handler_0_1_1_cabi;
+                #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+                #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
+                struct _RetArea(
+                    [::core::mem::MaybeUninit<
+                        u8,
+                    >; 10 * ::core::mem::size_of::<*const u8>()],
+                );
+                static mut _RET_AREA: _RetArea = _RetArea(
+                    [::core::mem::MaybeUninit::uninit(); 10
+                        * ::core::mem::size_of::<*const u8>()],
+                );
+            }
+            /// Resource handler capability - implement this to provide resources
+            #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
+            pub mod resource_handler {
+                #[used]
+                #[doc(hidden)]
+                static __FORCE_SECTION_REF: fn() = super::super::super::super::__link_custom_section_describing_imports;
+                use super::super::super::super::_rt;
+                pub type McpError = super::super::super::super::fastertools::mcp::types::McpError;
+                pub type ListResourcesRequest = super::super::super::super::fastertools::mcp::resources::ListResourcesRequest;
+                pub type ListResourcesResponse = super::super::super::super::fastertools::mcp::resources::ListResourcesResponse;
+                pub type ListTemplatesRequest = super::super::super::super::fastertools::mcp::resources::ListTemplatesRequest;
+                pub type ListTemplatesResponse = super::super::super::super::fastertools::mcp::resources::ListTemplatesResponse;
+                pub type ReadResourceRequest = super::super::super::super::fastertools::mcp::resources::ReadResourceRequest;
+                pub type ReadResourceResponse = super::super::super::super::fastertools::mcp::resources::ReadResourceResponse;
+                pub type SubscribeRequest = super::super::super::super::fastertools::mcp::resources::SubscribeRequest;
+                pub type UnsubscribeRequest = super::super::super::super::fastertools::mcp::resources::UnsubscribeRequest;
                 #[doc(hidden)]
                 #[allow(non_snake_case)]
                 pub unsafe fn _export_handle_list_resources_cabi<T: Guest>(
@@ -16273,6 +16407,120 @@ pub mod exports {
                         }
                     }
                 }
+                pub trait Guest {
+                    /// List available resources
+                    fn handle_list_resources(
+                        request: ListResourcesRequest,
+                    ) -> Result<ListResourcesResponse, McpError>;
+                    /// List resource templates
+                    fn handle_list_resource_templates(
+                        request: ListTemplatesRequest,
+                    ) -> Result<ListTemplatesResponse, McpError>;
+                    /// Read a specific resource
+                    fn handle_read_resource(
+                        request: ReadResourceRequest,
+                    ) -> Result<ReadResourceResponse, McpError>;
+                    /// Subscribe to resource changes
+                    fn handle_subscribe_resource(
+                        request: SubscribeRequest,
+                    ) -> Result<(), McpError>;
+                    /// Unsubscribe from resource changes
+                    fn handle_unsubscribe_resource(
+                        request: UnsubscribeRequest,
+                    ) -> Result<(), McpError>;
+                }
+                #[doc(hidden)]
+                macro_rules! __export_fastertools_mcp_resource_handler_0_1_1_cabi {
+                    ($ty:ident with_types_in $($path_to_types:tt)*) => {
+                        const _ : () = { #[unsafe (export_name =
+                        "fastertools:mcp/resource-handler@0.1.1#handle-list-resources")]
+                        unsafe extern "C" fn export_handle_list_resources(arg0 : i32,
+                        arg1 : * mut u8, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5
+                        : usize, arg6 : i32, arg7 : * mut u8, arg8 : usize,) -> * mut u8
+                        { unsafe { $($path_to_types)*::
+                        _export_handle_list_resources_cabi::<$ty > (arg0, arg1, arg2,
+                        arg3, arg4, arg5, arg6, arg7, arg8) } } #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/resource-handler@0.1.1#handle-list-resources")]
+                        unsafe extern "C" fn _post_return_handle_list_resources(arg0 : *
+                        mut u8,) { unsafe { $($path_to_types)*::
+                        __post_return_handle_list_resources::<$ty > (arg0) } } #[unsafe
+                        (export_name =
+                        "fastertools:mcp/resource-handler@0.1.1#handle-list-resource-templates")]
+                        unsafe extern "C" fn export_handle_list_resource_templates(arg0 :
+                        i32, arg1 : * mut u8, arg2 : usize, arg3 : i32, arg4 : * mut u8,
+                        arg5 : usize, arg6 : i32, arg7 : * mut u8, arg8 : usize,) -> *
+                        mut u8 { unsafe { $($path_to_types)*::
+                        _export_handle_list_resource_templates_cabi::<$ty > (arg0, arg1,
+                        arg2, arg3, arg4, arg5, arg6, arg7, arg8) } } #[unsafe
+                        (export_name =
+                        "cabi_post_fastertools:mcp/resource-handler@0.1.1#handle-list-resource-templates")]
+                        unsafe extern "C" fn
+                        _post_return_handle_list_resource_templates(arg0 : * mut u8,) {
+                        unsafe { $($path_to_types)*::
+                        __post_return_handle_list_resource_templates::<$ty > (arg0) } }
+                        #[unsafe (export_name =
+                        "fastertools:mcp/resource-handler@0.1.1#handle-read-resource")]
+                        unsafe extern "C" fn export_handle_read_resource(arg0 : * mut u8,
+                        arg1 : usize, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 :
+                        i32, arg6 : * mut u8, arg7 : usize,) -> * mut u8 { unsafe {
+                        $($path_to_types)*:: _export_handle_read_resource_cabi::<$ty >
+                        (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) } } #[unsafe
+                        (export_name =
+                        "cabi_post_fastertools:mcp/resource-handler@0.1.1#handle-read-resource")]
+                        unsafe extern "C" fn _post_return_handle_read_resource(arg0 : *
+                        mut u8,) { unsafe { $($path_to_types)*::
+                        __post_return_handle_read_resource::<$ty > (arg0) } } #[unsafe
+                        (export_name =
+                        "fastertools:mcp/resource-handler@0.1.1#handle-subscribe-resource")]
+                        unsafe extern "C" fn export_handle_subscribe_resource(arg0 : *
+                        mut u8, arg1 : usize, arg2 : i32, arg3 : * mut u8, arg4 : usize,)
+                        -> * mut u8 { unsafe { $($path_to_types)*::
+                        _export_handle_subscribe_resource_cabi::<$ty > (arg0, arg1, arg2,
+                        arg3, arg4) } } #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/resource-handler@0.1.1#handle-subscribe-resource")]
+                        unsafe extern "C" fn _post_return_handle_subscribe_resource(arg0
+                        : * mut u8,) { unsafe { $($path_to_types)*::
+                        __post_return_handle_subscribe_resource::<$ty > (arg0) } }
+                        #[unsafe (export_name =
+                        "fastertools:mcp/resource-handler@0.1.1#handle-unsubscribe-resource")]
+                        unsafe extern "C" fn export_handle_unsubscribe_resource(arg0 : *
+                        mut u8, arg1 : usize, arg2 : i32, arg3 : * mut u8, arg4 : usize,)
+                        -> * mut u8 { unsafe { $($path_to_types)*::
+                        _export_handle_unsubscribe_resource_cabi::<$ty > (arg0, arg1,
+                        arg2, arg3, arg4) } } #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/resource-handler@0.1.1#handle-unsubscribe-resource")]
+                        unsafe extern "C" fn
+                        _post_return_handle_unsubscribe_resource(arg0 : * mut u8,) {
+                        unsafe { $($path_to_types)*::
+                        __post_return_handle_unsubscribe_resource::<$ty > (arg0) } } };
+                    };
+                }
+                #[doc(hidden)]
+                pub(crate) use __export_fastertools_mcp_resource_handler_0_1_1_cabi;
+                #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+                #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
+                struct _RetArea(
+                    [::core::mem::MaybeUninit<
+                        u8,
+                    >; 9 * ::core::mem::size_of::<*const u8>()],
+                );
+                static mut _RET_AREA: _RetArea = _RetArea(
+                    [::core::mem::MaybeUninit::uninit(); 9
+                        * ::core::mem::size_of::<*const u8>()],
+                );
+            }
+            /// Prompt handler capability - implement this to provide prompts
+            #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
+            pub mod prompt_handler {
+                #[used]
+                #[doc(hidden)]
+                static __FORCE_SECTION_REF: fn() = super::super::super::super::__link_custom_section_describing_imports;
+                use super::super::super::super::_rt;
+                pub type McpError = super::super::super::super::fastertools::mcp::types::McpError;
+                pub type ListPromptsRequest = super::super::super::super::fastertools::mcp::prompts::ListPromptsRequest;
+                pub type ListPromptsResponse = super::super::super::super::fastertools::mcp::prompts::ListPromptsResponse;
+                pub type GetPromptRequest = super::super::super::super::fastertools::mcp::prompts::GetPromptRequest;
+                pub type GetPromptResponse = super::super::super::super::fastertools::mcp::prompts::GetPromptResponse;
                 #[doc(hidden)]
                 #[allow(non_snake_case)]
                 pub unsafe fn _export_handle_list_prompts_cabi<T: Guest>(
@@ -19407,210 +19655,57 @@ pub mod exports {
                     }
                 }
                 pub trait Guest {
-                    /// Core handler functions that implementations must provide
-                    /// Handle session initialization
-                    fn handle_initialize(
-                        request: InitializeRequest,
-                    ) -> Result<InitializeResponse, McpError>;
-                    /// Handle initialization complete notification
-                    fn handle_initialized() -> Result<(), McpError>;
-                    /// Handle ping request
-                    fn handle_ping() -> Result<(), McpError>;
-                    /// Handle shutdown request
-                    fn handle_shutdown() -> Result<(), McpError>;
-                    /// Tool operations
-                    fn handle_list_tools(
-                        request: ListToolsRequest,
-                    ) -> Result<ListToolsResponse, McpError>;
-                    fn handle_call_tool(
-                        request: CallToolRequest,
-                    ) -> Result<ToolResult, McpError>;
-                    /// Resource operations
-                    fn handle_list_resources(
-                        request: ListResourcesRequest,
-                    ) -> Result<ListResourcesResponse, McpError>;
-                    fn handle_list_resource_templates(
-                        request: ListTemplatesRequest,
-                    ) -> Result<ListTemplatesResponse, McpError>;
-                    fn handle_read_resource(
-                        request: ReadResourceRequest,
-                    ) -> Result<ReadResourceResponse, McpError>;
-                    fn handle_subscribe_resource(
-                        request: SubscribeRequest,
-                    ) -> Result<(), McpError>;
-                    fn handle_unsubscribe_resource(
-                        request: UnsubscribeRequest,
-                    ) -> Result<(), McpError>;
-                    /// Prompt operations
+                    /// List available prompts
                     fn handle_list_prompts(
                         request: ListPromptsRequest,
                     ) -> Result<ListPromptsResponse, McpError>;
+                    /// Get a specific prompt
                     fn handle_get_prompt(
                         request: GetPromptRequest,
                     ) -> Result<GetPromptResponse, McpError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_fastertools_mcp_handler_0_1_0_cabi {
+                macro_rules! __export_fastertools_mcp_prompt_handler_0_1_1_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-initialize")] unsafe extern
-                        "C" fn export_handle_initialize(arg0 : * mut u8,) -> * mut u8 {
+                        "fastertools:mcp/prompt-handler@0.1.1#handle-list-prompts")]
+                        unsafe extern "C" fn export_handle_list_prompts(arg0 : i32, arg1
+                        : * mut u8, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5 :
+                        usize, arg6 : i32, arg7 : * mut u8, arg8 : usize,) -> * mut u8 {
                         unsafe { $($path_to_types)*::
-                        _export_handle_initialize_cabi::<$ty > (arg0) } } #[unsafe
-                        (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-initialize")]
-                        unsafe extern "C" fn _post_return_handle_initialize(arg0 : * mut
-                        u8,) { unsafe { $($path_to_types)*::
-                        __post_return_handle_initialize::<$ty > (arg0) } } #[unsafe
-                        (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-initialized")] unsafe
-                        extern "C" fn export_handle_initialized() -> * mut u8 { unsafe {
-                        $($path_to_types)*:: _export_handle_initialized_cabi::<$ty > () }
-                        } #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-initialized")]
-                        unsafe extern "C" fn _post_return_handle_initialized(arg0 : * mut
-                        u8,) { unsafe { $($path_to_types)*::
-                        __post_return_handle_initialized::<$ty > (arg0) } } #[unsafe
-                        (export_name = "fastertools:mcp/handler@0.1.0#handle-ping")]
-                        unsafe extern "C" fn export_handle_ping() -> * mut u8 { unsafe {
-                        $($path_to_types)*:: _export_handle_ping_cabi::<$ty > () } }
-                        #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-ping")] unsafe
-                        extern "C" fn _post_return_handle_ping(arg0 : * mut u8,) { unsafe
-                        { $($path_to_types)*:: __post_return_handle_ping::<$ty > (arg0) }
-                        } #[unsafe (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-shutdown")] unsafe extern
-                        "C" fn export_handle_shutdown() -> * mut u8 { unsafe {
-                        $($path_to_types)*:: _export_handle_shutdown_cabi::<$ty > () } }
-                        #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-shutdown")]
-                        unsafe extern "C" fn _post_return_handle_shutdown(arg0 : * mut
-                        u8,) { unsafe { $($path_to_types)*::
-                        __post_return_handle_shutdown::<$ty > (arg0) } } #[unsafe
-                        (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-list-tools")] unsafe extern
-                        "C" fn export_handle_list_tools(arg0 : i32, arg1 : * mut u8, arg2
-                        : usize, arg3 : i32, arg4 : * mut u8, arg5 : usize, arg6 : i32,
-                        arg7 : * mut u8, arg8 : usize,) -> * mut u8 { unsafe {
-                        $($path_to_types)*:: _export_handle_list_tools_cabi::<$ty >
-                        (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) } }
-                        #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-list-tools")]
-                        unsafe extern "C" fn _post_return_handle_list_tools(arg0 : * mut
-                        u8,) { unsafe { $($path_to_types)*::
-                        __post_return_handle_list_tools::<$ty > (arg0) } } #[unsafe
-                        (export_name = "fastertools:mcp/handler@0.1.0#handle-call-tool")]
-                        unsafe extern "C" fn export_handle_call_tool(arg0 : * mut u8,
-                        arg1 : usize, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 :
-                        i32, arg6 : * mut u8, arg7 : usize, arg8 : i32, arg9 : * mut u8,
-                        arg10 : usize,) -> * mut u8 { unsafe { $($path_to_types)*::
-                        _export_handle_call_tool_cabi::<$ty > (arg0, arg1, arg2, arg3,
-                        arg4, arg5, arg6, arg7, arg8, arg9, arg10) } } #[unsafe
-                        (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-call-tool")]
-                        unsafe extern "C" fn _post_return_handle_call_tool(arg0 : * mut
-                        u8,) { unsafe { $($path_to_types)*::
-                        __post_return_handle_call_tool::<$ty > (arg0) } } #[unsafe
-                        (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-list-resources")] unsafe
-                        extern "C" fn export_handle_list_resources(arg0 : i32, arg1 : *
-                        mut u8, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5 : usize,
-                        arg6 : i32, arg7 : * mut u8, arg8 : usize,) -> * mut u8 { unsafe
-                        { $($path_to_types)*:: _export_handle_list_resources_cabi::<$ty >
-                        (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) } }
-                        #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-list-resources")]
-                        unsafe extern "C" fn _post_return_handle_list_resources(arg0 : *
-                        mut u8,) { unsafe { $($path_to_types)*::
-                        __post_return_handle_list_resources::<$ty > (arg0) } } #[unsafe
-                        (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-list-resource-templates")]
-                        unsafe extern "C" fn export_handle_list_resource_templates(arg0 :
-                        i32, arg1 : * mut u8, arg2 : usize, arg3 : i32, arg4 : * mut u8,
-                        arg5 : usize, arg6 : i32, arg7 : * mut u8, arg8 : usize,) -> *
-                        mut u8 { unsafe { $($path_to_types)*::
-                        _export_handle_list_resource_templates_cabi::<$ty > (arg0, arg1,
-                        arg2, arg3, arg4, arg5, arg6, arg7, arg8) } } #[unsafe
-                        (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-list-resource-templates")]
-                        unsafe extern "C" fn
-                        _post_return_handle_list_resource_templates(arg0 : * mut u8,) {
-                        unsafe { $($path_to_types)*::
-                        __post_return_handle_list_resource_templates::<$ty > (arg0) } }
-                        #[unsafe (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-read-resource")] unsafe
-                        extern "C" fn export_handle_read_resource(arg0 : * mut u8, arg1 :
-                        usize, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 : i32,
-                        arg6 : * mut u8, arg7 : usize,) -> * mut u8 { unsafe {
-                        $($path_to_types)*:: _export_handle_read_resource_cabi::<$ty >
-                        (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) } } #[unsafe
-                        (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-read-resource")]
-                        unsafe extern "C" fn _post_return_handle_read_resource(arg0 : *
-                        mut u8,) { unsafe { $($path_to_types)*::
-                        __post_return_handle_read_resource::<$ty > (arg0) } } #[unsafe
-                        (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-subscribe-resource")]
-                        unsafe extern "C" fn export_handle_subscribe_resource(arg0 : *
-                        mut u8, arg1 : usize, arg2 : i32, arg3 : * mut u8, arg4 : usize,)
-                        -> * mut u8 { unsafe { $($path_to_types)*::
-                        _export_handle_subscribe_resource_cabi::<$ty > (arg0, arg1, arg2,
-                        arg3, arg4) } } #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-subscribe-resource")]
-                        unsafe extern "C" fn _post_return_handle_subscribe_resource(arg0
-                        : * mut u8,) { unsafe { $($path_to_types)*::
-                        __post_return_handle_subscribe_resource::<$ty > (arg0) } }
-                        #[unsafe (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-unsubscribe-resource")]
-                        unsafe extern "C" fn export_handle_unsubscribe_resource(arg0 : *
-                        mut u8, arg1 : usize, arg2 : i32, arg3 : * mut u8, arg4 : usize,)
-                        -> * mut u8 { unsafe { $($path_to_types)*::
-                        _export_handle_unsubscribe_resource_cabi::<$ty > (arg0, arg1,
-                        arg2, arg3, arg4) } } #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-unsubscribe-resource")]
-                        unsafe extern "C" fn
-                        _post_return_handle_unsubscribe_resource(arg0 : * mut u8,) {
-                        unsafe { $($path_to_types)*::
-                        __post_return_handle_unsubscribe_resource::<$ty > (arg0) } }
-                        #[unsafe (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-list-prompts")] unsafe
-                        extern "C" fn export_handle_list_prompts(arg0 : i32, arg1 : * mut
-                        u8, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5 : usize, arg6
-                        : i32, arg7 : * mut u8, arg8 : usize,) -> * mut u8 { unsafe {
-                        $($path_to_types)*:: _export_handle_list_prompts_cabi::<$ty >
-                        (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) } }
-                        #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-list-prompts")]
+                        _export_handle_list_prompts_cabi::<$ty > (arg0, arg1, arg2, arg3,
+                        arg4, arg5, arg6, arg7, arg8) } } #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/prompt-handler@0.1.1#handle-list-prompts")]
                         unsafe extern "C" fn _post_return_handle_list_prompts(arg0 : *
                         mut u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_list_prompts::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "fastertools:mcp/handler@0.1.0#handle-get-prompt")] unsafe extern
-                        "C" fn export_handle_get_prompt(arg0 : * mut u8, arg1 : usize,
-                        arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 : i32, arg6 : *
-                        mut u8, arg7 : usize, arg8 : i32, arg9 : * mut u8, arg10 :
-                        usize,) -> * mut u8 { unsafe { $($path_to_types)*::
+                        "fastertools:mcp/prompt-handler@0.1.1#handle-get-prompt")] unsafe
+                        extern "C" fn export_handle_get_prompt(arg0 : * mut u8, arg1 :
+                        usize, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 : i32,
+                        arg6 : * mut u8, arg7 : usize, arg8 : i32, arg9 : * mut u8, arg10
+                        : usize,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_handle_get_prompt_cabi::<$ty > (arg0, arg1, arg2, arg3,
                         arg4, arg5, arg6, arg7, arg8, arg9, arg10) } } #[unsafe
                         (export_name =
-                        "cabi_post_fastertools:mcp/handler@0.1.0#handle-get-prompt")]
+                        "cabi_post_fastertools:mcp/prompt-handler@0.1.1#handle-get-prompt")]
                         unsafe extern "C" fn _post_return_handle_get_prompt(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_get_prompt::<$ty > (arg0) } } };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_fastertools_mcp_handler_0_1_0_cabi;
+                pub(crate) use __export_fastertools_mcp_prompt_handler_0_1_1_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
                     [::core::mem::MaybeUninit<
                         u8,
-                    >; 16 + 19 * ::core::mem::size_of::<*const u8>()],
+                    >; 9 * ::core::mem::size_of::<*const u8>()],
                 );
                 static mut _RET_AREA: _RetArea = _RetArea(
-                    [::core::mem::MaybeUninit::uninit(); 16
-                        + 19 * ::core::mem::size_of::<*const u8>()],
+                    [::core::mem::MaybeUninit::uninit(); 9
+                        * ::core::mem::size_of::<*const u8>()],
                 );
             }
         }
@@ -19777,26 +19872,36 @@ mod _rt {
 /// ```
 #[allow(unused_macros)]
 #[doc(hidden)]
-macro_rules! __export_mcp_server_impl {
+macro_rules! __export_weather_server_impl {
     ($ty:ident) => {
         self::export!($ty with_types_in self);
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::fastertools::mcp::handler::__export_fastertools_mcp_handler_0_1_0_cabi!($ty
-        with_types_in $($path_to_types_root)*:: exports::fastertools::mcp::handler);
+        exports::fastertools::mcp::core::__export_fastertools_mcp_core_0_1_1_cabi!($ty
+        with_types_in $($path_to_types_root)*:: exports::fastertools::mcp::core);
+        $($path_to_types_root)*::
+        exports::fastertools::mcp::tool_handler::__export_fastertools_mcp_tool_handler_0_1_1_cabi!($ty
+        with_types_in $($path_to_types_root)*:: exports::fastertools::mcp::tool_handler);
+        $($path_to_types_root)*::
+        exports::fastertools::mcp::resource_handler::__export_fastertools_mcp_resource_handler_0_1_1_cabi!($ty
+        with_types_in $($path_to_types_root)*::
+        exports::fastertools::mcp::resource_handler); $($path_to_types_root)*::
+        exports::fastertools::mcp::prompt_handler::__export_fastertools_mcp_prompt_handler_0_1_1_cabi!($ty
+        with_types_in $($path_to_types_root)*::
+        exports::fastertools::mcp::prompt_handler);
     };
 }
 #[doc(inline)]
-pub(crate) use __export_mcp_server_impl as export;
+pub(crate) use __export_weather_server_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:example:weather:mcp-server:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:example:weather:weather-server:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 6145] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x80/\x01A\x02\x01A(\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 6347] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc60\x01A\x02\x01A.\x01\
 B.\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01o\x02ss\x01p\x02\x04\0\
 \x0bmeta-fields\x03\0\x03\x01p\x01\x01k\x05\x01ku\x01ks\x01r\x03\x08audience\x06\
 \x08priority\x07\x0dlast-modified\x08\x04\0\x0bannotations\x03\0\x09\x01r\x02\x04\
@@ -19819,7 +19924,7 @@ ol-not-found\0\0\x10prompt-not-found\0\0\x0cunauthorized\0\0\x0crate-limited\0\0
 \x07timeout\0\0\x09cancelled\0\0\x0bcustom-code\x01z\0\x04\0\x0aerror-code\x03\0\
 %\x01k$\x01r\x03\x04code&\x07messages\x04data'\x04\0\x09mcp-error\x03\0(\x01s\x04\
 \0\x06cursor\x03\0*\x01s\x04\0\x0eprogress-token\x03\0,\x03\0\x1bfastertools:mcp\
-/types@0.1.0\x05\0\x02\x03\0\0\x09mcp-error\x02\x03\0\0\x0bmeta-fields\x01B'\x02\
+/types@0.1.1\x05\0\x02\x03\0\0\x09mcp-error\x02\x03\0\0\x0bmeta-fields\x01B'\x02\
 \x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x02\x04\0\x0bmeta-fi\
 elds\x03\0\x02\x01s\x04\0\x10protocol-version\x03\0\x04\x01ks\x01r\x03\x04names\x07\
 versions\x05title\x06\x04\0\x13implementation-info\x03\0\x07\x01k\x7f\x01r\x01\x0c\
@@ -19836,7 +19941,7 @@ rsion\x05\x0ccapabilities\x1a\x0bserver-info\x08\x0cinstructions\x06\x04meta\x0c
 \x04\0\x13initialize-response\x03\0\x1d\x01j\x01\x1e\x01\x01\x01@\x01\x07request\
 \x1c\0\x1f\x04\0\x0ainitialize\x01\x20\x01j\0\x01\x01\x01@\0\0!\x04\0\x0binitial\
 ized\x01\"\x04\0\x04ping\x01\"\x04\0\x08shutdown\x01\"\x03\0\x1dfastertools:mcp/\
-session@0.1.0\x05\x03\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\
+session@0.1.1\x05\x03\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\
 \x03\0\0\x0dbase-metadata\x02\x03\0\0\x06cursor\x02\x03\0\0\x0eprogress-token\x01\
 B+\x02\x03\x02\x01\x04\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\x05\x04\0\x0a\
 json-value\x03\0\x02\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\x04\x02\x03\x02\
@@ -19854,7 +19959,7 @@ tools\x20\x0bnext-cursor\x1c\x04meta\x15\x04\0\x13list-tools-response\x03\0!\x01
 r\x04\x04names\x09arguments\x19\x0eprogress-token\x1d\x04meta\x15\x04\0\x11call-\
 tool-request\x03\0#\x01j\x01\"\x01\x05\x01@\x01\x07request\x1f\0%\x04\0\x0alist-\
 tools\x01&\x01j\x01\x1b\x01\x05\x01@\x01\x07request$\0'\x04\0\x09call-tool\x01(\x03\
-\0\x1bfastertools:mcp/tools@0.1.0\x05\x09\x02\x03\0\0\x0bannotations\x02\x03\0\0\
+\0\x1bfastertools:mcp/tools@0.1.1\x05\x09\x02\x03\0\0\x0bannotations\x02\x03\0\0\
 \x11resource-contents\x01B9\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\0\x02\x03\
 \x02\x01\x06\x04\0\x0dbase-metadata\x03\0\x02\x02\x03\x02\x01\x0a\x04\0\x0bannot\
 ations\x03\0\x04\x02\x03\x02\x01\x02\x04\0\x0bmeta-fields\x03\0\x06\x02\x03\x02\x01\
@@ -19877,7 +19982,7 @@ ris\x04meta\x11\x04\0\x13unsubscribe-request\x03\0)\x01j\x01\x1c\x01\x01\x01@\x0
 quest\x1e\0-\x04\0\x17list-resource-templates\x01.\x01j\x01&\x01\x01\x01@\x01\x07\
 request#\0/\x04\0\x0dread-resource\x010\x01j\0\x01\x01\x01@\x01\x07request(\01\x04\
 \0\x12subscribe-resource\x012\x01@\x01\x07request*\01\x04\0\x14unsubscribe-resou\
-rce\x013\x03\0\x1ffastertools:mcp/resources@0.1.0\x05\x0c\x02\x03\0\0\x04role\x01\
+rce\x013\x03\0\x1ffastertools:mcp/resources@0.1.1\x05\x0c\x02\x03\0\0\x04role\x01\
 B.\x02\x03\x02\x01\x0d\x04\0\x04role\x03\0\0\x02\x03\x02\x01\x04\x04\0\x0dconten\
 t-block\x03\0\x02\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\x04\x02\x03\x02\x01\
 \x06\x04\0\x0dbase-metadata\x03\0\x06\x02\x03\x02\x01\x02\x04\0\x0bmeta-fields\x03\
@@ -19893,43 +19998,48 @@ r\x04\x04names\x09arguments\"\x0eprogress-token\x1a\x04meta\x14\x04\0\x12get-pro
 mpt-request\x03\0#\x01p\x18\x01r\x03\x0bdescription\x0e\x08messages%\x04meta\x14\
 \x04\0\x13get-prompt-response\x03\0&\x01j\x01\x1f\x01\x05\x01@\x01\x07request\x1c\
 \0(\x04\0\x0clist-prompts\x01)\x01j\x01'\x01\x05\x01@\x01\x07request$\0*\x04\0\x0a\
-get-prompt\x01+\x03\0\x1dfastertools:mcp/prompts@0.1.0\x05\x0e\x02\x03\0\x01\x12\
-initialize-request\x02\x03\0\x01\x13initialize-response\x02\x03\0\x02\x12list-to\
-ols-request\x02\x03\0\x02\x13list-tools-response\x02\x03\0\x02\x11call-tool-requ\
-est\x02\x03\0\x02\x0btool-result\x02\x03\0\x03\x16list-resources-request\x02\x03\
-\0\x03\x17list-resources-response\x02\x03\0\x03\x16list-templates-request\x02\x03\
-\0\x03\x17list-templates-response\x02\x03\0\x03\x15read-resource-request\x02\x03\
-\0\x03\x16read-resource-response\x02\x03\0\x03\x11subscribe-request\x02\x03\0\x03\
-\x13unsubscribe-request\x02\x03\0\x04\x14list-prompts-request\x02\x03\0\x04\x15l\
-ist-prompts-response\x02\x03\0\x04\x12get-prompt-request\x02\x03\0\x04\x13get-pr\
-ompt-response\x01BG\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\
-\x0f\x04\0\x12initialize-request\x03\0\x02\x02\x03\x02\x01\x10\x04\0\x13initiali\
-ze-response\x03\0\x04\x02\x03\x02\x01\x11\x04\0\x12list-tools-request\x03\0\x06\x02\
-\x03\x02\x01\x12\x04\0\x13list-tools-response\x03\0\x08\x02\x03\x02\x01\x13\x04\0\
-\x11call-tool-request\x03\0\x0a\x02\x03\x02\x01\x14\x04\0\x0btool-result\x03\0\x0c\
-\x02\x03\x02\x01\x15\x04\0\x16list-resources-request\x03\0\x0e\x02\x03\x02\x01\x16\
-\x04\0\x17list-resources-response\x03\0\x10\x02\x03\x02\x01\x17\x04\0\x16list-te\
-mplates-request\x03\0\x12\x02\x03\x02\x01\x18\x04\0\x17list-templates-response\x03\
-\0\x14\x02\x03\x02\x01\x19\x04\0\x15read-resource-request\x03\0\x16\x02\x03\x02\x01\
-\x1a\x04\0\x16read-resource-response\x03\0\x18\x02\x03\x02\x01\x1b\x04\0\x11subs\
-cribe-request\x03\0\x1a\x02\x03\x02\x01\x1c\x04\0\x13unsubscribe-request\x03\0\x1c\
-\x02\x03\x02\x01\x1d\x04\0\x14list-prompts-request\x03\0\x1e\x02\x03\x02\x01\x1e\
-\x04\0\x15list-prompts-response\x03\0\x20\x02\x03\x02\x01\x1f\x04\0\x12get-promp\
-t-request\x03\0\"\x02\x03\x02\x01\x20\x04\0\x13get-prompt-response\x03\0$\x01j\x01\
-\x05\x01\x01\x01@\x01\x07request\x03\0&\x04\0\x11handle-initialize\x01'\x01j\0\x01\
-\x01\x01@\0\0(\x04\0\x12handle-initialized\x01)\x04\0\x0bhandle-ping\x01)\x04\0\x0f\
-handle-shutdown\x01)\x01j\x01\x09\x01\x01\x01@\x01\x07request\x07\0*\x04\0\x11ha\
-ndle-list-tools\x01+\x01j\x01\x0d\x01\x01\x01@\x01\x07request\x0b\0,\x04\0\x10ha\
-ndle-call-tool\x01-\x01j\x01\x11\x01\x01\x01@\x01\x07request\x0f\0.\x04\0\x15han\
-dle-list-resources\x01/\x01j\x01\x15\x01\x01\x01@\x01\x07request\x13\00\x04\0\x1e\
-handle-list-resource-templates\x011\x01j\x01\x19\x01\x01\x01@\x01\x07request\x17\
-\02\x04\0\x14handle-read-resource\x013\x01@\x01\x07request\x1b\0(\x04\0\x19handl\
-e-subscribe-resource\x014\x01@\x01\x07request\x1d\0(\x04\0\x1bhandle-unsubscribe\
--resource\x015\x01j\x01!\x01\x01\x01@\x01\x07request\x1f\06\x04\0\x13handle-list\
--prompts\x017\x01j\x01%\x01\x01\x01@\x01\x07request#\08\x04\0\x11handle-get-prom\
-pt\x019\x04\0\x1dfastertools:mcp/handler@0.1.0\x05!\x04\0\x1aexample:weather/mcp\
--server\x04\0\x0b\x10\x01\0\x0amcp-server\x03\0\0\0G\x09producers\x01\x0cprocess\
-ed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+get-prompt\x01+\x03\0\x1dfastertools:mcp/prompts@0.1.1\x05\x0e\x02\x03\0\x01\x12\
+initialize-request\x02\x03\0\x01\x13initialize-response\x01B\x0e\x02\x03\x02\x01\
+\x01\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x0f\x04\0\x12initialize-request\x03\
+\0\x02\x02\x03\x02\x01\x10\x04\0\x13initialize-response\x03\0\x04\x01j\x01\x05\x01\
+\x01\x01@\x01\x07request\x03\0\x06\x04\0\x11handle-initialize\x01\x07\x01j\0\x01\
+\x01\x01@\0\0\x08\x04\0\x12handle-initialized\x01\x09\x04\0\x0bhandle-ping\x01\x09\
+\x04\0\x0fhandle-shutdown\x01\x09\x04\0\x1afastertools:mcp/core@0.1.1\x05\x11\x02\
+\x03\0\x02\x12list-tools-request\x02\x03\0\x02\x13list-tools-response\x02\x03\0\x02\
+\x11call-tool-request\x02\x03\0\x02\x0btool-result\x01B\x10\x02\x03\x02\x01\x01\x04\
+\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x12\x04\0\x12list-tools-request\x03\0\x02\
+\x02\x03\x02\x01\x13\x04\0\x13list-tools-response\x03\0\x04\x02\x03\x02\x01\x14\x04\
+\0\x11call-tool-request\x03\0\x06\x02\x03\x02\x01\x15\x04\0\x0btool-result\x03\0\
+\x08\x01j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x0a\x04\0\x11handle-list-too\
+ls\x01\x0b\x01j\x01\x09\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x10handle-ca\
+ll-tool\x01\x0d\x04\0\"fastertools:mcp/tool-handler@0.1.1\x05\x16\x02\x03\0\x03\x16\
+list-resources-request\x02\x03\0\x03\x17list-resources-response\x02\x03\0\x03\x16\
+list-templates-request\x02\x03\0\x03\x17list-templates-response\x02\x03\0\x03\x15\
+read-resource-request\x02\x03\0\x03\x16read-resource-response\x02\x03\0\x03\x11s\
+ubscribe-request\x02\x03\0\x03\x13unsubscribe-request\x01B\x20\x02\x03\x02\x01\x01\
+\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x17\x04\0\x16list-resources-request\x03\
+\0\x02\x02\x03\x02\x01\x18\x04\0\x17list-resources-response\x03\0\x04\x02\x03\x02\
+\x01\x19\x04\0\x16list-templates-request\x03\0\x06\x02\x03\x02\x01\x1a\x04\0\x17\
+list-templates-response\x03\0\x08\x02\x03\x02\x01\x1b\x04\0\x15read-resource-req\
+uest\x03\0\x0a\x02\x03\x02\x01\x1c\x04\0\x16read-resource-response\x03\0\x0c\x02\
+\x03\x02\x01\x1d\x04\0\x11subscribe-request\x03\0\x0e\x02\x03\x02\x01\x1e\x04\0\x13\
+unsubscribe-request\x03\0\x10\x01j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x12\
+\x04\0\x15handle-list-resources\x01\x13\x01j\x01\x09\x01\x01\x01@\x01\x07request\
+\x07\0\x14\x04\0\x1ehandle-list-resource-templates\x01\x15\x01j\x01\x0d\x01\x01\x01\
+@\x01\x07request\x0b\0\x16\x04\0\x14handle-read-resource\x01\x17\x01j\0\x01\x01\x01\
+@\x01\x07request\x0f\0\x18\x04\0\x19handle-subscribe-resource\x01\x19\x01@\x01\x07\
+request\x11\0\x18\x04\0\x1bhandle-unsubscribe-resource\x01\x1a\x04\0&fastertools\
+:mcp/resource-handler@0.1.1\x05\x1f\x02\x03\0\x04\x14list-prompts-request\x02\x03\
+\0\x04\x15list-prompts-response\x02\x03\0\x04\x12get-prompt-request\x02\x03\0\x04\
+\x13get-prompt-response\x01B\x10\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\0\x02\
+\x03\x02\x01\x20\x04\0\x14list-prompts-request\x03\0\x02\x02\x03\x02\x01!\x04\0\x15\
+list-prompts-response\x03\0\x04\x02\x03\x02\x01\"\x04\0\x12get-prompt-request\x03\
+\0\x06\x02\x03\x02\x01#\x04\0\x13get-prompt-response\x03\0\x08\x01j\x01\x05\x01\x01\
+\x01@\x01\x07request\x03\0\x0a\x04\0\x13handle-list-prompts\x01\x0b\x01j\x01\x09\
+\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x11handle-get-prompt\x01\x0d\x04\0$\
+fastertools:mcp/prompt-handler@0.1.1\x05$\x04\0\x1eexample:weather/weather-serve\
+r\x04\0\x0b\x14\x01\0\x0eweather-server\x03\0\0\0G\x09producers\x01\x0cprocessed\
+-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

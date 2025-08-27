@@ -22,10 +22,10 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 path = "wit"
-world = "mcp-server"
+world = "weather-server"
 
 [package.metadata.component.target.dependencies]
-"fastertools:mcp" = "0.1.0"
+"fastertools:mcp" = "0.1.1"
 
 [profile.release]
 # Optimize for small binary size
