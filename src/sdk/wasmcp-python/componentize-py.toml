@@ -1,5 +1,0 @@
-# componentize-py configuration for wasmcp Python SDK
-# This file is bundled with the SDK and auto-discovered by componentize-py
-
-wit_directory = "wit"
-bindings = "wit"

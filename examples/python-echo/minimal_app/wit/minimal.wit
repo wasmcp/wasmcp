@@ -1,0 +1,9 @@
+package local:minimal@1.0.0;
+
+interface handler {
+    run: func();
+}
+
+world minimal {
+    export handler;
+}

@@ -1,0 +1,9 @@
+
+[tool.componentize-py.dependencies]
+# This line tells the tool:
+# "To resolve the 'mcp:sdk' WIT package,
+# look in this specific file path."
+"wasmcp:mcp" = { path = "../../src/sdk/wasmcp-python/src/wasmcp/wit" }
+
+# ...other dependencies like spin...
+"fermyon:spin" = { path = ".venv/lib/python3.11/site-packages/spin_sdk/wit" }

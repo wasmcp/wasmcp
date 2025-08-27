@@ -31,7 +31,9 @@ class WasmcpHandler:
         self.resources = self._resources
         self.prompts = self._prompts
         
-        # Handler will be used by the export bridge at build time
+        # Auto-register this handler for WIT bindings
+        from .wit_impl import register_handler
+        register_handler(self)
     
     @property
     def tool(self):

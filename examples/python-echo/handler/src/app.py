@@ -2,87 +2,41 @@
 
 from wasmcp import Handler
 import json
-from urllib.parse import urlparse, quote
-from wit_world.imports import wasi_http_types, outgoing_handler, poll
-from wit_world.types import Ok
+from urllib.parse import quote
 from typing import Optional
+
+# Import Spin SDK capabilities
+from spin_sdk import http
+from spin_sdk.http import Request, Response
+from spin_sdk.key_value import Store
+
+### Pay attention to correcting this
+# from mcp_sdk import api as mcp
 
 # Create handler instance
 handler = Handler("echo-weather-handler")
 
 
 def make_http_request(url: str) -> Optional[str]:
-    """Make a simple HTTP GET request using WASI HTTP bindings."""
-    # Parse the URL
-    parsed = urlparse(url)
-    
-    # Create the request headers
-    headers = wasi_http_types.Fields.from_list([])
-    
-    # Create the outgoing request
-    request = wasi_http_types.OutgoingRequest(headers)
-    
-    # Set the scheme
-    if parsed.scheme == "https":
-        request.set_scheme(wasi_http_types.Scheme_Https())
-    else:
-        request.set_scheme(wasi_http_types.Scheme_Http())
-    
-    # Set the authority (host:port)
-    request.set_authority(parsed.netloc)
-    
-    # Set the path with query
-    path = parsed.path if parsed.path else "/"
-    if parsed.query:
-        path += "?" + parsed.query
-    request.set_path_with_query(path)
-    
-    # Send the request
+    """Make a simple HTTP GET request using Spin SDK."""
     try:
-        future_response = outgoing_handler.handle(request, None)
+        # Use Spin SDK's http.send to make the request
+        req = Request("GET", url, {}, None)
+        resp = http.send(req)
         
-        # Poll until response is ready
-        pollable = future_response.subscribe()
-        poll.poll([pollable])
-        
-        # Get the response
-        response_result = future_response.get()
-        if response_result is None:
-            return None
-            
-        # Extract the actual response
-        if isinstance(response_result, Ok):
-            inner_result = response_result.value
-            if isinstance(inner_result, Ok):
-                response = inner_result.value
-                
-                # Read the response body
-                body = response.consume()
-                stream = body.stream()
-                
-                # Read chunks
-                data = bytearray()
-                while True:
-                    try:
-                        chunk = stream.blocking_read(8192)
-                        if isinstance(chunk, bytes):
-                            if len(chunk) == 0:
-                                break
-                            data.extend(chunk)
-                        else:
-                            # Handle other possible return types
-                            break
-                    except Exception as e:
-                        # StreamError_Closed is expected when stream ends
-                        if "Closed" in str(e):
-                            break
-                        raise
-                
-                return data.decode('utf-8', errors='replace')
+        # Return the response body as a string
+        if resp.status == 200:
+            return resp.body.decode('utf-8') if resp.body else None
+        else:
+            return json.dumps({
+                "error": f"HTTP request failed with status {resp.status}",
+                "url": url
+            })
     except Exception as e:
-        return f"Error: {str(e)}"
-    
-    return None
+        return json.dumps({
+            "error": f"HTTP request failed: {str(e)}",
+            "url": url
+        })
 
 
 @handler.tool
@@ -235,6 +189,46 @@ def weather_analysis_prompt(location: str = "your area") -> list:
         {"role": "system", "content": "You are a meteorologist providing weather analysis."},
         {"role": "user", "content": f"Analyze the weather patterns for {location} and provide insights."}
     ]
+
+
+@handler.tool(description="Store a value in Spin's key-value store")
+def kv_set(key: str, value: str) -> str:
+    """Store a value in Spin's key-value store.
+    
+    Args:
+        key: The key to store
+        value: The value to store
+        
+    Returns:
+        Success message or error
+    """
+    try:
+        store = Store.open("default")
+        store.set(key, value.encode('utf-8'))
+        return f"Successfully stored value for key: {key}"
+    except Exception as e:
+        return f"Failed to store value: {str(e)}"
+
+
+@handler.tool(description="Retrieve a value from Spin's key-value store")
+def kv_get(key: str) -> str:
+    """Retrieve a value from Spin's key-value store.
+    
+    Args:
+        key: The key to retrieve
+        
+    Returns:
+        The stored value or error message
+    """
+    try:
+        store = Store.open("default")
+        value = store.get(key)
+        if value:
+            return value.decode('utf-8')
+        else:
+            return f"Key not found: {key}"
+    except Exception as e:
+        return f"Failed to retrieve value: {str(e)}"
 
 
 # The handler instance is used by exports.py which implements the WIT interface
