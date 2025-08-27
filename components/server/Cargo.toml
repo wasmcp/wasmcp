@@ -23,6 +23,6 @@ path = "wit"
 world = "mcp-server"
 
 [package.metadata.component.target.dependencies]
-"wasmcp:mcp" = { path = "wit/deps/wasmcp" }
+"mcp:protocol" = { path = "wit/deps/mcp" }
 
 [workspace]
