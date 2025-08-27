@@ -9,10 +9,7 @@ pub use crate::bindings::fastertools::mcp::{
 };
 
 // Internal imports (not re-exported)
-use crate::bindings::fastertools::mcp::{
-    tools::Tool as McpTool,
-    types::{ContentBlock, TextContent},
-};
+use crate::bindings::fastertools::mcp::types::{ContentBlock, TextContent};
 
 /// Trait for MCP tools - async by default
 pub trait Tool: Sized {
