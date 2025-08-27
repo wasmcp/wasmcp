@@ -1,100 +1,120 @@
 mod bindings;
 
-use serde::Deserialize;
+pub struct Component;
 
-#[wasmcp_macros::mcp_tools]
-mod tools {
-    use super::*;
-    use spin_sdk::http::{Request, send};
-    
-    /// Echo a message back to the user
-    pub fn echo(message: String) -> Result<String, String> {
-        Ok(format!("Echo: {}", message))
+// Implement the core interface for initialization
+impl bindings::exports::fastertools::mcp::core::Guest for Component {
+    fn handle_initialize(_request: bindings::fastertools::mcp::session::InitializeRequest) 
+        -> Result<bindings::fastertools::mcp::session::InitializeResponse, bindings::fastertools::mcp::types::McpError> {
+        Ok(bindings::fastertools::mcp::session::InitializeResponse {
+            protocol_version: "2025-06-18".to_string(),
+            capabilities: bindings::fastertools::mcp::session::ServerCapabilities {
+                tools: Some(bindings::fastertools::mcp::session::ToolsCapability { 
+                    list_changed: Some(false) 
+                }),
+                // Not implementing resources or prompts - null components will handle these
+                resources: None,
+                prompts: None,
+                experimental: None,
+                logging: None,
+                completions: None,
+            },
+            server_info: bindings::fastertools::mcp::session::ImplementationInfo {
+                name: "{{project-name | snake_case}}".to_string(),
+                version: "0.1.0".to_string(),
+                title: Some("{{project-name | title_case}} Handler".to_string()),
+            },
+            instructions: None,
+            meta: None,
+        })
     }
     
-    /// Get weather information for a location
-    pub async fn get_weather(location: String) -> Result<String, String> {
-        #[derive(Deserialize)]
-        struct GeocodingResponse {
-            results: Option<Vec<Location>>,
-        }
-        
-        #[derive(Deserialize)]
-        struct Location {
-            latitude: f64,
-            longitude: f64,
-            name: String,
-            country: String,
-        }
-        
-        #[derive(Deserialize)]
-        struct WeatherResponse {
-            current_weather: CurrentWeather,
-        }
-        
-        #[derive(Deserialize)]
-        struct CurrentWeather {
-            temperature: f64,
-            windspeed: f64,
-            weathercode: i32,
-        }
-        
-        // Get coordinates for the location
-        let geocoding_url = format!(
-            "https://geocoding-api.open-meteo.com/v1/search?name={}&count=1&format=json",
-            url::form_urlencoded::byte_serialize(location.as_bytes()).collect::<String>()
-        );
-        
-        let geocoding_request = Request::get(&geocoding_url);
-        let geocoding_response: spin_sdk::http::Response = send(geocoding_request).await
-            .map_err(|e| format!("Failed to fetch location data: {:?}", e))?;
-        
-        let geocoding_body = geocoding_response.body().to_vec();
-        let geocoding: GeocodingResponse = serde_json::from_slice(&geocoding_body)
-            .map_err(|e| format!("Failed to parse location data: {}", e))?;
-        
-        let location_data = geocoding.results
-            .and_then(|r| r.into_iter().next())
-            .ok_or_else(|| format!("Location '{}' not found", location))?;
-        
-        // Get weather for the coordinates  
-        let weather_url = format!(
-            "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&current_weather=true",
-            location_data.latitude,
-            location_data.longitude
-        );
-        
-        let weather_request = Request::get(&weather_url);
-        let weather_response: spin_sdk::http::Response = send(weather_request).await
-            .map_err(|e| format!("Failed to fetch weather data: {:?}", e))?;
-        
-        let weather_body = weather_response.body().to_vec();
-        let weather: WeatherResponse = serde_json::from_slice(&weather_body)
-            .map_err(|e| format!("Failed to parse weather data: {}", e))?;
-        
-        let weather_description = match weather.current_weather.weathercode {
-            0 => "Clear sky",
-            1..=3 => "Partly cloudy",
-            45 | 48 => "Foggy",
-            51..=57 => "Drizzle",
-            61..=67 => "Rain",
-            71..=77 => "Snow",
-            80..=82 => "Rain showers",
-            85 | 86 => "Snow showers",
-            95 | 96 | 99 => "Thunderstorm",
-            _ => "Unknown",
-        };
-        
-        Ok(format!(
-            "Weather for {}, {}:\n🌡️ Temperature: {:.1}°C\n☁️ Conditions: {}\n💨 Wind: {:.1} km/h",
-            location_data.name,
-            location_data.country,
-            weather.current_weather.temperature,
-            weather_description,
-            weather.current_weather.windspeed
-        ))
+    fn handle_initialized() -> Result<(), bindings::fastertools::mcp::types::McpError> {
+        Ok(())
+    }
+    
+    fn handle_ping() -> Result<(), bindings::fastertools::mcp::types::McpError> {
+        Ok(())
+    }
+    
+    fn handle_shutdown() -> Result<(), bindings::fastertools::mcp::types::McpError> {
+        Ok(())
     }
 }
 
-// Users need to add this one line to export their component
+// Implement the tool handler interface
+impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
+    fn handle_list_tools(_request: bindings::fastertools::mcp::tools::ListToolsRequest) 
+        -> Result<bindings::fastertools::mcp::tools::ListToolsResponse, bindings::fastertools::mcp::types::McpError> {
+        Ok(bindings::fastertools::mcp::tools::ListToolsResponse {
+            tools: vec![
+                bindings::fastertools::mcp::tools::Tool {
+                    base: bindings::fastertools::mcp::types::BaseMetadata {
+                        name: "example_tool".to_string(),
+                        title: Some("Example Tool".to_string()),
+                    },
+                    description: Some("An example tool that demonstrates the pattern".to_string()),
+                    input_schema: r#"{"type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]}"#.to_string(),
+                    output_schema: None,
+                    annotations: None,
+                    meta: None,
+                },
+                // Add more tools here
+            ],
+            next_cursor: None,
+            meta: None,
+        })
+    }
+    
+    fn handle_call_tool(request: bindings::fastertools::mcp::tools::CallToolRequest) 
+        -> Result<bindings::fastertools::mcp::tools::ToolResult, bindings::fastertools::mcp::types::McpError> {
+        // Parse the arguments (they come as a JSON string)
+        let args = if let Some(args_str) = &request.arguments {
+            serde_json::from_str::<serde_json::Value>(args_str)
+                .map_err(|e| bindings::fastertools::mcp::types::McpError {
+                    code: bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
+                    message: format!("Invalid arguments: {}", e),
+                    data: None,
+                })?
+        } else {
+            serde_json::Value::Object(serde_json::Map::new())
+        };
+        
+        match request.name.as_str() {
+            "example_tool" => {
+                let message = args["message"].as_str()
+                    .ok_or_else(|| bindings::fastertools::mcp::types::McpError {
+                        code: bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
+                        message: "Missing message field".to_string(),
+                        data: None,
+                    })?;
+                
+                // Implement your tool logic here
+                let result = format!("Processed: {}", message);
+                
+                Ok(bindings::fastertools::mcp::tools::ToolResult {
+                    content: vec![bindings::fastertools::mcp::types::ContentBlock::Text(
+                        bindings::fastertools::mcp::types::TextContent {
+                            text: result,
+                            annotations: None,
+                            meta: None,
+                        }
+                    )],
+                    is_error: Some(false),
+                    structured_content: None,
+                    meta: None,
+                })
+            },
+            _ => Err(bindings::fastertools::mcp::types::McpError {
+                code: bindings::fastertools::mcp::types::ErrorCode::ToolNotFound,
+                message: format!("Unknown tool: {}", request.name),
+                data: None,
+            })
+        }
+    }
+}
+
+// Export the component
+// The WIT world (tools-handler) determines what interfaces are required
+// Resources and prompts will be provided by null components during composition
 bindings::export!(Component with_types_in bindings);
