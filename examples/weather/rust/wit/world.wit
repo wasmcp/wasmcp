@@ -8,6 +8,7 @@ world weather-tools {
     export fastertools:mcp/tool-handler@0.1.1;
     
     // No resource or prompt exports - this is a focused tool handler
-    // Servers that require resources/prompts won't accept this handler
-    // But tool-only servers will work perfectly
+    // Resources and prompts must be provided by null components during
+    // composition to satisfy the MCP server world.
+    // This allows the handler to focus only on what it implements
 }
