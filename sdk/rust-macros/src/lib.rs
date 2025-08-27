@@ -1,721 +1,376 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, ItemFn, ItemStruct, FnArg, Pat, Lit, Type};
+use syn::{parse_macro_input, ItemMod, ItemFn, Attribute, FnArg, Type, Pat};
+use proc_macro2::TokenStream as TokenStream2;
 
-const WIT_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/wit");
-
-/// The main entry point for an MCP server.
-/// 
-/// # Example
-/// 
-/// ```rust
-/// use wasmcp::prelude::*;
-/// 
-/// #[mcp::main]
-/// struct MyServer;
-/// ```
-/// 
-/// With state:
-/// ```rust
-/// #[mcp::main]
-/// struct MyServer {
-///     #[mcp::state]
-///     db: Database,
-/// }
-/// ```
+/// Mark a module as containing MCP tools.
+/// Functions in this module will be automatically registered as tools.
 #[proc_macro_attribute]
-pub fn main(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let input_struct = parse_macro_input!(input as ItemStruct);
-    let struct_name = &input_struct.ident;
-    let struct_def = &input_struct;
+pub fn mcp_tools(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let module = parse_macro_input!(input as ItemMod);
     
-    // Generate the component implementation
-    let output = quote! {
-        #struct_def
-        
-        // Thread-safe registration storage
-        use std::sync::Mutex;
-        static MCP_TOOLS: Mutex<Vec<wasmcp::runtime::ToolRegistration>> = Mutex::new(Vec::new());
-        static MCP_RESOURCES: Mutex<Vec<wasmcp::runtime::ResourceRegistration>> = Mutex::new(Vec::new());
-        static MCP_PROMPTS: Mutex<Vec<wasmcp::runtime::PromptRegistration>> = Mutex::new(Vec::new());
-        
-        // Registration functions called by tool/resource/prompt macros
-        #[doc(hidden)]
-        pub fn __mcp_register_tool(tool: wasmcp::runtime::ToolRegistration) {
-            MCP_TOOLS.lock().unwrap().push(tool);
+    // Collect all functions in the module as tools
+    let mut tool_defs = Vec::<TokenStream2>::new();
+    let mut tool_dispatches = Vec::<TokenStream2>::new();
+    
+    if let Some((_, items)) = &module.content {
+        for item in items.iter() {
+            if let syn::Item::Fn(func) = item {
+                let (def, dispatch) = generate_tool_info(func);
+                tool_defs.push(def);
+                tool_dispatches.push(dispatch);
+            }
         }
+    }
+    
+    let module_name = &module.ident;
+    
+    // Generate the component and tool handler implementation
+    quote! {
+        #module
         
-        #[doc(hidden)]
-        pub fn __mcp_register_resource(resource: wasmcp::runtime::ResourceRegistration) {
-            MCP_RESOURCES.lock().unwrap().push(resource);
-        }
+        pub struct Component;
         
-        #[doc(hidden)]
-        pub fn __mcp_register_prompt(prompt: wasmcp::runtime::PromptRegistration) {
-            MCP_PROMPTS.lock().unwrap().push(prompt);
-        }
-        
-        // Implement the Guest trait
-        impl wasmcp::bindings::exports::mcp::protocol::handler::Guest for #struct_name {
-            fn handle_initialize(
-                _request: wasmcp::InitializeRequest
-            ) -> Result<wasmcp::InitializeResponse, wasmcp::McpError> {
-                use wasmcp::{InitializeResponse, ServerCapabilities, ImplementationInfo, ToolsCapability};
-                
-                Ok(InitializeResponse {
-                    protocol_version: "1.0.0".to_string(),
-                    capabilities: ServerCapabilities {
-                        tools: if !MCP_TOOLS.lock().unwrap().is_empty() {
-                            Some(ToolsCapability { list_changed: None })
-                        } else {
-                            None
-                        },
-                        resources: if !MCP_RESOURCES.lock().unwrap().is_empty() {
-                            Some(wasmcp::ResourcesCapability { list_changed: None, subscribe: None })
-                        } else {
-                            None
-                        },
-                        prompts: if !MCP_PROMPTS.lock().unwrap().is_empty() {
-                            Some(wasmcp::PromptsCapability { list_changed: None })
-                        } else {
-                            None
-                        },
+        // Core implementation (always required)
+        impl crate::bindings::exports::fastertools::mcp::core::Guest for Component {
+            fn handle_initialize(_request: crate::bindings::fastertools::mcp::session::InitializeRequest) 
+                -> Result<crate::bindings::fastertools::mcp::session::InitializeResponse, crate::bindings::fastertools::mcp::types::McpError> {
+                Ok(crate::bindings::fastertools::mcp::session::InitializeResponse {
+                    protocol_version: "2025-06-18".to_string(),
+                    capabilities: crate::bindings::fastertools::mcp::session::ServerCapabilities {
+                        tools: Some(crate::bindings::fastertools::mcp::session::ToolsCapability { 
+                            list_changed: Some(false) 
+                        }),
+                        resources: None,
+                        prompts: None,
+                        experimental: None,
                         logging: None,
                         completions: None,
-                        experimental: None,
                     },
-                    server_info: ImplementationInfo {
+                    server_info: crate::bindings::fastertools::mcp::session::ImplementationInfo {
                         name: env!("CARGO_PKG_NAME").to_string(),
                         version: env!("CARGO_PKG_VERSION").to_string(),
-                        title: None,
+                        title: Some(env!("CARGO_PKG_NAME").to_string()),
                     },
                     instructions: None,
                     meta: None,
                 })
             }
             
-            fn handle_initialized() -> Result<(), wasmcp::McpError> {
+            fn handle_initialized() -> Result<(), crate::bindings::fastertools::mcp::types::McpError> {
                 Ok(())
             }
             
-            fn handle_shutdown() -> Result<(), wasmcp::McpError> {
+            fn handle_ping() -> Result<(), crate::bindings::fastertools::mcp::types::McpError> {
                 Ok(())
             }
             
-            fn handle_ping() -> Result<(), wasmcp::McpError> {
+            fn handle_shutdown() -> Result<(), crate::bindings::fastertools::mcp::types::McpError> {
                 Ok(())
             }
-            
-            fn handle_list_tools(
-                _request: wasmcp::ListToolsRequest
-            ) -> Result<wasmcp::ListToolsResponse, wasmcp::McpError> {
-                use wasmcp::{ListToolsResponse, McpTool, BaseMetadata};
-                
-                let tools = MCP_TOOLS.lock().unwrap()
-                    .iter().map(|reg| {
-                        McpTool {
-                            base: BaseMetadata {
-                                name: reg.name.clone(),
-                                title: None,
-                            },
-                            description: Some(reg.description.clone()),
-                            input_schema: reg.schema.clone(),
-                            output_schema: None,
-                            annotations: None,
-                            meta: None,
-                        }
-                    }).collect();
-                
-                Ok(ListToolsResponse {
-                    tools,
+        }
+        
+        // Tool handler implementation
+        impl crate::bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
+            fn handle_list_tools(_request: crate::bindings::fastertools::mcp::tools::ListToolsRequest) 
+                -> Result<crate::bindings::fastertools::mcp::tools::ListToolsResponse, crate::bindings::fastertools::mcp::types::McpError> {
+                Ok(crate::bindings::fastertools::mcp::tools::ListToolsResponse {
+                    tools: vec![#(#tool_defs),*],
                     next_cursor: None,
                     meta: None,
                 })
             }
             
-            fn handle_call_tool(
-                request: wasmcp::CallToolRequest
-            ) -> Result<wasmcp::ToolResult, wasmcp::McpError> {
-                use wasmcp::{ToolResult, ContentBlock, TextContent};
+            fn handle_call_tool(request: crate::bindings::fastertools::mcp::tools::CallToolRequest) 
+                -> Result<crate::bindings::fastertools::mcp::tools::ToolResult, crate::bindings::fastertools::mcp::types::McpError> {
+                let args = if let Some(args_str) = &request.arguments {
+                    serde_json::from_str(args_str)
+                        .map_err(|e| crate::bindings::fastertools::mcp::types::McpError {
+                            code: crate::bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
+                            message: format!("Invalid arguments: {}", e),
+                            data: None,
+                        })?
+                } else {
+                    serde_json::Value::Object(serde_json::Map::new())
+                };
                 
-                let tools = MCP_TOOLS.lock().unwrap();
+                use #module_name::*;
                 
-                for tool in tools {
-                    if tool.name == request.name {
-                        let args = request.arguments
-                            .and_then(|s| serde_json::from_str(&s).ok())
-                            .unwrap_or(serde_json::Value::Null);
-                        
-                        match (tool.handler)(args) {
-                            Ok(result) => {
-                                return Ok(ToolResult {
-                                    content: vec![ContentBlock::Text(TextContent {
-                                        text: result.to_string(),
-                                        annotations: None,
-                                        meta: None,
-                                    })],
-                                    structured_content: None,
-                                    is_error: Some(false),
-                                    meta: None,
-                                })
-                            }
-                            Err(e) => {
-                                return Ok(ToolResult {
-                                    content: vec![ContentBlock::Text(TextContent {
-                                        text: e.to_string(),
-                                        annotations: None,
-                                        meta: None,
-                                    })],
-                                    structured_content: None,
-                                    is_error: Some(true),
-                                    meta: None,
-                                })
-                            }
-                        }
-                    }
+                match request.name.as_str() {
+                    #(#tool_dispatches)*
+                    _ => Err(crate::bindings::fastertools::mcp::types::McpError {
+                        code: crate::bindings::fastertools::mcp::types::ErrorCode::ToolNotFound,
+                        message: format!("Unknown tool: {}", request.name),
+                        data: None,
+                    })
                 }
-                
-                Err(wasmcp::McpError {
-                    code: wasmcp::ErrorCode::ToolNotFound,
-                    message: format!("Tool '{}' not found", request.name),
+            }
+        }
+        
+        // Empty stub implementations for unused capabilities
+        impl crate::bindings::exports::fastertools::mcp::resource_handler::Guest for Component {
+            fn handle_list_resources(_request: crate::bindings::fastertools::mcp::resources::ListResourcesRequest) 
+                -> Result<crate::bindings::fastertools::mcp::resources::ListResourcesResponse, crate::bindings::fastertools::mcp::types::McpError> {
+                Ok(crate::bindings::fastertools::mcp::resources::ListResourcesResponse {
+                    resources: vec![],
+                    next_cursor: None,
+                    meta: None,
+                })
+            }
+            
+            fn handle_list_resource_templates(_request: crate::bindings::fastertools::mcp::resources::ListTemplatesRequest) 
+                -> Result<crate::bindings::fastertools::mcp::resources::ListTemplatesResponse, crate::bindings::fastertools::mcp::types::McpError> {
+                Ok(crate::bindings::fastertools::mcp::resources::ListTemplatesResponse {
+                    templates: vec![],
+                    next_cursor: None,
+                    meta: None,
+                })
+            }
+            
+            fn handle_read_resource(_request: crate::bindings::fastertools::mcp::resources::ReadResourceRequest) 
+                -> Result<crate::bindings::fastertools::mcp::resources::ReadResourceResponse, crate::bindings::fastertools::mcp::types::McpError> {
+                Err(crate::bindings::fastertools::mcp::types::McpError {
+                    code: crate::bindings::fastertools::mcp::types::ErrorCode::ResourceNotFound,
+                    message: "This server does not provide resources".to_string(),
                     data: None,
                 })
             }
             
-            fn handle_list_resources(
-                _request: wasmcp::ListResourcesRequest
-            ) -> Result<wasmcp::ListResourcesResponse, wasmcp::McpError> {
-                use wasmcp::{ListResourcesResponse, McpResource, BaseMetadata};
-                
-                let resources = MCP_RESOURCES.lock().unwrap()
-                    .iter().map(|reg| {
-                        McpResource {
-                            base: BaseMetadata {
-                                name: reg.name.clone(),
-                                title: None,
-                            },
-                            uri: reg.uri_pattern.clone(),
-                            description: Some(reg.description.clone()),
-                            mime_type: reg.mime_type.clone(),
-                            size: None,
-                            annotations: None,
-                            meta: None,
-                        }
-                    }).collect();
-                
-                Ok(ListResourcesResponse {
-                    resources,
+            fn handle_subscribe_resource(_request: crate::bindings::fastertools::mcp::resources::SubscribeRequest) 
+                -> Result<(), crate::bindings::fastertools::mcp::types::McpError> {
+                Ok(())
+            }
+            
+            fn handle_unsubscribe_resource(_request: crate::bindings::fastertools::mcp::resources::UnsubscribeRequest) 
+                -> Result<(), crate::bindings::fastertools::mcp::types::McpError> {
+                Ok(())
+            }
+        }
+        
+        // Prompt handler implementation (stub)
+        impl crate::bindings::exports::fastertools::mcp::prompt_handler::Guest for Component {
+            fn handle_list_prompts(_request: crate::bindings::fastertools::mcp::prompts::ListPromptsRequest) 
+                -> Result<crate::bindings::fastertools::mcp::prompts::ListPromptsResponse, crate::bindings::fastertools::mcp::types::McpError> {
+                Ok(crate::bindings::fastertools::mcp::prompts::ListPromptsResponse {
+                    prompts: vec![],
                     next_cursor: None,
                     meta: None,
                 })
             }
             
-            fn handle_read_resource(
-                request: wasmcp::ReadResourceRequest
-            ) -> Result<wasmcp::ReadResourceResponse, wasmcp::McpError> {
-                use wasmcp::bindings::mcp::protocol::types::{ResourceContents, TextResourceContents};
-                
-                let resources = MCP_RESOURCES.lock().unwrap();
-                
-                for resource in resources {
-                    if wasmcp::runtime::uri_matches(&resource.uri_pattern, &request.uri) {
-                        match (resource.handler)(request.uri.clone()) {
-                            Ok(content) => {
-                                return Ok(wasmcp::ReadResourceResponse {
-                                    contents: vec![ResourceContents::Text(TextResourceContents {
-                                        uri: request.uri,
-                                        mime_type: resource.mime_type.clone(),
-                                        text: content,
-                                        meta: None,
-                                    })],
-                                    meta: None,
-                                })
-                            }
-                            Err(e) => {
-                                return Err(wasmcp::McpError {
-                                    code: wasmcp::ErrorCode::InternalError,
-                                    message: e.to_string(),
-                                    data: None,
-                                })
-                            }
-                        }
-                    }
-                }
-                
-                Err(wasmcp::McpError {
-                    code: wasmcp::ErrorCode::ResourceNotFound,
-                    message: format!("Resource '{}' not found", request.uri),
-                    data: None,
-                })
-            }
-            
-            fn handle_list_prompts(
-                _request: wasmcp::ListPromptsRequest
-            ) -> Result<wasmcp::ListPromptsResponse, wasmcp::McpError> {
-                use wasmcp::{ListPromptsResponse, McpPrompt, BaseMetadata};
-                
-                let prompts = MCP_PROMPTS.lock().unwrap()
-                    .iter().map(|reg| {
-                        McpPrompt {
-                            base: BaseMetadata {
-                                name: reg.name.clone(),
-                                title: None,
-                            },
-                            description: Some(reg.description.clone()),
-                            arguments: Vec::new(), // TODO: Add argument support
-                            annotations: None,
-                            meta: None,
-                        }
-                    }).collect();
-                
-                Ok(ListPromptsResponse {
-                    prompts,
-                    next_cursor: None,
-                    meta: None,
-                })
-            }
-            
-            fn handle_get_prompt(
-                request: wasmcp::GetPromptRequest
-            ) -> Result<wasmcp::GetPromptResponse, wasmcp::McpError> {
-                let prompts = MCP_PROMPTS.lock().unwrap();
-                
-                for prompt in prompts {
-                    if prompt.name == request.name {
-                        let args = request.arguments
-                            .and_then(|s| serde_json::from_str(&s).ok())
-                            .unwrap_or(serde_json::Value::Null);
-                        
-                        match (prompt.handler)(args) {
-                            Ok(messages) => {
-                                return Ok(wasmcp::GetPromptResponse {
-                                    messages,
-                                    description: Some(prompt.description.clone()),
-                                    meta: None,
-                                })
-                            }
-                            Err(e) => {
-                                return Err(wasmcp::McpError {
-                                    code: wasmcp::ErrorCode::InternalError,
-                                    message: e.to_string(),
-                                    data: None,
-                                })
-                            }
-                        }
-                    }
-                }
-                
-                Err(wasmcp::McpError {
-                    code: wasmcp::ErrorCode::PromptNotFound,
-                    message: format!("Prompt '{}' not found", request.name),
+            fn handle_get_prompt(_request: crate::bindings::fastertools::mcp::prompts::GetPromptRequest) 
+                -> Result<crate::bindings::fastertools::mcp::prompts::GetPromptResponse, crate::bindings::fastertools::mcp::types::McpError> {
+                Err(crate::bindings::fastertools::mcp::types::McpError {
+                    code: crate::bindings::fastertools::mcp::types::ErrorCode::PromptNotFound,
+                    message: "This server does not provide prompts".to_string(),
                     data: None,
                 })
             }
         }
-        
-        // Export the component
-        wasmcp::bindings::export!(#struct_name with_types_in wasmcp::bindings);
-    };
-    
-    output.into()
+    }.into()
 }
 
-/// Register a function as an MCP tool.
-/// 
-/// # Example
-/// 
-/// ```rust
-/// #[mcp::tool]
-/// /// Add two numbers together
-/// fn add(
-///     #[arg(description = "First number")]
-///     a: i32,
-///     #[arg(description = "Second number")]
-///     b: i32
-/// ) -> Result<i32> {
-///     Ok(a + b)
-/// }
-/// ```
+/// Mark a module as containing MCP resources.
+/// Functions in this module will be automatically registered as resources.
 #[proc_macro_attribute]
-pub fn tool(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let input_fn = parse_macro_input!(input as ItemFn);
-    let fn_name = &input_fn.sig.ident;
-    let fn_name_str = fn_name.to_string();
+pub fn mcp_resources(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let module = parse_macro_input!(input as ItemMod);
     
-    // Extract the doc comment as description
-    let description = extract_doc_comment(&input_fn.attrs);
-    
-    // Generate JSON schema and handler from function signature
-    let (schema, handler_body) = generate_tool_handler(&input_fn);
-    
-    // Create a unique static name for the initialization
-    let init_fn_name = quote::format_ident!("__mcp_tool_init_{}", fn_name);
-    
-    let output = quote! {
-        #input_fn
+    // For now, just return the module unchanged
+    // TODO: Implement resource collection and generation
+    quote! {
+        #module
         
-        // Auto-registration using constructor attribute
-        #[doc(hidden)]
-        #[used]
-        #[cfg_attr(target_family = "wasm", link_section = ".init_array")]
-        static #init_fn_name: extern "C" fn() = {
-            extern "C" fn init() {
-                let registration = wasmcp::runtime::ToolRegistration {
-                    name: #fn_name_str.to_string(),
-                    description: #description.to_string(),
-                    schema: #schema.to_string(),
-                    handler: Box::new(#handler_body),
-                };
-                __mcp_register_tool(registration);
+        // Resources implementation would go here
+    }.into()
+}
+
+/// Mark a module as containing MCP prompts.
+/// Functions in this module will be automatically registered as prompts.
+#[proc_macro_attribute]
+pub fn mcp_prompts(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let module = parse_macro_input!(input as ItemMod);
+    
+    // For now, just return the module unchanged
+    // TODO: Implement prompt collection and generation
+    quote! {
+        #module
+        
+        // Prompts implementation would go here
+    }.into()
+}
+
+// Keep the original mcp_component for backwards compatibility
+#[proc_macro_attribute]
+pub fn mcp_component(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    mcp_tools(_attr, input)
+}
+
+fn generate_tool_info(func: &ItemFn) -> (TokenStream2, TokenStream2) {
+    let name = func.sig.ident.to_string();
+    let func_ident = &func.sig.ident;
+    let doc = extract_doc_comment(&func.attrs);
+    
+    // Extract parameter information
+    let mut params = Vec::new();
+    let mut param_idents = Vec::new();
+    for input in &func.sig.inputs {
+        if let FnArg::Typed(pat_type) = input {
+            if let Pat::Ident(ident) = &*pat_type.pat {
+                let param_name = ident.ident.to_string();
+                let param_type = type_to_json_schema(&*pat_type.ty);
+                params.push((param_name.clone(), param_type));
+                param_idents.push(ident.ident.clone());
             }
-            init
-        };
+        }
+    }
+    
+    // Generate JSON schema for parameters
+    let schema = generate_params_schema(&params);
+    
+    // Generate the tool definition
+    let tool_def = quote! {
+        crate::bindings::fastertools::mcp::tools::Tool {
+            base: crate::bindings::fastertools::mcp::types::BaseMetadata {
+                name: #name.to_string(),
+                title: Some(#name.to_string()),
+            },
+            description: Some(#doc.to_string()),
+            input_schema: #schema.to_string(),
+            output_schema: None,
+            annotations: None,
+            meta: None,
+        }
     };
     
-    output.into()
-}
-
-/// Register a function as an MCP resource.
-/// 
-/// # Example
-/// 
-/// ```rust
-/// #[mcp::resource("file://{path}")]
-/// /// Read a file from the filesystem
-/// fn read_file(path: String) -> Result<String> {
-///     std::fs::read_to_string(path)
-/// }
-/// ```
-#[proc_macro_attribute]
-pub fn resource(args: TokenStream, input: TokenStream) -> TokenStream {
-    let input_fn = parse_macro_input!(input as ItemFn);
-    let fn_name = &input_fn.sig.ident;
+    // Generate the dispatch case
+    let param_extracts: Vec<TokenStream2> = params.iter().zip(&param_idents).map(|((name, _), ident)| {
+        let ident_token = quote! { #ident };
+        quote! {
+            let #ident_token = args[#name].as_str()
+                .ok_or_else(|| crate::bindings::fastertools::mcp::types::McpError {
+                    code: crate::bindings::fastertools::mcp::types::ErrorCode::InvalidParams,
+                    message: format!("Missing or invalid field: {}", #name),
+                    data: None,
+                })?
+                .to_string();
+        }
+    }).collect();
     
-    // Parse URI pattern from args
-    let uri_pattern = if !args.is_empty() {
-        let lit_str = parse_macro_input!(args as syn::LitStr);
-        lit_str.value()
+    let is_async = func.sig.asyncness.is_some();
+    let call_expr = if is_async {
+        quote! { spin_executor::run(#func_ident(#(#param_idents),*)) }
     } else {
-        format!("{}://{{id}}", fn_name)
+        quote! { #func_ident(#(#param_idents),*) }
     };
     
-    // Extract the doc comment as description
-    let description = extract_doc_comment(&input_fn.attrs);
-    
-    // Generate handler based on function signature
-    let handler_body = generate_resource_handler(&input_fn, &uri_pattern);
-    
-    // Create a unique static name for the initialization
-    let init_fn_name = quote::format_ident!("__mcp_resource_init_{}", fn_name);
-    
-    let output = quote! {
-        #input_fn
-        
-        // Auto-registration using constructor attribute
-        #[doc(hidden)]
-        #[used]
-        #[cfg_attr(target_family = "wasm", link_section = ".init_array")]
-        static #init_fn_name: extern "C" fn() = {
-            extern "C" fn init() {
-                let registration = wasmcp::runtime::ResourceRegistration {
-                    name: stringify!(#fn_name).to_string(),
-                    uri_pattern: #uri_pattern.to_string(),
-                    description: #description.to_string(),
-                    mime_type: None,
-                    handler: Box::new(#handler_body),
-                };
-                __mcp_register_resource(registration);
+    let dispatch = quote! {
+        #name => {
+            #(#param_extracts)*
+            
+            match #call_expr {
+                Ok(result) => Ok(crate::bindings::fastertools::mcp::tools::ToolResult {
+                    content: vec![crate::bindings::fastertools::mcp::types::ContentBlock::Text(
+                        crate::bindings::fastertools::mcp::types::TextContent {
+                            text: result,
+                            annotations: None,
+                            meta: None,
+                        }
+                    )],
+                    is_error: Some(false),
+                    structured_content: None,
+                    meta: None,
+                }),
+                Err(e) => Ok(crate::bindings::fastertools::mcp::tools::ToolResult {
+                    content: vec![crate::bindings::fastertools::mcp::types::ContentBlock::Text(
+                        crate::bindings::fastertools::mcp::types::TextContent {
+                            text: format!("Error: {}", e),
+                            annotations: None,
+                            meta: None,
+                        }
+                    )],
+                    is_error: Some(true),
+                    structured_content: None,
+                    meta: None,
+                })
             }
-            init
-        };
+        }
     };
     
-    output.into()
+    (tool_def, dispatch)
 }
 
-/// Register a function as an MCP prompt.
-/// 
-/// # Example
-/// 
-/// ```rust
-/// #[mcp::prompt("code_review")]
-/// /// Generate a code review prompt
-/// fn code_review_prompt(
-///     #[arg(description = "The code to review")]
-///     code: String,
-/// ) -> Prompt {
-///     prompt! {
-///         system: "You are a thorough code reviewer.",
-///         user: "Review this code:\n\n{}", code
-///     }
-/// }
-/// ```
-#[proc_macro_attribute]
-pub fn prompt(args: TokenStream, input: TokenStream) -> TokenStream {
-    let input_fn = parse_macro_input!(input as ItemFn);
-    let fn_name = &input_fn.sig.ident;
-    
-    // Parse prompt name from args
-    let prompt_name = if !args.is_empty() {
-        let lit_str = parse_macro_input!(args as syn::LitStr);
-        lit_str.value()
-    } else {
-        fn_name.to_string()
-    };
-    
-    // Extract the doc comment as description
-    let description = extract_doc_comment(&input_fn.attrs);
-    
-    // Generate handler based on function signature
-    let handler_body = generate_prompt_handler(&input_fn);
-    
-    // Create a unique static name for the initialization
-    let init_fn_name = quote::format_ident!("__mcp_prompt_init_{}", fn_name);
-    
-    let output = quote! {
-        #input_fn
-        
-        // Auto-registration using constructor attribute
-        #[doc(hidden)]
-        #[used]
-        #[cfg_attr(target_family = "wasm", link_section = ".init_array")]
-        static #init_fn_name: extern "C" fn() = {
-            extern "C" fn init() {
-                let registration = wasmcp::runtime::PromptRegistration {
-                    name: #prompt_name.to_string(),
-                    description: #description.to_string(),
-                    handler: Box::new(#handler_body),
-                };
-                __mcp_register_prompt(registration);
-            }
-            init
-        };
-    };
-    
-    output.into()
-}
-
-// Helper functions
-
-fn extract_doc_comment(attrs: &[syn::Attribute]) -> String {
+fn extract_doc_comment(attrs: &[Attribute]) -> String {
     attrs
         .iter()
         .filter_map(|attr| {
             if attr.path().is_ident("doc") {
-                if let syn::Meta::NameValue(meta) = &attr.meta {
-                    if let syn::Expr::Lit(expr_lit) = &meta.value {
-                        if let Lit::Str(s) = &expr_lit.lit {
-                            Some(s.value().trim().to_string())
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+                attr.parse_args::<syn::LitStr>().ok().map(|lit| lit.value())
             } else {
                 None
             }
         })
         .collect::<Vec<_>>()
         .join(" ")
+        .trim()
+        .to_string()
 }
 
-fn generate_tool_handler(func: &ItemFn) -> (String, proc_macro2::TokenStream) {
-    let fn_name = &func.sig.ident;
-    let is_async = func.sig.asyncness.is_some();
-    let mut properties = serde_json::Map::new();
-    let mut required = Vec::new();
-    let mut param_names = Vec::new();
-    let mut param_extracts = Vec::new();
-    
-    // Analyze function parameters
-    for arg in &func.sig.inputs {
-        if let FnArg::Typed(pat_type) = arg {
-            if let Pat::Ident(ident) = &*pat_type.pat {
-                let param_name = ident.ident.to_string();
-                param_names.push(ident.ident.clone());
-                required.push(param_name.clone());
-                
-                // Extract type info for schema
-                let type_schema = type_to_json_schema(&pat_type.ty);
-                properties.insert(param_name.clone(), type_schema);
-                
-                // Generate extraction code
-                let param_ident = &ident.ident;
-                let param_str = param_name.clone();
-                param_extracts.push(quote! {
-                    let #param_ident = args.get(#param_str)
-                        .ok_or_else(|| format!("Missing parameter: {}", #param_str))?
-                        .clone();
-                    let #param_ident = serde_json::from_value(#param_ident)
-                        .map_err(|e| format!("Invalid parameter '{}': {}", #param_str, e))?;
-                });
-            }
-        }
-    }
-    
-    // Generate the schema
-    let schema = serde_json::json!({
-        "type": "object",
-        "properties": properties,
-        "required": required,
-        "additionalProperties": false
-    }).to_string();
-    
-    // Generate the handler body - use spin_executor::run for async
-    let call_expr = if is_async {
-        quote! { #fn_name(#(#param_names),*) }
-    } else {
-        quote! { async move { #fn_name(#(#param_names),*) } }
-    };
-    
-    let handler = if param_names.is_empty() {
-        if is_async {
-            quote! {
-                |_args| {
-                    let result = ::spin_sdk::executor::run(#fn_name());
-                    match result {
-                        Ok(val) => serde_json::to_value(val)
-                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
-                        Err(e) => Err(Box::new(e) as Box<dyn std::error::Error>),
-                    }
-                }
-            }
-        } else {
-            quote! {
-                |_args| {
-                    let result = #fn_name();
-                    match result {
-                        Ok(val) => serde_json::to_value(val)
-                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
-                        Err(e) => Err(Box::new(e) as Box<dyn std::error::Error>),
-                    }
-                }
-            }
-        }
-    } else {
-        if is_async {
-            quote! {
-                |args| {
-                    let args = args.as_object()
-                        .ok_or_else(|| "Arguments must be an object")?;
-                    
-                    #(#param_extracts)*
-                    
-                    let result = ::spin_sdk::executor::run(#fn_name(#(#param_names),*));
-                    match result {
-                        Ok(val) => serde_json::to_value(val)
-                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
-                        Err(e) => Err(Box::new(e) as Box<dyn std::error::Error>),
-                    }
-                }
-            }
-        } else {
-            quote! {
-                |args| {
-                    let args = args.as_object()
-                        .ok_or_else(|| "Arguments must be an object")?;
-                    
-                    #(#param_extracts)*
-                    
-                    let result = #fn_name(#(#param_names),*);
-                    match result {
-                        Ok(val) => serde_json::to_value(val)
-                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
-                        Err(e) => Err(Box::new(e) as Box<dyn std::error::Error>),
-                    }
-                }
-            }
-        }
-    };
-    
-    (schema, handler)
-}
-
-fn generate_resource_handler(func: &ItemFn, _uri_pattern: &str) -> proc_macro2::TokenStream {
-    let fn_name = &func.sig.ident;
-    
-    // For now, simple URI extraction - can be enhanced later
-    quote! {
-        |uri| {
-            // TODO: Extract parameters from URI based on pattern
-            let result = #fn_name(uri);
-            match result {
-                Ok(content) => Ok(content),
-                Err(e) => Err(Box::new(e) as Box<dyn std::error::Error>),
-            }
-        }
-    }
-}
-
-fn generate_prompt_handler(func: &ItemFn) -> proc_macro2::TokenStream {
-    let fn_name = &func.sig.ident;
-    let mut param_names = Vec::new();
-    let mut param_extracts = Vec::new();
-    
-    // Analyze function parameters
-    for arg in &func.sig.inputs {
-        if let FnArg::Typed(pat_type) = arg {
-            if let Pat::Ident(ident) = &*pat_type.pat {
-                let param_name = ident.ident.to_string();
-                param_names.push(ident.ident.clone());
-                
-                let param_ident = &ident.ident;
-                let param_str = param_name.clone();
-                param_extracts.push(quote! {
-                    let #param_ident = args.get(#param_str)
-                        .ok_or_else(|| format!("Missing parameter: {}", #param_str))?
-                        .clone();
-                    let #param_ident = serde_json::from_value(#param_ident)
-                        .map_err(|e| format!("Invalid parameter '{}': {}", #param_str, e))?;
-                });
-            }
-        }
-    }
-    
-    if param_names.is_empty() {
-        quote! {
-            |_args| {
-                let prompt = #fn_name();
-                Ok(prompt.into_messages())
-            }
-        }
-    } else {
-        quote! {
-            |args| {
-                let args = args.as_object()
-                    .ok_or_else(|| "Arguments must be an object")?;
-                
-                #(#param_extracts)*
-                
-                let prompt = #fn_name(#(#param_names),*);
-                Ok(prompt.into_messages())
-            }
-        }
-    }
-}
-
-fn type_to_json_schema(ty: &syn::Type) -> serde_json::Value {
-    // Basic type mapping - can be enhanced
+fn type_to_json_schema(ty: &Type) -> String {
     match ty {
         Type::Path(path) => {
-            if let Some(segment) = path.path.segments.last() {
-                match segment.ident.to_string().as_str() {
-                    "String" | "str" => serde_json::json!({ "type": "string" }),
-                    "i32" | "i64" | "i128" | "isize" => serde_json::json!({ "type": "integer" }),
-                    "u32" | "u64" | "u128" | "usize" => serde_json::json!({ "type": "integer", "minimum": 0 }),
-                    "f32" | "f64" => serde_json::json!({ "type": "number" }),
-                    "bool" => serde_json::json!({ "type": "boolean" }),
-                    "Vec" => serde_json::json!({ "type": "array" }),
-                    _ => serde_json::json!({ "type": "object" }),
+            if let Some(ident) = path.path.get_ident() {
+                match ident.to_string().as_str() {
+                    "i32" | "i64" | "u32" | "u64" => "\"type\": \"integer\"".to_string(),
+                    "f32" | "f64" => "\"type\": \"number\"".to_string(),
+                    "String" => "\"type\": \"string\"".to_string(),
+                    "bool" => "\"type\": \"boolean\"".to_string(),
+                    _ => "\"type\": \"object\"".to_string(),
                 }
             } else {
-                serde_json::json!({ "type": "object" })
+                "\"type\": \"object\"".to_string()
             }
         }
-        _ => serde_json::json!({ "type": "object" }),
+        _ => "\"type\": \"object\"".to_string(),
     }
+}
+
+fn generate_params_schema(params: &[(String, String)]) -> String {
+    if params.is_empty() {
+        return "{}".to_string();
+    }
+    
+    let properties: Vec<String> = params
+        .iter()
+        .map(|(name, schema)| format!("\"{}\":  {{{}}}", name, schema))
+        .collect();
+    
+    let required: Vec<String> = params
+        .iter()
+        .map(|(name, _)| format!("\"{}\"", name))
+        .collect();
+    
+    format!(
+        "{{\"type\": \"object\", \"properties\": {{{}}}, \"required\": [{}]}}",
+        properties.join(", "),
+        required.join(", ")
+    )
+}
+
+/// Mark a function as an MCP tool (for backwards compatibility).
+#[proc_macro_attribute]
+pub fn tool(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    input
+}
+
+/// Mark a function as an MCP resource.
+#[proc_macro_attribute]
+pub fn resource(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    input
+}
+
+/// Mark a function as an MCP prompt.
+#[proc_macro_attribute]
+pub fn prompt(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    input
 }

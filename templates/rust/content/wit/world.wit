@@ -1,4 +1,4 @@
-package example:weather;
+package {{project-name | kebab_case}}:component;
 
 world mcp-server {
     export fastertools:mcp/core@0.1.1;

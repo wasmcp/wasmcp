@@ -13,6 +13,7 @@ serde_json = "1.0"
 anyhow = "1.0"
 base64 = "0.22"
 wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
+rmcp = { version = "0.5", default-features = false, features = ["server", "macros", "base64"] }
 
 [package.metadata.component]
 package = "wasmcp:server"

@@ -2,6 +2,7 @@
 // Options used:
 //   * runtime_path: "wit_bindgen_rt"
 //   * additional derives ["serde::Serialize", "serde::Deserialize", "Clone"]
+//   * pub-export-macro
 #[rustfmt::skip]
 #[allow(dead_code, clippy::all)]
 pub mod fastertools {
@@ -10251,6 +10252,7 @@ pub mod exports {
                     fn handle_shutdown() -> Result<(), McpError>;
                 }
                 #[doc(hidden)]
+                #[macro_export]
                 macro_rules! __export_fastertools_mcp_core_0_1_1_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
@@ -10291,7 +10293,7 @@ pub mod exports {
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_fastertools_mcp_core_0_1_1_cabi;
+                pub use __export_fastertools_mcp_core_0_1_1_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -13456,6 +13458,7 @@ pub mod exports {
                     ) -> Result<ToolResult, McpError>;
                 }
                 #[doc(hidden)]
+                #[macro_export]
                 macro_rules! __export_fastertools_mcp_tool_handler_0_1_1_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
@@ -13486,7 +13489,7 @@ pub mod exports {
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_fastertools_mcp_tool_handler_0_1_1_cabi;
+                pub use __export_fastertools_mcp_tool_handler_0_1_1_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -16430,6 +16433,7 @@ pub mod exports {
                     ) -> Result<(), McpError>;
                 }
                 #[doc(hidden)]
+                #[macro_export]
                 macro_rules! __export_fastertools_mcp_resource_handler_0_1_1_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
@@ -16496,7 +16500,7 @@ pub mod exports {
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_fastertools_mcp_resource_handler_0_1_1_cabi;
+                pub use __export_fastertools_mcp_resource_handler_0_1_1_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -19665,6 +19669,7 @@ pub mod exports {
                     ) -> Result<GetPromptResponse, McpError>;
                 }
                 #[doc(hidden)]
+                #[macro_export]
                 macro_rules! __export_fastertools_mcp_prompt_handler_0_1_1_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
@@ -19695,7 +19700,7 @@ pub mod exports {
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_fastertools_mcp_prompt_handler_0_1_1_cabi;
+                pub use __export_fastertools_mcp_prompt_handler_0_1_1_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -19872,7 +19877,8 @@ mod _rt {
 /// ```
 #[allow(unused_macros)]
 #[doc(hidden)]
-macro_rules! __export_weather_server_impl {
+#[macro_export]
+macro_rules! __export_mcp_server_impl {
     ($ty:ident) => {
         self::export!($ty with_types_in self);
     };
@@ -19889,19 +19895,13 @@ macro_rules! __export_weather_server_impl {
         exports::fastertools::mcp::resource_handler); $($path_to_types_root)*::
         exports::fastertools::mcp::prompt_handler::__export_fastertools_mcp_prompt_handler_0_1_1_cabi!($ty
         with_types_in $($path_to_types_root)*::
-        exports::fastertools::mcp::prompt_handler);
-    };
-}
-#[doc(inline)]
-pub(crate) use __export_weather_server_impl as export;
-#[cfg(target_arch = "wasm32")]
-#[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:example:weather:weather-server:encoded world"
-)]
-#[doc(hidden)]
-#[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 6347] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc60\x01A\x02\x01A.\x01\
+        exports::fastertools::mcp::prompt_handler); const _ : () = { #[cfg(target_arch =
+        "wasm32")] #[unsafe (link_section =
+        "component-type:wit-bindgen:0.41.0:example:weather:mcp-server:imports and exports")]
+        #[doc(hidden)] #[allow(clippy::octal_escapes)] pub static
+        __WIT_BINDGEN_COMPONENT_TYPE : [u8; 6339] = *
+        b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc20\x01A\x02\x01A.\x01\
 B.\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01o\x02ss\x01p\x02\x04\0\
 \x0bmeta-fields\x03\0\x03\x01p\x01\x01k\x05\x01ku\x01ks\x01r\x03\x08audience\x06\
 \x08priority\x07\x0dlast-modified\x08\x04\0\x0bannotations\x03\0\x09\x01r\x02\x04\
@@ -20037,9 +20037,122 @@ list-prompts-response\x03\0\x04\x02\x03\x02\x01\"\x04\0\x12get-prompt-request\x0
 \0\x06\x02\x03\x02\x01#\x04\0\x13get-prompt-response\x03\0\x08\x01j\x01\x05\x01\x01\
 \x01@\x01\x07request\x03\0\x0a\x04\0\x13handle-list-prompts\x01\x0b\x01j\x01\x09\
 \x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x11handle-get-prompt\x01\x0d\x04\0$\
-fastertools:mcp/prompt-handler@0.1.1\x05$\x04\0\x1eexample:weather/weather-serve\
-r\x04\0\x0b\x14\x01\0\x0eweather-server\x03\0\0\0G\x09producers\x01\x0cprocessed\
--by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+fastertools:mcp/prompt-handler@0.1.1\x05$\x04\0\x1aexample:weather/mcp-server\x04\
+\0\x0b\x10\x01\0\x0amcp-server\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0d\
+wit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+        };
+    };
+}
+#[doc(inline)]
+pub use __export_mcp_server_impl as export;
+#[cfg(target_arch = "wasm32")]
+#[unsafe(
+    link_section = "component-type:wit-bindgen:0.41.0:example:weather:mcp-server-with-all-of-its-exports-removed:encoded world"
+)]
+#[doc(hidden)]
+#[allow(clippy::octal_escapes)]
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4650] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x89#\x01A\x02\x01A\x14\
+\x01B.\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01o\x02ss\x01p\x02\x04\
+\0\x0bmeta-fields\x03\0\x03\x01p\x01\x01k\x05\x01ku\x01ks\x01r\x03\x08audience\x06\
+\x08priority\x07\x0dlast-modified\x08\x04\0\x0bannotations\x03\0\x09\x01r\x02\x04\
+names\x05title\x08\x04\0\x0dbase-metadata\x03\0\x0b\x01k\x0a\x01k\x04\x01r\x03\x04\
+texts\x0bannotations\x0d\x04meta\x0e\x04\0\x0ctext-content\x03\0\x0f\x01p}\x01r\x04\
+\x04data\x11\x09mime-types\x0bannotations\x0d\x04meta\x0e\x04\0\x0dimage-content\
+\x03\0\x12\x01r\x04\x04data\x11\x09mime-types\x0bannotations\x0d\x04meta\x0e\x04\
+\0\x0daudio-content\x03\0\x14\x01kw\x01r\x07\x03uris\x04names\x0bdescription\x08\
+\x09mime-type\x08\x04size\x16\x0bannotations\x0d\x04meta\x0e\x04\0\x0dresource-l\
+ink\x03\0\x17\x01r\x04\x03uris\x09mime-type\x08\x04texts\x04meta\x0e\x04\0\x16te\
+xt-resource-contents\x03\0\x19\x01r\x04\x03uris\x09mime-type\x08\x04blob\x11\x04\
+meta\x0e\x04\0\x16blob-resource-contents\x03\0\x1b\x01q\x02\x04text\x01\x1a\0\x04\
+blob\x01\x1c\0\x04\0\x11resource-contents\x03\0\x1d\x01r\x03\x08contents\x1e\x0b\
+annotations\x0d\x04meta\x0e\x04\0\x11embedded-resource\x03\0\x1f\x01q\x05\x04tex\
+t\x01\x10\0\x05image\x01\x13\0\x05audio\x01\x15\0\x0dresource-link\x01\x18\0\x11\
+embedded-resource\x01\x20\0\x04\0\x0dcontent-block\x03\0!\x01s\x04\0\x0ajson-val\
+ue\x03\0#\x01q\x0d\x0bparse-error\0\0\x0finvalid-request\0\0\x10method-not-found\
+\0\0\x0einvalid-params\0\0\x0einternal-error\0\0\x12resource-not-found\0\0\x0eto\
+ol-not-found\0\0\x10prompt-not-found\0\0\x0cunauthorized\0\0\x0crate-limited\0\0\
+\x07timeout\0\0\x09cancelled\0\0\x0bcustom-code\x01z\0\x04\0\x0aerror-code\x03\0\
+%\x01k$\x01r\x03\x04code&\x07messages\x04data'\x04\0\x09mcp-error\x03\0(\x01s\x04\
+\0\x06cursor\x03\0*\x01s\x04\0\x0eprogress-token\x03\0,\x03\0\x1bfastertools:mcp\
+/types@0.1.1\x05\0\x02\x03\0\0\x09mcp-error\x02\x03\0\0\x0bmeta-fields\x01B'\x02\
+\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x02\x04\0\x0bmeta-fi\
+elds\x03\0\x02\x01s\x04\0\x10protocol-version\x03\0\x04\x01ks\x01r\x03\x04names\x07\
+versions\x05title\x06\x04\0\x13implementation-info\x03\0\x07\x01k\x7f\x01r\x01\x0c\
+list-changed\x09\x04\0\x10roots-capability\x03\0\x0a\x01k\x03\x01k\x0b\x01r\x04\x0c\
+experimental\x0c\x05roots\x0d\x08sampling\x09\x0belicitation\x09\x04\0\x13client\
+-capabilities\x03\0\x0e\x01r\x01\x0clist-changed\x09\x04\0\x12prompts-capability\
+\x03\0\x10\x01r\x02\x09subscribe\x09\x0clist-changed\x09\x04\0\x14resources-capa\
+bility\x03\0\x12\x01r\x01\x0clist-changed\x09\x04\0\x10tools-capability\x03\0\x14\
+\x01k\x11\x01k\x13\x01k\x15\x01r\x06\x0cexperimental\x0c\x07logging\x09\x0bcompl\
+etions\x09\x07prompts\x16\x09resources\x17\x05tools\x18\x04\0\x13server-capabili\
+ties\x03\0\x19\x01r\x04\x10protocol-version\x05\x0ccapabilities\x0f\x0bclient-in\
+fo\x08\x04meta\x0c\x04\0\x12initialize-request\x03\0\x1b\x01r\x05\x10protocol-ve\
+rsion\x05\x0ccapabilities\x1a\x0bserver-info\x08\x0cinstructions\x06\x04meta\x0c\
+\x04\0\x13initialize-response\x03\0\x1d\x01j\x01\x1e\x01\x01\x01@\x01\x07request\
+\x1c\0\x1f\x04\0\x0ainitialize\x01\x20\x01j\0\x01\x01\x01@\0\0!\x04\0\x0binitial\
+ized\x01\"\x04\0\x04ping\x01\"\x04\0\x08shutdown\x01\"\x03\0\x1dfastertools:mcp/\
+session@0.1.1\x05\x03\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\
+\x03\0\0\x0dbase-metadata\x02\x03\0\0\x06cursor\x02\x03\0\0\x0eprogress-token\x01\
+B+\x02\x03\x02\x01\x04\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\x05\x04\0\x0a\
+json-value\x03\0\x02\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\x04\x02\x03\x02\
+\x01\x06\x04\0\x0dbase-metadata\x03\0\x06\x02\x03\x02\x01\x02\x04\0\x0bmeta-fiel\
+ds\x03\0\x08\x02\x03\x02\x01\x07\x04\0\x06cursor\x03\0\x0a\x02\x03\x02\x01\x08\x04\
+\0\x0eprogress-token\x03\0\x0c\x01ks\x01k\x7f\x01r\x05\x05title\x0e\x0eread-only\
+-hint\x0f\x10destructive-hint\x0f\x0fidempotent-hint\x0f\x0fopen-world-hint\x0f\x04\
+\0\x10tool-annotations\x03\0\x10\x04\0\x0bjson-schema\x03\0\x03\x01k\x12\x01k\x11\
+\x01k\x09\x01r\x06\x04base\x07\x0bdescription\x0e\x0cinput-schema\x12\x0doutput-\
+schema\x13\x0bannotations\x14\x04meta\x15\x04\0\x04tool\x03\0\x16\x01p\x01\x01k\x03\
+\x01r\x04\x07content\x18\x12structured-content\x19\x08is-error\x0f\x04meta\x15\x04\
+\0\x0btool-result\x03\0\x1a\x01k\x0b\x01k\x0d\x01r\x03\x06cursor\x1c\x0eprogress\
+-token\x1d\x04meta\x15\x04\0\x12list-tools-request\x03\0\x1e\x01p\x17\x01r\x03\x05\
+tools\x20\x0bnext-cursor\x1c\x04meta\x15\x04\0\x13list-tools-response\x03\0!\x01\
+r\x04\x04names\x09arguments\x19\x0eprogress-token\x1d\x04meta\x15\x04\0\x11call-\
+tool-request\x03\0#\x01j\x01\"\x01\x05\x01@\x01\x07request\x1f\0%\x04\0\x0alist-\
+tools\x01&\x01j\x01\x1b\x01\x05\x01@\x01\x07request$\0'\x04\0\x09call-tool\x01(\x03\
+\0\x1bfastertools:mcp/tools@0.1.1\x05\x09\x02\x03\0\0\x0bannotations\x02\x03\0\0\
+\x11resource-contents\x01B9\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\0\x02\x03\
+\x02\x01\x06\x04\0\x0dbase-metadata\x03\0\x02\x02\x03\x02\x01\x0a\x04\0\x0bannot\
+ations\x03\0\x04\x02\x03\x02\x01\x02\x04\0\x0bmeta-fields\x03\0\x06\x02\x03\x02\x01\
+\x07\x04\0\x06cursor\x03\0\x08\x02\x03\x02\x01\x0b\x04\0\x11resource-contents\x03\
+\0\x0a\x02\x03\x02\x01\x08\x04\0\x0eprogress-token\x03\0\x0c\x01ks\x01kw\x01k\x05\
+\x01k\x07\x01r\x07\x04base\x03\x03uris\x0bdescription\x0e\x09mime-type\x0e\x04si\
+ze\x0f\x0bannotations\x10\x04meta\x11\x04\0\x0cmcp-resource\x03\0\x12\x01r\x06\x04\
+base\x03\x0curi-templates\x0bdescription\x0e\x09mime-type\x0e\x0bannotations\x10\
+\x04meta\x11\x04\0\x11resource-template\x03\0\x14\x01k\x09\x01k\x0d\x01r\x03\x06\
+cursor\x16\x0eprogress-token\x17\x04meta\x11\x04\0\x16list-resources-request\x03\
+\0\x18\x01p\x13\x01r\x03\x09resources\x1a\x0bnext-cursor\x16\x04meta\x11\x04\0\x17\
+list-resources-response\x03\0\x1b\x01r\x03\x06cursor\x16\x0eprogress-token\x17\x04\
+meta\x11\x04\0\x16list-templates-request\x03\0\x1d\x01p\x15\x01r\x03\x09template\
+s\x1f\x0bnext-cursor\x16\x04meta\x11\x04\0\x17list-templates-response\x03\0\x20\x01\
+r\x03\x03uris\x0eprogress-token\x17\x04meta\x11\x04\0\x15read-resource-request\x03\
+\0\"\x01p\x0b\x01r\x02\x08contents$\x04meta\x11\x04\0\x16read-resource-response\x03\
+\0%\x01r\x02\x03uris\x04meta\x11\x04\0\x11subscribe-request\x03\0'\x01r\x02\x03u\
+ris\x04meta\x11\x04\0\x13unsubscribe-request\x03\0)\x01j\x01\x1c\x01\x01\x01@\x01\
+\x07request\x19\0+\x04\0\x0elist-resources\x01,\x01j\x01!\x01\x01\x01@\x01\x07re\
+quest\x1e\0-\x04\0\x17list-resource-templates\x01.\x01j\x01&\x01\x01\x01@\x01\x07\
+request#\0/\x04\0\x0dread-resource\x010\x01j\0\x01\x01\x01@\x01\x07request(\01\x04\
+\0\x12subscribe-resource\x012\x01@\x01\x07request*\01\x04\0\x14unsubscribe-resou\
+rce\x013\x03\0\x1ffastertools:mcp/resources@0.1.1\x05\x0c\x02\x03\0\0\x04role\x01\
+B.\x02\x03\x02\x01\x0d\x04\0\x04role\x03\0\0\x02\x03\x02\x01\x04\x04\0\x0dconten\
+t-block\x03\0\x02\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\x04\x02\x03\x02\x01\
+\x06\x04\0\x0dbase-metadata\x03\0\x06\x02\x03\x02\x01\x02\x04\0\x0bmeta-fields\x03\
+\0\x08\x02\x03\x02\x01\x07\x04\0\x06cursor\x03\0\x0a\x02\x03\x02\x01\x08\x04\0\x0e\
+progress-token\x03\0\x0c\x01ks\x01k\x7f\x01r\x03\x04base\x07\x0bdescription\x0e\x08\
+required\x0f\x04\0\x0fprompt-argument\x03\0\x10\x01p\x11\x01k\x12\x01k\x09\x01r\x04\
+\x04base\x07\x0bdescription\x0e\x09arguments\x13\x04meta\x14\x04\0\x06prompt\x03\
+\0\x15\x01r\x02\x04role\x01\x07content\x03\x04\0\x0eprompt-message\x03\0\x17\x01\
+k\x0b\x01k\x0d\x01r\x03\x06cursor\x19\x0eprogress-token\x1a\x04meta\x14\x04\0\x14\
+list-prompts-request\x03\0\x1b\x01p\x16\x01r\x03\x07prompts\x1d\x0bnext-cursor\x19\
+\x04meta\x14\x04\0\x15list-prompts-response\x03\0\x1e\x01o\x02ss\x01p\x20\x01k!\x01\
+r\x04\x04names\x09arguments\"\x0eprogress-token\x1a\x04meta\x14\x04\0\x12get-pro\
+mpt-request\x03\0#\x01p\x18\x01r\x03\x0bdescription\x0e\x08messages%\x04meta\x14\
+\x04\0\x13get-prompt-response\x03\0&\x01j\x01\x1f\x01\x05\x01@\x01\x07request\x1c\
+\0(\x04\0\x0clist-prompts\x01)\x01j\x01'\x01\x05\x01@\x01\x07request$\0*\x04\0\x0a\
+get-prompt\x01+\x03\0\x1dfastertools:mcp/prompts@0.1.1\x05\x0e\x04\0:example:wea\
+ther/mcp-server-with-all-of-its-exports-removed\x04\0\x0b0\x01\0*mcp-server-with\
+-all-of-its-exports-removed\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dw\
+it-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

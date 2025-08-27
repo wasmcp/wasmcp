@@ -1,4 +1,4 @@
-# rust-weather
+# final-test-rust
 
 An MCP server written in Rust
 
