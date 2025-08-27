@@ -1,0 +1,26 @@
+[package]
+name = "rust_weather"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wasmcp = "0.2.8"
+wit-bindgen-rt = "0.43.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+spin-sdk = "4.0"
+url = "2.5"
+
+[dev-dependencies]
+serde_json = { version = "1.0", features = ["preserve_order"] }
+tokio = { version = "1.0", features = ["rt", "time", "macros"] }
+futures = "0.3"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+# Optimize for small binary size
+opt-level = "s"
+lto = true
+strip = true

@@ -3,5 +3,5 @@ dist/
 .ftl/
 composed.wasm
 .spin/
-handler/src/generated/
+src/generated/
 handler.wasm

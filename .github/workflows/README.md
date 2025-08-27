@@ -52,7 +52,7 @@ To manually publish components:
 
 ### WebAssembly Component
 ```bash
-cd src/components/wasmcp-server
+cd src/components/server
 cargo component build --release
 wkg oci push ghcr.io/fastertools/wasmcp-server:0.1.0 \
   target/wasm32-wasip1/release/wasmcp_server.wasm
@@ -60,12 +60,12 @@ wkg oci push ghcr.io/fastertools/wasmcp-server:0.1.0 \
 
 ### Rust SDK
 ```bash
-cd src/sdk/wasmcp-rust
+cd src/sdk/rust
 cargo publish
 ```
 
 ### TypeScript SDK
 ```bash
-cd src/sdk/wasmcp-typescript
+cd src/sdk/typescript
 npm publish --access public
 ```

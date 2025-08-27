@@ -38,7 +38,7 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: src/sdk/wasmcp-typescript/package-lock.json
+        cache-dependency-path: src/sdk/typescript/package-lock.json
     
     - name: Install cargo-binstall
       uses: cargo-bins/cargo-binstall@main
@@ -59,4 +59,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: wasmcp-server
-        path: src/components/wasmcp-server/target/wasm32-wasip1/release/wasmcp_server.wasm
+        path: src/components/server/target/wasm32-wasip1/release/wasmcp_server.wasm

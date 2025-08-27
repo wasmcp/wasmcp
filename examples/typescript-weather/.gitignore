@@ -1,8 +1,0 @@
-node_modules/
-dist/
-.ftl/
-composed.wasm
-.spin/
-handler/src/generated/
-handler.wasm
-.spin-aka/

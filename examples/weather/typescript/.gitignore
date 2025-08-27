@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.ftl/
+composed.wasm
+.spin/
+src/generated/
+handler.wasm

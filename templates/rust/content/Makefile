@@ -11,18 +11,18 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 build: ## Build the handler component
-	cd handler && cargo component build --release
+	cargo component build --release
 
 test: ## Run tests
-	cd handler && cargo test
+	cargo test
 
 clean: ## Clean build artifacts
-	cd handler && cargo clean
+	cargo clean
 	rm -f composed.wasm
 
 compose: build ## Compose handler with server using wac plug
 	@echo "Composing handler with server..."
-	wac plug --plug handler/target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm wasmcp-server.wasm -o composed.wasm
+	wac plug --plug target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm wasmcp-server.wasm -o composed.wasm
 	@echo "✅ Created composed.wasm"
 
 run: build ## Run with Spin (handles dependencies automatically)

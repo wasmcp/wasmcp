@@ -1,0 +1,5 @@
+package wasmcp:mcp@0.1.0;
+
+world mcp-handler {
+    export handler;
+}
