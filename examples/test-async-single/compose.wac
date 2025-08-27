@@ -1,10 +1,10 @@
-// Composition for test-fresh-rust handler with null components
-package test-fresh-rust:app@1.0.0;
+// Composition for test-async-single handler with null components
+package test-async-single:app@1.0.0;
 
 // Instantiate components using package names (resolved via -d flags)
 // The ... syntax creates implicit imports - WAC will automatically 
 // import what each component needs from the registry
-let handler = new test-fresh-rust:handler { ... };
+let handler = new test-async-single:handler { ... };
 let nullresources = new fastertools:null-resources { ... };
 let nullprompts = new fastertools:null-prompts { ... };
 

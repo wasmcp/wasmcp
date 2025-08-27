@@ -1,7 +1,7 @@
 .PHONY: build test clean compose run help
 
 # Component paths
-HANDLER_WASM = target/wasm32-wasip1/release/test_fresh_rust.wasm
+HANDLER_WASM = target/wasm32-wasip1/release/rust_helpers.wasm
 COMPOSED_WASM = composed.wasm
 
 help: ## Show this help message
@@ -38,7 +38,7 @@ get-deps: ## Download all dependencies from registry if not available locally
 compose: build get-deps ## Compose handler with null components and server using WAC
 	@echo "Composing handler with null components and server..."
 	wac compose compose.wac \
-		-d test-fresh-rust:handler=$(HANDLER_WASM) \
+		-d rust-helpers:handler=$(HANDLER_WASM) \
 		-d fastertools:null-resources=null-resources.wasm \
 		-d fastertools:null-prompts=null-prompts.wasm \
 		-d fastertools:wasmcp-server=wasmcp-server.wasm \

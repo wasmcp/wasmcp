@@ -295,9 +295,9 @@ impl bindings::exports::fastertools::mcp::core::Guest for Component {
                 completions: None,
             },
             server_info: bindings::fastertools::mcp::session::ImplementationInfo {
-                name: "{{project-name | snake_case}}".to_string(),
+                name: "test_async_single".to_string(),
                 version: "0.1.0".to_string(),
-                title: Some("{{project-name | kebab_case}} Handler".to_string()),
+                title: Some("test-async-single Handler".to_string()),
             },
             instructions: None,
             meta: None,

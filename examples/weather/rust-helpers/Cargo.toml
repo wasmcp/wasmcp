@@ -1,5 +1,5 @@
 [package]
-name = "{{project-name | snake_case}}"
+name = "rust_helpers"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,14 +12,13 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
 
-# For async HTTP requests
-spin-sdk = "4.0"
-futures = "0.3"
-urlencoding = "2.1"
-lazy_static = "1.5"
+# Optional: Add these if you need HTTP or async functionality
+# spin-sdk = "4.0"
+# spin-executor = "4.0" 
+# url = "2.5"
 
 [package.metadata.component]
-package = "{{project-name | kebab_case}}:handler"
+package = "rust-helpers:handler"
 
 [package.metadata.component.bindings]
 derives = ["Clone"]

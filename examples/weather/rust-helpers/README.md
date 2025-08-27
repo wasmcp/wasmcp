@@ -1,4 +1,4 @@
-# test-fresh-rust
+# rust-helpers
 
 An MCP server written in Rust
 
