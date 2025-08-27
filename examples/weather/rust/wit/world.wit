@@ -1,8 +1,13 @@
-package example:weather;
+package example:weather@0.1.0;
 
-world mcp-server {
+/// Weather handler that provides weather-related tools
+/// This component only implements the tool capability
+world weather-tools {
+    // This handler only provides tools, not resources or prompts
     export fastertools:mcp/core@0.1.1;
     export fastertools:mcp/tool-handler@0.1.1;
-    export fastertools:mcp/resource-handler@0.1.1;
-    export fastertools:mcp/prompt-handler@0.1.1;
+    
+    // No resource or prompt exports - this is a focused tool handler
+    // Servers that require resources/prompts won't accept this handler
+    // But tool-only servers will work perfectly
 }

@@ -140,64 +140,7 @@ impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
     }
 }
 
-// Empty stub implementations for unused capabilities
-impl bindings::exports::fastertools::mcp::resource_handler::Guest for Component {
-    fn handle_list_resources(_request: bindings::fastertools::mcp::resources::ListResourcesRequest) 
-        -> Result<bindings::fastertools::mcp::resources::ListResourcesResponse, bindings::fastertools::mcp::types::McpError> {
-        Ok(bindings::fastertools::mcp::resources::ListResourcesResponse {
-            resources: vec![],
-            next_cursor: None,
-            meta: None,
-        })
-    }
-    
-    fn handle_list_resource_templates(_request: bindings::fastertools::mcp::resources::ListTemplatesRequest) 
-        -> Result<bindings::fastertools::mcp::resources::ListTemplatesResponse, bindings::fastertools::mcp::types::McpError> {
-        Ok(bindings::fastertools::mcp::resources::ListTemplatesResponse {
-            templates: vec![],
-            next_cursor: None,
-            meta: None,
-        })
-    }
-    
-    fn handle_read_resource(_request: bindings::fastertools::mcp::resources::ReadResourceRequest) 
-        -> Result<bindings::fastertools::mcp::resources::ReadResourceResponse, bindings::fastertools::mcp::types::McpError> {
-        Err(bindings::fastertools::mcp::types::McpError {
-            code: bindings::fastertools::mcp::types::ErrorCode::ResourceNotFound,
-            message: "This server does not provide resources".to_string(),
-            data: None,
-        })
-    }
-    
-    fn handle_subscribe_resource(_request: bindings::fastertools::mcp::resources::SubscribeRequest) 
-        -> Result<(), bindings::fastertools::mcp::types::McpError> {
-        Ok(())
-    }
-    
-    fn handle_unsubscribe_resource(_request: bindings::fastertools::mcp::resources::UnsubscribeRequest) 
-        -> Result<(), bindings::fastertools::mcp::types::McpError> {
-        Ok(())
-    }
-}
-
-impl bindings::exports::fastertools::mcp::prompt_handler::Guest for Component {
-    fn handle_list_prompts(_request: bindings::fastertools::mcp::prompts::ListPromptsRequest) 
-        -> Result<bindings::fastertools::mcp::prompts::ListPromptsResponse, bindings::fastertools::mcp::types::McpError> {
-        Ok(bindings::fastertools::mcp::prompts::ListPromptsResponse {
-            prompts: vec![],
-            next_cursor: None,
-            meta: None,
-        })
-    }
-    
-    fn handle_get_prompt(_request: bindings::fastertools::mcp::prompts::GetPromptRequest) 
-        -> Result<bindings::fastertools::mcp::prompts::GetPromptResponse, bindings::fastertools::mcp::types::McpError> {
-        Err(bindings::fastertools::mcp::types::McpError {
-            code: bindings::fastertools::mcp::types::ErrorCode::PromptNotFound,
-            message: "This server does not provide prompts".to_string(),
-            data: None,
-        })
-    }
-}
+// This handler only exports tools - no resource or prompt implementations needed!
+// The world definition (weather-tools) determines what interfaces are required
 
 bindings::export!(Component with_types_in bindings);

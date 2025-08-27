@@ -24,7 +24,7 @@ pub_export_macro = true
 
 [package.metadata.component.target]
 path = "wit"
-world = "mcp-server"
+world = "weather-tools"
 
 [package.metadata.component.target.dependencies]
 "fastertools:mcp" = "0.1.1"
