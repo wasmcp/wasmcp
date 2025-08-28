@@ -57,14 +57,14 @@ let handler = new my:handler { ... };
 
 // For a tools-only handler, use server-tools variant
 let server = new fastertools:wasmcp-server-tools {
-    "fastertools:mcp/tool-handler@0.1.4": handler["fastertools:mcp/tool-handler@0.1.4"],
+    "fastertools:mcp/tool-handler@0.1.6": handler["fastertools:mcp/tool-handler@0.1.6"],
     ...
 };
 
 // For a handler with tools and resources, use server-basic variant
 let server = new fastertools:wasmcp-server-basic {
-    "fastertools:mcp/tool-handler@0.1.4": handler["fastertools:mcp/tool-handler@0.1.4"],
-    "fastertools:mcp/resource-handler@0.1.4": handler["fastertools:mcp/resource-handler@0.1.4"],
+    "fastertools:mcp/tool-handler@0.1.6": handler["fastertools:mcp/tool-handler@0.1.6"],
+    "fastertools:mcp/resource-handler@0.1.6": handler["fastertools:mcp/resource-handler@0.1.6"],
     ...
 };
 

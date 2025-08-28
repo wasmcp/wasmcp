@@ -33,6 +33,7 @@ coverage/
 build/
 out/
 *.wasm.map
+*.wasm
 
 # Editor directories and files
 .idea/

@@ -771,7 +771,7 @@ pub mod fastertools {
                     };
                     let ptr10 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/tools@0.1.4")]
+                    #[link(wasm_import_module = "fastertools:mcp/tools@0.1.7")]
                     unsafe extern "C" {
                         #[link_name = "list-tools"]
                         fn wit_import11(
@@ -1400,7 +1400,7 @@ pub mod fastertools {
                     };
                     let ptr11 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/tools@0.1.4")]
+                    #[link(wasm_import_module = "fastertools:mcp/tools@0.1.7")]
                     unsafe extern "C" {
                         #[link_name = "call-tool"]
                         fn wit_import12(
@@ -6034,22 +6034,22 @@ pub mod exports {
                     ) -> Result<ToolResult, McpError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_fastertools_mcp_tool_handler_0_1_4_cabi {
+                macro_rules! __export_fastertools_mcp_tool_handler_0_1_7_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "fastertools:mcp/tool-handler@0.1.4#handle-list-tools")] unsafe
+                        "fastertools:mcp/tool-handler@0.1.7#handle-list-tools")] unsafe
                         extern "C" fn export_handle_list_tools(arg0 : i32, arg1 : * mut
                         u8, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5 : usize, arg6
                         : i32, arg7 : * mut u8, arg8 : usize,) -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_handle_list_tools_cabi::<$ty >
                         (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) } }
                         #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/tool-handler@0.1.4#handle-list-tools")]
+                        "cabi_post_fastertools:mcp/tool-handler@0.1.7#handle-list-tools")]
                         unsafe extern "C" fn _post_return_handle_list_tools(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_list_tools::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "fastertools:mcp/tool-handler@0.1.4#handle-call-tool")] unsafe
+                        "fastertools:mcp/tool-handler@0.1.7#handle-call-tool")] unsafe
                         extern "C" fn export_handle_call_tool(arg0 : * mut u8, arg1 :
                         usize, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 : i32,
                         arg6 : * mut u8, arg7 : usize, arg8 : i32, arg9 : * mut u8, arg10
@@ -6057,14 +6057,14 @@ pub mod exports {
                         _export_handle_call_tool_cabi::<$ty > (arg0, arg1, arg2, arg3,
                         arg4, arg5, arg6, arg7, arg8, arg9, arg10) } } #[unsafe
                         (export_name =
-                        "cabi_post_fastertools:mcp/tool-handler@0.1.4#handle-call-tool")]
+                        "cabi_post_fastertools:mcp/tool-handler@0.1.7#handle-call-tool")]
                         unsafe extern "C" fn _post_return_handle_call_tool(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_call_tool::<$ty > (arg0) } } };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_fastertools_mcp_tool_handler_0_1_4_cabi;
+                pub(crate) use __export_fastertools_mcp_tool_handler_0_1_7_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -6247,7 +6247,7 @@ macro_rules! __export_tools_handler_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::fastertools::mcp::tool_handler::__export_fastertools_mcp_tool_handler_0_1_4_cabi!($ty
+        exports::fastertools::mcp::tool_handler::__export_fastertools_mcp_tool_handler_0_1_7_cabi!($ty
         with_types_in $($path_to_types_root)*:: exports::fastertools::mcp::tool_handler);
     };
 }
@@ -6255,12 +6255,12 @@ macro_rules! __export_tools_handler_impl {
 pub(crate) use __export_tools_handler_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:rust:handler@0.1.0:tools-handler:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.1.7:tools-handler:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2689] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xfd\x13\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2692] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x80\x14\x01A\x02\x01\
 A\x12\x01B9\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01o\x02ss\x01p\x02\
 \x04\0\x0bmeta-fields\x03\0\x03\x01p\x01\x01k\x05\x01ku\x01ks\x01r\x03\x08audien\
 ce\x06\x08priority\x07\x0dlast-modified\x08\x04\0\x0bannotations\x03\0\x09\x01r\x02\
@@ -6287,7 +6287,7 @@ mcp-error\x03\0)\x01s\x04\0\x06cursor\x03\0+\x01s\x04\0\x0eprogress-token\x03\0-
 name\x08\x04\0\x0amodel-hint\x03\01\x01p2\x01k3\x01r\x04\x05hints4\x0dcost-prior\
 ity\x07\x0espeed-priority\x07\x15intelligence-priority\x07\x04\0\x11model-prefer\
 ences\x03\05\x01r\x04\x0curi-templates\x04names\x0bdescription\x08\x09mime-type\x08\
-\x04\0\x11resource-template\x03\07\x03\0\x1bfastertools:mcp/types@0.1.4\x05\0\x02\
+\x04\0\x11resource-template\x03\07\x03\0\x1bfastertools:mcp/types@0.1.7\x05\0\x02\
 \x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\x03\0\0\x0bjson-schema\x02\
 \x03\0\0\x09mcp-error\x02\x03\0\0\x0dbase-metadata\x02\x03\0\0\x0bmeta-fields\x02\
 \x03\0\0\x06cursor\x02\x03\0\0\x0eprogress-token\x01B,\x02\x03\x02\x01\x01\x04\0\
@@ -6307,7 +6307,7 @@ next-cursor\x1d\x04meta\x16\x04\0\x13list-tools-response\x03\0\"\x01r\x04\x04nam
 es\x09arguments\x1a\x0eprogress-token\x1e\x04meta\x16\x04\0\x11call-tool-request\
 \x03\0$\x01j\x01#\x01\x07\x01@\x01\x07request\x20\0&\x04\0\x0alist-tools\x01'\x01\
 j\x01\x1c\x01\x07\x01@\x01\x07request%\0(\x04\0\x09call-tool\x01)\x03\0\x1bfaste\
-rtools:mcp/tools@0.1.4\x05\x09\x02\x03\0\x01\x12list-tools-request\x02\x03\0\x01\
+rtools:mcp/tools@0.1.7\x05\x09\x02\x03\0\x01\x12list-tools-request\x02\x03\0\x01\
 \x13list-tools-response\x02\x03\0\x01\x11call-tool-request\x02\x03\0\x01\x0btool\
 -result\x01B\x10\x02\x03\x02\x01\x04\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x0a\
 \x04\0\x12list-tools-request\x03\0\x02\x02\x03\x02\x01\x0b\x04\0\x13list-tools-r\
@@ -6315,7 +6315,7 @@ esponse\x03\0\x04\x02\x03\x02\x01\x0c\x04\0\x11call-tool-request\x03\0\x06\x02\x
 \x02\x01\x0d\x04\0\x0btool-result\x03\0\x08\x01j\x01\x05\x01\x01\x01@\x01\x07req\
 uest\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\x01j\x01\x09\x01\x01\x01@\x01\x07\
 request\x07\0\x0c\x04\0\x10handle-call-tool\x01\x0d\x04\0\"fastertools:mcp/tool-\
-handler@0.1.4\x05\x0e\x04\0\x20rust:handler/tools-handler@0.1.0\x04\0\x0b\x13\x01\
+handler@0.1.7\x05\x0e\x04\0#fastertools:mcp/tools-handler@0.1.7\x04\0\x0b\x13\x01\
 \0\x0dtools-handler\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-compo\
 nent\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]

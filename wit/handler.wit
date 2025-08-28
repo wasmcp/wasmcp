@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.4;
+package fastertools:mcp@0.1.7;
 
 /// Core handler interface that all MCP implementations must provide
 /// This contains only the essential session management functions

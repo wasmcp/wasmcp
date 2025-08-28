@@ -45,11 +45,8 @@ package = "wasmcp:server"
 derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
-path = "wit"
-# World is always "server" but the WIT file is dynamically selected based on features
-world = "server"
-
-[package.metadata.component.target.dependencies]
-"fastertools:mcp" = "0.1.4"
+package = "fastertools:mcp"
+version = "0.1.7"
+world = "tools-server" # Should correspond with the enabled features 
 
 [workspace]

@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.4;
+package fastertools:mcp@0.1.7;
 
 /// Resource discovery, reading, and subscription for MCP
 

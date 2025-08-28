@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.4;
+package fastertools:mcp@0.1.7;
 
 /// Core type definitions for the Model Context Protocol
 /// These types are used across all MCP interfaces

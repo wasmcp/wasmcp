@@ -25,11 +25,9 @@ package = "{{project-name | kebab_case}}:handler"
 derives = ["Clone"]
 
 [package.metadata.component.target]
-path = "wit"
+package = "fastertools:mcp"
+version = "0.1.7"
 world = "tools-handler"
-
-[package.metadata.component.target.dependencies]
-"fastertools:mcp" = "0.1.4"
 
 [profile.release]
 # Optimize for small binary size

@@ -1,0 +1,110 @@
+package fastertools:mcp@0.1.7;
+
+/// Minimal server with just tools
+world tools-server {
+    // Core types always needed
+    import types;
+    import session;
+    import notifications;
+    
+    // Tool-specific types and handler
+    import tools;
+    import tool-handler;
+}
+
+world tools-handler {
+    export tool-handler;
+}
+
+/// Server with tools and resources
+world tools-resources-server {
+    // Core types always needed
+    import types;
+    import session;
+    import notifications;
+    
+    // Feature-specific types and handlers
+    import tools;
+    import tool-handler;
+    import resources;
+    import resource-handler;
+}
+
+world tools-resources-handler {
+    export tool-handler;
+    export resource-handler;
+}
+
+world tools-resources-prompts-server {
+    // Core types always needed
+    import types;
+    import session;
+    import notifications;
+    
+    // Feature-specific types and handlers
+    import tools;
+    import tool-handler;
+    import resources;
+    import resource-handler;
+    import prompts;
+    import prompt-handler;
+}
+
+world tools-resources-prompts-handler {
+    export tool-handler;
+    export resource-handler;
+    export prompts;
+}
+
+/// Full server with all handlers
+world full-server {
+    // Core types always needed
+    import types;
+    import session;
+    import notifications;
+    
+    // All feature-specific types
+    import tools;
+    import resources;
+    import prompts;
+    import sampling;
+    import elicitation;
+    import roots;
+    import completion;
+    
+    // Import all handlers
+    import tool-handler;
+    import resource-handler;
+    import prompt-handler;
+    import sampling-handler;
+    import elicitation-handler;
+    import roots-handler;
+    import completion-handler;
+}
+
+world full-handler {
+    export tool-handler;
+    export resource-handler;
+    export prompt-handler;
+    export sampling-handler;
+    export elicitation-handler;
+    export roots-handler;
+    export completion-handler;
+}
+
+/// World for MCP clients that consume server capabilities
+world mcp-client {
+    /// Client exports these capabilities for servers to use
+    export sampling;
+    export elicitation;
+    export roots;
+    export completion;
+    
+    /// Client imports server capabilities
+    import tools;
+    import resources;
+    import prompts;
+    
+    /// Client handles notifications
+    export notifications;
+}
