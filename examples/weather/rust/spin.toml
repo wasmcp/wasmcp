@@ -12,7 +12,7 @@ component = "composed"
 
 [component.composed]
 # Using the composed component (handler + null components + server)
-source = "composed.wasm"
+source = "composed-new.wasm"
 allowed_outbound_hosts = [
     "https://geocoding-api.open-meteo.com",
     "https://api.open-meteo.com"

@@ -1,6 +1,6 @@
 # wasmcp-server
 
-MCP server component that handles HTTP and JSON-RPC protocol. Works with any WASI runtime (Spin, Wasmtime, etc.).
+Feature-flagged MCP server component that handles HTTP and JSON-RPC protocol. Works with any WASI runtime (Spin, Wasmtime, etc.).
 
 ## What It Does
 
@@ -9,23 +9,56 @@ Bridges HTTP requests to your MCP handler:
 - Translates to component calls
 - Returns JSON-RPC responses
 - Handles errors gracefully
+- **NEW**: Build variants that only import the handlers they need (no null components!)
+
+## Building Server Variants
+
+### Quick Build
+```bash
+# Build all common variants
+./build-variants.sh
+```
+
+### Manual Build
+```bash
+# Tools-only server (for handlers that only provide tools)
+cp wit-variants/server-tools.wit wit/world.wit
+cargo component build --features "tools" --no-default-features --release
+
+# Standard server (tools + resources + prompts)
+cp wit-variants/server-standard.wit wit/world.wit
+cargo component build --features "tools,resources,prompts" --no-default-features --release
+```
 
 ## Usage
 
-Compose with your handler using `wac`:
+### New Approach - Use Matching Server Variant
+```wac
+// Use a server variant that matches your handler's capabilities
+let handler = new my:handler { ... };
 
-```bash
-wac plug --plug handler.wasm wasmcp-server.wasm -o composed.wasm
+// Tools-only server - no null components needed!
+let server = new fastertools:wasmcp-server-tools {
+    "fastertools:mcp/tool-handler@0.1.3": handler["fastertools:mcp/tool-handler@0.1.3"],
+    ...
+};
+
+export server["wasi:http/incoming-handler@0.2.0"];
 ```
 
-Run with any WASI runtime:
+### Legacy Approach - With Null Components
+```wac
+// Old way required null components for unused capabilities
+let handler = new my:handler { ... };
+let nullresources = new fastertools:null-resources { ... };
+let nullprompts = new fastertools:null-prompts { ... };
 
-```bash
-# Wasmtime
-wasmtime serve -S cli -S http composed.wasm
-
-# Spin
-spin up
+let server = new fastertools:wasmcp-server {
+    "fastertools:mcp/tool-handler@0.1.3": handler["fastertools:mcp/tool-handler@0.1.3"],
+    "fastertools:mcp/resource-handler@0.1.3": nullresources["fastertools:mcp/resource-handler@0.1.3"],
+    "fastertools:mcp/prompt-handler@0.1.3": nullprompts["fastertools:mcp/prompt-handler@0.1.3"],
+    ...
+};
 ```
 
 ## Protocol Support

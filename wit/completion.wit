@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.1;
+package fastertools:mcp@0.1.4;
 
 /// Argument completion support for enhanced UX
 /// Provides context-aware suggestions for tool arguments and prompts

@@ -2,9 +2,9 @@ mod bindings;
 #[macro_use]
 mod helpers;
 
-use helpers::{Tool, ToolResult, McpError, ErrorCode, IntoToolResult, text_result};
+use helpers::{Tool, ToolResult, McpError, ErrorCode, IntoToolResult, text_result, get_string_field};
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use spin_sdk::http::{Request, send};
 use futures::future::join_all;
 
@@ -16,8 +16,8 @@ impl Tool for EchoTool {
     const NAME: &'static str = "echo";
     const DESCRIPTION: &'static str = "Echo a message back to the user";
     
-    fn input_schema() -> Value {
-        serde_json::json!({
+    fn input_schema() -> String {
+        json!({
             "type": "object",
             "properties": {
                 "message": {
@@ -26,18 +26,17 @@ impl Tool for EchoTool {
                 }
             },
             "required": ["message"]
-        })
+        }).to_string()
     }
     
-    async fn execute(args: Value) -> Result<ToolResult, McpError> {
-        let message = args.get("message")
-            .and_then(|v| v.as_str())
+    async fn execute(args: Option<String>) -> Result<ToolResult, McpError> {
+        let message = get_string_field(&args, "message")?
             .ok_or_else(|| McpError {
                 code: ErrorCode::InvalidParams,
                 message: "Missing required field: message".to_string(),
                 data: None,
             })?;
-            
+        
         Ok(format!("Echo: {}", message).into_result())
     }
 }
@@ -49,8 +48,8 @@ impl Tool for WeatherTool {
     const NAME: &'static str = "get_weather";
     const DESCRIPTION: &'static str = "Get current weather for a location";
     
-    fn input_schema() -> Value {
-        serde_json::json!({
+    fn input_schema() -> String {
+        json!({
             "type": "object",
             "properties": {
                 "location": {
@@ -59,19 +58,18 @@ impl Tool for WeatherTool {
                 }
             },
             "required": ["location"]
-        })
+        }).to_string()
     }
     
-    async fn execute(args: Value) -> Result<ToolResult, McpError> {
-        let location = args.get("location")
-            .and_then(|v| v.as_str())
+    async fn execute(args: Option<String>) -> Result<ToolResult, McpError> {
+        let location = get_string_field(&args, "location")?
             .ok_or_else(|| McpError {
                 code: ErrorCode::InvalidParams,
                 message: "Missing required field: location".to_string(),
                 data: None,
             })?;
         
-        match get_weather_for_city(location).await {
+        match get_weather_for_city(&location).await {
             Ok(weather) => Ok(text_result(weather)),
             Err(e) => Ok(text_result(format!("Error fetching weather: {}", e)))
         }
@@ -85,8 +83,8 @@ impl Tool for MultiWeatherTool {
     const NAME: &'static str = "multi_weather";
     const DESCRIPTION: &'static str = "Get weather for multiple cities concurrently";
     
-    fn input_schema() -> Value {
-        serde_json::json!({
+    fn input_schema() -> String {
+        json!({
             "type": "object",
             "properties": {
                 "cities": {
@@ -100,11 +98,22 @@ impl Tool for MultiWeatherTool {
                 }
             },
             "required": ["cities"]
-        })
+        }).to_string()
     }
     
-    async fn execute(args: Value) -> Result<ToolResult, McpError> {
-        let cities = args.get("cities")
+    async fn execute(args: Option<String>) -> Result<ToolResult, McpError> {
+        // Parse the JSON arguments
+        let json_args: Value = args.as_ref()
+            .map(|s| serde_json::from_str(s))
+            .transpose()
+            .map_err(|e| McpError {
+                code: ErrorCode::InvalidParams,
+                message: format!("Invalid JSON arguments: {}", e),
+                data: None,
+            })?
+            .unwrap_or(json!({}));
+        
+        let cities = json_args.get("cities")
             .and_then(|v| v.as_array())
             .ok_or_else(|| McpError {
                 code: ErrorCode::InvalidParams,
@@ -150,6 +159,19 @@ impl Tool for MultiWeatherTool {
         }
         
         output.push_str("=== All requests completed concurrently ===");
+        
+        // We could also return structured content as JSON!
+        // For example:
+        // let structured = json!({
+        //     "results": results.iter().map(|(city, result)| {
+        //         json!({
+        //             "city": city,
+        //             "success": result.is_ok(),
+        //             "data": result.as_ref().ok()
+        //         })
+        //     }).collect::<Vec<_>>()
+        // });
+        // result.structured_content = Some(structured.to_string());
         
         Ok(text_result(output))
     }
@@ -204,57 +226,49 @@ async fn get_weather_for_city(location: &str) -> Result<String, String> {
     ))
 }
 
+// Weather condition descriptions based on WMO codes
 fn get_weather_condition(code: i32) -> &'static str {
     match code {
         0 => "Clear sky",
         1 => "Mainly clear",
-        2 => "Partly cloudy",
+        2 => "Partly cloudy", 
         3 => "Overcast",
-        45 => "Foggy",
-        48 => "Depositing rime fog",
-        51 => "Light drizzle",
-        53 => "Moderate drizzle",
-        55 => "Dense drizzle",
-        61 => "Slight rain",
-        63 => "Moderate rain",
-        65 => "Heavy rain",
-        71 => "Slight snow",
-        73 => "Moderate snow",
-        75 => "Heavy snow",
+        45 | 48 => "Foggy",
+        51 | 53 | 55 => "Drizzle",
+        56 | 57 => "Freezing drizzle",
+        61 | 63 | 65 => "Rain",
+        66 | 67 => "Freezing rain",
+        71 | 73 | 75 => "Snow",
         77 => "Snow grains",
-        80 => "Slight rain showers",
-        81 => "Moderate rain showers",
-        82 => "Violent rain showers",
-        85 => "Slight snow showers",
-        86 => "Heavy snow showers",
+        80 | 81 | 82 => "Rain showers",
+        85 | 86 => "Snow showers",
         95 => "Thunderstorm",
-        96 => "Thunderstorm with slight hail",
-        99 => "Thunderstorm with heavy hail",
+        96 | 99 => "Thunderstorm with hail",
         _ => "Unknown"
     }
 }
 
 // Response types for API calls
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct GeocodingResponse {
-    results: Vec<LocationData>,
+    results: Vec<GeocodingResult>,
 }
 
-#[derive(Deserialize)]
-struct LocationData {
+#[derive(Deserialize, Debug)]
+struct GeocodingResult {
+    name: String,
     latitude: f64,
     longitude: f64,
-    name: String,
     country: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct WeatherResponse {
-    current: CurrentWeather,
+    current: WeatherData,
 }
 
-#[derive(Deserialize)]
-struct CurrentWeather {
+#[derive(Deserialize, Debug)]
+struct WeatherData {
     temperature_2m: f64,
     apparent_temperature: f64,
     relative_humidity_2m: i32,
@@ -262,8 +276,7 @@ struct CurrentWeather {
     weather_code: i32,
 }
 
-// Generate the tool handlers using our macro
-// This creates handle_list_tools and handle_call_tool functions
+// Register all our tools using the macro
 lazy_static::lazy_static! {
     static ref TOOL_HANDLERS: (
         fn(bindings::fastertools::mcp::tools::ListToolsRequest) -> Result<bindings::fastertools::mcp::tools::ListToolsResponse, bindings::fastertools::mcp::types::McpError>,
@@ -275,47 +288,10 @@ lazy_static::lazy_static! {
     );
 }
 
-// Implement the core interface for initialization
-impl bindings::exports::fastertools::mcp::core::Guest for Component {
-    fn handle_initialize(_request: bindings::fastertools::mcp::session::InitializeRequest) 
-        -> Result<bindings::fastertools::mcp::session::InitializeResponse, bindings::fastertools::mcp::types::McpError> {
-        Ok(bindings::fastertools::mcp::session::InitializeResponse {
-            protocol_version: "2025-06-18".to_string(),
-            capabilities: bindings::fastertools::mcp::session::ServerCapabilities {
-                tools: Some(bindings::fastertools::mcp::session::ToolsCapability { 
-                    list_changed: Some(false) 
-                }),
-                // Not implementing resources or prompts - null components will handle these
-                resources: None,
-                prompts: None,
-                experimental: None,
-                logging: None,
-                completions: None,
-            },
-            server_info: bindings::fastertools::mcp::session::ImplementationInfo {
-                name: "rust".to_string(),
-                version: "0.1.0".to_string(),
-                title: Some("rust Handler".to_string()),
-            },
-            instructions: None,
-            meta: None,
-        })
-    }
-    
-    fn handle_initialized() -> Result<(), bindings::fastertools::mcp::types::McpError> {
-        Ok(())
-    }
-    
-    fn handle_ping() -> Result<(), bindings::fastertools::mcp::types::McpError> {
-        Ok(())
-    }
-    
-    fn handle_shutdown() -> Result<(), bindings::fastertools::mcp::types::McpError> {
-        Ok(())
-    }
-}
+// With the new architecture, handlers ONLY implement their specific capability.
+// The server handles all core protocol stuff (initialize, ping, etc.)
 
-// Implement the tool handler interface - just delegate to the generated functions
+// Implement the tool handler interface
 impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
     fn handle_list_tools(request: bindings::fastertools::mcp::tools::ListToolsRequest) 
         -> Result<bindings::fastertools::mcp::tools::ListToolsResponse, bindings::fastertools::mcp::types::McpError> {

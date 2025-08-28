@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.1;
+package fastertools:mcp@0.1.4;
 
 /// Interactive elicitation - request structured input from users
 /// Enables servers to collect configuration, preferences, or other data interactively

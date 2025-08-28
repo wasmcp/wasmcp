@@ -2,4 +2,6 @@ package rust:handler@0.1.0;
 
 /// This example implements the minimal tool handler world
 /// It provides weather-related tools
-use fastertools:mcp/mcp-tool-handler@0.1.1;
+world tools-handler {
+    export fastertools:mcp/tool-handler@0.1.4;
+}

@@ -1,9 +1,9 @@
-package fastertools:mcp@0.1.1;
+package fastertools:mcp@0.1.4;
 
 /// Prompt template discovery and rendering for MCP
 
 interface prompts {
-    use types.{role, content-block, mcp-error, base-metadata, meta-fields, cursor, progress-token};
+    use types.{message-role, content-block, mcp-error, base-metadata, meta-fields, cursor, progress-token};
 
     /// Argument definition for a prompt template
     record prompt-argument {
@@ -29,8 +29,8 @@ interface prompts {
 
     /// Message in a prompt conversation
     record prompt-message {
-        /// Who is speaking (user or assistant)
-        role: role,
+        /// Who is speaking (user, assistant, or system)
+        role: message-role,
         /// Message content
         content: content-block,
     }

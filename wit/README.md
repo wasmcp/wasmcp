@@ -124,32 +124,6 @@ let response = sampling::create_message(CreateMessageRequest {
 })?;
 ```
 
-## Type System
-
-### JSON Values
-```wit
-variant json-value {
-    null,
-    boolean(bool),
-    integer(s64),
-    number(f64),
-    str(string),
-    array(string),    // JSON-encoded
-    object(string),   // JSON-encoded
-}
-```
-
-### JSON Schema
-```wit
-record json-schema {
-    schema-type: option<string>,
-    properties: option<string>,
-    required: option<list<string>>,
-    description: option<string>,
-    additional: option<string>,
-}
-```
-
 ### Error Handling
 ```wit
 variant error-code {

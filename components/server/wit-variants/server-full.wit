@@ -1,0 +1,27 @@
+package wasmcp:server@0.1.0;
+
+/// Full server with all handlers
+world server {
+    // Core types always needed
+    import fastertools:mcp/types@0.1.4;
+    import fastertools:mcp/session@0.1.4;
+    import fastertools:mcp/notifications@0.1.4;
+    
+    // All feature-specific types
+    import fastertools:mcp/tools@0.1.4;
+    import fastertools:mcp/resources@0.1.4;
+    import fastertools:mcp/prompts@0.1.4;
+    import fastertools:mcp/sampling@0.1.4;
+    import fastertools:mcp/elicitation@0.1.4;
+    import fastertools:mcp/roots@0.1.4;
+    import fastertools:mcp/completion@0.1.4;
+    
+    // Import all handlers
+    import fastertools:mcp/tool-handler@0.1.4;
+    import fastertools:mcp/resource-handler@0.1.4;
+    import fastertools:mcp/prompt-handler@0.1.4;
+    import fastertools:mcp/sampling-handler@0.1.4;
+    import fastertools:mcp/elicitation-handler@0.1.4;
+    import fastertools:mcp/roots-handler@0.1.4;
+    import fastertools:mcp/completion-handler@0.1.4;
+}

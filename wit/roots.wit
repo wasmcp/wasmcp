@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.1;
+package fastertools:mcp@0.1.4;
 
 /// File system roots - expose directories to servers
 /// Allows servers to understand and operate on client file systems with permission

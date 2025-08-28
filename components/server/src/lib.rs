@@ -1,21 +1,26 @@
 use spin_sdk::http::{IntoResponse, Request, Response};
 use anyhow::Result;
+use serde_json::{json, Value};
+
+// Use rmcp types for protocol compliance
 use rmcp::model::{
-    CallToolRequestParam, ListToolsResult, ServerInfo,
-    ListPromptsResult, ListResourcesResult,
-    PaginatedRequestParam, GetPromptRequestParam, ReadResourceRequestParam,
-    InitializeRequestParam,
+    CallToolRequestParam, ServerInfo,
+    PaginatedRequestParam,
+    InitializeRequestParam, ServerCapabilities as RmcpServerCapabilities,
+    Implementation, ProtocolVersion,
 };
 
 // cargo-component will generate bindings automatically
 #[allow(warnings)]
 mod bindings;
 
+// Always import types and session for core functionality
+use bindings::fastertools::mcp::{
+    types::{McpError, ErrorCode},
+};
+
 mod adapter;
 use adapter::WitMcpAdapter;
-
-// Import the MCP handler for notifications
-use bindings::fastertools::mcp::core;
 
 /// MCP Server that bridges to WIT interface
 struct McpServer {
@@ -29,13 +34,58 @@ impl McpServer {
         }
     }
     
+    /// Get server info using rmcp types for client compatibility
     fn get_server_info(&self) -> Result<ServerInfo> {
-        self.adapter.get_server_info()
+        Ok(ServerInfo {
+            protocol_version: ProtocolVersion::default(),
+            capabilities: RmcpServerCapabilities {
+                #[cfg(feature = "tools")]
+                tools: Some(rmcp::model::ToolsCapability {
+                    list_changed: Some(false),
+                }),
+                #[cfg(not(feature = "tools"))]
+                tools: None,
+                
+                #[cfg(feature = "resources")]
+                resources: Some(rmcp::model::ResourcesCapability {
+                    #[cfg(feature = "sse")]
+                    subscribe: Some(true),
+                    #[cfg(not(feature = "sse"))]
+                    subscribe: None,
+                    list_changed: Some(false),
+                }),
+                #[cfg(not(feature = "resources"))]
+                resources: None,
+                
+                #[cfg(feature = "prompts")]
+                prompts: Some(rmcp::model::PromptsCapability {
+                    list_changed: Some(false),
+                }),
+                #[cfg(not(feature = "prompts"))]
+                prompts: None,
+                
+                ..Default::default()
+            },
+            server_info: Implementation {
+                name: "wasmcp-server".to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+            },
+            instructions: None,
+        })
     }
 }
 
 #[spin_sdk::http_component]
 async fn handle_request(req: Request) -> Result<impl IntoResponse> {
+    let _path = req.uri();
+    
+    // Handle SSE endpoint if enabled
+    #[cfg(feature = "sse")]
+    if _path == "/mcp/sse" {
+        return handle_sse_request(req).await;
+    }
+    
+    // Handle standard JSON-RPC endpoint
     let body = req.body();
     let request_str = std::str::from_utf8(body)?;
     
@@ -43,7 +93,7 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
     let server = McpServer::new();
     
     // Parse JSON-RPC request
-    let json_request: serde_json::Value = serde_json::from_str(request_str)?;
+    let json_request: Value = serde_json::from_str(request_str)?;
     
     // Extract method and handle accordingly
     let method = json_request.get("method")
@@ -53,114 +103,34 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
     let id = json_request.get("id").cloned();
     let params = json_request.get("params").cloned();
     
-    // Route to appropriate handler using rmcp types for protocol compliance
-    let result = match method {
-        "initialize" => {
-            let _params: InitializeRequestParam = if let Some(p) = params {
-                serde_json::from_value(p)?
-            } else {
-                InitializeRequestParam::default()
-            };
-            
-            let server_info = server.get_server_info()?;
-            Ok(serde_json::to_value(server_info)?)
-        },
-        "initialized" | "notifications/initialized" => {
-            // Handle initialized notification
-            core::handle_initialized().ok();
-            // Notification, return empty body with 200
-            return Ok(Response::builder()
-                .status(200)
-                .header("content-type", "application/json")
-                .body("")
-                .build());
-        },
-        "tools/list" => {
-            let _params: Option<PaginatedRequestParam> = params
-                .map(|p| serde_json::from_value(p))
-                .transpose()?;
-            
-            let tools = server.adapter.list_tools().await?;
-            let result = ListToolsResult {
-                tools,
-                next_cursor: None,
-            };
-            Ok(serde_json::to_value(result)?)
-        },
-        "tools/call" => {
-            let params: CallToolRequestParam = serde_json::from_value(params.unwrap_or_default())?;
-            let result = server.adapter.call_tool(&params.name, params.arguments).await?;
-            Ok(serde_json::to_value(result)?)
-        },
-        "resources/list" => {
-            let _params: Option<PaginatedRequestParam> = params
-                .map(|p| serde_json::from_value(p))
-                .transpose()?;
-            
-            let resources = server.adapter.list_resources().await?;
-            let result = ListResourcesResult {
-                resources,
-                next_cursor: None,
-            };
-            Ok(serde_json::to_value(result)?)
-        },
-        "resources/read" => {
-            let params: ReadResourceRequestParam = serde_json::from_value(params.unwrap_or_default())?;
-            let result = server.adapter.read_resource(&params.uri).await?;
-            Ok(serde_json::to_value(result)?)
-        },
-        "prompts/list" => {
-            let _params: Option<PaginatedRequestParam> = params
-                .map(|p| serde_json::from_value(p))
-                .transpose()?;
-            
-            let prompts = server.adapter.list_prompts().await?;
-            let result = ListPromptsResult {
-                prompts,
-                next_cursor: None,
-            };
-            Ok(serde_json::to_value(result)?)
-        },
-        "prompts/get" => {
-            let params: GetPromptRequestParam = serde_json::from_value(params.unwrap_or_default())?;
-            let result = server.adapter.get_prompt(&params.name, params.arguments).await?;
-            Ok(serde_json::to_value(result)?)
-        },
-        "ping" => {
-            core::handle_ping().ok();
-            Ok(serde_json::json!({}))
-        },
-        "shutdown" => {
-            core::handle_shutdown().ok();
-            Ok(serde_json::json!({}))
-        },
-        _ => {
-            // Check if it's another notification (no id)
-            if id.is_none() {
-                // Unknown notification, just acknowledge with 204
-                return Ok(Response::builder()
-                    .status(204)
-                    .build());
-            }
-            Err(anyhow::anyhow!("Method not found: {}", method))
-        }
-    };
+    // Route to appropriate handler based on enabled features
+    let result = route_method(&server, method, params).await;
+    
+    // Handle notifications (no id)
+    if id.is_none() && result.is_ok() {
+        return Ok(Response::builder()
+            .status(200)
+            .header("content-type", "application/json")
+            .body("")
+            .build());
+    }
     
     // Build JSON-RPC response
     let response_json = match result {
         Ok(result) => {
-            serde_json::json!({
+            json!({
                 "jsonrpc": "2.0",
                 "result": result,
                 "id": id
             })
         },
         Err(e) => {
-            serde_json::json!({
+            json!({
                 "jsonrpc": "2.0",
                 "error": {
-                    "code": -32601,
-                    "message": e.to_string()
+                    "code": e.code.into_code(),
+                    "message": e.message,
+                    "data": e.data
                 },
                 "id": id
             })
@@ -172,4 +142,221 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
         .header("content-type", "application/json")
         .body(serde_json::to_string(&response_json)?)
         .build())
+}
+
+/// Route method calls based on enabled features
+async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -> Result<Value, McpError> {
+    match method {
+        // Core methods - always available
+        "initialize" => {
+            // Use rmcp type for deserialization
+            let _params: InitializeRequestParam = if let Some(p) = params {
+                serde_json::from_value(p).map_err(|e| McpError {
+                    code: ErrorCode::InvalidParams,
+                    message: format!("Invalid params: {}", e),
+                    data: None,
+                })?
+            } else {
+                InitializeRequestParam::default()
+            };
+            
+            let server_info = server.get_server_info().map_err(|e| McpError {
+                code: ErrorCode::InternalError,
+                message: e.to_string(),
+                data: None,
+            })?;
+            Ok(serde_json::to_value(server_info).unwrap())
+        },
+        
+        "initialized" | "notifications/initialized" => Ok(Value::Null),
+        "ping" => Ok(json!({})),
+        "shutdown" => Ok(json!({})),
+        
+        // Tools methods - only if feature enabled
+        #[cfg(feature = "tools")]
+        "tools/list" => {
+                let _params: Option<PaginatedRequestParam> = params
+                    .map(|p| serde_json::from_value(p))
+                    .transpose()
+                    .map_err(|e| McpError {
+                        code: ErrorCode::InvalidParams,
+                        message: format!("Invalid params: {}", e),
+                        data: None,
+                    })?;
+                
+                let request = bindings::fastertools::mcp::tools::ListToolsRequest {
+                    cursor: None,
+                    progress_token: None,
+                    meta: None,
+                };
+                
+                let response = bindings::fastertools::mcp::tool_handler::handle_list_tools(&request)?;
+                let result = server.adapter.convert_list_tools_to_rmcp(response).map_err(|e| McpError {
+                    code: ErrorCode::InternalError,
+                    message: e.to_string(),
+                    data: None,
+                })?;
+                Ok(serde_json::to_value(result).unwrap())
+        },
+        
+        #[cfg(feature = "tools")]
+        "tools/call" => {
+                let params: CallToolRequestParam = serde_json::from_value(params.unwrap_or_default()).map_err(|e| McpError {
+                    code: ErrorCode::InvalidParams,
+                    message: format!("Invalid params: {}", e),
+                    data: None,
+                })?;
+                let result = server.adapter.call_tool(&params.name, params.arguments).await.map_err(|e| McpError {
+                    code: ErrorCode::InternalError,
+                    message: e.to_string(),
+                    data: None,
+                })?;
+                Ok(serde_json::to_value(result).unwrap())
+        },
+        
+        // Resources methods - only if feature enabled
+        #[cfg(feature = "resources")]
+        "resources/list" => {
+            let request = if let Some(p) = params {
+                serde_json::from_value(p).map_err(|e| McpError {
+                    code: ErrorCode::InvalidParams,
+                    message: format!("Invalid params: {}", e),
+                    data: None,
+                })?
+            } else {
+                bindings::fastertools::mcp::resources::ListResourcesRequest {
+                    cursor: None,
+                    progress_token: None,
+                    meta: None,
+                }
+            };
+            
+            let response = bindings::fastertools::mcp::resource_handler::handle_list_resources(&request)?;
+            let result = server.adapter.convert_list_resources_to_rmcp(response).map_err(|e| McpError {
+                code: ErrorCode::InternalError,
+                message: e.to_string(),
+                data: None,
+            })?;
+            Ok(serde_json::to_value(result).unwrap())
+        },
+        
+        #[cfg(feature = "resources")]
+        "resources/read" => {
+            let request: bindings::fastertools::mcp::resources::ReadResourceRequest = 
+                serde_json::from_value(params.unwrap_or_default()).map_err(|e| McpError {
+                    code: ErrorCode::InvalidParams,
+                    message: format!("Invalid params: {}", e),
+                    data: None,
+                })?;
+            
+            let response = bindings::fastertools::mcp::resource_handler::handle_read_resource(&request)?;
+            let result = server.adapter.convert_read_resource_to_rmcp(response).map_err(|e| McpError {
+                code: ErrorCode::InternalError,
+                message: e.to_string(),
+                data: None,
+            })?;
+            Ok(serde_json::to_value(result).unwrap())
+        },
+        
+        #[cfg(all(feature = "resources", feature = "sse"))]
+        "resources/subscribe" => {
+            let request: bindings::fastertools::mcp::resources::SubscribeRequest = 
+                serde_json::from_value(params.unwrap_or_default()).map_err(|e| McpError {
+                    code: ErrorCode::InvalidParams,
+                    message: format!("Invalid params: {}", e),
+                    data: None,
+                })?;
+            
+            bindings::fastertools::mcp::resource_handler::handle_subscribe_resource(&request)?;
+            Ok(json!({}))
+        },
+        
+        // Prompts methods - only if feature enabled
+        #[cfg(feature = "prompts")]
+        "prompts/list" => {
+            let request = if let Some(p) = params {
+                serde_json::from_value(p).map_err(|e| McpError {
+                    code: ErrorCode::InvalidParams,
+                    message: format!("Invalid params: {}", e),
+                    data: None,
+                })?
+            } else {
+                bindings::fastertools::mcp::prompts::ListPromptsRequest {
+                    cursor: None,
+                    progress_token: None,
+                    meta: None,
+                }
+            };
+            
+            let response = bindings::fastertools::mcp::prompt_handler::handle_list_prompts(&request)?;
+            let result = server.adapter.convert_list_prompts_to_rmcp(response).map_err(|e| McpError {
+                code: ErrorCode::InternalError,
+                message: e.to_string(),
+                data: None,
+            })?;
+            Ok(serde_json::to_value(result).unwrap())
+        },
+        
+        #[cfg(feature = "prompts")]
+        "prompts/get" => {
+            let request: bindings::fastertools::mcp::prompts::GetPromptRequest = 
+                serde_json::from_value(params.unwrap_or_default()).map_err(|e| McpError {
+                    code: ErrorCode::InvalidParams,
+                    message: format!("Invalid params: {}", e),
+                    data: None,
+                })?;
+            
+            let response = bindings::fastertools::mcp::prompt_handler::handle_get_prompt(&request)?;
+            let result = server.adapter.convert_get_prompt_to_rmcp(response).map_err(|e| McpError {
+                code: ErrorCode::InternalError,
+                message: e.to_string(),
+                data: None,
+            })?;
+            Ok(serde_json::to_value(result).unwrap())
+        },
+        
+        // Default case - method not found or not enabled
+        _ => {
+            Err(McpError {
+                code: ErrorCode::MethodNotFound,
+                message: format!("Method '{}' not found or not enabled in this server variant", method),
+                data: None,
+            })
+        }
+    }
+}
+
+// SSE support if enabled
+#[cfg(feature = "sse")]
+async fn handle_sse_request(req: Request) -> Result<impl IntoResponse> {
+    // SSE implementation would go here
+    // For now, just return a placeholder
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", "text/event-stream")
+        .header("Cache-Control", "no-cache")
+        .header("Connection", "keep-alive")
+        .body("data: SSE endpoint enabled\n\n")
+        .build())
+}
+
+// Extension trait for ErrorCode
+impl ErrorCode {
+    fn into_code(&self) -> i32 {
+        match self {
+            ErrorCode::ParseError => -32700,
+            ErrorCode::InvalidRequest => -32600,
+            ErrorCode::MethodNotFound => -32601,
+            ErrorCode::InvalidParams => -32602,
+            ErrorCode::InternalError => -32603,
+            ErrorCode::ResourceNotFound => -32002,
+            ErrorCode::ToolNotFound => -32003,
+            ErrorCode::PromptNotFound => -32004,
+            ErrorCode::Unauthorized => -32005,
+            ErrorCode::RateLimited => -32006,
+            ErrorCode::Timeout => -32007,
+            ErrorCode::Cancelled => -32008,
+            ErrorCode::CustomCode(code) => *code,
+        }
+    }
 }

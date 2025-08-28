@@ -29,7 +29,7 @@ path = "wit"
 world = "tools-handler"
 
 [package.metadata.component.target.dependencies]
-"fastertools:mcp" = "0.1.1"
+"fastertools:mcp" = "0.1.4"
 
 [profile.release]
 # Optimize for small binary size

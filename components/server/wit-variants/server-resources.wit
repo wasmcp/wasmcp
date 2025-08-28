@@ -1,13 +1,12 @@
 package wasmcp:server@0.1.0;
 
-/// Minimal server with just tools
 world server {
     // Core types always needed
     import fastertools:mcp/types@0.1.4;
     import fastertools:mcp/session@0.1.4;
     import fastertools:mcp/notifications@0.1.4;
     
-    // Tool-specific types and handler
-    import fastertools:mcp/tools@0.1.4;
-    import fastertools:mcp/tool-handler@0.1.4;
+    // Resource-specific types and handler
+    import fastertools:mcp/resources@0.1.4;
+    import fastertools:mcp/resource-handler@0.1.4;
 }
