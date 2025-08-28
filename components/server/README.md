@@ -9,56 +9,66 @@ Bridges HTTP requests to your MCP handler:
 - Translates to component calls
 - Returns JSON-RPC responses
 - Handles errors gracefully
-- **NEW**: Build variants that only import the handlers they need (no null components!)
+- **Build variants that only import the handlers they need (no null components!)**
+
+## How Feature-Based Compilation Works
+
+The server uses a clever build system to create different server variants:
+
+1. **Build Script (`build.rs`)**: Automatically selects the right WIT interface based on enabled Cargo features
+2. **WIT Variants (`wit-variants/`)**: Pre-defined world definitions for each server variant
+3. **Feature Flags**: Cargo features control which MCP capabilities are compiled in
+
+### Available Variants
+
+| Variant | Features | Use Case |
+|---------|----------|----------|
+| `server-tools` | Tools only | Handlers that just provide tools (e.g., weather, calculators) |
+| `server-resources` | Resources only | Handlers that just serve resources (e.g., file systems) |
+| `server-prompts` | Prompts only | Handlers that just provide prompts |
+| `server-basic` | Tools + Resources | Most common combination |
+| `server-standard` | Tools + Resources + Prompts | Full-featured handlers |
+| `server-full` | All features | Everything including future capabilities |
 
 ## Building Server Variants
 
-### Quick Build
+### Quick Build (All Variants)
 ```bash
-# Build all common variants
+# Builds all 6 variants and saves them to target/
 ./build-variants.sh
 ```
 
-### Manual Build
+### Build Specific Variant
 ```bash
-# Tools-only server (for handlers that only provide tools)
-cp wit-variants/server-tools.wit wit/world.wit
-cargo component build --features "tools" --no-default-features --release
+# The build.rs automatically copies the right WIT file based on features
+cargo component build --features "tools" --release
+# Creates: target/wasm32-wasip1/release/wasmcp_server.wasm (tools-only variant)
 
-# Standard server (tools + resources + prompts)
-cp wit-variants/server-standard.wit wit/world.wit
-cargo component build --features "tools,resources,prompts" --no-default-features --release
+cargo component build --features "tools,resources,prompts" --release  
+# Creates: target/wasm32-wasip1/release/wasmcp_server.wasm (standard variant)
 ```
 
 ## Usage
 
-### New Approach - Use Matching Server Variant
+### Usage Example
 ```wac
 // Use a server variant that matches your handler's capabilities
 let handler = new my:handler { ... };
 
-// Tools-only server - no null components needed!
+// For a tools-only handler, use server-tools variant
 let server = new fastertools:wasmcp-server-tools {
-    "fastertools:mcp/tool-handler@0.1.3": handler["fastertools:mcp/tool-handler@0.1.3"],
+    "fastertools:mcp/tool-handler@0.1.4": handler["fastertools:mcp/tool-handler@0.1.4"],
+    ...
+};
+
+// For a handler with tools and resources, use server-basic variant
+let server = new fastertools:wasmcp-server-basic {
+    "fastertools:mcp/tool-handler@0.1.4": handler["fastertools:mcp/tool-handler@0.1.4"],
+    "fastertools:mcp/resource-handler@0.1.4": handler["fastertools:mcp/resource-handler@0.1.4"],
     ...
 };
 
 export server["wasi:http/incoming-handler@0.2.0"];
-```
-
-### Legacy Approach - With Null Components
-```wac
-// Old way required null components for unused capabilities
-let handler = new my:handler { ... };
-let nullresources = new fastertools:null-resources { ... };
-let nullprompts = new fastertools:null-prompts { ... };
-
-let server = new fastertools:wasmcp-server {
-    "fastertools:mcp/tool-handler@0.1.3": handler["fastertools:mcp/tool-handler@0.1.3"],
-    "fastertools:mcp/resource-handler@0.1.3": nullresources["fastertools:mcp/resource-handler@0.1.3"],
-    "fastertools:mcp/prompt-handler@0.1.3": nullprompts["fastertools:mcp/prompt-handler@0.1.3"],
-    ...
-};
 ```
 
 ## Protocol Support
@@ -81,6 +91,25 @@ HTTP Request → WASI Runtime → wasmcp-server → Your Handler
  JSON-RPC    IncomingRequest  Component    Tool/Resource
               /Response         Call        Implementation
 ```
+
+### How It Works Under the Hood
+
+1. **Compile Time**: 
+   - `build.rs` runs before compilation
+   - Checks enabled Cargo features (`CARGO_FEATURE_*` env vars)
+   - Copies appropriate WIT file from `wit-variants/` to `wit/world.wit`
+   - cargo-component generates bindings from the selected WIT
+
+2. **Runtime**:
+   - Server receives HTTP requests with JSON-RPC payloads
+   - Routes methods based on compiled features (using `#[cfg(feature = "...")]`)
+   - Only calls handlers that were imported at compile time
+   - Returns proper MCP error if method not available in this variant
+
+3. **Composition Time**:
+   - Handler only needs to export the capabilities it implements
+   - Server variant only imports what it needs
+   - No null components required!
 
 The server is stateless - all state lives in your handler or external stores.
 

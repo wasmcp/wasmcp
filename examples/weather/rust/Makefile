@@ -3,6 +3,7 @@
 # Component paths
 HANDLER_WASM = target/wasm32-wasip1/release/rust.wasm
 COMPOSED_WASM = composed.wasm
+SERVER_WASM = wasmcp-server-tools.wasm
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -15,13 +16,8 @@ build-handler: ## Build just the handler component
 	@echo "✅ Built handler component"
 
 build: build-handler get-deps ## Build and compose everything into composed.wasm
-	@echo "Composing handler with null components and server..."
-	wac compose compose.wac \
-		-d rust:handler=$(HANDLER_WASM) \
-		-d fastertools:null-resources=null-resources.wasm \
-		-d fastertools:null-prompts=null-prompts.wasm \
-		-d fastertools:wasmcp-server=wasmcp-server.wasm \
-		-o $(COMPOSED_WASM)
+	@echo "Plugging handler into tools-only server..."
+	wac plug --plug $(HANDLER_WASM) $(SERVER_WASM) -o $(COMPOSED_WASM)
 	@echo "✅ Created composed.wasm ($$( ls -lh $(COMPOSED_WASM) | awk '{print $$5}' ))"
 
 test: ## Run tests
@@ -29,20 +25,13 @@ test: ## Run tests
 
 clean: ## Clean build artifacts
 	cargo clean
-	rm -f $(COMPOSED_WASM) null-resources.wasm null-prompts.wasm wasmcp-server.wasm
+	rm -f $(COMPOSED_WASM) $(SERVER_WASM)
 
-get-deps: ## Download all dependencies from registry if not available locally
-	@if [ ! -f null-resources.wasm ]; then \
-		echo "Downloading null-resources component from registry..."; \
-		wkg get fastertools:null-resources@0.1.0 -o null-resources.wasm; \
-	fi
-	@if [ ! -f null-prompts.wasm ]; then \
-		echo "Downloading null-prompts component from registry..."; \
-		wkg get fastertools:null-prompts@0.1.0 -o null-prompts.wasm; \
-	fi
-	@if [ ! -f wasmcp-server.wasm ]; then \
-		echo "Downloading server component from registry..."; \
-		wkg get fastertools:wasmcp-server@0.1.0 -o wasmcp-server.wasm; \
+get-deps: ## Build server component locally if not available
+	@if [ ! -f $(SERVER_WASM) ]; then \
+		echo "Building tools-only server locally..."; \
+		cd ../../../components/server && cargo component build --features tools --release && \
+		cp target/wasm32-wasip1/release/wasmcp_server.wasm ../../examples/weather/rust/$(SERVER_WASM); \
 	fi
 
 run: build ## Build and run with wasmtime serve
@@ -64,14 +53,14 @@ test-tools: ## Test tools/list endpoint
 		-H "Content-Type: application/json" \
 		-d '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}' | python3 -m json.tool
 
-test-resources: ## Test resources/list (returns empty from null component)
-	@echo "Testing resources/list..."
+test-weather: ## Test weather tool
+	@echo "Testing get_weather tool..."
 	@curl -s -X POST http://localhost:8080/mcp \
 		-H "Content-Type: application/json" \
-		-d '{"jsonrpc":"2.0","method":"resources/list","params":{},"id":3}' | python3 -m json.tool
+		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather","arguments":{"location":"London"}},"id":3}' | python3 -m json.tool
 
-test-prompts: ## Test prompts/list (returns empty from null component)
-	@echo "Testing prompts/list..."
+test-echo: ## Test echo tool
+	@echo "Testing echo tool..."
 	@curl -s -X POST http://localhost:8080/mcp \
 		-H "Content-Type: application/json" \
-		-d '{"jsonrpc":"2.0","method":"prompts/list","params":{},"id":4}' | python3 -m json.tool
+		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello World"}},"id":4}' | python3 -m json.tool

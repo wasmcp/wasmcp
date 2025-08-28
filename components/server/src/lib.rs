@@ -4,11 +4,16 @@ use serde_json::{json, Value};
 
 // Use rmcp types for protocol compliance
 use rmcp::model::{
-    CallToolRequestParam, ServerInfo,
-    PaginatedRequestParam,
+    ServerInfo,
     InitializeRequestParam, ServerCapabilities as RmcpServerCapabilities,
     Implementation, ProtocolVersion,
 };
+
+#[cfg(feature = "tools")]
+use rmcp::model::CallToolRequestParam;
+
+#[cfg(any(feature = "tools", feature = "resources", feature = "prompts"))]
+use rmcp::model::PaginatedRequestParam;
 
 // cargo-component will generate bindings automatically
 #[allow(warnings)]

@@ -1,9 +1,0 @@
-package fastertools:null-prompts@0.1.0;
-
-/// Null prompts component that provides empty prompt implementations
-/// Used to satisfy prompt-handler imports when no actual prompts are needed
-world null-prompts {
-    // Export the required interfaces with null implementations
-    export fastertools:mcp/core@0.1.1;
-    export fastertools:mcp/prompt-handler@0.1.1;
-}

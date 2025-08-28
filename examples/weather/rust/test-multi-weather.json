@@ -1,9 +1,0 @@
-{
-  "jsonrpc": "2.0",
-  "method": "tools/call",
-  "params": {
-    "name": "multi_weather",
-    "arguments": "{\"cities\": [\"New York\", \"London\", \"Tokyo\"]}"
-  },
-  "id": 4
-}

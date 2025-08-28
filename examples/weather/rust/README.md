@@ -30,12 +30,14 @@ spin deploy             # To Spin Cloud
 
 ## Architecture
 
-The build process uses WebAssembly Component Model composition:
+The build process uses simple WebAssembly Component Model plugging:
 
 ```
-Handler Component + Null Components + Server Component = composed.wasm
-     (your code)     (empty impls)    (HTTP server)     (standard WASI)
+Handler Component → Server Variant = composed.wasm
+     (your code)     (HTTP server)    (standard WASI)
 ```
+
+No composition file needed! Just `wac plug` directly connects the handler to the server.
 
 The resulting `composed.wasm` is a **pure WASI component** - no special runtime required:
 
@@ -56,8 +58,7 @@ This works because it's standard WASI HTTP - runs anywhere:
 │   ├── lib.rs       # Your MCP tools implementation
 │   └── helpers.rs   # Minimal async trait helpers (~140 lines)
 ├── wit/world.wit    # WIT interface declarations
-├── compose.wac      # WAC composition script
-├── Makefile         # Build automation
+├── Makefile         # Build automation (using wac plug)
 └── composed.wasm    # Final deployable component (after build)
 ```
 
@@ -109,7 +110,7 @@ impl Tool for WeatherTool {
 To add resources or prompts:
 1. Export the interface in `wit/world.wit`
 2. Implement the trait in `src/lib.rs`
-3. Update `compose.wac` to use your handler instead of null component
+3. Use a different server variant (e.g., `wasmcp-server-basic` for tools+resources)
 
 ## Testing
 
@@ -131,10 +132,10 @@ Try `spin deploy` to to run on [Fermyon Cloud](https://developer.fermyon.com/clo
 
 ## Technical Details
 
-- **Composition**: WAC (WebAssembly Compositions) wires handler + null components + server
+- **Composition**: Simple `wac plug` connects handler directly to server variant
 - **Async Runtime**: `spin_sdk::http::run()` provides WASI-compatible async execution
 - **Concurrency**: Real parallel HTTP via `futures::join_all` within component boundaries
-- **Size**: ~1.2MB composed (handler ~100KB, server ~500KB, stdlib ~600KB)
+- **Size**: ~853KB composed (handler ~347KB, server ~506KB)
 
 ## Learn More
 

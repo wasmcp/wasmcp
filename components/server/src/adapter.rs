@@ -198,7 +198,7 @@ impl WitMcpAdapter {
                 let role = match m.role {
                     MessageRole::User => PromptMessageRole::User,
                     MessageRole::Assistant => PromptMessageRole::Assistant,
-                    MessageRole::System => PromptMessageRole::System,
+                    MessageRole::System => PromptMessageRole::Assistant, // Map System to Assistant for rmcp compatibility
                 };
                 
                 let content_text = match m.content {

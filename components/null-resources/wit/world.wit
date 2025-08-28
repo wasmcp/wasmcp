@@ -1,9 +1,0 @@
-package fastertools:null-resources@0.1.0;
-
-/// Null resources component that provides empty resource implementations
-/// Used to satisfy resource-handler imports when no actual resources are needed
-world null-resources {
-    // Export the required interfaces with null implementations
-    export fastertools:mcp/core@0.1.1;
-    export fastertools:mcp/resource-handler@0.1.1;
-}
