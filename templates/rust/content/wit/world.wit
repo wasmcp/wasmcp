@@ -1,8 +1,7 @@
-package {{project-name | kebab_case}}:handler@0.1.0;
+package rust:handler@0.1.0;
 
-/// This template implements the minimal tool handler world
-/// Extend with additional capabilities as needed
-use fastertools:mcp/mcp-tool-handler@0.1.1;
-
-// For full capabilities, use the complete handler world instead:
-// use fastertools:mcp/mcp-handler@0.1.1;
+/// This example implements the minimal tool handler world
+/// It provides weather-related tools
+world tools-handler {
+    export fastertools:mcp/tool-handler@0.1.4;
+}
