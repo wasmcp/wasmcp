@@ -28,6 +28,7 @@ spin deploy             # To Spin Cloud
 # OR copy composed.wasm to any WASI host
 ```
 
+
 ## Architecture
 
 The build process uses simple WebAssembly Component Model plugging:
@@ -37,7 +38,10 @@ Handler Component → Server Variant = composed.wasm
      (your code)     (HTTP server)    (standard WASI)
 ```
 
-No composition file needed! Just `wac plug` directly connects the handler to the server.
+No composition file needed! The build process:
+1. Downloads the server variant from the registry (`wkg`)
+2. Plugs your handler into it (`wac plug`)
+3. Creates a single deployable WASI component
 
 The resulting `composed.wasm` is a **pure WASI component** - no special runtime required:
 

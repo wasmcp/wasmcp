@@ -1,9 +1,11 @@
-.PHONY: build test clean compose run help
+.PHONY: build test clean run help
 
 # Component paths
 HANDLER_WASM = target/wasm32-wasip1/release/rust.wasm
 COMPOSED_WASM = composed.wasm
-SERVER_WASM = wasmcp-server-tools.wasm
+
+# Server package from registry
+SERVER_PKG = fastertools:wasmcp-server-tools@0.1.0
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -11,13 +13,14 @@ help: ## Show this help message
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-build-handler: ## Build just the handler component
-	cargo component build --release --target wasm32-wasip1
-	@echo "✅ Built handler component"
-
-build: build-handler get-deps ## Build and compose everything into composed.wasm
-	@echo "Plugging handler into tools-only server..."
-	wac plug --plug $(HANDLER_WASM) $(SERVER_WASM) -o $(COMPOSED_WASM)
+build: ## Build and compose everything into composed.wasm
+	@echo "Building handler component..."
+	@cargo component build --release --target wasm32-wasip1
+	@echo "Downloading server from registry..."
+	@wkg get $(SERVER_PKG) -o .server-tmp.wasm
+	@echo "Plugging handler into server..."
+	@wac plug --plug $(HANDLER_WASM) .server-tmp.wasm -o $(COMPOSED_WASM)
+	@rm -f .server-tmp.wasm
 	@echo "✅ Created composed.wasm ($$( ls -lh $(COMPOSED_WASM) | awk '{print $$5}' ))"
 
 test: ## Run tests
@@ -25,14 +28,7 @@ test: ## Run tests
 
 clean: ## Clean build artifacts
 	cargo clean
-	rm -f $(COMPOSED_WASM) $(SERVER_WASM)
-
-get-deps: ## Build server component locally if not available
-	@if [ ! -f $(SERVER_WASM) ]; then \
-		echo "Building tools-only server locally..."; \
-		cd ../../../components/server && cargo component build --features tools --release && \
-		cp target/wasm32-wasip1/release/wasmcp_server.wasm ../../examples/weather/rust/$(SERVER_WASM); \
-	fi
+	rm -f $(COMPOSED_WASM) .server-tmp.wasm
 
 run: build ## Build and run with wasmtime serve
 	wasmtime serve -Scli composed.wasm
