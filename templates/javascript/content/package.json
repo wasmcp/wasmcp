@@ -1,8 +1,8 @@
 {
-  "name": "javascript",
+  "name": "{{project-name | kebab_case}}",
   "version": "0.1.0",
   "type": "module",
-  "description": "An MCP server written in JavaScript",
+  "description": "{{project-description}}",
   "scripts": {
     "bundle": "esbuild index.js --bundle --format=esm --platform=neutral --outfile=bundled.js",
     "build": "npm run bundle && jco componentize bundled.js --wit wit --world-name tools-handler --out handler.wasm",

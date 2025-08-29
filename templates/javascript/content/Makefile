@@ -43,18 +43,18 @@ serve: ## Serve already built composed.wasm
 # Testing the composed component
 test-init: ## Test initialize endpoint
 	@echo "Testing initialize..."
-	@curl -s -X POST http://localhost:8080/mcp \
+	@curl -s -X POST http://localhost:8080{{route}} \
 		-H "Content-Type: application/json" \
 		-d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}},"id":1}' | python3 -m json.tool
 
 test-tools: ## Test tools/list endpoint
 	@echo "Testing tools/list..."
-	@curl -s -X POST http://localhost:8080/mcp \
+	@curl -s -X POST http://localhost:8080{{route}} \
 		-H "Content-Type: application/json" \
 		-d '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}' | python3 -m json.tool
 
 test-call: ## Test calling a tool
 	@echo "Testing tool call..."
-	@curl -s -X POST http://localhost:8080/mcp \
+	@curl -s -X POST http://localhost:8080{{route}} \
 		-H "Content-Type: application/json" \
 		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello World"}},"id":3}' | python3 -m json.tool

@@ -1,6 +1,6 @@
-# javascript
+# {{project-name}}
 
-An MCP server written in JavaScript
+{{project-description}}
 
 ## Getting Started
 

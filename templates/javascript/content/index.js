@@ -1,7 +1,7 @@
 /**
- * javascript MCP Handler
+ * {{project-name}} MCP Handler
  * 
- * An MCP server written in JavaScript
+ * {{project-description}}
  * 
  * Includes example tools:
  * - echo: Echo a message back

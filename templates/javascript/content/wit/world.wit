@@ -1,0 +1,5 @@
+package weather:handler;
+
+world tools-handler {
+    export fastertools:mcp/tool-handler@0.1.9;
+}
