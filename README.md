@@ -31,18 +31,7 @@ curl -X POST http://localhost:8080 \
   -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}'
 ```
 
-That's it. Zero configuration, no WIT files, runs on any WASI runtime.
-
-## Features
-
-- **Clean SDKs**: Rust with proc macros (no WIT files), TypeScript with npm package, Go with idiomatic generics API
-- **Full Async**: Native async/await support for HTTP, database, and I/O operations  
-- **Any Runtime**: Spin, Wasmtime, or any WASI-compatible WebAssembly runtime
-- **Production Ready**: Optimized builds, proper error handling, comprehensive testing
-- **Component Composition**: Modular architecture via WebAssembly Component Model
-
-## Language Support
-
+That's it. Zero configuration, runs anywhere WebAssembly components do.
 ### Rust
 ```rust
 use wasmcp::{mcp_handler, ToolHandler, AsyncToolHandler};
@@ -178,10 +167,7 @@ func init() {
 
 ## Examples
 
-See [`examples/`](./examples) for complete working servers:
-- **[`rust-weather`](./examples/rust-weather)** - Rust with async HTTP weather API
-- **[`typescript-weather`](./examples/typescript-weather)** - TypeScript with fetch API
-- **[`go-weather`](./examples/go-weather)** - Go with concurrent goroutines
+See [`examples/weather`](./examples/weather) for complete working servers.
 
 All implement the same tools and work identically from the client's perspective.
 
@@ -205,10 +191,7 @@ The server handles HTTP and MCP protocol. You just implement tools.
 
 ## Component Portability
 
-The WIT interfaces in `wit/fastertools/mcp/*.wit` are a complete, systematic capture of the MCP specification - every type, method, and capability is represented. This enables true portability:
-
-- **With I/O** (HTTP, filesystem): Requires WASI runtime (Wasmtime, Spin, WasmEdge)
-- **Pure computation**: Runs anywhere WebAssembly runs
+The WIT interfaces in `wit/fastertools/mcp/*.wit` aim to capture a complete representation of the MCP specification.
 
 A handler that only transforms data (no external I/O) becomes a pure computational component that can run in browsers, embedded systems, or any WebAssembly host - it just exports functions that transform MCP requests to responses.
 
@@ -220,56 +203,6 @@ wasmtime serve -Scli composed.wasm
 ```
 
 Because the MCP protocol is fully captured in WIT, any WebAssembly host can implement these interfaces to become MCP-compatible.
-
-## Templates
-
-```bash
-# Rust (no WIT files needed)
-spin new -t wasmcp-rust my-rust-server
-
-# TypeScript (WIT bundled in npm)  
-spin new -t wasmcp-typescript my-ts-server
-
-# Go (idiomatic generics API)
-spin new -t wasmcp-go my-go-server
-```
-
-## Development
-
-```bash
-# Prerequisites
-cargo install cargo-component
-npm install -g @bytecodealliance/jco
-
-# Build everything
-make build-all
-
-# Run tests
-make test-all
-
-# See all commands
-make help
-```
-
-## Repository Structure
-
-```
-wasmcp/
-├── components/           # WebAssembly components
-│   └── server/          # MCP server component
-├── examples/            # Complete example servers
-│   └── weather/         # Weather server implementations
-│       ├── go/         # Go with concurrent goroutines
-│       ├── rust/       # Rust with async HTTP
-│       └── typescript/ # TypeScript with fetch API
-├── sdk/                 # Language SDKs
-│   ├── go/             # Go SDK with generics API
-│   ├── rust/           # Rust SDK (crates.io)
-│   ├── rust-macros/    # Rust proc macros
-│   └── typescript/     # TypeScript SDK (npm)
-├── templates/          # Spin templates
-└── wit/                # Component interfaces
-```
 
 ## License
 

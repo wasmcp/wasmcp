@@ -1,0 +1,13 @@
+manifest_version = "1"
+id = "wasmcp-python"
+description = "Python wasmcp handler component"
+tags = ["mcp", "http", "python", "wasm", "component"]
+
+[parameters]
+project-description = { type = "string", prompt = "Description", default = "An MCP server written in Python" }
+route = { type = "string", prompt = "HTTP route", default = "/mcp" }
+
+[add_component]
+skip_files = ["spin.toml", "README.md", ".gitignore", "requirements.txt"]
+[add_component.snippets]
+component = "component.txt"

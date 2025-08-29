@@ -5,15 +5,15 @@ __pycache__/
 *.so
 .Python
 venv/
-env/
 ENV/
-.venv
+env/
+.env
 
-# Component build artifacts
+# WebAssembly
 *.wasm
-.server-tmp.wasm
+!composed.wasm
 
-# Generated bindings
+# Generated
 wit_world/
 
 # IDE
@@ -26,3 +26,6 @@ wit_world/
 # OS
 .DS_Store
 Thumbs.db
+
+# Temporary files
+.server-tmp.wasm

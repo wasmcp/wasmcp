@@ -7,7 +7,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Setting up Python MCP Weather Handler...${NC}"
+echo -e "${GREEN}Setting up Python MCP Handler...${NC}"
 echo ""
 
 # Check Python version

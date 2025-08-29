@@ -1,7 +1,7 @@
 .PHONY: build test clean run help setup venv-check
 
 # Component paths
-HANDLER_WASM = weather-handler.wasm
+HANDLER_WASM = python-handler.wasm
 COMPOSED_WASM = composed.wasm
 
 # Server package from registry
@@ -58,8 +58,8 @@ build-bindings: $(VENV) ## Generate Python bindings for development
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
 		--world tools-handler \
-		--import-interface-name "wasi:http/types@0.2.0=http_types" \
-		--import-interface-name "wasi:http/outgoing-handler@0.2.0=outgoing_handler" \
+		--import-interface-name "wasi:http/types@0.2.3=types" \
+		--import-interface-name "wasi:http/outgoing-handler@0.2.3=outgoing_handler" \
 		--import-interface-name "wasi:io/poll@0.2.0=io_poll" \
 		--import-interface-name "wasi:io/streams@0.2.0=io_streams" \
 		bindings .
@@ -81,7 +81,7 @@ test-local: $(VENV) ## Test the Python code locally (without WASM)
 	@echo "Testing Python implementation locally..."
 	@$(PYTHON) app.py
 
-# Testing the composed component - same format as Rust/JS examples
+# Testing the composed component
 test-init: ## Test initialize endpoint
 	@echo "Testing initialize..."
 	@curl -s -X POST http://localhost:8080/mcp \

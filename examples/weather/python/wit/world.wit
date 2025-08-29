@@ -1,4 +1,4 @@
-package weather:handler;
+package python:handler;
 
 world tools-handler {
     import wasi:http/outgoing-handler@0.2.3;

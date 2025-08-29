@@ -1,253 +1,135 @@
-# Python MCP Weather Handler
+# python
 
-A Python implementation of the MCP weather handler, demonstrating how to build MCP tools with clean, Pythonic APIs.
-
-## Features
-
-- **Pythonic API**: Decorators, type hints, and async/await support
-- **Clean Abstractions**: Hide WIT complexity behind simple Python interfaces
-- **Async Support**: Native asyncio for concurrent operations
-- **Type Inference**: Automatic schema generation from function signatures
-
-## Prerequisites
-
-- Python 3.10 or later
-- pip
-- componentize-py
-- wkg (for fetching the server component)
-- wac (for component composition)
-- wasmtime (for running the component)
+An MCP server written in Python
 
 ## Quick Start
 
 ```bash
-# Install dependencies
-make install-deps
+# Setup (first time only)
+./setup.sh
+
+# Activate virtual environment
+source venv/bin/activate
 
 # Build the component
 make build
 
 # Run the server
 make run
-
-# In another terminal, test it
-make test-weather
-```
-
-## Project Structure
-
-```
-python/
-├── app.py           # Main handler implementation
-├── helpers.py       # Helper library for clean Python API
-├── wit/            # WIT interface definitions
-├── requirements.txt # Python dependencies
-└── Makefile        # Build automation
-```
-
-## Writing Tools
-
-The Python helpers provide multiple ways to define tools:
-
-### Using Decorators
-
-```python
-from helpers import Handler
-
-handler = Handler()
-
-@handler.tool(
-    name="my_tool",
-    description="Does something useful",
-    schema={
-        "type": "object",
-        "properties": {
-            "input": {"type": "string"}
-        },
-        "required": ["input"]
-    }
-)
-async def my_tool(input: str) -> str:
-    return f"Processed: {input}"
-```
-
-### Using Classes
-
-```python
-from helpers import Tool
-
-class MyTool(Tool):
-    @property
-    def name(self) -> str:
-        return "my_tool"
-    
-    @property
-    def description(self) -> str:
-        return "Does something useful"
-    
-    async def execute(self, args: Dict[str, Any]) -> str:
-        return f"Processed: {args['input']}"
-
-handler.register(MyTool())
-```
-
-### Type Inference
-
-If you don't provide a schema, the helper will try to infer it from type hints:
-
-```python
-@handler.tool(
-    name="typed_tool",
-    description="Uses type hints for schema"
-)
-async def typed_tool(
-    message: str,
-    count: int = 1,
-    enabled: bool = True
-) -> str:
-    # Schema is automatically inferred from the signature
-    return f"Message: {message}, Count: {count}, Enabled: {enabled}"
-```
-
-## Async Support
-
-All tools can be async for non-blocking I/O:
-
-```python
-@handler.tool(name="fetch_data", description="Fetches external data")
-async def fetch_data(url: str) -> str:
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            return await response.text()
 ```
 
 ## Testing
 
-Test locally without building to WASM:
+Test the MCP server with curl:
 
 ```bash
-# Run the Python code directly
-make test-local
+# List available tools
+make test-tools
+
+# Test echo tool
+make test-echo
+
+# Test weather tool
+make test-weather
+
+# Test multi-weather tool
+make test-multi
 ```
 
-Test the full WASM component:
+## Development
 
-```bash
-# Start the server
-make run
+### Project Structure
 
-# Test individual endpoints
-make test-init    # Initialize
-make test-tools   # List tools
-make test-echo    # Echo tool
-make test-weather # Weather tool
-make test-multi   # Multi-weather tool
+```
+.
+├── app.py                 # Your MCP handler implementation
+├── composed.wasm         # Final composed component (handler + server)
+├── wit/                  # WebAssembly Interface Types
+│   ├── world.wit        # World definition
+│   └── deps/            # MCP interface dependencies
+├── wit_world/           # Generated Python bindings
+├── venv/                # Python virtual environment
+└── requirements.txt     # Python dependencies
 ```
 
-## Implementation Details
+### Adding New Tools
 
-### Helper Library (`helpers.py`)
-
-The helper library provides:
-- `Tool` base class for class-based tools
-- `@tool` decorator for function-based tools
-- `Handler` class for managing tool collections
-- Automatic type inference from function signatures
-- Async/await support
-- Error handling and result formatting
-
-### Main Application (`app.py`)
-
-Implements three example tools:
-1. **echo**: Simple synchronous tool
-2. **get_weather**: Async HTTP requests to weather API
-3. **multi_weather**: Concurrent weather fetches using asyncio
-
-### Build Process
-
-1. `componentize-py` compiles Python to WASM component
-2. `wkg` fetches the pre-built MCP server component
-3. `wac plug` composes handler with server
-4. Result is a single `composed.wasm` ready to run
-
-## Comparison with Other Languages
-
-| Feature | Python | Rust | JavaScript |
-|---------|---------|------|------------|
-| Async Support | `async`/`await` | `async`/`await` + Spin executor | Promises/`async`/`await` |
-| Type Safety | Type hints (runtime) | Compile-time | Runtime |
-| Schema Generation | From type hints | Manual JSON | Manual JSON |
-| Decorator Support | Native | Proc macros | Function wrappers |
-| HTTP Client | urllib (stdlib) | spin_sdk::http | fetch API |
-
-## Advanced Features
-
-### Custom Annotations
-
-Add metadata to tools:
-
+1. Add tool definition in `handle_list_tools()`:
 ```python
-@handler.tool(
-    name="dangerous_tool",
-    description="Modifies system state",
-    read_only_hint=False,
-    destructive_hint=True
+tools.Tool(
+    base=mcp_types.BaseMetadata(name="my_tool", title="My Tool"),
+    description="What this tool does",
+    input_schema=json.dumps({
+        "type": "object",
+        "properties": {
+            "param": {"type": "string", "description": "Parameter description"}
+        },
+        "required": ["param"]
+    }),
+    output_schema=None,
+    annotations=None,
+    meta=None
 )
-async def dangerous_tool(confirm: bool) -> str:
-    if confirm:
-        # Do something destructive
-        return "Operation completed"
-    return "Operation cancelled"
 ```
 
-### Structured Output
+2. Handle the tool in `handle_call_tool()`:
+```python
+elif request.name == "my_tool":
+    return self._handle_my_tool(args)
+```
 
-Return structured data instead of just text:
+3. Implement the handler:
+```python
+def _handle_my_tool(self, args: dict) -> tools.ToolResult:
+    param = args.get("param")
+    # Your implementation here
+    return self._success(f"Result: {param}")
+```
+
+### HTTP Requests
+
+This template uses componentize-py's built-in poll_loop for async HTTP:
 
 ```python
-@handler.tool(name="data_tool", description="Returns structured data")
-async def data_tool() -> Dict[str, Any]:
-    return {
-        "content": [{
-            "tag": "text",
-            "val": {"text": "Main result"}
-        }],
-        "structuredContent": json.dumps({
-            "data": [1, 2, 3],
-            "metadata": {"source": "api"}
-        })
-    }
+async def _fetch_json(self, url: str) -> dict:
+    request = OutgoingRequest(Fields.from_list([]))
+    request.set_scheme(Scheme_Https())
+    request.set_authority(parsed.netloc)
+    request.set_path_with_query(path_with_query)
+    request.set_method(Method_Get())
+    
+    response = await poll_loop.send(request)
+    # ... handle response
 ```
 
-## Troubleshooting
-
-### ImportError for wit_world
-
-If you see import errors, generate the bindings first:
+### Debugging
 
 ```bash
+# Test Python code locally (without WASM)
+make test-local
+
+# Regenerate bindings if WIT files change
 make build-bindings
+
+# Clean all build artifacts
+make clean
 ```
 
-### Async Runtime Issues
+## Deployment
 
-Ensure you're using Python 3.10+ for proper async support.
+The `composed.wasm` file is a standalone WebAssembly component that can run on:
 
-### Component Build Failures
+- **Wasmtime**: `wasmtime serve -Scli composed.wasm`
+- **Spin**: `spin up`
+- **Any WASI-compliant runtime**
 
-Check that componentize-py is installed:
+## Requirements
 
-```bash
-pip install componentize-py
-```
-
-## Contributing
-
-The Python implementation follows the same patterns as Rust and JavaScript for consistency:
-- Clean helper abstractions hiding WIT complexity
-- Idiomatic language features (decorators, async/await)
-- Same example tools (echo, weather, multi-weather)
-- Compatible with the same server component
+- Python 3.10+
+- componentize-py
+- wkg (WebAssembly package manager)
+- wac (WebAssembly component tools)
+- wasmtime or Spin runtime
 
 ## License
 
