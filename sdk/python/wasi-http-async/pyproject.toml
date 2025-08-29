@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wasi-http-async"
+version = "0.1.0"
+description = "Simple async HTTP client for WebAssembly components using WASI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "wasmcp contributors"}
+]
+keywords = ["wasi", "wasm", "webassembly", "http", "async"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/wasmcp/wasmcp"
+Repository = "https://github.com/wasmcp/wasmcp"
+Issues = "https://github.com/wasmcp/wasmcp/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -51,6 +51,21 @@ build: $(VENV) ## Build and compose everything into composed.wasm
 	@rm -f .server-tmp.wasm
 	@echo "✅ Created composed.wasm ($$( ls -lh $(COMPOSED_WASM) 2>/dev/null | awk '{print $$5}' ))"
 
+build-with-library: $(VENV) ## Build using wasi-http-async library
+	@echo "Building handler component with wasi-http-async library..."
+	@$(COMPONENTIZE_PY) \
+		--wit-path wit \
+		--world tools-handler \
+		componentize \
+		app_with_library \
+		-o $(HANDLER_WASM)
+	@echo "Downloading server from registry..."
+	@wkg get $(SERVER_PKG) -o .server-tmp.wasm 2>/dev/null || true
+	@echo "Plugging handler into server..."
+	@wac plug --plug $(HANDLER_WASM) .server-tmp.wasm -o $(COMPOSED_WASM)
+	@rm -f .server-tmp.wasm
+	@echo "✅ Created composed.wasm with library ($$( ls -lh $(COMPOSED_WASM) 2>/dev/null | awk '{print $$5}' ))"
+
 build-bindings: $(VENV) ## Generate Python bindings for development
 	@echo "Generating Python bindings..."
 	@rm -rf wit_world
