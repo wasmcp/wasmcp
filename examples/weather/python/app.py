@@ -334,19 +334,58 @@ class ToolHandler(ToolHandler):
         if len(cities) > 5:
             raise ValueError("Maximum 5 cities allowed")
         
-        # Execute weather fetches sequentially (componentize-py doesn't support async well yet)
+        # Execute weather fetches CONCURRENTLY using asyncio!
+        loop = PollLoop()
+        asyncio.set_event_loop(loop)
+        
+        async def fetch_all():
+            """Fetch weather for all cities concurrently."""
+            tasks = []
+            for city in cities:
+                tasks.append(self._fetch_weather_with_error_handling(city))
+            return await asyncio.gather(*tasks)
+        
+        results = loop.run_until_complete(fetch_all())
+        
         output = "=== Concurrent Weather Results ===\n\n"
-        
-        for city in cities:
-            try:
-                weather = self._get_weather_for_city_sync(city)
-                output += f"{weather}\n\n"
-            except Exception as e:
-                output += f"Error fetching weather for {city}: {str(e)}\n\n"
-        
+        for result in results:
+            output += f"{result}\n\n"
         output += "=== All requests completed ==="
         
         return output
+    
+    async def _fetch_weather_with_error_handling(self, city: str) -> str:
+        """Fetch weather for a city with error handling."""
+        try:
+            # Get weather data
+            geocoding_url = f"https://geocoding-api.open-meteo.com/v1/search?name={urllib.parse.quote(city)}&count=1"
+            geo_data = await self._send_http_request_async(geocoding_url)
+            
+            if not geo_data.get("results"):
+                return f"Error fetching weather for {city}: Location not found"
+            
+            location_data = geo_data["results"][0]
+            
+            weather_url = (
+                f"https://api.open-meteo.com/v1/forecast?"
+                f"latitude={location_data['latitude']}&longitude={location_data['longitude']}"
+                f"&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code"
+            )
+            
+            weather_data = await self._send_http_request_async(weather_url)
+            
+            conditions = self._get_weather_condition(weather_data["current"]["weather_code"])
+            
+            return (
+                f"Weather in {location_data['name']}, {location_data['country']}:\n"
+                f"Temperature: {weather_data['current']['temperature_2m']:.1f}°C "
+                f"(feels like {weather_data['current']['apparent_temperature']:.1f}°C)\n"
+                f"Conditions: {conditions}\n"
+                f"Humidity: {weather_data['current']['relative_humidity_2m']}%\n"
+                f"Wind: {weather_data['current']['wind_speed_10m']:.1f} km/h"
+            )
+        except Exception as e:
+            return f"Error fetching weather for {city}: {str(e)}"
     
     async def _send_http_request_async(self, url: str) -> Dict[str, Any]:
         """Async HTTP GET request using WASI HTTP, copying Spin SDK exactly."""
