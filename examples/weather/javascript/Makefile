@@ -5,7 +5,7 @@ HANDLER_WASM = handler.wasm
 COMPOSED_WASM = composed.wasm
 
 # Server package from registry
-SERVER_PKG = fastertools:wasmcp-server-tools@0.1.3
+SERVER_PKG = fastertools:server-mcp-http-tools@0.1.0
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -19,7 +19,7 @@ build: ## Build and compose everything into composed.wasm
 	@echo "Bundling JavaScript modules..."
 	@npm run bundle
 	@echo "Building handler component..."
-	@jco componentize bundled.js --wit wit --world-name tools-handler --out $(HANDLER_WASM)
+	@npx jco componentize bundled.js --wit wit --world-name tools-handler --out $(HANDLER_WASM)
 	@echo "Downloading server from registry..."
 	@wkg get $(SERVER_PKG) -o .server-tmp.wasm
 	@echo "Plugging handler into server..."

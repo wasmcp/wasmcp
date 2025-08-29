@@ -5,7 +5,7 @@ HANDLER_WASM = weather-handler.wasm
 COMPOSED_WASM = composed.wasm
 
 # Server package from registry
-SERVER_PKG = fastertools:wasmcp-server-tools@0.1.3
+SERVER_PKG = fastertools:server-mcp-http-tools@0.1.0
 
 # Python virtual environment
 VENV = venv
