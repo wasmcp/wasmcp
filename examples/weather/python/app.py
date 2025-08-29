@@ -1,7 +1,7 @@
 """
 Python MCP Weather Handler
 
-Clean implementation using wasi-http-async SDK for HTTP requests.
+Uses componentize-py's built-in poll_loop for HTTP requests.
 Implements the same tools as the Rust and JavaScript examples:
 - echo: Echo a message back
 - get_weather: Get weather for a single location  
@@ -13,36 +13,23 @@ import asyncio
 import urllib.parse
 from typing import List, Dict, Any
 
+# Import componentize-py's built-in async HTTP support
+import poll_loop
+from poll_loop import PollLoop, Stream
+
 # Import MCP types
 from wit_world.exports import ToolHandler
 from wit_world.imports import tools, fastertools_mcp_types as types
-from wit_world.types import Ok, Err
+from wit_world.types import Ok
 
-# Import WASI types for the SDK
-from wit_world.imports import wasi_http_types as http_types, outgoing_handler, poll, streams
-from wit_world.imports.streams import StreamError_Closed
-from wit_world.imports.wasi_http_types import IncomingBody
-
-# Patch the SDK's bindings (temporary until SDK has better discovery)
-import wasi_http_async.bindings as bindings_module
-bindings_module.bindings._http_types = http_types
-bindings_module.bindings._outgoing_handler = outgoing_handler
-bindings_module.bindings._poll = poll
-bindings_module.bindings._streams = streams
-bindings_module.bindings._loaded = True
-
-import wasi_http_async.stream as stream_module
-stream_module.Err = Err
-stream_module.StreamError_Closed = StreamError_Closed
-stream_module.IncomingBody = IncomingBody
-
-import wasi_http_async.core as core_module
-core_module.Ok = Ok
-core_module.Err = Err
-
-# Now import from the SDK
-from wasi_http_async import fetch
-from wasi_http_async.poll_loop import PollLoop
+# Import WASI HTTP types
+from wit_world.imports.wasi_http_types import (
+    OutgoingRequest,
+    Fields,
+    Scheme_Http,
+    Scheme_Https,
+    Method_Get,
+)
 
 
 class ToolHandler(ToolHandler):
@@ -131,10 +118,14 @@ class ToolHandler(ToolHandler):
         if not location:
             return self._error("Missing 'location' argument")
         
+        # Use componentize-py's PollLoop
         loop = PollLoop()
+        asyncio.set_event_loop(loop)
         try:
             weather_data = loop.run_until_complete(self._fetch_weather(location))
-            return self._success(self._format_weather(weather_data))
+            formatted = self._format_weather(weather_data)
+            # Convert dict to JSON string for display
+            return self._success(json.dumps(formatted, indent=2))
         except Exception as e:
             return self._error(f"Weather fetch failed: {str(e)}")
         finally:
@@ -146,7 +137,9 @@ class ToolHandler(ToolHandler):
         if not cities:
             return self._error("Missing 'cities' argument")
         
+        # Use componentize-py's PollLoop
         loop = PollLoop()
+        asyncio.set_event_loop(loop)
         try:
             results = loop.run_until_complete(self._fetch_multi_weather(cities))
             formatted = [self._format_weather(r) if not isinstance(r, Exception) else {"error": str(r)} for r in results]
@@ -157,11 +150,10 @@ class ToolHandler(ToolHandler):
             loop.close()
     
     async def _fetch_weather(self, city: str) -> Dict[str, Any]:
-        """Fetch weather data for a single city."""
+        """Fetch weather data for a single city using componentize-py's poll_loop."""
         # Geocode
         geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={urllib.parse.quote(city)}&count=1"
-        response = await fetch(geo_url)
-        geo_data = await response.json()
+        geo_data = await self._fetch_json(geo_url)
         
         if not geo_data.get("results"):
             raise Exception(f"Location '{city}' not found")
@@ -174,8 +166,7 @@ class ToolHandler(ToolHandler):
             f"latitude={location['latitude']}&longitude={location['longitude']}"
             f"&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code"
         )
-        response = await fetch(weather_url)
-        weather = await response.json()
+        weather = await self._fetch_json(weather_url)
         
         return {
             "name": location["name"],
@@ -185,6 +176,53 @@ class ToolHandler(ToolHandler):
             "wind_speed": weather["current"]["wind_speed_10m"],
             "weather_code": weather["current"]["weather_code"]
         }
+    
+    async def _fetch_json(self, url: str) -> dict:
+        """Fetch JSON from a URL using componentize-py's built-in HTTP support."""
+        # Parse URL
+        parsed = urllib.parse.urlparse(url)
+        
+        # Create request
+        request = OutgoingRequest(Fields.from_list([]))
+        
+        # Set scheme
+        if parsed.scheme == "https":
+            request.set_scheme(Scheme_Https())
+        else:
+            request.set_scheme(Scheme_Http())
+        
+        # Set authority (host:port)
+        request.set_authority(parsed.netloc)
+        
+        # Set path and query
+        path_with_query = parsed.path
+        if parsed.query:
+            path_with_query += f"?{parsed.query}"
+        request.set_path_with_query(path_with_query)
+        
+        # Set method
+        request.set_method(Method_Get())
+        
+        # Send request using componentize-py's poll_loop.send()
+        response = await poll_loop.send(request)
+        
+        # Check status
+        status = response.status()
+        if status < 200 or status >= 300:
+            raise Exception(f"HTTP {status}")
+        
+        # Read body
+        stream = Stream(response.consume())
+        chunks = []
+        while True:
+            chunk = await stream.next()
+            if chunk is None:
+                break
+            chunks.append(chunk)
+        
+        # Parse JSON
+        body = b"".join(chunks)
+        return json.loads(body)
     
     async def _fetch_multi_weather(self, cities: List[str]) -> List[Any]:
         """Fetch weather for multiple cities concurrently."""

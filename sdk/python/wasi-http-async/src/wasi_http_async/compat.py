@@ -102,7 +102,14 @@ class WASIHTTPHandler(urllib.request.HTTPHandler):
         return response
 
 
-class WASIHTTPSHandler(WASIHTTPHandler, urllib.request.HTTPSHandler):
+# HTTPSHandler may not exist in WASM environment
+try:
+    HTTPSHandler = urllib.request.HTTPSHandler
+except AttributeError:
+    # In WASM, there's no HTTPSHandler, create a dummy base
+    HTTPSHandler = urllib.request.HTTPHandler
+
+class WASIHTTPSHandler(WASIHTTPHandler, HTTPSHandler):
     """urllib HTTPS handler using WASI HTTP."""
     
     def https_open(self, req):
@@ -118,10 +125,13 @@ def patch_urllib():
     implementation.
     """
     # Replace default handlers
-    opener = urllib.request.build_opener(
-        WASIHTTPHandler(),
-        WASIHTTPSHandler()
-    )
+    handlers = [WASIHTTPHandler()]
+    
+    # Only add HTTPS handler if HTTPS is supported
+    if hasattr(urllib.request, 'HTTPSHandler'):
+        handlers.append(WASIHTTPSHandler())
+    
+    opener = urllib.request.build_opener(*handlers)
     urllib.request.install_opener(opener)
     
     # Also patch http.client for completeness

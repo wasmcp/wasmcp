@@ -67,6 +67,10 @@ class PollLoop(asyncio.AbstractEventLoop):
 
     def is_closed(self):
         return self._closed
+    
+    def get_debug(self):
+        """Return debug mode status."""
+        return False
 
     def close(self):
         if self._running:

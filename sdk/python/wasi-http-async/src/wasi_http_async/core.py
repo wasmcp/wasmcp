@@ -101,11 +101,31 @@ async def fetch(
         request_headers.append("content-type", b"application/json")
     
     # Create request
-    scheme = bindings.http_types.Scheme.HTTPS if parsed.scheme == "https" else bindings.http_types.Scheme.HTTP
-    authority = f"{parsed.hostname}:{parsed.port or (443 if scheme == bindings.http_types.Scheme.HTTPS else 80)}"
+    if parsed.scheme == "https":
+        scheme = bindings.http_types.Scheme_Https()
+        default_port = 443
+    else:
+        scheme = bindings.http_types.Scheme_Http()
+        default_port = 80
+    authority = f"{parsed.hostname}:{parsed.port or default_port}"
     
     request = OutgoingRequest(request_headers)
-    request.set_method(bindings.http_types.Method(method))
+    
+    # Set method
+    method_upper = method.upper()
+    if method_upper == "GET":
+        request.set_method(bindings.http_types.Method_Get())
+    elif method_upper == "POST":
+        request.set_method(bindings.http_types.Method_Post())
+    elif method_upper == "PUT":
+        request.set_method(bindings.http_types.Method_Put())
+    elif method_upper == "DELETE":
+        request.set_method(bindings.http_types.Method_Delete())
+    elif method_upper == "HEAD":
+        request.set_method(bindings.http_types.Method_Head())
+    else:
+        request.set_method(bindings.http_types.Method_Other(method_upper))
+    
     request.set_scheme(scheme)
     request.set_authority(authority)
     request.set_path_with_query(parsed.path + (f"?{parsed.query}" if parsed.query else ""))
