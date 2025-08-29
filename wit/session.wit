@@ -5,9 +5,18 @@ package fastertools:mcp@0.1.7;
 interface session {
     use types.{mcp-error, meta-fields};
 
-    /// Protocol version constants
-    /// Current draft version: "DRAFT-2025-v3"
-    type protocol-version = string;
+    /// Protocol versions supported by MCP
+    /// These correspond to official MCP specification versions
+    enum protocol-version {
+        /// MCP 2024-11-05 specification
+        v2024-11-05,
+        /// MCP 2025-03-26 specification
+        v2025-03-26,
+        /// MCP 2025-06-18 specification  
+        v2025-06-18,
+        /// Latest draft specification (DRAFT-2025-v3)
+        draft-2025-v3,
+    }
 
     /// Information about an MCP implementation
     record implementation-info {

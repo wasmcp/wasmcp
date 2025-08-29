@@ -10,16 +10,20 @@ interface types {
         assistant,
     }
 
-    /// Extensible metadata fields for forward compatibility
-    type meta-fields = list<tuple<string, string>>;
+    /// Metadata fields as arbitrary JSON object
+    /// Represents key-value pairs where values can be any JSON type
+    /// This allows arbitrary nested structures including objects and arrays
+    type meta-fields = json-object;
     
     /// Annotations provide hints to clients about how to handle data
     record annotations {
         /// Who this data is intended for
         audience: option<list<role>>,
         /// Priority from 0.0 (least) to 1.0 (most important)
+        /// Implementations SHOULD validate this is within [0.0, 1.0] range
         priority: option<f64>,
         /// ISO 8601 timestamp of last modification
+        /// Format: YYYY-MM-DDTHH:mm:ss[.sss]Z or ±HH:MM offset
         last-modified: option<string>,
     }
 
@@ -67,21 +71,35 @@ interface types {
         meta: option<meta-fields>,
     }
 
-    /// Reference to a resource
+    /// Reference to a resource that the server can read
+    /// Resource links included in prompts or tool results may not appear in resources/list
     record resource-link {
+        /// URI of the resource
         uri: string,
+        /// Programmatic identifier for the resource
         name: string,
+        /// Human-readable display title (preferred for UI display)
+        title: option<string>,
+        /// Description of what this resource represents
         description: option<string>,
+        /// MIME type of the resource, if known
         mime-type: option<string>,
+        /// Size in bytes (before encoding), if known
         size: option<u64>,
+        /// Client hints for handling
         annotations: option<annotations>,
+        /// Extension metadata
         meta: option<meta-fields>,
     }
 
     /// Embedded resource content
+    /// The contents of a resource, embedded into a prompt or tool call result
     record embedded-resource {
-        contents: resource-contents,
+        /// The actual resource contents (text or binary)
+        resource: resource-contents,
+        /// Client hints for handling
         annotations: option<annotations>,
+        /// Extension metadata
         meta: option<meta-fields>,
     }
 
@@ -106,15 +124,31 @@ interface types {
         meta: option<meta-fields>,
     }
 
-    /// JSON value as a string
-    /// This is a JSON-encoded value that should be parsed/validated by implementations
-    /// using their language's native JSON handling
-    type json-value = string;
+    /// Structured JSON value representation
+    /// This provides type-safe JSON handling within the component model
+    variant json-value {
+        /// JSON null value
+        null,
+        /// JSON boolean value
+        bool(bool),
+        /// JSON number value (supports both integers and floating point)
+        number(f64),
+        /// JSON string value
+        string(string),
+        /// JSON array value
+        array(list<json-value>),
+        /// JSON object value as key-value pairs
+        object(list<tuple<string, json-value>>),
+    }
     
-    /// JSON Schema as a string  
-    /// This is a complete JSON Schema document that should be used for validation
-    /// using standard JSON Schema libraries
+    /// JSON Schema representation
+    /// Kept as a string since JSON Schema is complex
+    /// and typically validated by specialized libraries
     type json-schema = string;
+    
+    /// JSON object type for convenience
+    /// Represents a JSON object as key-value pairs
+    type json-object = list<tuple<string, json-value>>;
 
     /// Standard JSON-RPC and MCP error codes
     variant error-code {
@@ -149,6 +183,13 @@ interface types {
 
     /// Progress token for tracking long-running operations
     type progress-token = string;
+    
+    /// JSON-RPC request ID
+    /// Can be either a string or number in JSON-RPC
+    variant request-id {
+        string(string),
+        number(s64),
+    }
     
     /// Message role for LLM interactions
     enum message-role {

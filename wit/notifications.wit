@@ -3,7 +3,7 @@ package fastertools:mcp@0.1.7;
 /// Notification system for MCP events and updates
 
 interface notifications {
-    use types.{mcp-error, meta-fields, progress-token};
+    use types.{mcp-error, meta-fields, progress-token, request-id};
 
     /// Notification types that can be sent
 
@@ -24,7 +24,7 @@ interface notifications {
     /// Notification that an operation was cancelled
     record cancelled-notification {
         /// ID of the cancelled request
-        request-id: string,
+        request-id: request-id,
         /// Optional cancellation reason
         reason: option<string>,
         /// Extension metadata
