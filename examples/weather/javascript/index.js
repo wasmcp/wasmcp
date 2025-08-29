@@ -269,7 +269,6 @@ async function executeTool(name, args) {
 export const toolHandler = {
     handleListTools(request) {
         console.log('handleListTools called with:', JSON.stringify(request));
-        // Return the response directly, not wrapped in result
         const response = {
             tools: toolDefinitions,
             nextCursor: null,
