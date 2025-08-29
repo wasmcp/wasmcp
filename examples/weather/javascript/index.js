@@ -97,7 +97,7 @@ export const multiWeatherTool = createTool({
         );
         
         // Format results
-        let output = "=== Concurrent Weather Results ===\n\n";
+        let output = "";
         
         for (const result of results) {
             if (result.success) {
@@ -106,9 +106,7 @@ export const multiWeatherTool = createTool({
                 output += `Error fetching weather for ${result.city}: ${result.error}\n\n`;
             }
         }
-        
-        output += "=== All requests completed concurrently ===";
-        
+                
         return output;
     }
 });
