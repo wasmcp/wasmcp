@@ -11,6 +11,12 @@ Bridges HTTP requests to your MCP handler:
 - Handles errors gracefully
 - **Build variants that only import the handlers they need (no null components!)**
 
+## Why Multiple Server Variants?
+
+The WebAssembly Component Model requires that all imports declared by a component must be satisfied during composition. This creates a challenge: if the server imports all MCP capabilities (tools, resources, prompts, etc.), then EVERY handler would need to export ALL interfaces, even ones it doesn't use.
+
+The solution is to build different server variants with different import requirements. This allows handlers to export only the capabilities they actually implement, resulting in cleaner handler code and clearer capability contracts.
+
 ## How Feature-Based Compilation Works
 
 The server uses a clever build system to create different server variants:
@@ -18,6 +24,8 @@ The server uses a clever build system to create different server variants:
 1. **Build Script (`build.rs`)**: Automatically selects the right WIT interface based on enabled Cargo features
 2. **WIT Variants (`wit-variants/`)**: Pre-defined world definitions for each server variant
 3. **Feature Flags**: Cargo features control which MCP capabilities are compiled in
+
+This approach works around a fundamental component model constraint while maintaining good developer experience
 
 ### Available Variants
 

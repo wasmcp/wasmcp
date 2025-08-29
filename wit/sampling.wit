@@ -1,5 +1,3 @@
-package fastertools:mcp@0.1.7;
-
 /// LLM sampling interface - allows servers to request AI assistance from clients
 /// This enables powerful agent workflows where servers can leverage client LLM access
 

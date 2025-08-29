@@ -1,4 +1,14 @@
-package fastertools:mcp@0.1.7;
+package fastertools:mcp@0.1.8;
+
+/// World definitions for MCP servers and handlers
+/// 
+/// This file defines paired worlds for different capability combinations:
+/// - Each server world has a corresponding handler world
+/// - Servers import the capabilities they support
+/// - Handlers export the capabilities they implement
+/// - This allows handlers to only implement what they need
+
+// === TOOLS ONLY ===
 
 /// Minimal server with just tools
 world tools-server {
@@ -15,6 +25,8 @@ world tools-server {
 world tools-handler {
     export tool-handler;
 }
+
+// === TOOLS + RESOURCES ===
 
 /// Server with tools and resources
 world tools-resources-server {
@@ -35,6 +47,8 @@ world tools-resources-handler {
     export resource-handler;
 }
 
+// === TOOLS + RESOURCES + PROMPTS ===
+
 world tools-resources-prompts-server {
     // Core types always needed
     import types;
@@ -53,8 +67,10 @@ world tools-resources-prompts-server {
 world tools-resources-prompts-handler {
     export tool-handler;
     export resource-handler;
-    export prompts;
+    export prompt-handler;
 }
+
+// === FULL CAPABILITIES ===
 
 /// Full server with all handlers
 world full-server {
@@ -91,6 +107,8 @@ world full-handler {
     export roots-handler;
     export completion-handler;
 }
+
+// === CLIENT WORLD ===
 
 /// World for MCP clients that consume server capabilities
 world mcp-client {

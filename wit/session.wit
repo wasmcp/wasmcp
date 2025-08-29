@@ -1,5 +1,3 @@
-package fastertools:mcp@0.1.7;
-
 /// Session management and capability negotiation for MCP
 
 interface session {
@@ -9,13 +7,13 @@ interface session {
     /// These correspond to official MCP specification versions
     enum protocol-version {
         /// MCP 2024-11-05 specification
-        v2024-11-05,
+        mcp-v20241105,
         /// MCP 2025-03-26 specification
-        v2025-03-26,
+        mcp-v20250326,
         /// MCP 2025-06-18 specification  
-        v2025-06-18,
+        mcp-v20250618,
         /// Latest draft specification (DRAFT-2025-v3)
-        draft-2025-v3,
+        draft-v2025-v3,
     }
 
     /// Information about an MCP implementation
