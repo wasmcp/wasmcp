@@ -1,5 +1,6 @@
 package weather:handler;
 
 world tools-handler {
+    import wasi:http/outgoing-handler@0.2.3;
     export fastertools:mcp/tool-handler@0.1.9;
 }

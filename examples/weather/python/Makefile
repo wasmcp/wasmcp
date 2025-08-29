@@ -53,7 +53,15 @@ build: $(VENV) ## Build and compose everything into composed.wasm
 
 build-bindings: $(VENV) ## Generate Python bindings for development
 	@echo "Generating Python bindings..."
-	@$(COMPONENTIZE_PY) --wit-path wit --world tools-handler bindings . 2>/dev/null || true
+	@rm -rf wit_world
+	@$(COMPONENTIZE_PY) \
+		--wit-path wit \
+		--world tools-handler \
+		--import-interface-name "wasi:http/types@0.2.0=http_types" \
+		--import-interface-name "wasi:http/outgoing-handler@0.2.0=outgoing_handler" \
+		--import-interface-name "wasi:io/poll@0.2.0=io_poll" \
+		--import-interface-name "wasi:io/streams@0.2.0=io_streams" \
+		bindings .
 
 clean: ## Clean build artifacts
 	rm -f $(HANDLER_WASM) $(COMPOSED_WASM) .server-tmp.wasm

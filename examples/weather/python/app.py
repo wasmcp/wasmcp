@@ -8,16 +8,15 @@ Implements the same tools as the Rust and JavaScript examples:
 - multi_weather: Get weather for multiple locations concurrently
 """
 
-import asyncio
 import json
-from typing import List, Optional
-import urllib.request
+from typing import List, Optional, Dict, Any
 import urllib.parse
-from concurrent.futures import ThreadPoolExecutor
 
 # Import the generated WIT bindings
 from wit_world.exports import ToolHandler
-from wit_world.imports import tools, types
+from wit_world.imports import tools, fastertools_mcp_types as types
+from wit_world.imports import wasi_http_types as http_types, outgoing_handler, streams, poll
+from wit_world.types import Some, Err
 
 
 class ToolHandler(ToolHandler):
@@ -170,13 +169,12 @@ class ToolHandler(ToolHandler):
         return output
     
     def _get_weather_for_city_sync(self, location: str) -> str:
-        """Synchronous version of weather fetching."""
+        """Synchronous version of weather fetching using WASI HTTP."""
         try:
             # Geocode the location
             geocoding_url = f"https://geocoding-api.open-meteo.com/v1/search?name={urllib.parse.quote(location)}&count=1"
             
-            with urllib.request.urlopen(geocoding_url) as response:
-                geo_data = json.loads(response.read())
+            geo_data = self._http_get(geocoding_url)
             
             if not geo_data.get("results"):
                 raise Exception(f"Location '{location}' not found")
@@ -190,8 +188,7 @@ class ToolHandler(ToolHandler):
                 f"&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code"
             )
             
-            with urllib.request.urlopen(weather_url) as response:
-                weather_data = json.loads(response.read())
+            weather_data = self._http_get(weather_url)
             
             conditions = self._get_weather_condition(weather_data["current"]["weather_code"])
             
@@ -206,6 +203,101 @@ class ToolHandler(ToolHandler):
             
         except Exception as e:
             raise Exception(f"Failed to fetch weather for {location}: {str(e)}")
+    
+    def _http_get(self, url: str) -> Dict[str, Any]:
+        """Make an HTTP GET request using WASI HTTP."""
+        # Parse the URL
+        if not url.startswith(('http://', 'https://')):
+            raise ValueError(f"Invalid URL scheme: {url}")
+        
+        # Extract components from URL
+        if url.startswith('https://'):
+            scheme = http_types.Scheme_Https()
+            host_start = 8
+        else:
+            scheme = http_types.Scheme_Http()
+            host_start = 7
+        
+        # Find host and path
+        path_start = url.find('/', host_start)
+        if path_start == -1:
+            host = url[host_start:]
+            path_and_query = "/"
+        else:
+            host = url[host_start:path_start]
+            path_and_query = url[path_start:]
+        
+        # Create the request headers (minimal headers only)
+        headers = http_types.Fields.from_list([
+            ("Accept", b"application/json")
+        ])
+        
+        request = http_types.OutgoingRequest(headers)
+        request.set_scheme(Some(value=scheme))
+        request.set_authority(Some(value=host))
+        request.set_path_with_query(Some(value=path_and_query))
+        
+        # Send the request
+        future_response = outgoing_handler.handle(request, None)
+        
+        # Poll for the response
+        pollable = future_response.subscribe()
+        
+        # Wait for the response to be ready
+        while True:
+            poll_list = [pollable]
+            ready = poll.poll(poll_list)
+            if ready:
+                break
+        
+        # Get the response
+        response_result = future_response.get()
+        
+        if response_result is None:
+            # Still pending, poll again
+            raise Exception("Response still pending after poll")
+        
+        # Check if we got an error
+        if isinstance(response_result, Err):
+            error_context = response_result.value
+            if hasattr(error_context, 'message'):
+                raise Exception(f"HTTP request failed: {error_context.message}")
+            else:
+                raise Exception(f"HTTP request failed with error")
+        
+        # Extract the Ok value
+        if hasattr(response_result, 'value'):
+            incoming_response = response_result.value
+        else:
+            incoming_response = response_result
+        
+        # Get the response body
+        body_result = incoming_response.consume()
+        
+        if isinstance(body_result, Err):
+            raise Exception(f"Failed to get response body")
+        
+        # Extract the body stream
+        if hasattr(body_result, 'value'):
+            body_stream = body_result.value
+        else:
+            body_stream = body_result
+        
+        # Read the body
+        body_parts = []
+        while True:
+            # Use blocking_read method on the stream
+            chunk = body_stream.blocking_read(8192)
+            
+            if not chunk:
+                break
+            body_parts.append(chunk)
+        
+        # Combine the body parts
+        body = b''.join(body_parts)
+        
+        # Parse JSON response
+        return json.loads(body.decode('utf-8'))
     
     def _get_weather_condition(self, code: int) -> str:
         """Get weather condition description from WMO code."""
