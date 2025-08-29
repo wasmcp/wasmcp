@@ -41,6 +41,7 @@ build: $(VENV) ## Build and compose everything into composed.wasm
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
 		--world tools-handler \
+		--import-interface-name "wasi:http/types@0.2.3=types" \
 		componentize \
 		app \
 		-o $(HANDLER_WASM)

@@ -19,11 +19,11 @@ from poll_loop import PollLoop, Stream
 
 # Import MCP types
 from wit_world.exports import ToolHandler
-from wit_world.imports import tools, fastertools_mcp_types as types
+from wit_world.imports import tools, fastertools_mcp_types as mcp_types
 from wit_world.types import Ok
 
-# Import WASI HTTP types
-from wit_world.imports.wasi_http_types import (
+# Import WASI HTTP types (now mapped to 'types' like componentize-py expects)
+from wit_world.imports.types import (
     OutgoingRequest,
     Fields,
     Scheme_Http,
@@ -40,7 +40,7 @@ class ToolHandler(ToolHandler):
         return tools.ListToolsResponse(
             tools=[
                 tools.Tool(
-                    base=types.BaseMetadata(name="echo", title="echo"),
+                    base=mcp_types.BaseMetadata(name="echo", title="echo"),
                     description="Echo a message back to the user",
                     input_schema=json.dumps({
                         "type": "object",
@@ -54,7 +54,7 @@ class ToolHandler(ToolHandler):
                     meta=None
                 ),
                 tools.Tool(
-                    base=types.BaseMetadata(name="get_weather", title="get_weather"),
+                    base=mcp_types.BaseMetadata(name="get_weather", title="get_weather"),
                     description="Get current weather for a location",
                     input_schema=json.dumps({
                         "type": "object",
@@ -68,7 +68,7 @@ class ToolHandler(ToolHandler):
                     meta=None
                 ),
                 tools.Tool(
-                    base=types.BaseMetadata(name="multi_weather", title="multi_weather"),
+                    base=mcp_types.BaseMetadata(name="multi_weather", title="multi_weather"),
                     description="Get weather for multiple cities concurrently",
                     input_schema=json.dumps({
                         "type": "object",
@@ -242,8 +242,8 @@ class ToolHandler(ToolHandler):
     def _success(self, text: str) -> tools.ToolResult:
         """Create a success result."""
         return tools.ToolResult(
-            content=[types.ContentBlock_Text(
-                value=types.TextContent(text=text, annotations=None, meta=None)
+            content=[mcp_types.ContentBlock_Text(
+                value=mcp_types.TextContent(text=text, annotations=None, meta=None)
             )],
             structured_content=None,
             is_error=False,
@@ -253,8 +253,8 @@ class ToolHandler(ToolHandler):
     def _error(self, text: str) -> tools.ToolResult:
         """Create an error result."""
         return tools.ToolResult(
-            content=[types.ContentBlock_Text(
-                value=types.TextContent(text=text, annotations=None, meta=None)
+            content=[mcp_types.ContentBlock_Text(
+                value=mcp_types.TextContent(text=text, annotations=None, meta=None)
             )],
             structured_content=None,
             is_error=True,
