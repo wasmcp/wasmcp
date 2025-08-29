@@ -1,5 +1,0 @@
-*.wasm
-!wasmcp-server.wasm
-go.sum
-.spin/
-.bin/
