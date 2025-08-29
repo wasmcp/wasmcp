@@ -16,7 +16,7 @@ import urllib.parse
 from wit_world.exports import ToolHandler
 from wit_world.imports import tools, fastertools_mcp_types as types
 from wit_world.imports import wasi_http_types as http_types, outgoing_handler, streams, poll
-from wit_world.types import Some, Err
+from wit_world.types import Err
 
 
 class ToolHandler(ToolHandler):
@@ -233,9 +233,9 @@ class ToolHandler(ToolHandler):
         ])
         
         request = http_types.OutgoingRequest(headers)
-        request.set_scheme(Some(value=scheme))
-        request.set_authority(Some(value=host))
-        request.set_path_with_query(Some(value=path_and_query))
+        request.set_scheme(scheme)
+        request.set_authority(host)
+        request.set_path_with_query(path_and_query)
         
         # Send the request
         future_response = outgoing_handler.handle(request, None)
@@ -252,6 +252,9 @@ class ToolHandler(ToolHandler):
         
         # Get the response
         response_result = future_response.get()
+        
+        # Clean up the pollable
+        del pollable
         
         if response_result is None:
             # Still pending, poll again
