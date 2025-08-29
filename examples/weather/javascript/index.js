@@ -1,80 +1,117 @@
 /**
  * JavaScript MCP Weather Handler
  * 
- * This implements the same tools as the Rust example:
+ * Demonstrates the clean helper API for building MCP tools in JavaScript.
+ * Implements the same tools as the Rust example:
  * - echo: Echo a message back
  * - get_weather: Get weather for a single location
  * - multi_weather: Get weather for multiple locations concurrently
  */
 
-// Tool definitions with their metadata
-const toolDefinitions = [
-    {
-        base: {
-            name: "echo",
-            title: "Echo Tool"
+import { createTool, createHandler } from './helpers.js';
+
+// Define the echo tool
+export const echoTool = createTool({
+    name: 'echo',
+    description: 'Echo a message back to the user',
+    schema: {
+        type: 'object',
+        properties: {
+            message: {
+                type: 'string',
+                description: 'The message to echo'
+            }
         },
-        description: "Echo a message back to the user",
-        inputSchema: JSON.stringify({
-            type: "object",
-            properties: {
-                message: {
-                    type: "string",
-                    description: "The message to echo"
-                }
-            },
-            required: ["message"]
-        }),
-        outputSchema: null,
-        annotations: null,
-        meta: null
+        required: ['message']
     },
-    {
-        base: {
-            name: "get_weather",
-            title: "Weather Tool"
-        },
-        description: "Get current weather for a location",
-        inputSchema: JSON.stringify({
-            type: "object",
-            properties: {
-                location: {
-                    type: "string",
-                    description: "City name to get weather for"
-                }
-            },
-            required: ["location"]
-        }),
-        outputSchema: null,
-        annotations: null,
-        meta: null
-    },
-    {
-        base: {
-            name: "multi_weather",
-            title: "Multi Weather Tool"
-        },
-        description: "Get weather for multiple cities concurrently",
-        inputSchema: JSON.stringify({
-            type: "object",
-            properties: {
-                cities: {
-                    type: "array",
-                    description: "List of cities to get weather for",
-                    items: {
-                        type: "string"
-                    },
-                    minItems: 1,
-                    maxItems: 5
-                }
-            },
-            required: ["cities"]
-        }),
-        outputSchema: null,
-        annotations: null,
-        meta: null
+    execute: async (args) => {
+        if (!args.message) {
+            throw new Error('Missing required field: message');
+        }
+        return `Echo: ${args.message}`;
     }
-];
+});
+
+// Define the single weather tool
+export const weatherTool = createTool({
+    name: 'get_weather',
+    description: 'Get current weather for a location',
+    schema: {
+        type: 'object',
+        properties: {
+            location: {
+                type: 'string',
+                description: 'City name to get weather for'
+            }
+        },
+        required: ['location']
+    },
+    execute: async (args) => {
+        if (!args.location) {
+            throw new Error('Missing required field: location');
+        }
+        return await getWeatherForCity(args.location);
+    }
+});
+
+// Define the multi-weather tool
+export const multiWeatherTool = createTool({
+    name: 'multi_weather',
+    description: 'Get weather for multiple cities concurrently',
+    schema: {
+        type: 'object',
+        properties: {
+            cities: {
+                type: 'array',
+                description: 'List of cities to get weather for',
+                items: {
+                    type: 'string'
+                },
+                minItems: 1,
+                maxItems: 5
+            }
+        },
+        required: ['cities']
+    },
+    execute: async (args) => {
+        const cities = args.cities;
+        
+        if (!cities || !Array.isArray(cities) || cities.length === 0) {
+            throw new Error('Missing or invalid cities field');
+        }
+        
+        if (cities.length > 5) {
+            throw new Error('Maximum 5 cities allowed');
+        }
+        
+        // Execute concurrent weather fetches
+        const results = await Promise.all(
+            cities.map(async city => {
+                try {
+                    const weather = await getWeatherForCity(city);
+                    return { city, success: true, data: weather };
+                } catch (error) {
+                    return { city, success: false, error: error.message };
+                }
+            })
+        );
+        
+        // Format results
+        let output = "=== Concurrent Weather Results ===\n\n";
+        
+        for (const result of results) {
+            if (result.success) {
+                output += result.data + "\n\n";
+            } else {
+                output += `Error fetching weather for ${result.city}: ${result.error}\n\n`;
+            }
+        }
+        
+        output += "=== All requests completed concurrently ===";
+        
+        return output;
+    }
+});
 
 // Helper function to get weather for a single city
 async function getWeatherForCity(location) {
@@ -113,174 +150,39 @@ Wind: ${weatherData.current.wind_speed_10m.toFixed(1)} km/h`;
 // Weather condition descriptions based on WMO codes
 function getWeatherCondition(code) {
     const conditions = {
-        0: "Clear sky",
-        1: "Mainly clear",
-        2: "Partly cloudy",
-        3: "Overcast",
-        45: "Foggy",
-        48: "Foggy",
-        51: "Drizzle",
-        53: "Drizzle",
-        55: "Drizzle",
-        56: "Freezing drizzle",
-        57: "Freezing drizzle",
-        61: "Rain",
-        63: "Rain",
-        65: "Rain",
-        66: "Freezing rain",
-        67: "Freezing rain",
-        71: "Snow",
-        73: "Snow",
-        75: "Snow",
-        77: "Snow grains",
-        80: "Rain showers",
-        81: "Rain showers",
-        82: "Rain showers",
-        85: "Snow showers",
-        86: "Snow showers",
-        95: "Thunderstorm",
-        96: "Thunderstorm with hail",
-        99: "Thunderstorm with hail"
+        0: 'Clear sky',
+        1: 'Mainly clear',
+        2: 'Partly cloudy',
+        3: 'Overcast',
+        45: 'Foggy',
+        48: 'Depositing rime fog',
+        51: 'Light drizzle',
+        53: 'Moderate drizzle',
+        55: 'Dense drizzle',
+        56: 'Light freezing drizzle',
+        57: 'Dense freezing drizzle',
+        61: 'Slight rain',
+        63: 'Moderate rain',
+        65: 'Heavy rain',
+        66: 'Light freezing rain',
+        67: 'Heavy freezing rain',
+        71: 'Slight snow fall',
+        73: 'Moderate snow fall',
+        75: 'Heavy snow fall',
+        77: 'Snow grains',
+        80: 'Slight rain showers',
+        81: 'Moderate rain showers',
+        82: 'Violent rain showers',
+        85: 'Slight snow showers',
+        86: 'Heavy snow showers',
+        95: 'Thunderstorm',
+        96: 'Thunderstorm with slight hail',
+        99: 'Thunderstorm with heavy hail'
     };
-    return conditions[code] || "Unknown";
+    return conditions[code] || 'Unknown';
 }
 
-// Tool execution logic
-async function executeTool(name, args) {
-    const parsedArgs = args ? JSON.parse(args) : {};
-    
-    switch (name) {
-        case "echo": {
-            const message = parsedArgs.message;
-            if (!message) {
-                throw new Error("Missing required field: message");
-            }
-            return {
-                content: [{
-                    tag: 'text',
-                    val: {
-                        text: `Echo: ${message}`,
-                        annotations: null,
-                        meta: null
-                    }
-                }],
-                structuredContent: null,
-                isError: false,
-                meta: null
-            };
-        }
-        
-        case "get_weather": {
-            const location = parsedArgs.location;
-            if (!location) {
-                throw new Error("Missing required field: location");
-            }
-            
-            try {
-                const weather = await getWeatherForCity(location);
-                return {
-                    content: [{
-                        tag: 'text',
-                        val: {
-                            text: weather,
-                            annotations: null,
-                            meta: null
-                        }
-                    }],
-                    structuredContent: null,
-                    isError: false,
-                    meta: null
-                };
-            } catch (error) {
-                return {
-                    content: [{
-                        tag: 'text',
-                        val: {
-                            text: `Error fetching weather: ${error.message}`,
-                            annotations: null,
-                            meta: null
-                        }
-                    }],
-                    structuredContent: null,
-                    isError: true,
-                    meta: null
-                };
-            }
-        }
-        
-        case "multi_weather": {
-            const cities = parsedArgs.cities;
-            if (!cities || !Array.isArray(cities) || cities.length === 0) {
-                throw new Error("Missing or invalid 'cities' field");
-            }
-            
-            if (cities.length > 5) {
-                throw new Error("Maximum 5 cities allowed");
-            }
-            
-            // Execute concurrent weather fetches
-            const results = await Promise.all(
-                cities.map(async city => {
-                    try {
-                        const weather = await getWeatherForCity(city);
-                        return { city, success: true, data: weather };
-                    } catch (error) {
-                        return { city, success: false, error: error.message };
-                    }
-                })
-            );
-            
-            // Format results
-            let output = "=== Concurrent Weather Results ===\n\n";
-            
-            for (const result of results) {
-                if (result.success) {
-                    output += result.data + "\n\n";
-                } else {
-                    output += `Error fetching weather for ${result.city}: ${result.error}\n\n`;
-                }
-            }
-            
-            output += "=== All requests completed concurrently ===";
-            
-            return {
-                content: [{
-                    tag: 'text',
-                    val: {
-                        text: output,
-                        annotations: null,
-                        meta: null
-                    }
-                }],
-                structuredContent: null,
-                isError: false,
-                meta: null
-            };
-        }
-        
-        default:
-            throw new Error(`Unknown tool: ${name}`);
-    }
-}
-
-
-// Export the MCP tool handler interface
-// jco expects the interface to be exported as an object with the interface name
-export const toolHandler = {
-    handleListTools(request) {
-        console.log('handleListTools called with:', JSON.stringify(request));
-        const response = {
-            tools: toolDefinitions,
-            nextCursor: null,
-            meta: null
-        };
-        console.log('handleListTools returning:', JSON.stringify(response));
-        return response;
-    },
-    
-    async handleCallTool(request) {
-        // Return the result directly, let jco handle the Result wrapping
-        const result = await executeTool(request.name, request.arguments);
-        return result;
-    }
-};
+// Create and export the handler
+export const toolHandler = createHandler({
+    tools: [echoTool, weatherTool, multiWeatherTool]
+});
