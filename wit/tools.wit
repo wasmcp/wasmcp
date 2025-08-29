@@ -78,11 +78,6 @@ interface tools {
         meta: option<meta-fields>,
     }
 
-    /// Tool operations
-    
-    /// List available tools with optional pagination
-    list-tools: func(request: list-tools-request) -> result<list-tools-response, mcp-error>;
-    
-    /// Execute a tool with the provided arguments
-    call-tool: func(request: call-tool-request) -> result<tool-result, mcp-error>;
+    // Note: Tool operations are defined in the tool-handler interface
+    // This interface only provides type definitions
 }

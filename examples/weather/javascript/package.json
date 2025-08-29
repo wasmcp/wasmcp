@@ -1,0 +1,19 @@
+{
+  "name": "weather-mcp-handler",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "JavaScript MCP weather handler example",
+  "scripts": {
+    "build": "jco componentize weather-handler.js --wit wit --world-name tools-handler --out weather-handler.wasm",
+    "build:types": "jco types wit -o types",
+    "compose": "wac plug --plug weather-handler.wasm ../../../components/server/target/wasm32-wasip1/release/wasmcp_server.wasm -o composed.wasm",
+    "transpile": "jco transpile weather-handler.wasm -o dist",
+    "clean": "rm -rf weather-handler.wasm composed.wasm dist types"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "^1.8.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

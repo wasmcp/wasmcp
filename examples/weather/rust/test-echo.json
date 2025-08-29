@@ -1,0 +1,11 @@
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "echo",
+    "arguments": {
+      "message": "Hello from fixed WIT!"
+    }
+  },
+  "id": 3
+}

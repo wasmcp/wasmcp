@@ -46,7 +46,7 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "fastertools:mcp"
-version = "0.1.8"
+version = "0.1.9"
 world = "tools-server" # Should correspond with the enabled features 
 
 [workspace]

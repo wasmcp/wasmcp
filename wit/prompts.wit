@@ -75,11 +75,6 @@ interface prompts {
         meta: option<meta-fields>,
     }
 
-    /// Prompt operations
-    
-    /// List available prompts with pagination
-    list-prompts: func(request: list-prompts-request) -> result<list-prompts-response, mcp-error>;
-    
-    /// Get a specific prompt with optional arguments
-    get-prompt: func(request: get-prompt-request) -> result<get-prompt-response, mcp-error>;
+    // Note: Prompt operations are defined in the prompt-handler interface
+    // This interface only provides type definitions
 }

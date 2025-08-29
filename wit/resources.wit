@@ -95,20 +95,6 @@ interface resources {
         meta: option<meta-fields>,
     }
 
-    /// Resource operations
-    
-    /// List available resources with pagination
-    list-resources: func(request: list-resources-request) -> result<list-resources-response, mcp-error>;
-    
-    /// List available resource templates
-    list-resource-templates: func(request: list-templates-request) -> result<list-templates-response, mcp-error>;
-    
-    /// Read the contents of a specific resource
-    read-resource: func(request: read-resource-request) -> result<read-resource-response, mcp-error>;
-    
-    /// Subscribe to updates for a resource
-    subscribe-resource: func(request: subscribe-request) -> result<_, mcp-error>;
-    
-    /// Unsubscribe from resource updates
-    unsubscribe-resource: func(request: unsubscribe-request) -> result<_, mcp-error>;
+    // Note: Resource operations are defined in the resource-handler interface
+    // This interface only provides type definitions
 }

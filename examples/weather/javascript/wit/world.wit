@@ -1,0 +1,6 @@
+package weather:handler;
+
+world tools-handler {
+    // Export the handler - types are transitively imported
+    export fastertools:mcp/tool-handler@0.1.9;
+}
