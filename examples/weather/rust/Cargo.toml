@@ -1,6 +1,6 @@
 [package]
 name = "rust"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 
 [lib]
@@ -26,7 +26,7 @@ derives = ["Clone"]
 
 [package.metadata.component.target]
 package = "fastertools:mcp"
-version = "0.1.7"
+version = "0.1.8"
 world = "tools-handler"
 
 [profile.release]

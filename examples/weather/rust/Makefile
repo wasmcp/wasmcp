@@ -5,7 +5,7 @@ HANDLER_WASM = target/wasm32-wasip1/release/rust.wasm
 COMPOSED_WASM = composed.wasm
 
 # Server package from registry
-SERVER_PKG = fastertools:wasmcp-server-tools@0.1.1
+SERVER_PKG = fastertools:wasmcp-server-tools@0.1.2
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
