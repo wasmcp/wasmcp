@@ -1,5 +1,5 @@
 [package]
-name = "wasmcp_server"
+name = "mcp_transport_http"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,9 +16,9 @@ wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
 rmcp = { version = "0.5", default-features = false, features = ["server", "macros", "base64"] }
 
 [features]
-default = ["tools"]
+default = ["full"]
 
-# Handler capabilities - choose which handlers this server will support
+# Capabilities - choose which capabilities this transport will support
 tools = []
 resources = []
 prompts = []
@@ -39,14 +39,14 @@ sse = []  # Server-Sent Events for subscriptions and notifications
 # sessions = ["dep:wasi-keyvalue"]  # Stateful session support
 
 [package.metadata.component]
-package = "wasmcp:server"
+package = "mcp:transport-http"
 
 [package.metadata.component.bindings]
 derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "fastertools:mcp"
-version = "0.1.9"
-world = "tools-server" # Should correspond with the enabled features 
+version = "0.1.10"
+world = "full-transport" # Should correspond with the enabled features 
 
 [workspace]

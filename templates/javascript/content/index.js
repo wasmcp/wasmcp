@@ -1,5 +1,5 @@
 /**
- * {{project-name}} MCP Handler
+ * {{project-name}} MCP Provider
  * 
  * {{project-description}}
  * 
@@ -181,7 +181,7 @@ function getWeatherCondition(code) {
     return conditions[code] || 'Unknown';
 }
 
-// Create and export the handler
-export const toolHandler = createHandler({
+// Create and export the capabilities
+export const toolsCapabilities = createHandler({
     tools: [echoTool, weatherTool, multiWeatherTool]
 });

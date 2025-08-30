@@ -288,11 +288,11 @@ lazy_static::lazy_static! {
     );
 }
 
-// With the new architecture, handlers ONLY implement their specific capability.
-// The server handles all core protocol stuff (initialize, ping, etc.)
+// With the new architecture, providers ONLY implement their specific capability.
+// The transport handles all core protocol stuff (initialize, ping, etc.)
 
-// Implement the tool handler interface
-impl bindings::exports::fastertools::mcp::tool_handler::Guest for Component {
+// Implement the tools capabilities interface
+impl bindings::exports::fastertools::mcp::tools_capabilities::Guest for Component {
     fn handle_list_tools(request: bindings::fastertools::mcp::tools::ListToolsRequest) 
         -> Result<bindings::fastertools::mcp::tools::ListToolsResponse, bindings::fastertools::mcp::types::McpError> {
         (TOOL_HANDLERS.0)(request)

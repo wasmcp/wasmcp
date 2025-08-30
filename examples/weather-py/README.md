@@ -39,11 +39,10 @@ make test-multi
 
 ```
 .
-├── app.py                 # Your MCP handler implementation
-├── composed.wasm         # Final composed component (handler + server)
+├── app.py                 # Your MCP provider implementation
+├── mcp-http-server.wasm  # Final composed component (provider + transport)
 ├── wit/                  # WebAssembly Interface Types
-│   ├── world.wit        # World definition
-│   └── deps/            # MCP interface dependencies
+│   └── world.wit        # World definition
 ├── wit_world/           # Generated Python bindings
 ├── venv/                # Python virtual environment
 └── requirements.txt     # Python dependencies
@@ -114,9 +113,9 @@ make clean
 
 ## Deployment
 
-The `composed.wasm` file is a standalone WebAssembly component that can run on:
+The `mcp-http-server.wasm` file is a standalone WebAssembly component that can run on:
 
-- **Wasmtime**: `wasmtime serve -Scli composed.wasm`
+- **Wasmtime**: `wasmtime serve -Scli mcp-http-server.wasm`
 - **Spin**: `spin up`
 - **Any WASI-compliant runtime**
 

@@ -728,9 +728,9 @@ pub mod fastertools {
 pub mod exports {
     pub mod fastertools {
         pub mod mcp {
-            /// Tool handler capability - implement this to provide tools
+            /// Tool capabilities - implement this to provide tools
             #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-            pub mod tool_handler {
+            pub mod tools_capabilities {
                 #[used]
                 #[doc(hidden)]
                 static __FORCE_SECTION_REF: fn() = super::super::super::super::__link_custom_section_describing_imports;
@@ -3920,37 +3920,37 @@ pub mod exports {
                     ) -> Result<ToolResult, McpError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_fastertools_mcp_tool_handler_0_1_9_cabi {
+                macro_rules! __export_fastertools_mcp_tools_capabilities_0_1_10_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "fastertools:mcp/tool-handler@0.1.9#handle-list-tools")] unsafe
-                        extern "C" fn export_handle_list_tools(arg0 : i32, arg1 : * mut
-                        u8, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5 : usize, arg6
-                        : i32, arg7 : * mut u8, arg8 : usize,) -> * mut u8 { unsafe {
-                        $($path_to_types)*:: _export_handle_list_tools_cabi::<$ty >
-                        (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) } }
-                        #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/tool-handler@0.1.9#handle-list-tools")]
+                        "fastertools:mcp/tools-capabilities@0.1.10#handle-list-tools")]
+                        unsafe extern "C" fn export_handle_list_tools(arg0 : i32, arg1 :
+                        * mut u8, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5 :
+                        usize, arg6 : i32, arg7 : * mut u8, arg8 : usize,) -> * mut u8 {
+                        unsafe { $($path_to_types)*::
+                        _export_handle_list_tools_cabi::<$ty > (arg0, arg1, arg2, arg3,
+                        arg4, arg5, arg6, arg7, arg8) } } #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/tools-capabilities@0.1.10#handle-list-tools")]
                         unsafe extern "C" fn _post_return_handle_list_tools(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_list_tools::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "fastertools:mcp/tool-handler@0.1.9#handle-call-tool")] unsafe
-                        extern "C" fn export_handle_call_tool(arg0 : * mut u8, arg1 :
-                        usize, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 : i32,
-                        arg6 : * mut u8, arg7 : usize, arg8 : i32, arg9 : * mut u8, arg10
-                        : usize,) -> * mut u8 { unsafe { $($path_to_types)*::
+                        "fastertools:mcp/tools-capabilities@0.1.10#handle-call-tool")]
+                        unsafe extern "C" fn export_handle_call_tool(arg0 : * mut u8,
+                        arg1 : usize, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 :
+                        i32, arg6 : * mut u8, arg7 : usize, arg8 : i32, arg9 : * mut u8,
+                        arg10 : usize,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_handle_call_tool_cabi::<$ty > (arg0, arg1, arg2, arg3,
                         arg4, arg5, arg6, arg7, arg8, arg9, arg10) } } #[unsafe
                         (export_name =
-                        "cabi_post_fastertools:mcp/tool-handler@0.1.9#handle-call-tool")]
+                        "cabi_post_fastertools:mcp/tools-capabilities@0.1.10#handle-call-tool")]
                         unsafe extern "C" fn _post_return_handle_call_tool(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_call_tool::<$ty > (arg0) } } };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_fastertools_mcp_tool_handler_0_1_9_cabi;
+                pub(crate) use __export_fastertools_mcp_tools_capabilities_0_1_10_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -4116,26 +4116,27 @@ mod _rt {
 /// ```
 #[allow(unused_macros)]
 #[doc(hidden)]
-macro_rules! __export_tools_handler_impl {
+macro_rules! __export_tools_provider_impl {
     ($ty:ident) => {
         self::export!($ty with_types_in self);
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::fastertools::mcp::tool_handler::__export_fastertools_mcp_tool_handler_0_1_9_cabi!($ty
-        with_types_in $($path_to_types_root)*:: exports::fastertools::mcp::tool_handler);
+        exports::fastertools::mcp::tools_capabilities::__export_fastertools_mcp_tools_capabilities_0_1_10_cabi!($ty
+        with_types_in $($path_to_types_root)*::
+        exports::fastertools::mcp::tools_capabilities);
     };
 }
 #[doc(inline)]
-pub(crate) use __export_tools_handler_impl as export;
+pub(crate) use __export_tools_provider_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.1.9:tools-handler:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.1.10:tools-provider:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2663] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xe3\x13\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2675] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xee\x13\x01A\x02\x01\
 A\x12\x01B;\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajs\
 on-value\x03\0\x02\x01o\x02ss\x01p\x04\x04\0\x0bmeta-fields\x03\0\x05\x01p\x01\x01\
 k\x07\x01ku\x01ks\x01r\x03\x08audience\x08\x08priority\x09\x0dlast-modified\x0a\x04\
@@ -4163,7 +4164,7 @@ m\x03\x04user\x09assistant\x06system\x04\0\x0cmessage-role\x03\01\x01r\x01\x04na
 me\x0a\x04\0\x0amodel-hint\x03\03\x01p4\x01k5\x01r\x04\x05hints6\x0dcost-priorit\
 y\x09\x0espeed-priority\x09\x15intelligence-priority\x09\x04\0\x11model-preferen\
 ces\x03\07\x01r\x04\x0curi-templates\x04names\x0bdescription\x0a\x09mime-type\x0a\
-\x04\0\x11resource-template\x03\09\x03\0\x1bfastertools:mcp/types@0.1.9\x05\0\x02\
+\x04\0\x11resource-template\x03\09\x03\0\x1cfastertools:mcp/types@0.1.10\x05\0\x02\
 \x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\x03\0\0\x0bjson-schema\x02\
 \x03\0\0\x09mcp-error\x02\x03\0\0\x0dbase-metadata\x02\x03\0\0\x0bmeta-fields\x02\
 \x03\0\0\x06cursor\x02\x03\0\0\x0eprogress-token\x01B&\x02\x03\x02\x01\x01\x04\0\
@@ -4181,17 +4182,17 @@ ool-result\x03\0\x1b\x01k\x0d\x01k\x0f\x01r\x03\x06cursor\x1d\x0eprogress-token\
 \x04meta\x16\x04\0\x12list-tools-request\x03\0\x1f\x01p\x18\x01r\x03\x05tools!\x0b\
 next-cursor\x1d\x04meta\x16\x04\0\x13list-tools-response\x03\0\"\x01r\x04\x04nam\
 es\x09arguments\x1a\x0eprogress-token\x1e\x04meta\x16\x04\0\x11call-tool-request\
-\x03\0$\x03\0\x1bfastertools:mcp/tools@0.1.9\x05\x09\x02\x03\0\x01\x12list-tools\
--request\x02\x03\0\x01\x13list-tools-response\x02\x03\0\x01\x11call-tool-request\
-\x02\x03\0\x01\x0btool-result\x01B\x10\x02\x03\x02\x01\x04\x04\0\x09mcp-error\x03\
+\x03\0$\x03\0\x1cfastertools:mcp/tools@0.1.10\x05\x09\x02\x03\0\x01\x12list-tool\
+s-request\x02\x03\0\x01\x13list-tools-response\x02\x03\0\x01\x11call-tool-reques\
+t\x02\x03\0\x01\x0btool-result\x01B\x10\x02\x03\x02\x01\x04\x04\0\x09mcp-error\x03\
 \0\0\x02\x03\x02\x01\x0a\x04\0\x12list-tools-request\x03\0\x02\x02\x03\x02\x01\x0b\
 \x04\0\x13list-tools-response\x03\0\x04\x02\x03\x02\x01\x0c\x04\0\x11call-tool-r\
 equest\x03\0\x06\x02\x03\x02\x01\x0d\x04\0\x0btool-result\x03\0\x08\x01j\x01\x05\
 \x01\x01\x01@\x01\x07request\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\x01j\x01\
 \x09\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x10handle-call-tool\x01\x0d\x04\
-\0\"fastertools:mcp/tool-handler@0.1.9\x05\x0e\x04\0#fastertools:mcp/tools-handl\
-er@0.1.9\x04\0\x0b\x13\x01\0\x0dtools-handler\x03\0\0\0G\x09producers\x01\x0cpro\
-cessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+\0)fastertools:mcp/tools-capabilities@0.1.10\x05\x0e\x04\0%fastertools:mcp/tools\
+-provider@0.1.10\x04\0\x0b\x14\x01\0\x0etools-provider\x03\0\0\0G\x09producers\x01\
+\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

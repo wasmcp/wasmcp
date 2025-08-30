@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.9;
+package fastertools:mcp@0.1.10;
 
 /// Core type definitions for the Model Context Protocol
 /// These types are used across all MCP interfaces
@@ -265,6 +265,15 @@ interface completion {
   complete: func(request: complete-request) -> result<complete-result, mcp-error>;
 }
 
+/// Completion capabilities - implement this to provide autocompletion
+interface completion-capabilities {
+  use types.{mcp-error};
+  use completion.{complete-request, complete-result};
+
+  /// Handle request for completion suggestions
+  handle-complete: func(request: complete-request) -> result<complete-result, mcp-error>;
+}
+
 /// Interactive elicitation - request structured input from users
 /// Enables servers to collect configuration, preferences, or other data interactively
 interface elicitation {
@@ -308,22 +317,13 @@ interface elicitation {
   elicit: func(request: elicit-request) -> result<elicit-result, mcp-error>;
 }
 
-/// Elicitation handler capability - implement this to handle user input requests
-interface elicitation-handler {
+/// Elicitation capabilities - implement this to handle user input requests
+interface elicitation-capabilities {
   use types.{mcp-error};
   use elicitation.{elicit-request, elicit-result};
 
   /// Handle request for structured user input
   handle-elicit: func(request: elicit-request) -> result<elicit-result, mcp-error>;
-}
-
-/// Completion handler capability - implement this to provide autocompletion
-interface completion-handler {
-  use types.{mcp-error};
-  use completion.{complete-request, complete-result};
-
-  /// Handle request for completion suggestions
-  handle-complete: func(request: complete-request) -> result<complete-result, mcp-error>;
 }
 
 /// Notification system for MCP events and updates
@@ -518,8 +518,8 @@ interface prompts {
   }
 }
 
-/// Prompt handler capability - implement this to provide prompts
-interface prompt-handler {
+/// Prompt capabilities - implement this to provide prompts
+interface prompts-capabilities {
   use types.{mcp-error};
   use prompts.{list-prompts-request, list-prompts-response, get-prompt-request, get-prompt-response};
 
@@ -627,8 +627,8 @@ interface resources {
   }
 }
 
-/// Resource handler capability - implement this to provide resources
-interface resource-handler {
+/// Resource capabilities - implement this to provide resources
+interface resources-capabilities {
   use types.{mcp-error};
   use resources.{list-resources-request, list-resources-response, list-templates-request, list-templates-response, read-resource-request, read-resource-response, subscribe-request, unsubscribe-request};
 
@@ -680,8 +680,8 @@ interface roots {
   list-roots: func(request: list-roots-request) -> result<list-roots-result, mcp-error>;
 }
 
-/// Roots handler capability - implement this to expose file system roots
-interface roots-handler {
+/// Roots capabilities - implement this to expose file system roots
+interface roots-capabilities {
   use types.{mcp-error};
   use roots.{list-roots-request, list-roots-result};
 
@@ -742,8 +742,8 @@ interface sampling {
   create-message: func(request: create-message-request) -> result<create-message-result, mcp-error>;
 }
 
-/// Sampling handler capability - implement this to handle LLM requests
-interface sampling-handler {
+/// Sampling capabilities - implement this to handle LLM requests
+interface sampling-capabilities {
   use types.{mcp-error};
   use sampling.{create-message-request, create-message-result};
 
@@ -872,9 +872,9 @@ interface session {
   shutdown: func() -> result<_, mcp-error>;
 }
 
-/// Core handler interface that all MCP implementations must provide
+/// Core capabilities interface that all MCP implementations must provide
 /// This contains only the essential session management functions
-interface core {
+interface core-capabilities {
   use types.{mcp-error};
   use session.{initialize-request, initialize-response};
 
@@ -972,8 +972,8 @@ interface tools {
   }
 }
 
-/// Tool handler capability - implement this to provide tools
-interface tool-handler {
+/// Tool capabilities - implement this to provide tools
+interface tools-capabilities {
   use types.{mcp-error};
   use tools.{list-tools-request, list-tools-response, call-tool-request, tool-result};
 
@@ -984,72 +984,72 @@ interface tool-handler {
   handle-call-tool: func(request: call-tool-request) -> result<tool-result, mcp-error>;
 }
 
-/// World definitions for MCP servers and handlers
+/// World definitions for MCP transports and capabilities
 ///
 /// This file defines paired worlds for different capability combinations:
-/// - Each server world has a corresponding handler world
-/// - Servers import the capabilities they support
-/// - Handlers export the capabilities they implement
-/// - This allows handlers to only implement what they need
+/// - Each transport world has a corresponding provider world
+/// - Transports import the capabilities they support
+/// - Providers export the capabilities they implement
+/// - This allows providers to only implement what they need
 /// === TOOLS ONLY ===
-/// Minimal server with just tools
-world tools-server {
+/// Minimal transport with just tools
+world tools-transport {
   import types;
   import session;
   import notifications;
   import tools;
-  import tool-handler;
+  import tools-capabilities;
 }
-world tools-handler {
+world tools-provider {
   import types;
   import tools;
 
-  export tool-handler;
+  export tools-capabilities;
 }
 /// === TOOLS + RESOURCES ===
-/// Server with tools and resources
-world tools-resources-server {
+/// Transport with tools and resources
+world tools-resources-transport {
   import types;
   import session;
   import notifications;
   import tools;
-  import tool-handler;
+  import tools-capabilities;
   import resources;
-  import resource-handler;
+  import resources-capabilities;
 }
-world tools-resources-handler {
+world tools-resources-provider {
   import types;
   import tools;
   import resources;
 
-  export tool-handler;
-  export resource-handler;
+  export tools-capabilities;
+  export resources-capabilities;
 }
 /// === TOOLS + RESOURCES + PROMPTS ===
-world tools-resources-prompts-server {
+world tools-resources-prompts-transport {
   import types;
   import session;
   import notifications;
   import tools;
-  import tool-handler;
+  import tools-capabilities;
   import resources;
-  import resource-handler;
+  import resources-capabilities;
   import prompts;
-  import prompt-handler;
+  import prompts-capabilities;
 }
-world tools-resources-prompts-handler {
+world tools-resources-prompts-provider {
   import types;
   import tools;
   import resources;
   import prompts;
 
-  export tool-handler;
-  export resource-handler;
-  export prompt-handler;
+  export tools-capabilities;
+  export resources-capabilities;
+  export prompts-capabilities;
 }
 /// === FULL CAPABILITIES ===
-/// Full server with all handlers
-world full-server {
+/// Full transport with all capabilities
+world full-transport {
   import types;
   import session;
   import notifications;
@@ -1060,15 +1060,15 @@ world full-server {
   import elicitation;
   import roots;
   import completion;
-  import tool-handler;
-  import resource-handler;
-  import prompt-handler;
-  import sampling-handler;
-  import elicitation-handler;
-  import roots-handler;
-  import completion-handler;
+  import tools-capabilities;
+  import resources-capabilities;
+  import prompts-capabilities;
+  import sampling-capabilities;
+  import elicitation-capabilities;
+  import roots-capabilities;
+  import completion-capabilities;
 }
-world full-handler {
+world full-provider {
   import types;
   import tools;
   import resources;
@@ -1078,16 +1078,16 @@ world full-handler {
   import roots;
   import completion;
 
-  export tool-handler;
-  export resource-handler;
-  export prompt-handler;
-  export sampling-handler;
-  export elicitation-handler;
-  export roots-handler;
-  export completion-handler;
+  export tools-capabilities;
+  export resources-capabilities;
+  export prompts-capabilities;
+  export sampling-capabilities;
+  export elicitation-capabilities;
+  export roots-capabilities;
+  export completion-capabilities;
 }
 /// === CLIENT WORLD ===
-/// World for MCP clients that consume server capabilities
+/// World for MCP clients that consume transport capabilities
 world mcp-client {
   import types;
   import tools;

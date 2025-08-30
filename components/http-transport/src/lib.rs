@@ -195,7 +195,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                     meta: None,
                 };
                 
-                let response = bindings::fastertools::mcp::tool_handler::handle_list_tools(&request)?;
+                let response = bindings::fastertools::mcp::tools_capabilities::handle_list_tools(&request)?;
                 let result = server.adapter.convert_list_tools_to_rmcp(response).map_err(|e| McpError {
                     code: ErrorCode::InternalError,
                     message: e.to_string(),
@@ -236,7 +236,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                 }
             };
             
-            let response = bindings::fastertools::mcp::resource_handler::handle_list_resources(&request)?;
+            let response = bindings::fastertools::mcp::resources_capabilities::handle_list_resources(&request)?;
             let result = server.adapter.convert_list_resources_to_rmcp(response).map_err(|e| McpError {
                 code: ErrorCode::InternalError,
                 message: e.to_string(),
@@ -254,7 +254,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                     data: None,
                 })?;
             
-            let response = bindings::fastertools::mcp::resource_handler::handle_read_resource(&request)?;
+            let response = bindings::fastertools::mcp::resources_capabilities::handle_read_resource(&request)?;
             let result = server.adapter.convert_read_resource_to_rmcp(response).map_err(|e| McpError {
                 code: ErrorCode::InternalError,
                 message: e.to_string(),
@@ -272,7 +272,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                     data: None,
                 })?;
             
-            bindings::fastertools::mcp::resource_handler::handle_subscribe_resource(&request)?;
+            bindings::fastertools::mcp::resources_capabilities::handle_subscribe_resource(&request)?;
             Ok(json!({}))
         },
         
@@ -293,7 +293,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                 }
             };
             
-            let response = bindings::fastertools::mcp::prompt_handler::handle_list_prompts(&request)?;
+            let response = bindings::fastertools::mcp::prompts_capabilities::handle_list_prompts(&request)?;
             let result = server.adapter.convert_list_prompts_to_rmcp(response).map_err(|e| McpError {
                 code: ErrorCode::InternalError,
                 message: e.to_string(),
@@ -311,7 +311,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                     data: None,
                 })?;
             
-            let response = bindings::fastertools::mcp::prompt_handler::handle_get_prompt(&request)?;
+            let response = bindings::fastertools::mcp::prompts_capabilities::handle_get_prompt(&request)?;
             let result = server.adapter.convert_get_prompt_to_rmcp(response).map_err(|e| McpError {
                 code: ErrorCode::InternalError,
                 message: e.to_string(),

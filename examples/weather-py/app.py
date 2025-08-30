@@ -1,5 +1,5 @@
 """
-Python MCP Weather Handler
+Python MCP Capability Provider
 
 Uses componentize-py's built-in poll_loop for HTTP requests.
 Implements the same tools as the Rust and JavaScript examples:
@@ -18,7 +18,7 @@ import poll_loop
 from poll_loop import PollLoop, Stream
 
 # Import MCP types
-from wit_world.exports import ToolHandler
+from wit_world.exports import ToolsCapabilities
 from wit_world.imports import tools, fastertools_mcp_types as mcp_types
 from wit_world.types import Ok
 
@@ -32,8 +32,8 @@ from wit_world.imports.types import (
 )
 
 
-class ToolHandler(ToolHandler):
-    """MCP Tool Handler implementation."""
+class ToolsCapabilities(ToolsCapabilities):
+    """MCP Tools Capabilities implementation."""
     
     def handle_list_tools(self, request: tools.ListToolsRequest) -> tools.ListToolsResponse:
         """List available tools."""

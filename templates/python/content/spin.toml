@@ -8,17 +8,17 @@ description = "{{project-description}}"
 
 [[trigger.http]]
 route = "/mcp"
-component = "composed"
+component = "mcp-server"
 
-[component.composed]
-# Using the composed component (handler + server)
-source = "composed.wasm"
+[component.mcp-server]
+# Using the composed component (provider + transport)
+source = "mcp-http-server.wasm"
 allowed_outbound_hosts = [
     "https://geocoding-api.open-meteo.com",
     "https://api.open-meteo.com"
 ]
 key_value_stores = ["default"]
 
-[component.composed.build]
+[component.mcp-server.build]
 command = "make build"
 watch = ["app.py", "requirements.txt", "wit/*.wit"]

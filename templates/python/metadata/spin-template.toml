@@ -1,6 +1,6 @@
 manifest_version = "1"
 id = "wasmcp-python"
-description = "Python wasmcp handler component"
+description = "Python MCP capability provider component"
 tags = ["mcp", "http", "python", "wasm", "component"]
 
 [parameters]

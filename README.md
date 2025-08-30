@@ -2,16 +2,14 @@
 
 # `wasmcp`
 
-**Build MCP servers on the WebAssembly Component Model**
+**Build MCP servers on the [WebAssembly Component Model](https://component-model.bytecodealliance.org/)**
 </div>
 
 This project represents the [Model Context Protocol 2025-06-18+](https://modelcontextprotocol.io/specification/2025-06-18) spec in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) language.
 
-These types enable you to build transport components in one language, and plug in the capabilities implementations from components authored in other languages.
+These types enable you to flexibly build abstractions for MCP implementations around WebAssembly components. Included is a useful  example architecture: Write MCP transports once in one language, and plug in the capability providers from components authored in other languages. Like a "universal SDK" for MCP servers, built from binary bricks.
 
-The results is a single `.wasm` binary file that works on any runtime that supports the [WebAssembly Component Model](https://wasmcloud.com/). Some examples are [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/fermyon/spin), [wasmCloud](https://wasmcloud.com/) or the many emerging platforms and runtimes that are adopting this standard.
-
-The component model is a broad-reaching architecture for building interoperable WebAssembly libraries, applications, and environments.
+The composition process (`provider + transport = mcp-http-server.wasm`) produces a standard Wasm component that runs directly on any runtime that supports the Wasm component model. Some examples are [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/fermyon/spin), [wasmCloud](https://github.com/wasmCloud/wasmCloud) or the many emerging platforms and runtimes that are adopting this broad-reaching architecture for building interoperable WebAssembly libraries, applications, and environments.
 
 ## Quick Start
 
@@ -25,21 +23,16 @@ Ensure build dependencies are set up. The [examples/](./examples/) depend only o
 make setup
 ```
 
-Build the handler component
+Build and compose the capability provider with a transport component
 ```bash
 make build
 ```
 
-Compose the handler component with a transport component
-```bash
-make compose
-```
-
-That's it. Your `composed.wasm` server binary runs anywhere WebAssembly components do, or will.
+That's it. Your `mcp-http-server.wasm` server binary runs anywhere WebAssembly components do, or will.
 
 Try it out with a runtime that supports Wasm components, like [Wasmtime](https://github.com/bytecodealliance/wasmtime)
 ```bash
-wasmtime serve -Scli composed.wasm
+wasmtime serve -Scli mcp-http-server.wasm
 ```
 
 Use the running MCP server in a compatible client
@@ -63,12 +56,12 @@ claude mcp add -t http wasmTools http://localhost:8080/mcp
 Spin users can run Wasm components out-of-the-box.
 
 ```bash
-spin up --from composed.wasm
+spin up --from mcp-http-server.wasm
 ```
 
-These components also work with Spin v3's built-in [component dependencies](https://spinframework.dev/v3/writing-apps#using-component-dependencies) feature, where you might specify a transport component as a Spin http component, and plug in a handler component to satisfy its capabilities dependencies.
+These components also work with Spin v3's built-in [component dependencies](https://spinframework.dev/v3/writing-apps#using-component-dependencies) feature, where you might specify a transport component as a Spin http component, and plug in a provider component to satisfy its capabilities dependencies.
 
-You can install the examples in this repo as templates, to scaffold new MCP handler components in different source languages.
+You can install the templates in this repo to scaffold new MCP provider components in different source languages.
 ```bash
 spin templates install --git https://github.com/fastertools/wasmcp --upgrade
 ```
@@ -90,25 +83,23 @@ The WIT package is published as Wasm at https://github.com/orgs/fastertools/pack
 
 ```
 /// world.wit
-package weather-js:handler;
+package weather-js:provider;
 
-/// MCP tools for An MCP server written in JavaScript
+/// MCP tools for an MCP provider written in JavaScript
 world weather-js {
-    export fastertools:mcp/tool-handler@0.1.9;
+    export fastertools:mcp/tools-capabilities@0.1.10;
 }
 ```
 
-A handler component does not necessarily depend on I/O. An MCP handler can be a pure computational component that can run in browsers, embedded systems, or any WebAssembly host - it just exports functions that transform MCP requests to responses.
+A capability provider component does not necessarily depend on I/O. An MCP provider can be a pure computational component that can run in browsers, embedded systems, or any WebAssembly host - it just exports functions that transform MCP requests to responses.
 
-A handler with I/O (directly for outbound HTTP or indirectly via composition with an HTTP server component) uses the WebAssembly System Interface ([WASI](https://github.com/WebAssembly/WASI)) to interact with the outside world.
-
-The composition process (`handler + server = composed.wasm`) produces a standard WASI component that runs directly on any compliant runtime.
+A provider with I/O (directly for outbound HTTP or indirectly via composition with an HTTP transport component) uses the WebAssembly System Interface ([WASI](https://github.com/WebAssembly/WASI)) to interact with the outside world.
 
 ## Components
 
 The [`components/`](./components/) directory contains published components that are useful for composing MCP servers.
 
-The `server-mcp-http-tools` component is published and publicly available at https://github.com/orgs/fastertools/packages/container/package/server-mcp-http-tools via `fastertools:server-mcp-http-tools@0.1.0`
+The HTTP transport component (tools-only) is published and publicly available at https://github.com/orgs/fastertools/packages/container/package/mcp-http-tools-server via `fastertools:mcp-http-tools-server@0.1.0`
 
 ## License
 

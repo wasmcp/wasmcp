@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-# Core dependencies for MCP handler
+# Core dependencies for MCP provider
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
@@ -19,15 +19,15 @@ urlencoding = "2.1"
 lazy_static = "1.5"
 
 [package.metadata.component]
-package = "{{project-name | kebab_case}}:handler"
+package = "{{project-name | kebab_case}}:provider"
 
 [package.metadata.component.bindings]
 derives = ["Clone"]
 
 [package.metadata.component.target]
 package = "fastertools:mcp"
-version = "0.1.7"
-world = "tools-handler"
+version = "0.1.10"
+world = "tools-provider"
 
 [profile.release]
 # Optimize for small binary size

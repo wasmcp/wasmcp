@@ -48,7 +48,7 @@ impl WitMcpAdapter {
             meta: None,
         };
         
-        let response = crate::bindings::fastertools::mcp::tool_handler::handle_call_tool(&request)
+        let response = crate::bindings::fastertools::mcp::tools_capabilities::handle_call_tool(&request)
             .map_err(|e| anyhow!("Call tool failed: {}", e.message))?;
         
         // Convert WIT result to rmcp result

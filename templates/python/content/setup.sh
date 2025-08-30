@@ -82,6 +82,12 @@ if ! check_tool wasmtime; then
     MISSING_TOOLS=true
 fi
 
+# Fetch WIT dependencies
+echo ""
+echo "Fetching WIT dependencies..."
+wkg wit fetch
+echo -e "${GREEN}✓ WIT dependencies fetched${NC}"
+
 # Generate bindings
 echo ""
 echo "Generating Python bindings..."

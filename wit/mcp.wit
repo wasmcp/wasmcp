@@ -1,79 +1,79 @@
-package fastertools:mcp@0.1.9;
+package fastertools:mcp@0.1.10;
 
-/// World definitions for MCP servers and handlers
+/// World definitions for MCP transports and capabilities
 /// 
 /// This file defines paired worlds for different capability combinations:
-/// - Each server world has a corresponding handler world
-/// - Servers import the capabilities they support
-/// - Handlers export the capabilities they implement
-/// - This allows handlers to only implement what they need
+/// - Each transport world has a corresponding provider world
+/// - Transports import the capabilities they support
+/// - Providers export the capabilities they implement
+/// - This allows providers to only implement what they need
 
 // === TOOLS ONLY ===
 
-/// Minimal server with just tools
-world tools-server {
+/// Minimal transport with just tools
+world tools-transport {
     // Core types always needed
     import types;
     import session;
     import notifications;
     
-    // Tool-specific types and handler
+    // Tool-specific types and capabilities
     import tools;
-    import tool-handler;
+    import tools-capabilities;
 }
 
-world tools-handler {
-    export tool-handler;
+world tools-provider {
+    export tools-capabilities;
 }
 
 // === TOOLS + RESOURCES ===
 
-/// Server with tools and resources
-world tools-resources-server {
+/// Transport with tools and resources
+world tools-resources-transport {
     // Core types always needed
     import types;
     import session;
     import notifications;
     
-    // Feature-specific types and handlers
+    // Feature-specific types and capabilities
     import tools;
-    import tool-handler;
+    import tools-capabilities;
     import resources;
-    import resource-handler;
+    import resources-capabilities;
 }
 
-world tools-resources-handler {
-    export tool-handler;
-    export resource-handler;
+world tools-resources-provider {
+    export tools-capabilities;
+    export resources-capabilities;
 }
 
 // === TOOLS + RESOURCES + PROMPTS ===
 
-world tools-resources-prompts-server {
+world tools-resources-prompts-transport {
     // Core types always needed
     import types;
     import session;
     import notifications;
     
-    // Feature-specific types and handlers
+    // Feature-specific types and capabilities
     import tools;
-    import tool-handler;
+    import tools-capabilities;
     import resources;
-    import resource-handler;
+    import resources-capabilities;
     import prompts;
-    import prompt-handler;
+    import prompts-capabilities;
 }
 
-world tools-resources-prompts-handler {
-    export tool-handler;
-    export resource-handler;
-    export prompt-handler;
+world tools-resources-prompts-provider {
+    export tools-capabilities;
+    export resources-capabilities;
+    export prompts-capabilities;
 }
 
 // === FULL CAPABILITIES ===
 
-/// Full server with all handlers
-world full-server {
+/// Full transport with all capabilities
+world full-transport {
     // Core types always needed
     import types;
     import session;
@@ -88,37 +88,37 @@ world full-server {
     import roots;
     import completion;
     
-    // Import all handlers
-    import tool-handler;
-    import resource-handler;
-    import prompt-handler;
-    import sampling-handler;
-    import elicitation-handler;
-    import roots-handler;
-    import completion-handler;
+    // Import all capabilities
+    import tools-capabilities;
+    import resources-capabilities;
+    import prompts-capabilities;
+    import sampling-capabilities;
+    import elicitation-capabilities;
+    import roots-capabilities;
+    import completion-capabilities;
 }
 
-world full-handler {
-    export tool-handler;
-    export resource-handler;
-    export prompt-handler;
-    export sampling-handler;
-    export elicitation-handler;
-    export roots-handler;
-    export completion-handler;
+world full-provider {
+    export tools-capabilities;
+    export resources-capabilities;
+    export prompts-capabilities;
+    export sampling-capabilities;
+    export elicitation-capabilities;
+    export roots-capabilities;
+    export completion-capabilities;
 }
 
 // === CLIENT WORLD ===
 
-/// World for MCP clients that consume server capabilities
+/// World for MCP clients that consume transport capabilities
 world mcp-client {
-    /// Client exports these capabilities for servers to use
+    /// Client exports these capabilities for transports to use
     export sampling;
     export elicitation;
     export roots;
     export completion;
     
-    /// Client imports server capabilities
+    /// Client imports transport capabilities
     import tools;
     import resources;
     import prompts;

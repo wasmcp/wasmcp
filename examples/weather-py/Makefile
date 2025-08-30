@@ -1,11 +1,11 @@
 .PHONY: build test clean run help setup venv-check
 
 # Component paths
-HANDLER_WASM = weather_py-handler.wasm
-COMPOSED_WASM = composed.wasm
+PROVIDER_WASM = weather_py-provider.wasm
+MCP_SERVER_WASM = mcp-http-server.wasm
 
-# Server package from registry
-SERVER_PKG = fastertools:server-mcp-http-tools@0.1.0
+# Transport package from registry (tools-only server)
+TRANSPORT_PKG = fastertools:mcp-http-tools-server@0.1.0
 
 # Python virtual environment
 VENV = venv
@@ -37,21 +37,21 @@ venv-check: ## Check if venv is activated
 		exit 1; \
 	fi
 
-build: $(VENV) ## Build and compose everything into composed.wasm
-	@echo "Building handler component..."
+build: $(VENV) ## Build and compose everything into mcp-http-server.wasm
+	@echo "Building provider component..."
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
 		--world weather-py \
 		--import-interface-name "wasi:http/types@0.2.3=types" \
 		componentize \
 		app \
-		-o $(HANDLER_WASM)
-	@echo "Downloading server from registry..."
-	@wkg get $(SERVER_PKG) -o .server-tmp.wasm 2>/dev/null || true
-	@echo "Plugging handler into server..."
-	@wac plug --plug $(HANDLER_WASM) .server-tmp.wasm -o $(COMPOSED_WASM)
-	@rm -f .server-tmp.wasm
-	@echo "✅ Created composed.wasm ($$( ls -lh $(COMPOSED_WASM) 2>/dev/null | awk '{print $$5}' ))"
+		-o $(PROVIDER_WASM)
+	@echo "Downloading transport from registry..."
+	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm 2>/dev/null || true
+	@echo "Plugging provider into transport..."
+	@wac plug --plug $(PROVIDER_WASM) .transport-tmp.wasm -o $(MCP_SERVER_WASM)
+	@rm -f .transport-tmp.wasm
+	@echo "✅ Created mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) 2>/dev/null | awk '{print $$5}' ))"
 
 bindgen: $(VENV) ## Generate Python bindings for development
 	@echo "Generating Python bindings..."
@@ -66,17 +66,17 @@ bindgen: $(VENV) ## Generate Python bindings for development
 		bindings .
 
 clean: ## Clean build artifacts
-	rm -f $(HANDLER_WASM) $(COMPOSED_WASM) .server-tmp.wasm
+	rm -f $(PROVIDER_WASM) $(MCP_SERVER_WASM) .transport-tmp.wasm
 	rm -rf wit_world __pycache__
 
 clean-all: clean ## Clean everything including venv
 	rm -rf $(VENV)
 
 run: build ## Build and run with wasmtime serve
-	wasmtime serve -Scli composed.wasm
+	wasmtime serve -Scli mcp-http-server.wasm
 
-serve: ## Serve already built composed.wasm
-	wasmtime serve -Scli composed.wasm
+serve: ## Serve already built mcp-http-server.wasm
+	wasmtime serve -Scli mcp-http-server.wasm
 
 test-local: $(VENV) ## Test the Python code locally (without WASM)
 	@echo "Testing Python implementation locally..."
