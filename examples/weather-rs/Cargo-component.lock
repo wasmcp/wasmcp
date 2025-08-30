@@ -6,6 +6,6 @@ version = 1
 name = "fastertools:mcp"
 
 [[package.version]]
-requirement = "^0.1.7"
-version = "0.1.9"
-digest = "sha256:27900b0c00b2dd4848f2ad64019e496fe7088d8588239e8bfded8005c719b2de"
+requirement = "^0.1.10"
+version = "0.1.10"
+digest = "sha256:4f74d9bf8a5642a5f8bf5be71080b0b18d9c3b1a0e4172d9a41d055e513c8a41"

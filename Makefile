@@ -10,55 +10,15 @@ sync-versions: ## Sync versions across the repository
 	@echo "Syncing versions..."
 	@./scripts/sync-versions.sh
 
-sync-wit: ## Sync WIT files from root to all components and SDKs
-	@echo "🔄 Syncing WIT files from /wit to all components and SDKs..."
-	@# Sync to components/server
-	@if [ -d components/server ]; then \
-		echo "  📦 Syncing to components/server/wit"; \
-		rm -rf components/server/wit/deps/mcp 2>/dev/null || true; \
-		mkdir -p components/server/wit/deps; \
-		cp -r wit/deps/mcp components/server/wit/deps/; \
-		[ -f wit/world.wit ] && cp wit/world.wit components/server/wit/ || true; \
-	fi
-	@# Sync to sdks/rust
-	@if [ -d sdks/rust ]; then \
-		echo "  📦 Syncing to sdks/rust/wit"; \
-		rm -rf sdks/rust/wit/deps/mcp 2>/dev/null || true; \
-		mkdir -p sdks/rust/wit/deps; \
-		cp -r wit/deps/mcp sdks/rust/wit/deps/; \
-	fi
-	@# Sync to sdks/python
-	@if [ -d sdks/python ]; then \
-		echo "  📦 Syncing to sdks/python/wit"; \
-		rm -rf sdks/python/wit/deps/mcp 2>/dev/null || true; \
-		mkdir -p sdks/python/wit/deps; \
-		cp -r wit/deps/mcp sdks/python/wit/deps/; \
-	fi
-	@# Sync to sdks/go
-	@if [ -d sdks/go ]; then \
-		echo "  📦 Syncing to sdks/go/wit"; \
-		rm -rf sdks/go/wit/deps/mcp 2>/dev/null || true; \
-		mkdir -p sdks/go/wit/deps; \
-		cp -r wit/deps/mcp sdks/go/wit/deps/; \
-	fi
-	@# Legacy SDK directories (sdk/rust, sdk/typescript, etc)
-	@if [ -d sdk/rust ]; then \
-		echo "  📦 Syncing to sdk/rust/wit"; \
-		rm -rf sdk/rust/wit/deps/mcp 2>/dev/null || true; \
-		mkdir -p sdk/rust/wit/deps; \
-		cp -r wit/deps/mcp sdk/rust/wit/deps/; \
-	fi
-	@if [ -d sdk/typescript ]; then \
-		echo "  📦 Syncing to sdk/typescript/wit"; \
-		rm -rf sdk/typescript/wit/deps/mcp 2>/dev/null || true; \
-		mkdir -p sdk/typescript/wit/deps; \
-		cp -r wit/deps/mcp sdk/typescript/wit/deps/; \
-	fi
-	@if [ -d sdk/go ]; then \
-		echo "  📦 Syncing to sdk/go/wit"; \
-		rm -rf sdk/go/wit/deps/mcp 2>/dev/null || true; \
-		mkdir -p sdk/go/wit/deps; \
-		cp -r wit/deps/mcp sdk/go/wit/deps/; \
+sync-wit: ## Sync WIT files from root to components
+	@echo "🔄 Syncing WIT files from /wit to components..."
+	@# Sync to components/http-transport
+	@if [ -d components/http-transport ]; then \
+		echo "  📦 Syncing to components/http-transport/wit"; \
+		rm -rf components/http-transport/wit/deps/mcp 2>/dev/null || true; \
+		mkdir -p components/http-transport/wit/deps; \
+		cp -r wit/deps/mcp components/http-transport/wit/deps/; \
+		[ -f wit/world.wit ] && cp wit/world.wit components/http-transport/wit/ || true; \
 	fi
 	@echo "✨ WIT files synchronized successfully!"
 
@@ -87,71 +47,40 @@ validate-wit: ## Check if WIT files are in sync
 	fi
 
 # Individual component bumps
-bump-server-patch: ## Bump wasmcp-server patch version
-	@current=$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2); \
+bump-transport-patch: ## Bump mcp-http-transport patch version
+	@current=$$(grep 'mcp-http-transport = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2"."$$3+1}'); \
-	./scripts/bump-version.sh wasmcp-server $$new
+	./scripts/bump-version.sh mcp-http-transport $$new
 
-bump-server-minor: ## Bump wasmcp-server minor version
-	@current=$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2); \
+bump-transport-minor: ## Bump mcp-http-transport minor version
+	@current=$$(grep 'mcp-http-transport = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
-	./scripts/bump-version.sh wasmcp-server $$new
-
-bump-rust-patch: ## Bump wasmcp-rust patch version
-	@current=$$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2); \
-	new=$$(echo $$current | awk -F. '{print $$1"."$$2"."$$3+1}'); \
-	./scripts/bump-version.sh wasmcp-rust $$new
-
-bump-rust-minor: ## Bump wasmcp-rust minor version
-	@current=$$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2); \
-	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
-	./scripts/bump-version.sh wasmcp-rust $$new
-
-bump-ts-patch: ## Bump wasmcp-typescript patch version
-	@current=$$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2); \
-	new=$$(echo $$current | awk -F. '{print $$1"."$$2"."$$3+1}'); \
-	./scripts/bump-version.sh wasmcp-typescript $$new
-
-bump-ts-minor: ## Bump wasmcp-typescript minor version
-	@current=$$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2); \
-	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
-	./scripts/bump-version.sh wasmcp-typescript $$new
+	./scripts/bump-version.sh mcp-http-transport $$new
 
 bump-mcp-wit: ## Bump MCP WIT package version (breaking changes only)
 	@current=$$(grep '^mcp = ' versions.toml | cut -d'"' -f2); \
 	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
 	./scripts/bump-version.sh mcp $$new
 
-bump-server-wit: ## Bump MCP Server WIT package version (breaking changes only)
-	@current=$$(grep '^mcp-server = ' versions.toml | cut -d'"' -f2); \
-	new=$$(echo $$current | awk -F. '{print $$1"."$$2+1".0"}'); \
-	./scripts/bump-version.sh mcp-server $$new
-
 # Bump all packages
-bump-all-patch: ## Bump all packages patch version
-	@echo "Bumping all packages (patch)..."
-	@$(MAKE) bump-server-patch
-	@$(MAKE) bump-rust-patch
-	@$(MAKE) bump-ts-patch
+bump-all-patch: ## Bump transport patch version
+	@echo "Bumping transport package (patch)..."
+	@$(MAKE) bump-transport-patch
 	@echo ""
-	@echo "✅ All packages bumped!"
+	@echo "✅ Transport package bumped!"
 	@echo ""
 	@echo "Don't forget to:"
 	@echo "  1. Review changes: git diff"
-	@echo "  2. Commit: git commit -am 'chore: bump all packages patch version'"
-	@echo "  3. Create tags:"
-	@echo "     git tag wasmcp-server-v$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2)"
-	@echo "     git tag wasmcp-rust-v$$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2)"
-	@echo "     git tag wasmcp-typescript-v$$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2)"
+	@echo "  2. Commit: git commit -am 'chore: bump transport patch version'"
+	@echo "  3. Create tag:"
+	@echo "     git tag mcp-http-transport-v$$(grep 'mcp-http-transport = ' versions.toml | cut -d'"' -f2)"
 	@echo "  4. Push: git push origin main --tags"
 
-bump-all-minor: ## Bump all packages minor version
-	@echo "Bumping all packages (minor)..."
-	@$(MAKE) bump-server-minor
-	@$(MAKE) bump-rust-minor
-	@$(MAKE) bump-ts-minor
+bump-all-minor: ## Bump transport minor version
+	@echo "Bumping transport package (minor)..."
+	@$(MAKE) bump-transport-minor
 	@echo ""
-	@echo "✅ All packages bumped!"
+	@echo "✅ Transport package bumped!"
 	@echo ""
 	@echo "Note: Minor version bumps should include new features."
 	@echo "Make sure your changes warrant a minor version bump."
@@ -186,67 +115,41 @@ install-rust-tools: ## Install required Rust tools
 		fi; \
 	}
 
-install-ts-deps: ## Install TypeScript dependencies
-	cd sdk/typescript && npm ci
-
-install-deps: install-rust-tools install-ts-deps ## Install all dependencies
+install-deps: install-rust-tools ## Install all dependencies
 
 # Lint targets
 lint-rust: ## Run Rust linters (clippy and rustfmt check)
 	@echo "Running clippy..."
-	cd components/server && cargo clippy -- -D warnings
-	cd sdk/rust && cargo clippy -- -D warnings
+	cd components/http-transport && cargo clippy -- -D warnings
 	@echo "Checking rustfmt..."
-	cd components/server && cargo fmt -- --check
-	cd sdk/rust && cargo fmt -- --check
+	cd components/http-transport && cargo fmt -- --check
 
 lint-rust-fix: ## Fix Rust lint issues
 	@echo "Running clippy with fixes..."
-	cd components/server && cargo clippy --fix --allow-dirty --allow-staged
-	cd sdk/rust && cargo clippy --fix --allow-dirty --allow-staged
+	cd components/http-transport && cargo clippy --fix --allow-dirty --allow-staged
 	@echo "Running rustfmt..."
-	cd components/server && cargo fmt
-	cd sdk/rust && cargo fmt
+	cd components/http-transport && cargo fmt
 
-lint-ts: ## Run TypeScript linter
-	cd sdk/typescript && npm run lint
+lint-all: lint-rust ## Run all linters
 
-lint-ts-fix: ## Fix TypeScript lint issues
-	cd sdk/typescript && npm run lint:fix
-
-lint-all: lint-rust lint-ts ## Run all linters
-
-lint-fix-all: ## Fix all lint and formatting issues (Rust and TypeScript)
+lint-fix-all: ## Fix all lint and formatting issues
 	@echo "Fixing all lint and formatting issues..."
 	@$(MAKE) lint-rust-fix
-	@$(MAKE) lint-ts-fix
 	@echo "✅ All lint and formatting issues fixed!"
 
 # Build targets
-build-server: ## Build wasmcp-server
-	cd components/server && cargo clippy -- -D warnings && cargo component build --release
+build-transport: ## Build mcp-http-transport
+	cd components/http-transport && cargo clippy -- -D warnings && cargo component build --release
 
-build-rust-sdk: ## Build wasmcp-rust
-	cd sdk/rust && cargo clippy -- -D warnings && cargo build --release
-
-build-ts-sdk: install-ts-deps ## Build wasmcp-typescript
-	cd sdk/typescript && npm run lint && npm run build
-
-build-all: build-server build-rust-sdk build-ts-sdk ## Build all components
+build-all: build-transport ## Build all components
 
 # Test targets
-test-server: ## Test wasmcp-server
-	cd components/server && cargo test
+test-transport: ## Test mcp-http-transport
+	cd components/http-transport && cargo test
 
-test-rust-sdk: ## Test wasmcp-rust
-	cd sdk/rust && cargo test
+test-rust: test-transport ## Run all Rust tests
 
-test-rust: test-server test-rust-sdk ## Run all Rust tests
-
-test-ts: install-ts-deps ## Run TypeScript tests
-	cd sdk/typescript && npm test
-
-test-all: test-rust test-ts ## Run all tests
+test-all: test-rust ## Run all tests
 
 # CI targets
 ci-setup: install-deps ## Setup CI environment
@@ -259,89 +162,52 @@ ci: ci-build ci-test ## Run full CI pipeline
 
 # Clean targets
 clean: ## Clean all build artifacts
-	cd components/server && cargo clean
-	cd sdk/rust && cargo clean
-	cd sdk/typescript && rm -rf dist node_modules
+	cd components/http-transport && cargo clean
 
 # Release helper
 show-versions: ## Show current versions
 	@echo "Current versions:"
-	@echo "  wasmcp-server:  $$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2)"
-	@echo "  wasmcp-rust:       $$(grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2)"
-	@echo "  wasmcp-typescript: $$(grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2)"
+	@echo "  mcp-http-transport: $$(grep 'mcp-http-transport = ' versions.toml | cut -d'"' -f2)"
 	@echo ""
 	@echo "WIT packages:"
-	@echo "  mcp:                $$(grep '^mcp = ' versions.toml | cut -d'"' -f2)"
-	@echo "  mcp-server:         $$(grep '^mcp-server = ' versions.toml | cut -d'"' -f2)"
+	@echo "  mcp: $$(grep '^mcp = ' versions.toml | cut -d'"' -f2)"
 
-get-server-version: ## Get wasmcp-server version
-	@grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2
-
-get-rust-sdk-version: ## Get wasmcp-rust version
-	@grep 'wasmcp-rust = ' versions.toml | cut -d'"' -f2
-
-get-ts-sdk-version: ## Get wasmcp-typescript version
-	@grep 'wasmcp-typescript = ' versions.toml | cut -d'"' -f2
+get-transport-version: ## Get mcp-http-transport version
+	@grep 'mcp-http-transport = ' versions.toml | cut -d'"' -f2
 
 # Publishing targets
-publish-server: ## Publish wasmcp-server to ghcr.io
-	@echo "Publishing wasmcp-server..."
-	@version=$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2); \
-	cd components/server && \
-	wkg oci push ghcr.io/fastertools/wasmcp-server:$$version \
+publish-transport: ## Publish mcp-http-transport to ghcr.io
+	@echo "Publishing mcp-http-transport..."
+	@version=$$(grep 'mcp-http-transport = ' versions.toml | cut -d'"' -f2); \
+	cd components/http-transport && \
+	wkg oci push ghcr.io/fastertools/mcp-http-transport:$$version \
 		--annotation "org.opencontainers.image.source=https://github.com/fastertools/wasmcp" \
-		--annotation "org.opencontainers.image.description=WebAssembly server component" \
+		--annotation "org.opencontainers.image.description=MCP HTTP transport component" \
 		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
-		target/wasm32-wasip1/release/wasmcp_server.wasm && \
-	wkg oci push ghcr.io/fastertools/wasmcp-server:latest \
+		target/wasm32-wasip1/release/mcp_transport_http.wasm && \
+	wkg oci push ghcr.io/fastertools/mcp-http-transport:latest \
 		--annotation "org.opencontainers.image.source=https://github.com/fastertools/wasmcp" \
-		--annotation "org.opencontainers.image.description=WebAssembly server component" \
+		--annotation "org.opencontainers.image.description=MCP HTTP transport component" \
 		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
-		target/wasm32-wasip1/release/wasmcp_server.wasm
-	@echo "✅ Published wasmcp-server v$$(grep 'wasmcp-server = ' versions.toml | cut -d'"' -f2)"
+		target/wasm32-wasip1/release/mcp_transport_http.wasm
+	@echo "✅ Published mcp-http-transport v$$(grep 'mcp-http-transport = ' versions.toml | cut -d'"' -f2)"
 
-publish-rust-sdk: ## Publish wasmcp-rust to crates.io
-	@echo "Publishing wasmcp-rust to crates.io..."
-	cd sdk/rust && cargo publish
-	@echo "✅ Published wasmcp v$$(make get-rust-sdk-version)"
-
-publish-rust-sdk-dry: ## Dry run publish wasmcp-rust
-	cd sdk/rust && cargo publish --dry-run
-
-publish-ts-sdk: build-ts-sdk ## Publish wasmcp-typescript to npm
-	@echo "Publishing wasmcp to npm..."
-	cd sdk/typescript && npm publish --access public
-	@echo "✅ Published wasmcp v$$(make get-ts-sdk-version)"
-
-publish-ts-sdk-dry: ## Dry run publish wasmcp-typescript
-	cd sdk/typescript && npm publish --dry-run --access public
-
-publish-all: ## Publish all packages (use with caution!)
-	@echo "⚠️  Publishing all packages..."
+publish-all: ## Publish transport component
+	@echo "⚠️  Publishing transport component..."
 	@echo "This will publish:"
-	@echo "  - wasmcp-server v$$(make get-server-version) to ghcr.io"
-	@echo "  - wasmcp v$$(make get-rust-sdk-version) to crates.io"
-	@echo "  - wasmcp v$$(make get-ts-sdk-version) to npm"
+	@echo "  - mcp-http-transport v$$(make get-transport-version) to ghcr.io"
 	@echo ""
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
-	@$(MAKE) publish-server
-	@$(MAKE) publish-rust-sdk
-	@$(MAKE) publish-ts-sdk
+	@$(MAKE) publish-transport
 	@echo ""
-	@echo "🎉 All packages published!"
+	@echo "🎉 Transport component published!"
 
-publish-dry-run: ## Dry run all publishes
-	@echo "Dry run for all packages:"
+publish-dry-run: ## Dry run publish
+	@echo "Dry run for transport component:"
 	@echo ""
-	@echo "=== wasmcp-server ==="
-	@echo "Would publish v$$(make get-server-version) to ghcr.io"
-	@echo ""
-	@echo "=== wasmcp-rust ==="
-	@$(MAKE) publish-rust-sdk-dry
-	@echo ""
-	@echo "=== wasmcp-typescript ==="
-	@$(MAKE) publish-ts-sdk-dry
+	@echo "=== mcp-http-transport ==="
+	@echo "Would publish v$$(make get-transport-version) to ghcr.io"
 
 # Release workflow targets
 release-patch: ## Full release workflow for patch version
@@ -352,9 +218,7 @@ release-patch: ## Full release workflow for patch version
 	@echo "1. Review: git diff"
 	@echo "2. Commit: git commit -am 'chore: release patch version'"
 	@echo "3. Tag and push:"
-	@echo "   git tag wasmcp-server-v$$(make get-server-version)"
-	@echo "   git tag wasmcp-rust-v$$(make get-rust-sdk-version)"
-	@echo "   git tag wasmcp-typescript-v$$(make get-ts-sdk-version)"
+	@echo "   git tag mcp-http-transport-v$$(make get-transport-version)"
 	@echo "   git push origin main --tags"
 	@echo ""
 	@echo "GitHub Actions will handle publishing when tags are pushed."
