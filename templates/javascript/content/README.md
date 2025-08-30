@@ -14,9 +14,12 @@ This is a JavaScript MCP (Model Context Protocol) server that runs as a WebAssem
 - [wac](https://github.com/bytecodealliance/wac) - Install with: `cargo install wac-cli`
 - [wkg](https://github.com/bytecodealliance/wkg-cli) - Install with: `cargo install wkg`
 
-### Building
+### Setup & Building
 
 ```bash
+# Check tools and install dependencies
+make setup
+
 # Build the composed component
 make build
 

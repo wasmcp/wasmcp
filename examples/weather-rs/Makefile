@@ -13,6 +13,26 @@ help: ## Show this help message
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
+setup: ## Check and install required tools
+	@echo "Checking for required tools..."
+	@command -v cargo >/dev/null 2>&1 || { echo "❌ cargo not found. Please install Rust: https://rustup.rs"; exit 1; }
+	@command -v cargo-component >/dev/null 2>&1 || { \
+		echo "📦 Installing cargo-component..."; \
+		cargo install --locked cargo-component; \
+	}
+	@command -v wkg >/dev/null 2>&1 || { \
+		echo "📦 Installing wkg..."; \
+		cargo install --locked wkg; \
+	}
+	@command -v wac >/dev/null 2>&1 || { \
+		echo "📦 Installing wac..."; \
+		cargo install --locked wac-cli; \
+	}
+	@command -v wasmtime >/dev/null 2>&1 || { \
+		echo "⚠️  wasmtime not found. Install from: https://wasmtime.dev"; \
+	}
+	@echo "✅ All tools ready!"
+
 build: ## Build and compose everything into composed.wasm
 	@echo "Building handler component..."
 	@cargo component build --release --target wasm32-wasip1

@@ -13,6 +13,26 @@ help: ## Show this help message
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
+setup: ## Check tools and install dependencies
+	@echo "Checking for required tools..."
+	@command -v node >/dev/null 2>&1 || { echo "❌ node not found. Please install Node.js: https://nodejs.org"; exit 1; }
+	@command -v npm >/dev/null 2>&1 || { echo "❌ npm not found. Please install Node.js: https://nodejs.org"; exit 1; }
+	@command -v wkg >/dev/null 2>&1 || { \
+		echo "❌ wkg not found. Install with: cargo install wkg"; \
+		exit 1; \
+	}
+	@command -v wac >/dev/null 2>&1 || { \
+		echo "❌ wac not found. Install with: cargo install wac-cli"; \
+		exit 1; \
+	}
+	@command -v wasmtime >/dev/null 2>&1 || { \
+		echo "⚠️  wasmtime not found. Install from: https://wasmtime.dev"; \
+	}
+	@echo "✅ All tools ready!"
+	@echo "Installing npm dependencies..."
+	@npm install
+	@echo "✅ Setup complete!"
+
 build: ## Build and compose everything into composed.wasm
 	@echo "Installing dependencies..."
 	@npm install

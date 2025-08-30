@@ -12,6 +12,9 @@ spin templates install --git https://github.com/ianpurton/wasmcp
 spin new -t wasmcp-rust my-mcp-server
 cd my-mcp-server
 
+# Setup (check/install required tools)
+make setup
+
 # Build and run locally
 make build              # Creates composed.wasm
 wasmtime serve -Scli composed.wasm  # Direct WASI execution, no framework needed!
