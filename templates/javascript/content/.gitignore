@@ -1,13 +1,15 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Build artifacts
 *.wasm
 bundled.js
 dist/
 types/
-.server-tmp.wasm
+.transport-tmp.wasm
+
+# Generated WIT dependencies
+wit/deps/
 
 # IDE
 .vscode/

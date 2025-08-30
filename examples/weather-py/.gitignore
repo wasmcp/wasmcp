@@ -14,6 +14,7 @@ env/
 
 # Generated
 wit_world/
+wit/deps/
 
 # IDE
 .vscode/
@@ -27,4 +28,4 @@ wit_world/
 Thumbs.db
 
 # Temporary files
-.server-tmp.wasm
+.transport-tmp.wasm

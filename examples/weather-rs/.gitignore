@@ -1,5 +1,19 @@
 target/
 Cargo.lock
 .ftl/
-composed.wasm
 .spin/
+
+# Build artifacts
+*.wasm
+.transport-tmp.wasm
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

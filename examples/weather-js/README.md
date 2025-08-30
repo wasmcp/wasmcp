@@ -26,8 +26,8 @@ make build
 # Or build step by step:
 npm install           # Install dependencies
 npm run bundle        # Bundle JavaScript modules
-npm run build         # Build handler component
-make                  # Compose with server
+npm run build         # Build provider component
+make                  # Compose with transport
 ```
 
 ### Running
@@ -79,8 +79,8 @@ export const myTool = createTool({
     }
 });
 
-// Add to the handler
-export const toolHandler = createHandler({
+// Add to the provider
+export const toolProvider = createProvider({
     tools: [echoTool, myTool]
 });
 ```
@@ -96,21 +96,21 @@ spin cloud deploy
 ### Run with Wasmtime
 
 ```bash
-wasmtime serve -Scli composed.wasm
+wasmtime serve -Scli mcp-http-server.wasm
 ```
 
 ## Project Structure
 
 ```
 .
-├── index.js        # Main handler implementation
+├── index.js        # Main provider implementation
 ├── helpers.js      # Helper library for MCP
 ├── package.json    # Node.js dependencies
 ├── spin.toml       # Spin configuration
 ├── Makefile        # Build automation
 ├── wit/            # WebAssembly Interface Types
 │   └── world.wit   # MCP world definition
-└── composed.wasm   # Final composed component (after build)
+└── mcp-http-server.wasm   # Final composed component (after build)
 ```
 
 ## License

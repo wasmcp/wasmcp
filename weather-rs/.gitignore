@@ -1,0 +1,6 @@
+target/
+Cargo.lock
+.ftl/
+mcp-http-server.wasm
+.transport-tmp.wasm
+.spin/

@@ -7,7 +7,7 @@
     "bundle": "esbuild index.js --bundle --format=esm --platform=neutral --outfile=bundled.js",
     "build": "npm run bundle && jco componentize bundled.js --wit wit --world-name tools-handler --out handler.wasm",
     "build:types": "npm run jco types wit -o types",
-    "clean": "rm -rf handler.wasm composed.wasm dist types bundled.js"
+    "clean": "rm -rf provider.wasm mcp-http-server.wasm .transport-tmp.wasm dist types bundled.js"
   },
   "devDependencies": {
     "@bytecodealliance/jco": "^1.8.0",

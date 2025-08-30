@@ -14,26 +14,8 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 setup: ## Check tools and install dependencies
-	@echo "Checking for required tools..."
-	@command -v node >/dev/null 2>&1 || { echo "❌ node not found. Please install Node.js: https://nodejs.org"; exit 1; }
-	@command -v npm >/dev/null 2>&1 || { echo "❌ npm not found. Please install Node.js: https://nodejs.org"; exit 1; }
-	@command -v wkg >/dev/null 2>&1 || { \
-		echo "❌ wkg not found. Install with: cargo install wkg"; \
-		exit 1; \
-	}
-	@command -v wac >/dev/null 2>&1 || { \
-		echo "❌ wac not found. Install with: cargo install wac-cli"; \
-		exit 1; \
-	}
-	@command -v wasmtime >/dev/null 2>&1 || { \
-		echo "⚠️  wasmtime not found. Install from: https://wasmtime.dev"; \
-	}
-	@echo "✅ All tools ready!"
-	@echo "Installing npm dependencies..."
-	@npm install
-	@echo "Fetching WIT dependencies..."
-	@wkg wit fetch
-	@echo "✅ Setup complete!"
+	@chmod +x setup.sh
+	@./setup.sh
 
 build: ## Build and compose everything into mcp-http-server.wasm
 	@echo "Installing dependencies..."
@@ -56,11 +38,22 @@ clean: ## Clean build artifacts
 	rm -f $(PROVIDER_WASM) $(MCP_SERVER_WASM) .transport-tmp.wasm bundled.js
 	rm -rf dist types
 
-run: build ## Build and run with wasmtime serve
-	wasmtime serve -Scli mcp-http-server.wasm
+run: build ## Build and run with available runtime
+	@$(MAKE) serve
 
 serve: ## Serve already built mcp-http-server.wasm
-	wasmtime serve -Scli mcp-http-server.wasm
+	@if command -v wasmtime >/dev/null 2>&1; then \
+		echo "Starting server with wasmtime..."; \
+		wasmtime serve -Scli mcp-http-server.wasm; \
+	elif command -v spin >/dev/null 2>&1; then \
+		echo "Starting server with spin..."; \
+		spin up --from mcp-http-server.wasm; \
+	else \
+		echo "Error: No compatible runtime found. Please install wasmtime or spin."; \
+		echo "  Install wasmtime: curl https://wasmtime.dev/install.sh -sSf | bash"; \
+		echo "  Install spin: curl -fsSL https://developer.fermyon.com/downloads/install.sh | bash"; \
+		exit 1; \
+	fi
 
 # Testing the composed component
 test-init: ## Test initialize endpoint
