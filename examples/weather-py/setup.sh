@@ -92,14 +92,14 @@ install_tool() {
         wkg)
             if [ "$OS_NAME" = "linux" ]; then
                 BINARY_URL="https://github.com/$GITHUB_REPO/releases/download/$VERSION/wkg-${ARCH_NAME}-unknown-linux-gnu"
-            else
+            elif [ "$OS_NAME" = "macos" ]; then
                 BINARY_URL="https://github.com/$GITHUB_REPO/releases/download/$VERSION/wkg-${ARCH_NAME}-apple-darwin"
             fi
             ;;
         wac)
             if [ "$OS_NAME" = "linux" ]; then
                 BINARY_URL="https://github.com/$GITHUB_REPO/releases/download/$VERSION/wac-cli-${ARCH_NAME}-unknown-linux-musl"
-            else
+            elif [ "$OS_NAME" = "macos" ]; then
                 BINARY_URL="https://github.com/$GITHUB_REPO/releases/download/$VERSION/wac-cli-${ARCH_NAME}-apple-darwin"
             fi
             ;;
