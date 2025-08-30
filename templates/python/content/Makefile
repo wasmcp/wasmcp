@@ -20,6 +20,7 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 setup: ## Run initial setup (creates venv, installs deps)
+	@chmod +x setup.sh
 	@./setup.sh
 
 $(VENV): ## Create virtual environment
@@ -40,7 +41,7 @@ build: $(VENV) ## Build and compose everything into composed.wasm
 	@echo "Building handler component..."
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
-		--world tools-handler \
+		--world {{project-name | kebab_case}} \
 		--import-interface-name "wasi:http/types@0.2.3=types" \
 		componentize \
 		app \
@@ -52,12 +53,12 @@ build: $(VENV) ## Build and compose everything into composed.wasm
 	@rm -f .server-tmp.wasm
 	@echo "✅ Created composed.wasm ($$( ls -lh $(COMPOSED_WASM) 2>/dev/null | awk '{print $$5}' ))"
 
-build-bindings: $(VENV) ## Generate Python bindings for development
+bindgen: $(VENV) ## Generate Python bindings for development
 	@echo "Generating Python bindings..."
 	@rm -rf wit_world
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
-		--world tools-handler \
+		--world {{project-name | kebab_case}} \
 		--import-interface-name "wasi:http/types@0.2.3=types" \
 		--import-interface-name "wasi:http/outgoing-handler@0.2.3=outgoing_handler" \
 		--import-interface-name "wasi:io/poll@0.2.0=io_poll" \

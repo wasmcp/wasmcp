@@ -85,7 +85,7 @@ fi
 # Generate bindings
 echo ""
 echo "Generating Python bindings..."
-componentize-py --wit-path wit --world tools-handler bindings . 2>/dev/null || true
+componentize-py --wit-path wit --world weather bindings . 2>/dev/null || true
 echo -e "${GREEN}✓ Bindings generated${NC}"
 
 echo ""
@@ -93,14 +93,14 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Setup complete!${NC}"
 echo ""
 echo "Next steps:"
-echo "  1. Activate the virtual environment:"
+echo "  1. Activate the virtual environment (optional, for Python development):"
 echo "     source venv/bin/activate"
 echo ""
 echo "  2. Build the component:"
 echo "     make build"
 echo ""
 echo "  3. Run the server:"
-echo "     make run"
+echo "     make serve"
 echo ""
 
 if [ "$MISSING_TOOLS" = true ]; then

@@ -6,16 +6,13 @@
 
 ```bash
 # Setup (first time only)
-./setup.sh
-
-# Activate virtual environment
-source venv/bin/activate
+make setup
 
 # Build the component
 make build
 
 # Run the server
-make run
+make serve
 ```
 
 ## Testing
@@ -109,7 +106,7 @@ async def _fetch_json(self, url: str) -> dict:
 make test-local
 
 # Regenerate bindings if WIT files change
-make build-bindings
+make bindgen
 
 # Clean all build artifacts
 make clean
