@@ -1,10 +1,10 @@
 spin_manifest_version = 2
 
 [application]
-name = "{{project-name | kebab_case}}"
+name = "weather-js-new"
 version = "0.1.0"
-authors = ["{{authors}}"]
-description = "{{project-description}}"
+authors = ["Ian McDonald <bowlofarugula@gmail.com>"]
+description = "An MCP server written in JavaScript"
 
 [[trigger.http]]
 route = "/mcp"
@@ -13,6 +13,7 @@ component = "mcp-server"
 [component.mcp-server]
 # Using the composed component (provider + transport)
 source = "mcp-http-server.wasm"
+# Weather API hosts for example tools (remove if not needed)
 allowed_outbound_hosts = [
     "https://geocoding-api.open-meteo.com",
     "https://api.open-meteo.com"
@@ -21,4 +22,4 @@ key_value_stores = ["default"]
 
 [component.mcp-server.build]
 command = "make build"
-watch = ["src/**/*.rs", "Cargo.toml"]
+watch = ["*.js", "package.json", "wit/*.wit"]

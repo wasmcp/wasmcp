@@ -1,6 +1,6 @@
 manifest_version = "1"
 id = "wasmcp-rust"
-description = "Rust wasmcp handler component"
+description = "Rust MCP capability provider component"
 tags = ["mcp", "http", "rust", "wasm", "component"]
 
 [parameters]

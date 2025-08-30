@@ -1,11 +1,11 @@
 .PHONY: build test clean run help setup venv-check
 
 # Component paths
-PROVIDER_WASM = {{project-name | snake_case}}-provider.wasm
+PROVIDER_WASM = weather_py_new-provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
-# Transport package from registry (tools-only server)
-TRANSPORT_PKG = fastertools:mcp-http-tools-server@0.1.0
+# Transport package from registry
+TRANSPORT_PKG = fastertools:mcp-transport-http@0.1.0
 
 # Python virtual environment
 VENV = venv
@@ -41,7 +41,7 @@ build: $(VENV) ## Build and compose everything into mcp-http-server.wasm
 	@echo "Building provider component..."
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
-		--world {{project-name | kebab_case}} \
+		--world weather-py-new \
 		--import-interface-name "wasi:http/types@0.2.3=types" \
 		componentize \
 		app \
@@ -58,7 +58,7 @@ bindgen: $(VENV) ## Generate Python bindings for development
 	@rm -rf wit_world
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
-		--world {{project-name | kebab_case}} \
+		--world weather-py-new \
 		--import-interface-name "wasi:http/types@0.2.3=types" \
 		--import-interface-name "wasi:http/outgoing-handler@0.2.3=outgoing_handler" \
 		--import-interface-name "wasi:io/poll@0.2.0=io_poll" \

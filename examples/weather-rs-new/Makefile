@@ -1,11 +1,11 @@
 .PHONY: build test clean run help
 
 # Component paths
-PROVIDER_WASM = target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm
+PROVIDER_WASM = target/wasm32-wasip1/release/weather_rs_new.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
-# Transport package from registry (tools-only server)
-TRANSPORT_PKG = fastertools:mcp-http-tools-server@0.1.0
+# Transport package from registry
+TRANSPORT_PKG = fastertools:mcp-transport-http@0.1.0
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'

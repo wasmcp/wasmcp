@@ -1,6 +1,6 @@
-package {{project-name | kebab_case}}:handler;
+package {{project-name | kebab_case}}:provider;
 
 /// MCP tools for {{project-description}}
 world {{project-name | kebab_case}} {
-    export fastertools:mcp/tool-handler@0.1.9;
+    export fastertools:mcp/tools-capabilities@0.1.10;
 }

@@ -1,11 +1,11 @@
 .PHONY: build test clean run help
 
 # Component paths
-HANDLER_WASM = handler.wasm
-COMPOSED_WASM = composed.wasm
+PROVIDER_WASM = provider.wasm
+MCP_SERVER_WASM = mcp-http-server.wasm
 
-# Server package from registry
-SERVER_PKG = fastertools:server-mcp-http-tools@0.1.0
+# Transport package from registry (tools-only server)
+TRANSPORT_PKG = fastertools:mcp-http-tools-server@0.1.0
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -31,34 +31,36 @@ setup: ## Check tools and install dependencies
 	@echo "✅ All tools ready!"
 	@echo "Installing npm dependencies..."
 	@npm install
+	@echo "Fetching WIT dependencies..."
+	@wkg wit fetch
 	@echo "✅ Setup complete!"
 
-build: ## Build and compose everything into composed.wasm
+build: ## Build and compose everything into mcp-http-server.wasm
 	@echo "Installing dependencies..."
 	@npm install
 	@echo "Bundling JavaScript modules..."
 	@npm run bundle
-	@echo "Building handler component..."
-	@npx jco componentize bundled.js --wit wit --world-name {{project-name | kebab_case}} --out $(HANDLER_WASM)
-	@echo "Downloading server from registry..."
-	@wkg get $(SERVER_PKG) -o .server-tmp.wasm
-	@echo "Plugging handler into server..."
-	@wac plug --plug $(HANDLER_WASM) .server-tmp.wasm -o $(COMPOSED_WASM)
-	@rm -f .server-tmp.wasm bundled.js
-	@echo "✅ Created composed.wasm ($$( ls -lh $(COMPOSED_WASM) | awk '{print $$5}' ))"
+	@echo "Building provider component..."
+	@npx jco componentize bundled.js --wit wit --world-name {{project-name | kebab_case}} --out $(PROVIDER_WASM)
+	@echo "Downloading transport from registry..."
+	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
+	@echo "Plugging provider into transport..."
+	@wac plug --plug $(PROVIDER_WASM) .transport-tmp.wasm -o $(MCP_SERVER_WASM)
+	@rm -f .transport-tmp.wasm bundled.js
+	@echo "✅ Created mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
 
 build-types: ## Generate TypeScript type definitions
 	jco types wit -o types
 
 clean: ## Clean build artifacts
-	rm -f $(HANDLER_WASM) $(COMPOSED_WASM) .server-tmp.wasm bundled.js
+	rm -f $(PROVIDER_WASM) $(MCP_SERVER_WASM) .transport-tmp.wasm bundled.js
 	rm -rf dist types
 
 run: build ## Build and run with wasmtime serve
-	wasmtime serve -Scli composed.wasm
+	wasmtime serve -Scli mcp-http-server.wasm
 
-serve: ## Serve already built composed.wasm
-	wasmtime serve -Scli composed.wasm
+serve: ## Serve already built mcp-http-server.wasm
+	wasmtime serve -Scli mcp-http-server.wasm
 
 # Testing the composed component
 test-init: ## Test initialize endpoint

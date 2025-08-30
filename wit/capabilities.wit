@@ -1,6 +1,6 @@
-/// Core handler interface that all MCP implementations must provide
+/// Core capabilities interface that all MCP implementations must provide
 /// This contains only the essential session management functions
-interface core {
+interface core-capabilities {
     use types.{mcp-error};
     use session.{initialize-request, initialize-response};
     
@@ -18,8 +18,8 @@ interface core {
     handle-shutdown: func() -> result<_, mcp-error>;
 }
 
-/// Tool handler capability - implement this to provide tools
-interface tool-handler {
+/// Tool capabilities - implement this to provide tools
+interface tools-capabilities {
     use types.{mcp-error};
     use tools.{list-tools-request, list-tools-response, call-tool-request, tool-result};
     
@@ -30,8 +30,8 @@ interface tool-handler {
     handle-call-tool: func(request: call-tool-request) -> result<tool-result, mcp-error>;
 }
 
-/// Resource handler capability - implement this to provide resources
-interface resource-handler {
+/// Resource capabilities - implement this to provide resources
+interface resources-capabilities {
     use types.{mcp-error};
     use resources.{list-resources-request, list-resources-response, list-templates-request, 
                     list-templates-response, read-resource-request, read-resource-response,
@@ -53,8 +53,8 @@ interface resource-handler {
     handle-unsubscribe-resource: func(request: unsubscribe-request) -> result<_, mcp-error>;
 }
 
-/// Prompt handler capability - implement this to provide prompts
-interface prompt-handler {
+/// Prompt capabilities - implement this to provide prompts
+interface prompts-capabilities {
     use types.{mcp-error};
     use prompts.{list-prompts-request, list-prompts-response, get-prompt-request, get-prompt-response};
     
@@ -65,8 +65,8 @@ interface prompt-handler {
     handle-get-prompt: func(request: get-prompt-request) -> result<get-prompt-response, mcp-error>;
 }
 
-/// Sampling handler capability - implement this to handle LLM requests
-interface sampling-handler {
+/// Sampling capabilities - implement this to handle LLM requests
+interface sampling-capabilities {
     use types.{mcp-error};
     use sampling.{create-message-request, create-message-result};
     
@@ -74,8 +74,8 @@ interface sampling-handler {
     handle-create-message: func(request: create-message-request) -> result<create-message-result, mcp-error>;
 }
 
-/// Elicitation handler capability - implement this to handle user input requests
-interface elicitation-handler {
+/// Elicitation capabilities - implement this to handle user input requests
+interface elicitation-capabilities {
     use types.{mcp-error};
     use elicitation.{elicit-request, elicit-result};
     
@@ -83,8 +83,8 @@ interface elicitation-handler {
     handle-elicit: func(request: elicit-request) -> result<elicit-result, mcp-error>;
 }
 
-/// Roots handler capability - implement this to expose file system roots
-interface roots-handler {
+/// Roots capabilities - implement this to expose file system roots
+interface roots-capabilities {
     use types.{mcp-error};
     use roots.{list-roots-request, list-roots-result};
     
@@ -92,8 +92,8 @@ interface roots-handler {
     handle-list-roots: func(request: list-roots-request) -> result<list-roots-result, mcp-error>;
 }
 
-/// Completion handler capability - implement this to provide autocompletion
-interface completion-handler {
+/// Completion capabilities - implement this to provide autocompletion
+interface completion-capabilities {
     use types.{mcp-error};
     use completion.{complete-request, complete-result};
     

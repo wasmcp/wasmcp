@@ -1,5 +1,5 @@
 [package]
-name = "{{project-name | snake_case}}"
+name = "weather_rs_new"
 version = "0.1.0"
 edition = "2021"
 
@@ -19,7 +19,7 @@ urlencoding = "2.1"
 lazy_static = "1.5"
 
 [package.metadata.component]
-package = "{{project-name | kebab_case}}:provider"
+package = "weather-rs-new:provider"
 
 [package.metadata.component.bindings]
 derives = ["Clone"]

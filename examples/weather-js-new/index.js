@@ -1,7 +1,7 @@
 /**
- * {{project-name}} MCP Provider
+ * weather-js-new MCP Provider
  * 
- * {{project-description}}
+ * An MCP server written in JavaScript
  * 
  * Includes example tools:
  * - echo: Echo a message back

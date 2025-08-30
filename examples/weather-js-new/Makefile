@@ -1,11 +1,11 @@
 .PHONY: build test clean run help
 
 # Component paths
-PROVIDER_WASM = target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm
+PROVIDER_WASM = provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
-# Transport package from registry (tools-only server)
-TRANSPORT_PKG = fastertools:mcp-http-tools-server@0.1.0
+# Transport package from registry
+TRANSPORT_PKG = fastertools:mcp-transport-http@0.1.0
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -13,42 +13,48 @@ help: ## Show this help message
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-setup: ## Check and install required tools
+setup: ## Check tools and install dependencies
 	@echo "Checking for required tools..."
-	@command -v cargo >/dev/null 2>&1 || { echo "❌ cargo not found. Please install Rust: https://rustup.rs"; exit 1; }
-	@command -v cargo-component >/dev/null 2>&1 || { \
-		echo "📦 Installing cargo-component..."; \
-		cargo install --locked cargo-component; \
-	}
+	@command -v node >/dev/null 2>&1 || { echo "❌ node not found. Please install Node.js: https://nodejs.org"; exit 1; }
+	@command -v npm >/dev/null 2>&1 || { echo "❌ npm not found. Please install Node.js: https://nodejs.org"; exit 1; }
 	@command -v wkg >/dev/null 2>&1 || { \
-		echo "📦 Installing wkg..."; \
-		cargo install --locked wkg; \
+		echo "❌ wkg not found. Install with: cargo install wkg"; \
+		exit 1; \
 	}
 	@command -v wac >/dev/null 2>&1 || { \
-		echo "📦 Installing wac..."; \
-		cargo install --locked wac-cli; \
+		echo "❌ wac not found. Install with: cargo install wac-cli"; \
+		exit 1; \
 	}
 	@command -v wasmtime >/dev/null 2>&1 || { \
 		echo "⚠️  wasmtime not found. Install from: https://wasmtime.dev"; \
 	}
 	@echo "✅ All tools ready!"
+	@echo "Installing npm dependencies..."
+	@npm install
+	@echo "Fetching WIT dependencies..."
+	@wkg wit fetch
+	@echo "✅ Setup complete!"
 
 build: ## Build and compose everything into mcp-http-server.wasm
+	@echo "Installing dependencies..."
+	@npm install
+	@echo "Bundling JavaScript modules..."
+	@npm run bundle
 	@echo "Building provider component..."
-	@cargo component build --release --target wasm32-wasip1
+	@npx jco componentize bundled.js --wit wit --world-name weather-js-new --out $(PROVIDER_WASM)
 	@echo "Downloading transport from registry..."
 	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
 	@echo "Plugging provider into transport..."
 	@wac plug --plug $(PROVIDER_WASM) .transport-tmp.wasm -o $(MCP_SERVER_WASM)
-	@rm -f .transport-tmp.wasm
+	@rm -f .transport-tmp.wasm bundled.js
 	@echo "✅ Created mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
 
-test: ## Run tests
-	cargo test
+build-types: ## Generate TypeScript type definitions
+	jco types wit -o types
 
 clean: ## Clean build artifacts
-	cargo clean
-	rm -f $(MCP_SERVER_WASM) .transport-tmp.wasm
+	rm -f $(PROVIDER_WASM) $(MCP_SERVER_WASM) .transport-tmp.wasm bundled.js
+	rm -rf dist types
 
 run: build ## Build and run with wasmtime serve
 	wasmtime serve -Scli mcp-http-server.wasm
@@ -69,14 +75,8 @@ test-tools: ## Test tools/list endpoint
 		-H "Content-Type: application/json" \
 		-d '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}' | python3 -m json.tool
 
-test-weather: ## Test weather tool
-	@echo "Testing get_weather tool..."
+test-call: ## Test calling a tool
+	@echo "Testing tool call..."
 	@curl -s -X POST http://localhost:8080/mcp \
 		-H "Content-Type: application/json" \
-		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather","arguments":{"location":"London"}},"id":3}' | python3 -m json.tool
-
-test-echo: ## Test echo tool
-	@echo "Testing echo tool..."
-	@curl -s -X POST http://localhost:8080/mcp \
-		-H "Content-Type: application/json" \
-		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello World"}},"id":4}' | python3 -m json.tool
+		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello World"}},"id":3}' | python3 -m json.tool

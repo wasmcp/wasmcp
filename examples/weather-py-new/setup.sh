@@ -91,7 +91,7 @@ echo -e "${GREEN}✓ WIT dependencies fetched${NC}"
 # Generate bindings
 echo ""
 echo "Generating Python bindings..."
-componentize-py --wit-path wit --world {{project-name | kebab_case}} bindings . 2>/dev/null || true
+componentize-py --wit-path wit --world weather-py-new bindings . 2>/dev/null || true
 echo -e "${GREEN}✓ Bindings generated${NC}"
 
 echo ""
