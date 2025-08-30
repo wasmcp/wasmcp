@@ -3,13 +3,15 @@
 # `wasmcp`
 
 **Build MCP servers on the WebAssembly Component Model**
+</div>
 
 This project represents the [Model Context Protocol 2025-06-18+](https://modelcontextprotocol.io/specification/2025-06-18) spec in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) language.
 
+These types enable you to build transport components in one language, and plug in the capabilities implementations from components authored in other languages.
 
-These types enable you to build transport components in one language, and plug in the capabilities implementations from components authored in other languages. The results is a single `.wasm` binary file that works on any runtime that supports the [WebAssembly Component Model](https://wasmcloud.com/). Some examples are [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/fermyon/spin), [wasmCloud](https://wasmcloud.com/) or the many emerging platforms and runtimes that are adopting this standard. The component model is a broad-reaching architecture for building interoperable WebAssembly libraries, applications, and environments.
+The results is a single `.wasm` binary file that works on any runtime that supports the [WebAssembly Component Model](https://wasmcloud.com/). Some examples are [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/fermyon/spin), [wasmCloud](https://wasmcloud.com/) or the many emerging platforms and runtimes that are adopting this standard.
 
-</div>
+The component model is a broad-reaching architecture for building interoperable WebAssembly libraries, applications, and environments.
 
 ## Quick Start
 
