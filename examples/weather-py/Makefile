@@ -1,7 +1,7 @@
 .PHONY: build test clean run help setup venv-check
 
 # Component paths
-HANDLER_WASM = weather-handler.wasm
+HANDLER_WASM = weather_py-handler.wasm
 COMPOSED_WASM = composed.wasm
 
 # Server package from registry
@@ -41,7 +41,7 @@ build: $(VENV) ## Build and compose everything into composed.wasm
 	@echo "Building handler component..."
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
-		--world weather \
+		--world weather-py \
 		--import-interface-name "wasi:http/types@0.2.3=types" \
 		componentize \
 		app \
@@ -58,7 +58,7 @@ bindgen: $(VENV) ## Generate Python bindings for development
 	@rm -rf wit_world
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
-		--world weather \
+		--world weather-py \
 		--import-interface-name "wasi:http/types@0.2.3=types" \
 		--import-interface-name "wasi:http/outgoing-handler@0.2.3=outgoing_handler" \
 		--import-interface-name "wasi:io/poll@0.2.0=io_poll" \

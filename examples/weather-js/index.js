@@ -1,5 +1,5 @@
 /**
- * javascript MCP Handler
+ * weather-js MCP Handler
  * 
  * An MCP server written in JavaScript
  * 

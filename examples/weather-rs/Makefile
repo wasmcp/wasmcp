@@ -1,7 +1,7 @@
 .PHONY: build test clean run help
 
 # Component paths
-HANDLER_WASM = target/wasm32-wasip1/release/rust.wasm
+HANDLER_WASM = target/wasm32-wasip1/release/weather_rs.wasm
 COMPOSED_WASM = composed.wasm
 
 # Server package from registry

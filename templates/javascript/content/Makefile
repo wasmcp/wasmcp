@@ -19,7 +19,7 @@ build: ## Build and compose everything into composed.wasm
 	@echo "Bundling JavaScript modules..."
 	@npm run bundle
 	@echo "Building handler component..."
-	@jco componentize bundled.js --wit wit --world-name tools-handler --out $(HANDLER_WASM)
+	@npx jco componentize bundled.js --wit wit --world-name tools-handler --out $(HANDLER_WASM)
 	@echo "Downloading server from registry..."
 	@wkg get $(SERVER_PKG) -o .server-tmp.wasm
 	@echo "Plugging handler into server..."

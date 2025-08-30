@@ -1,4 +1,4 @@
-# javascript
+# weather-js
 
 An MCP server written in JavaScript
 

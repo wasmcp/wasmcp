@@ -1,4 +1,4 @@
-# weather
+# weather-py
 
 An MCP server written in Python
 

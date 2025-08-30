@@ -85,7 +85,7 @@ fi
 # Generate bindings
 echo ""
 echo "Generating Python bindings..."
-componentize-py --wit-path wit --world weather bindings . 2>/dev/null || true
+componentize-py --wit-path wit --world weather-py bindings . 2>/dev/null || true
 echo -e "${GREEN}✓ Bindings generated${NC}"
 
 echo ""

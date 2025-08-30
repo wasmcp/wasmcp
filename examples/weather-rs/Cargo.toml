@@ -1,6 +1,6 @@
 [package]
-name = "rust"
-version = "0.1.2"
+name = "weather_rs"
+version = "0.1.0"
 edition = "2021"
 
 [lib]
@@ -19,14 +19,14 @@ urlencoding = "2.1"
 lazy_static = "1.5"
 
 [package.metadata.component]
-package = "rust:handler"
+package = "weather-rs:handler"
 
 [package.metadata.component.bindings]
 derives = ["Clone"]
 
 [package.metadata.component.target]
 package = "fastertools:mcp"
-version = "0.1.9"
+version = "0.1.7"
 world = "tools-handler"
 
 [profile.release]
