@@ -1,0 +1,24 @@
+spin_manifest_version = 2
+
+[application]
+name = "weather-rs"
+version = "0.1.0"
+authors = ["bowlofarugula <bowlofarugula@gmail.com>"]
+description = "An MCP server written in Rust"
+
+[[trigger.http]]
+route = "/mcp"
+component = "composed"
+
+[component.composed]
+# Using the composed component (handler + server)
+source = "composed.wasm"
+allowed_outbound_hosts = [
+    "https://geocoding-api.open-meteo.com",
+    "https://api.open-meteo.com"
+]
+key_value_stores = ["default"]
+
+[component.composed.build]
+command = "make build"
+watch = ["src/**/*.rs", "Cargo.toml", "wit/*.wit"]

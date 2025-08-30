@@ -1,0 +1,6 @@
+package weather-js:handler;
+
+/// MCP tools for An MCP server written in JavaScript
+world weather-js {
+    export fastertools:mcp/tool-handler@0.1.9;
+}

@@ -1,0 +1,100 @@
+/// Resource discovery, reading, and subscription for MCP
+
+interface resources {
+    use types.{mcp-error, base-metadata, annotations, meta-fields, cursor, resource-contents, progress-token, resource-template};
+
+    /// A resource that can be read by the client
+    record mcp-resource {
+        /// Base metadata (name and optional title)
+        base: base-metadata,
+        /// URI identifying the resource
+        uri: string,
+        /// Human-readable description
+        description: option<string>,
+        /// MIME type if known
+        mime-type: option<string>,
+        /// Size in bytes (before encoding)
+        size: option<u64>,
+        /// Client hints
+        annotations: option<annotations>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Request to list available resources
+    record list-resources-request {
+        /// Pagination cursor
+        cursor: option<cursor>,
+        /// Progress tracking token
+        progress-token: option<progress-token>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Response with list of resources
+    record list-resources-response {
+        /// Available resources
+        resources: list<mcp-resource>,
+        /// Cursor for next page
+        next-cursor: option<cursor>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Request to list resource templates
+    record list-templates-request {
+        /// Pagination cursor
+        cursor: option<cursor>,
+        /// Progress tracking token
+        progress-token: option<progress-token>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Response with list of resource templates
+    record list-templates-response {
+        /// Available templates
+        templates: list<resource-template>,
+        /// Cursor for next page
+        next-cursor: option<cursor>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Request to read a specific resource
+    record read-resource-request {
+        /// URI of the resource to read
+        uri: string,
+        /// Progress tracking token
+        progress-token: option<progress-token>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Response with resource contents
+    record read-resource-response {
+        /// Resource contents (may be multiple for sub-resources)
+        contents: list<resource-contents>,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Request to subscribe to resource updates
+    record subscribe-request {
+        /// URI of the resource to monitor
+        uri: string,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Request to unsubscribe from resource updates
+    record unsubscribe-request {
+        /// URI of the resource to stop monitoring
+        uri: string,
+        /// Extension metadata
+        meta: option<meta-fields>,
+    }
+
+    // Note: Resource operations are defined in the resource-handler interface
+    // This interface only provides type definitions
+}

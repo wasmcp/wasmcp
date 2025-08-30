@@ -10,20 +10,26 @@ Run [Model Context Protocol](https://modelcontextprotocol.io) servers on [Spin](
 
 ## Quick Start
 
+Install templates
 ```bash
-# Install templates
 spin templates install --git https://github.com/fastertools/wasmcp --upgrade
+```
 
-# Create MCP server
+Scaffold a new MCP server in your favorite source language
+```bash
 spin new -t wasmcp-rust my-weather-server --accept-defaults
 cd my-weather-server
+```
 
-# Build handler and compose with gateway
+Build the handler component and compose with a server component
+```bash
 make build
 make compose
+```
 
-# Run with wasmtime (or spin up for Spin)
-wasmtime serve -S cli -S http composed.wasm
+Run with wasmtime (or spin up for Spin)
+```bash
+wasmtime serve -Scli composed.wasm
 
 # Test it
 curl -X POST http://localhost:8080 \
@@ -31,227 +37,39 @@ curl -X POST http://localhost:8080 \
   -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}'
 ```
 
-That's it. Zero configuration, no WIT files, runs on any WASI runtime.
-
-## Features
-
-- **Clean SDKs**: Rust with proc macros (no WIT files), TypeScript with npm package, Go with idiomatic generics API
-- **Full Async**: Native async/await support for HTTP, database, and I/O operations  
-- **Any Runtime**: Spin, Wasmtime, or any WASI-compatible WebAssembly runtime
-- **Production Ready**: Optimized builds, proper error handling, comprehensive testing
-- **Component Composition**: Modular architecture via WebAssembly Component Model
-
-## Language Support
-
-### Rust
-```rust
-use wasmcp::{mcp_handler, ToolHandler, AsyncToolHandler};
-use serde_json::json;
-
-// Simple sync tool
-struct EchoTool;
-
-impl ToolHandler for EchoTool {
-    const NAME: &'static str = "echo";
-    const DESCRIPTION: &'static str = "Echo a message back to the user";
-    
-    fn input_schema() -> serde_json::Value {
-        json!({
-            "type": "object",
-            "properties": {
-                "message": { "type": "string", "description": "Message to echo back" }
-            },
-            "required": ["message"]
-        })
-    }
-    
-    fn execute(args: serde_json::Value) -> Result<String, String> {
-        Ok(format!("Echo: {}", args["message"]))
-    }
-}
-
-// Async tool with real HTTP requests
-impl AsyncToolHandler for WeatherTool {
-    const NAME: &'static str = "weather";
-    const DESCRIPTION: &'static str = "Get weather information for a location";
-    
-    async fn execute_async(args: serde_json::Value) -> Result<String, String> {
-        use spin_sdk::http::{Request, send};
-        
-        // Geocode location
-        let geocoding_url = format!("https://geocoding-api.open-meteo.com/v1/search?name={}", 
-            args["location"]);
-        let response = send(Request::get(&geocoding_url)).await?;
-        
-        // Parse and fetch weather...
-        Ok(format!("Weather for {}: 22°C, Sunny", args["location"]))
-    }
-}
-
-#[mcp_handler(tools(EchoTool, WeatherTool))]
-mod handler {}
-```
-
-### TypeScript
-```typescript
-import { createTool, createHandler, z } from 'wasmcp';
-
-// Simple tool with schema validation
-const echoTool = createTool({
-  name: 'echo',
-  description: 'Echo a message back to the user',
-  schema: z.object({
-    message: z.string().describe('Message to echo back')
-  }),
-  execute: async (args) => {
-    return `Echo: ${args.message}`;
-  }
-});
-
-// Weather tool with async fetch
-const weatherTool = createTool({
-  name: 'weather',
-  description: 'Get current weather for a location',
-  schema: z.object({
-    location: z.string().describe('City name')
-  }),
-  execute: async (args) => {
-    // Geocode location
-    const geocoding = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${args.location}`
-    );
-    const location = await geocoding.json();
-    
-    // Get weather
-    const weather = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}`
-    );
-    
-    return `Weather in ${args.location}: 22°C, Sunny`;
-  }
-});
-
-export const handler = createHandler({
-  tools: [echoTool, weatherTool]
-});
-```
-
-### Go
-```go
-import (
-    "context"
-    mcp "github.com/fastertools/wasmcp/sdk/go"
-)
-
-func init() {
-    server := mcp.NewServer(
-        &mcp.Implementation{Name: "weather", Version: "v1.0.0"},
-        nil,
-    )
-    
-    // Typed handler with automatic JSON unmarshaling
-    type EchoArgs struct {
-        Message string `json:"message"`
-    }
-    
-    mcp.AddTool(server, &mcp.Tool{
-        Name:        "echo",
-        Description: "Echo a message back",
-        InputSchema: mcp.Schema(`{
-            "type": "object",
-            "properties": {
-                "message": {"type": "string"}
-            },
-            "required": ["message"]
-        }`),
-    }, func(ctx context.Context, args EchoArgs) (*mcp.CallToolResult, error) {
-        return &mcp.CallToolResult{
-            Content: []mcp.Content{
-                &mcp.TextContent{Text: "Echo: " + args.Message},
-            },
-        }, nil
-    })
-    
-    server.Run(context.Background(), nil)
-}
-```
+That's it. Your composed.wasm server binary runs anywhere WebAssembly components do, or will.
 
 ## Examples
 
-See [`examples/`](./examples) for complete working servers:
-- **[`rust-weather`](./examples/rust-weather)** - Rust with async HTTP weather API
-- **[`typescript-weather`](./examples/typescript-weather)** - TypeScript with fetch API
-- **[`go-weather`](./examples/go-weather)** - Go with concurrent goroutines
+See [`examples/`](./examples/) for complete working servers.
 
-All implement the same tools and work identically from the client's perspective.
+## WIT
 
-## Architecture
+The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/design/wit.html)) package in [`wit/`](./wit/) aims to capture a complete representation of the MCP specification. It currently reflects the 2025-06-18 version of the spec, with some additional elements from the latest draft.
 
-```
-┌─────────────┐      HTTP/JSON-RPC      ┌──────────────┐
-│ MCP Client  │◄────────────────────────►│wasmcp-server │
-│  (Claude)   │                          │   (Server)   │
-└─────────────┘                          └──────┬───────┘
-                                                 │
-                                         Component Model
-                                                 │
-                                          ┌──────▼───────┐
-                                          │ Your Handler │
-                                          │ (Rust/TS/Go) │
-                                          └──────────────┘
-```
-
-The server handles HTTP and MCP protocol. You just implement tools.
-
-## Templates
-
-```bash
-# Rust (no WIT files needed)
-spin new -t wasmcp-rust my-rust-server
-
-# TypeScript (WIT bundled in npm)  
-spin new -t wasmcp-typescript my-ts-server
-
-# Go (idiomatic generics API)
-spin new -t wasmcp-go my-go-server
-```
-
-## Development
-
-```bash
-# Prerequisites
-cargo install cargo-component
-npm install -g @bytecodealliance/jco
-
-# Build everything
-make build-all
-
-# Run tests
-make test-all
-
-# See all commands
-make help
-```
-
-## Repository Structure
+The WIT package is published as Wasm at https://github.com/orgs/fastertools/packages/container/package/mcp. It can be fetched with `wkg wit fetch` when included as a dependency in a component's world:
 
 ```
-wasmcp/
-├── components/           # WebAssembly components
-│   └── server/          # MCP server component
-├── examples/            # Complete example servers
-│   └── weather/         # Weather server implementations
-│       ├── go/         # Go with concurrent goroutines
-│       ├── rust/       # Rust with async HTTP
-│       └── typescript/ # TypeScript with fetch API
-├── sdk/                 # Language SDKs
-│   ├── go/             # Go SDK with generics API
-│   ├── rust/           # Rust SDK (crates.io)
-│   ├── rust-macros/    # Rust proc macros
-│   └── typescript/     # TypeScript SDK (npm)
-├── templates/          # Spin templates
-└── wit/                # Component interfaces
+/// world.wit
+package weather-js:handler;
+
+/// MCP tools for An MCP server written in JavaScript
+world weather-js {
+    export fastertools:mcp/tool-handler@0.1.9;
+}
 ```
+
+A handler component does not necessarily depend on I/O. An MCP handler can be a pure computational component that can run in browsers, embedded systems, or any WebAssembly host - it just exports functions that transform MCP requests to responses.
+
+A handler with I/O (directly for outbound HTTP or indirectly via composition with an HTTP server component) uses the WebAssembly System Interface ([WASI](https://github.com/WebAssembly/WASI)) to interact with the outside world.
+
+The composition process (`handler + server = composed.wasm`) produces a standard WASI component that runs directly on any compliant runtime.
+
+## Components
+
+The [`components/`](./components/) directory contains published components that are useful for composing MCP servers.
+
+The `server-mcp-http-tools` component is published and publicly available at https://github.com/orgs/fastertools/packages/container/package/server-mcp-http-tools via `fastertools:server-mcp-http-tools@0.1.0`
 
 ## License
 

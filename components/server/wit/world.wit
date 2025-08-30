@@ -1,8 +1,0 @@
-package wasmcp:server@0.1.0;
-
-/// World for the MCP server component (works with Spin, Wasmtime, etc.)
-/// Imports the MCP handler interface which will be satisfied via component dependencies
-world mcp-server {
-    /// Import the MCP handler interface
-    import wasmcp:mcp/handler@0.1.0;
-}

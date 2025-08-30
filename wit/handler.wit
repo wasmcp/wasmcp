@@ -1,0 +1,102 @@
+/// Core handler interface that all MCP implementations must provide
+/// This contains only the essential session management functions
+interface core {
+    use types.{mcp-error};
+    use session.{initialize-request, initialize-response};
+    
+    /// Handle session initialization
+    /// Implementations should declare their capabilities here
+    handle-initialize: func(request: initialize-request) -> result<initialize-response, mcp-error>;
+    
+    /// Handle initialization complete notification
+    handle-initialized: func() -> result<_, mcp-error>;
+    
+    /// Handle ping request for keepalive
+    handle-ping: func() -> result<_, mcp-error>;
+    
+    /// Handle shutdown request
+    handle-shutdown: func() -> result<_, mcp-error>;
+}
+
+/// Tool handler capability - implement this to provide tools
+interface tool-handler {
+    use types.{mcp-error};
+    use tools.{list-tools-request, list-tools-response, call-tool-request, tool-result};
+    
+    /// List available tools
+    handle-list-tools: func(request: list-tools-request) -> result<list-tools-response, mcp-error>;
+    
+    /// Execute a tool
+    handle-call-tool: func(request: call-tool-request) -> result<tool-result, mcp-error>;
+}
+
+/// Resource handler capability - implement this to provide resources
+interface resource-handler {
+    use types.{mcp-error};
+    use resources.{list-resources-request, list-resources-response, list-templates-request, 
+                    list-templates-response, read-resource-request, read-resource-response,
+                    subscribe-request, unsubscribe-request};
+    
+    /// List available resources
+    handle-list-resources: func(request: list-resources-request) -> result<list-resources-response, mcp-error>;
+    
+    /// List resource templates
+    handle-list-resource-templates: func(request: list-templates-request) -> result<list-templates-response, mcp-error>;
+    
+    /// Read a specific resource
+    handle-read-resource: func(request: read-resource-request) -> result<read-resource-response, mcp-error>;
+    
+    /// Subscribe to resource changes
+    handle-subscribe-resource: func(request: subscribe-request) -> result<_, mcp-error>;
+    
+    /// Unsubscribe from resource changes
+    handle-unsubscribe-resource: func(request: unsubscribe-request) -> result<_, mcp-error>;
+}
+
+/// Prompt handler capability - implement this to provide prompts
+interface prompt-handler {
+    use types.{mcp-error};
+    use prompts.{list-prompts-request, list-prompts-response, get-prompt-request, get-prompt-response};
+    
+    /// List available prompts
+    handle-list-prompts: func(request: list-prompts-request) -> result<list-prompts-response, mcp-error>;
+    
+    /// Get a specific prompt
+    handle-get-prompt: func(request: get-prompt-request) -> result<get-prompt-response, mcp-error>;
+}
+
+/// Sampling handler capability - implement this to handle LLM requests
+interface sampling-handler {
+    use types.{mcp-error};
+    use sampling.{create-message-request, create-message-result};
+    
+    /// Handle request for LLM sampling
+    handle-create-message: func(request: create-message-request) -> result<create-message-result, mcp-error>;
+}
+
+/// Elicitation handler capability - implement this to handle user input requests
+interface elicitation-handler {
+    use types.{mcp-error};
+    use elicitation.{elicit-request, elicit-result};
+    
+    /// Handle request for structured user input
+    handle-elicit: func(request: elicit-request) -> result<elicit-result, mcp-error>;
+}
+
+/// Roots handler capability - implement this to expose file system roots
+interface roots-handler {
+    use types.{mcp-error};
+    use roots.{list-roots-request, list-roots-result};
+    
+    /// Handle request to list file system roots
+    handle-list-roots: func(request: list-roots-request) -> result<list-roots-result, mcp-error>;
+}
+
+/// Completion handler capability - implement this to provide autocompletion
+interface completion-handler {
+    use types.{mcp-error};
+    use completion.{complete-request, complete-result};
+    
+    /// Handle request for completion suggestions
+    handle-complete: func(request: complete-request) -> result<complete-result, mcp-error>;
+}

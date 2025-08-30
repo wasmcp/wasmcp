@@ -1,68 +1,128 @@
-package wasmcp:mcp@0.1.0;
+package fastertools:mcp@0.1.9;
 
-interface handler {
-    record tool {
-        name: string,
-        description: string,
-        input-schema: string,
-    }
+/// World definitions for MCP servers and handlers
+/// 
+/// This file defines paired worlds for different capability combinations:
+/// - Each server world has a corresponding handler world
+/// - Servers import the capabilities they support
+/// - Handlers export the capabilities they implement
+/// - This allows handlers to only implement what they need
+
+// === TOOLS ONLY ===
+
+/// Minimal server with just tools
+world tools-server {
+    // Core types always needed
+    import types;
+    import session;
+    import notifications;
     
-    record resource-info {
-        uri: string,
-        name: string,
-        description: option<string>,
-        mime-type: option<string>,
-    }
+    // Tool-specific types and handler
+    import tools;
+    import tool-handler;
+}
+
+world tools-handler {
+    export tool-handler;
+}
+
+// === TOOLS + RESOURCES ===
+
+/// Server with tools and resources
+world tools-resources-server {
+    // Core types always needed
+    import types;
+    import session;
+    import notifications;
     
-    record resource-contents {
-        uri: string,
-        mime-type: option<string>,
-        text: option<string>,
-        blob: option<list<u8>>,
-    }
+    // Feature-specific types and handlers
+    import tools;
+    import tool-handler;
+    import resources;
+    import resource-handler;
+}
+
+world tools-resources-handler {
+    export tool-handler;
+    export resource-handler;
+}
+
+// === TOOLS + RESOURCES + PROMPTS ===
+
+world tools-resources-prompts-server {
+    // Core types always needed
+    import types;
+    import session;
+    import notifications;
     
-    record prompt {
-        name: string,
-        description: option<string>,
-        arguments: list<prompt-argument>,
-    }
+    // Feature-specific types and handlers
+    import tools;
+    import tool-handler;
+    import resources;
+    import resource-handler;
+    import prompts;
+    import prompt-handler;
+}
+
+world tools-resources-prompts-handler {
+    export tool-handler;
+    export resource-handler;
+    export prompt-handler;
+}
+
+// === FULL CAPABILITIES ===
+
+/// Full server with all handlers
+world full-server {
+    // Core types always needed
+    import types;
+    import session;
+    import notifications;
     
-    record prompt-argument {
-        name: string,
-        description: option<string>,
-        required: bool,
-    }
+    // All feature-specific types
+    import tools;
+    import resources;
+    import prompts;
+    import sampling;
+    import elicitation;
+    import roots;
+    import completion;
     
-    record prompt-message {
-        role: string,
-        content: string,
-    }
+    // Import all handlers
+    import tool-handler;
+    import resource-handler;
+    import prompt-handler;
+    import sampling-handler;
+    import elicitation-handler;
+    import roots-handler;
+    import completion-handler;
+}
+
+world full-handler {
+    export tool-handler;
+    export resource-handler;
+    export prompt-handler;
+    export sampling-handler;
+    export elicitation-handler;
+    export roots-handler;
+    export completion-handler;
+}
+
+// === CLIENT WORLD ===
+
+/// World for MCP clients that consume server capabilities
+world mcp-client {
+    /// Client exports these capabilities for servers to use
+    export sampling;
+    export elicitation;
+    export roots;
+    export completion;
     
-    record error {
-        code: s32,
-        message: string,
-        data: option<string>,
-    }
+    /// Client imports server capabilities
+    import tools;
+    import resources;
+    import prompts;
     
-    variant tool-result {
-        text(string),
-        error(error),
-    }
-    
-    variant resource-result {
-        contents(resource-contents),
-        error(error),
-    }
-    
-    variant prompt-result {
-        messages(list<prompt-message>),
-        error(error),
-    }
-    
-    list-tools: func() -> list<tool>;
-    call-tool: func(name: string, arguments: string) -> tool-result;
-    list-resources: func() -> list<resource-info>;
-    read-resource: func(uri: string) -> resource-result;
-    list-prompts: func() -> list<prompt>;
-    get-prompt: func(name: string, arguments: string) -> prompt-result;
+    /// Client handles notifications
+    export notifications;
 }
