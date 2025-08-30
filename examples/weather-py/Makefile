@@ -72,11 +72,22 @@ clean: ## Clean build artifacts
 clean-all: clean ## Clean everything including venv
 	rm -rf $(VENV)
 
-run: build ## Build and run with wasmtime serve
-	wasmtime serve -Scli mcp-http-server.wasm
+run: build ## Build and run with available runtime
+	@$(MAKE) serve
 
 serve: ## Serve already built mcp-http-server.wasm
-	wasmtime serve -Scli mcp-http-server.wasm
+	@if command -v wasmtime >/dev/null 2>&1; then \
+		echo "Starting server with wasmtime..."; \
+		wasmtime serve -Scli mcp-http-server.wasm; \
+	elif command -v spin >/dev/null 2>&1; then \
+		echo "Starting server with spin..."; \
+		spin up --from mcp-http-server.wasm; \
+	else \
+		echo "Error: No compatible runtime found. Please install wasmtime or spin."; \
+		echo "  Install wasmtime: curl https://wasmtime.dev/install.sh -sSf | bash"; \
+		echo "  Install spin: curl -fsSL https://developer.fermyon.com/downloads/install.sh | bash"; \
+		exit 1; \
+	fi
 
 test-local: $(VENV) ## Test the Python code locally (without WASM)
 	@echo "Testing Python implementation locally..."

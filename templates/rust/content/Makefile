@@ -14,24 +14,8 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 setup: ## Check and install required tools
-	@echo "Checking for required tools..."
-	@command -v cargo >/dev/null 2>&1 || { echo "❌ cargo not found. Please install Rust: https://rustup.rs"; exit 1; }
-	@command -v cargo-component >/dev/null 2>&1 || { \
-		echo "📦 Installing cargo-component..."; \
-		cargo install --locked cargo-component; \
-	}
-	@command -v wkg >/dev/null 2>&1 || { \
-		echo "📦 Installing wkg..."; \
-		cargo install --locked wkg; \
-	}
-	@command -v wac >/dev/null 2>&1 || { \
-		echo "📦 Installing wac..."; \
-		cargo install --locked wac-cli; \
-	}
-	@command -v wasmtime >/dev/null 2>&1 || { \
-		echo "⚠️  wasmtime not found. Install from: https://wasmtime.dev"; \
-	}
-	@echo "✅ All tools ready!"
+	@chmod +x setup.sh
+	@./setup.sh
 
 build: ## Build and compose everything into mcp-http-server.wasm
 	@echo "Building provider component..."
@@ -50,11 +34,22 @@ clean: ## Clean build artifacts
 	cargo clean
 	rm -f $(MCP_SERVER_WASM) .transport-tmp.wasm
 
-run: build ## Build and run with wasmtime serve
-	wasmtime serve -Scli mcp-http-server.wasm
+run: build ## Build and run with available runtime
+	@$(MAKE) serve
 
 serve: ## Serve already built mcp-http-server.wasm
-	wasmtime serve -Scli mcp-http-server.wasm
+	@if command -v wasmtime >/dev/null 2>&1; then \
+		echo "Starting server with wasmtime..."; \
+		wasmtime serve -Scli mcp-http-server.wasm; \
+	elif command -v spin >/dev/null 2>&1; then \
+		echo "Starting server with spin..."; \
+		spin up --from mcp-http-server.wasm; \
+	else \
+		echo "Error: No compatible runtime found. Please install wasmtime or spin."; \
+		echo "  Install wasmtime: curl https://wasmtime.dev/install.sh -sSf | bash"; \
+		echo "  Install spin: curl -fsSL https://developer.fermyon.com/downloads/install.sh | bash"; \
+		exit 1; \
+	fi
 
 # Testing the composed component
 test-init: ## Test initialize endpoint

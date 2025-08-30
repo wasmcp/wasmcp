@@ -16,8 +16,8 @@ cd my-mcp-server
 make setup
 
 # Build and run locally
-make build              # Creates composed.wasm
-wasmtime serve -Scli composed.wasm  # Direct WASI execution, no framework needed!
+make build              # Creates mcp-http-server.wasm
+wasmtime serve -Scli mcp-http-server.wasm  # Direct WASI execution, no framework needed!
 # OR
 make run                # Same thing via make
 # OR  
@@ -28,7 +28,7 @@ make test-tools         # List available tools
 
 # Deploy anywhere WASI runs
 spin deploy             # To Spin Cloud
-# OR copy composed.wasm to any WASI host
+# OR copy mcp-http-server.wasm to any WASI host
 ```
 
 
@@ -37,20 +37,20 @@ spin deploy             # To Spin Cloud
 The build process uses simple WebAssembly Component Model plugging:
 
 ```
-Handler Component → Server Variant = composed.wasm
-     (your code)     (HTTP server)    (standard WASI)
+Provider Component → Transport Variant = mcp-http-server.wasm
+     (your code)      (HTTP transport)    (standard WASI)
 ```
 
 No composition file needed! The build process:
-1. Downloads the server variant from the registry (`wkg`)
-2. Plugs your handler into it (`wac plug`)
+1. Downloads the transport variant from the registry (`wkg`)
+2. Plugs your provider into it (`wac plug`)
 3. Creates a single deployable WASI component
 
-The resulting `composed.wasm` is a **pure WASI component** - no special runtime required:
+The resulting `mcp-http-server.wasm` is a **pure WASI component** - no special runtime required:
 
 ```bash
 # Direct execution with wasmtime - no frameworks, no adapters!
-wasmtime serve -Scli composed.wasm
+wasmtime serve -Scli mcp-http-server.wasm
 ```
 
 This works because it's standard WASI HTTP - runs anywhere:
@@ -66,20 +66,20 @@ This works because it's standard WASI HTTP - runs anywhere:
 │   └── helpers.rs   # Minimal async trait helpers (~140 lines)
 ├── wit/world.wit    # WIT interface declarations
 ├── Makefile         # Build automation (using wac plug)
-└── composed.wasm    # Final deployable component (after build)
+└── mcp-http-server.wasm    # Final deployable component (after build)
 ```
 
 ## Development
 
 ```bash
 # Core commands
-make build          # Build everything into composed.wasm
+make build          # Build everything into mcp-http-server.wasm
 make run            # Build and serve locally
-make serve          # Serve existing composed.wasm
+make serve          # Serve existing mcp-http-server.wasm
 make test-tools     # Test tool endpoints
 
 # Additional targets
-make build-handler  # Build just your component (quick compile check)
+make build-provider  # Build just your component (quick compile check)
 make clean          # Clean all artifacts
 ```
 
@@ -117,7 +117,7 @@ impl Tool for WeatherTool {
 To add resources or prompts:
 1. Export the interface in `wit/world.wit`
 2. Implement the trait in `src/lib.rs`
-3. Use a different server variant (e.g., `wasmcp-server-basic` for tools+resources)
+3. Use a different transport variant (e.g., `mcp-http-tools-resources-server` for tools+resources)
 
 ## Testing
 
@@ -133,16 +133,16 @@ curl -X POST http://localhost:8080/mcp \
 
 ## Deployment
 
-The `composed.wasm` is a standard WASI component that runs on any compliant runtime. 
+The `mcp-http-server.wasm` is a standard WASI component that runs on any compliant runtime. 
 
 Try `spin deploy` to to run on [Fermyon Cloud](https://developer.fermyon.com/cloud/index)
 
 ## Technical Details
 
-- **Composition**: Simple `wac plug` connects handler directly to server variant
+- **Composition**: Simple `wac plug` connects provider directly to transport variant
 - **Async Runtime**: `spin_sdk::http::run()` provides WASI-compatible async execution
 - **Concurrency**: Real parallel HTTP via `futures::join_all` within component boundaries
-- **Size**: ~853KB composed (handler ~347KB, server ~506KB)
+- **Size**: ~853KB composed (provider ~347KB, transport ~506KB)
 
 ## Learn More
 

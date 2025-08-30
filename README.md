@@ -18,7 +18,7 @@ Try running one of the example servers in your favorite source language.
 cd examples/weather-py
 ```
 
-Ensure build dependencies are set up. The [examples/](./examples/) depend only on [wkg](https://github.com/bytecodealliance/wasm-pkg-tools) (for WIT package management), [wac](https://github.com/bytecodealliance/wac) (for component composition), and the standard toolchain of your chosen source language. You can install these manually, or run:
+Ensure build dependencies are set up. The [examples/](./examples/) depend only on [wkg](https://github.com/bytecodealliance/wasm-pkg-tools) (for WIT package management), [wac](https://github.com/bytecodealliance/wac) (for component composition), and the standard toolchain of your chosen source language. Run setup to check and install these tools:
 ```bash
 make setup
 ```
@@ -91,9 +91,9 @@ world weather-js {
 }
 ```
 
-A capability provider component does not necessarily depend on I/O. An MCP provider can be a pure computational component that can run in browsers, embedded systems, or any WebAssembly host - it just exports functions that transform MCP requests to responses.
+A capability provider component does not necessarily depend on I/O. It can be a pure computational component that can run in browsers, embedded systems, or any WebAssembly hosts - it just exports functions that transform MCP requests to responses.
 
-A provider with I/O (directly for outbound HTTP or indirectly via composition with an HTTP transport component) uses the WebAssembly System Interface ([WASI](https://github.com/WebAssembly/WASI)) to interact with the outside world.
+A provider with I/O directly for outbound HTTP or indirectly via composition with an HTTP transport component uses the WebAssembly System Interface ([WASI](https://github.com/WebAssembly/WASI)) to interact with the outside world.
 
 ## Components
 

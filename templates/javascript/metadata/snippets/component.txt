@@ -1,11 +1,11 @@
 [[trigger.http]]
 route = "{{route}}"
-component = "composed-{{project-name | kebab_case}}"
+component = "mcp-{{project-name | kebab_case}}"
 
-[component.composed-{{project-name | kebab_case}}]
-# Using the composed component (handler + server)
-source = "{{project-name | kebab_case}}/composed.wasm"
+[component.mcp-{{project-name | kebab_case}}]
+# Using the composed component (provider + transport)
+source = "{{project-name | kebab_case}}/mcp-http-server.wasm"
 
-[component.composed-{{project-name | kebab_case}}.build]
+[component.mcp-{{project-name | kebab_case}}.build]
 command = "cd {{project-name | kebab_case}} && make build"
 watch = ["{{project-name | kebab_case}}/*.js", "{{project-name | kebab_case}}/package.json", "{{project-name | kebab_case}}/wit/*.wit"]
