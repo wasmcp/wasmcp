@@ -23,6 +23,11 @@ Ensure build dependencies are set up. The [examples/](./examples/) depend only o
 make setup
 ```
 
+Run any language-specific setup steps
+```bash
+source venv/bin/activate
+```
+
 Build and compose the capability provider with a transport component
 ```bash
 make build
