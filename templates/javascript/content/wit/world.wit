@@ -1,5 +1,6 @@
-package weather:handler;
+package {{project-name | kebab_case}}:handler;
 
-world tools-handler {
+/// MCP tools for {{project-description}}
+world {{project-name | kebab_case}} {
     export fastertools:mcp/tool-handler@0.1.9;
 }
