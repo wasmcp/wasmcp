@@ -1,0 +1,32 @@
+{
+  "name": "weather-ts",
+  "version": "0.1.0",
+  "description": "An MCP server written in TypeScript",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write 'src/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts'",
+    "bundle": "esbuild src/index.ts --bundle --format=esm --platform=neutral --outfile=bundled.js",
+    "build": "npm run typecheck && npm run lint && npm run bundle",
+    "clean": "rm -rf dist *.wasm wit_world bundled.js",
+    "test": "npm run typecheck && npm run lint && npm run bundle && node --test"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "1.14.0",
+    "@eslint/js": "9.18.0",
+    "@types/node": "24.3.0",
+    "esbuild": "0.25.9",
+    "eslint": "9.18.0",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.4.2",
+    "typescript": "5.7.2",
+    "typescript-eslint": "8.20.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
