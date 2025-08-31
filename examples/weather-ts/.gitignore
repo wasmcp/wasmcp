@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.wasm
+wit_world/
+bundled.js
+.wasm-tools/
+.spin/
+.DS_Store
+npm-debug.log*
+*.log
+.env
+.env.local
+.env.*.local
+package-lock.json

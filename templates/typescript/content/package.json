@@ -1,0 +1,23 @@
+{
+  "name": "{{project-name | kebab_case}}",
+  "version": "0.1.0",
+  "description": "{{project-description}}",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "bundle": "esbuild src/index.ts --bundle --format=esm --platform=neutral --outfile=bundled.js",
+    "build": "npm run typecheck && npm run bundle",
+    "clean": "rm -rf dist *.wasm wit_world bundled.js",
+    "test": "npm run typecheck && npm run bundle && node --test"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "^1.8.2",
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.25.9",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

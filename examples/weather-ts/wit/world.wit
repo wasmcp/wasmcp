@@ -1,0 +1,6 @@
+package weather-ts:provider;
+
+/// MCP tools for An MCP server written in TypeScript
+world weather-ts {
+    export fastertools:mcp/tools-capabilities@0.1.10;
+}
