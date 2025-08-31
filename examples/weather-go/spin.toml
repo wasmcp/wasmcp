@@ -1,0 +1,24 @@
+spin_manifest_version = 2
+
+[application]
+name = "weather-go"
+version = "0.1.0"
+authors = ["MCP Developers"]
+description = "MCP Weather Provider in Go"
+
+[[trigger.http]]
+route = "/mcp"
+component = "mcp-server"
+
+[component.mcp-server]
+# Using the composed component (provider + transport)
+source = "mcp-http-server.wasm"
+allowed_outbound_hosts = [
+    "https://geocoding-api.open-meteo.com",
+    "https://api.open-meteo.com"
+]
+key_value_stores = ["default"]
+
+[component.mcp-server.build]
+command = "make build"
+watch = ["main.go", "go.mod", "wit/*.wit"]

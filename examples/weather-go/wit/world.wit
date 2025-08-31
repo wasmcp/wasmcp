@@ -1,0 +1,13 @@
+package weather-go:provider;
+
+/// MCP tools for an MCP provider written in Go
+world weather-go {
+    /// TinyGo requires WASI CLI imports for wasip2 target
+    include wasi:cli/imports@0.2.3;
+    
+    /// Import HTTP for making outbound requests
+    import wasi:http/outgoing-handler@0.2.3;
+    
+    /// Export MCP tools capabilities
+    export fastertools:mcp/tools-capabilities@0.1.10;
+}
