@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sync"
 
 	"go.bytecodealliance.org/cm"
 	"{{project-name | snake_case}}/internal/fastertools/mcp/tools"
@@ -240,22 +239,8 @@ func fetchWeather(city string) (*WeatherData, error) {
 }
 
 func fetchMultiWeather(cities []string) []weatherResult {
-	results := make([]weatherResult, len(cities))
-	var wg sync.WaitGroup
-
-	// Launch goroutines for concurrent fetching
-	for i, city := range cities {
-		wg.Add(1)
-		go func(idx int, c string) {
-			defer wg.Done()
-			data, err := fetchWeather(c)
-			results[idx] = weatherResult{data: data, err: err}
-		}(i, city)
-	}
-
-	// Wait for all goroutines to complete
-	wg.Wait()
-	return results
+	// Use truly concurrent HTTP implementation
+	return FetchMultiWeatherConcurrent(cities)
 }
 
 func formatWeather(data *WeatherData) map[string]interface{} {

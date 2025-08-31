@@ -3,18 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"sync"
 
 	"go.bytecodealliance.org/cm"
-	"test_weather_go/internal/fastertools/mcp/tools"
-	toolscapabilities "test_weather_go/internal/fastertools/mcp/tools-capabilities"
-	"test_weather_go/internal/fastertools/mcp/types"
-
-	// Enable WASI HTTP support
-	_ "github.com/ydnar/wasi-http-go/wasihttp"
+	"weather-go/internal/fastertools/mcp/tools"
+	toolscapabilities "weather-go/internal/fastertools/mcp/tools-capabilities"
+	"weather-go/internal/fastertools/mcp/types"
 )
 
 // WeatherData represents the weather response structure
@@ -182,80 +175,23 @@ type weatherResult struct {
 }
 
 func fetchWeather(city string) (*WeatherData, error) {
-	// Geocode the city
-	geoURL := fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", url.QueryEscape(city))
-
-	resp, err := http.Get(geoURL)
-	if err != nil {
-		return nil, fmt.Errorf("geocoding request failed: %v", err)
+	// Use our concurrent implementation for single requests too
+	results := FetchMultiWeatherConcurrent([]string{city})
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no results returned")
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading geocoding response: %v", err)
+	
+	result := results[0]
+	if result.err != nil {
+		return nil, result.err
 	}
-
-	var geoData GeocodingResult
-	if err := json.Unmarshal(body, &geoData); err != nil {
-		return nil, fmt.Errorf("parsing geocoding response: %v", err)
-	}
-
-	if len(geoData.Results) == 0 {
-		return nil, fmt.Errorf("location '%s' not found", city)
-	}
-
-	location := geoData.Results[0]
-
-	// Get weather data
-	weatherURL := fmt.Sprintf(
-		"https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code",
-		location.Latitude, location.Longitude,
-	)
-
-	resp, err = http.Get(weatherURL)
-	if err != nil {
-		return nil, fmt.Errorf("weather request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err = io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading weather response: %v", err)
-	}
-
-	var weather WeatherResponse
-	if err := json.Unmarshal(body, &weather); err != nil {
-		return nil, fmt.Errorf("parsing weather response: %v", err)
-	}
-
-	return &WeatherData{
-		Name:        location.Name,
-		Country:     location.Country,
-		Temperature: weather.Current.Temperature2m,
-		Humidity:    weather.Current.RelativeHumidity2m,
-		WindSpeed:   weather.Current.WindSpeed10m,
-		WeatherCode: weather.Current.WeatherCode,
-	}, nil
+	
+	return result.data, nil
 }
 
 func fetchMultiWeather(cities []string) []weatherResult {
-	results := make([]weatherResult, len(cities))
-	var wg sync.WaitGroup
-
-	// Launch goroutines for concurrent fetching
-	for i, city := range cities {
-		wg.Add(1)
-		go func(idx int, c string) {
-			defer wg.Done()
-			data, err := fetchWeather(c)
-			results[idx] = weatherResult{data: data, err: err}
-		}(i, city)
-	}
-
-	// Wait for all goroutines to complete
-	wg.Wait()
-	return results
+	// Use our concurrent implementation
+	return FetchMultiWeatherConcurrent(cities)
 }
 
 func formatWeather(data *WeatherData) map[string]interface{} {

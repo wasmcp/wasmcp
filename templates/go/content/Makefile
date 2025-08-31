@@ -69,7 +69,7 @@ build-provider: bindgen ## Build the provider component
 		-scheduler=asyncify \
 		--wit-package {{project-name | kebab_case}}:provider.wasm \
 		--wit-world {{project-name | kebab_case}} \
-		main.go
+		main.go concurrent_http.go
 	@echo "✅ Provider component built"
 
 build: ## Build and compose everything into mcp-http-server.wasm
@@ -90,7 +90,7 @@ build-optimized: ## Build optimized version without debug info
 		--wit-package {{project-name | kebab_case}}:provider.wasm \
 		--wit-world {{project-name | kebab_case}} \
 		-no-debug \
-		main.go
+		main.go concurrent_http.go
 	@echo "Downloading transport from registry..."
 	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm 2>/dev/null || true
 	@echo "Plugging provider into transport..."
