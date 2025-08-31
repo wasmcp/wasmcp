@@ -162,6 +162,56 @@ echo "Installing npm dependencies..."
 npm install --silent
 echo -e "${GREEN}✓ npm dependencies installed${NC}"
 
+# Configure wkg for fastertools namespace if needed
+echo ""
+echo "Checking wkg configuration..."
+WKG_CONFIG="$HOME/.config/wasm-pkg/config.toml"
+
+# Create config directory if it doesn't exist
+mkdir -p "$(dirname "$WKG_CONFIG")"
+
+# Check if config file exists, create if not
+if [ ! -f "$WKG_CONFIG" ]; then
+    echo -e "${YELLOW}No wkg config found. Creating new config file...${NC}"
+    cat > "$WKG_CONFIG" << 'EOF'
+[namespace_registries]
+fastertools = "ghcr.io"
+EOF
+    echo -e "${GREEN}✓ Created wkg config with fastertools namespace${NC}"
+else
+    # Check if fastertools is already configured
+    if ! grep -q '^fastertools\s*=' "$WKG_CONFIG" 2>/dev/null; then
+        echo -e "${YELLOW}The 'fastertools' namespace is not configured in wkg.${NC}"
+        echo ""
+        echo "Would you like to add it automatically? [Y/n]"
+        read -r RESPONSE
+        RESPONSE=${RESPONSE:-Y}
+        
+        if [[ "$RESPONSE" =~ ^[Yy]$ ]]; then
+            # Check if [namespace_registries] section exists
+            if ! grep -q '^\[namespace_registries\]' "$WKG_CONFIG"; then
+                # Add the entire section
+                echo "" >> "$WKG_CONFIG"
+                echo "[namespace_registries]" >> "$WKG_CONFIG"
+                echo 'fastertools = "ghcr.io"' >> "$WKG_CONFIG"
+            else
+                # Add just the fastertools line after [namespace_registries]
+                sed -i '/^\[namespace_registries\]/a fastertools = "ghcr.io"' "$WKG_CONFIG"
+            fi
+            echo -e "${GREEN}✓ Added fastertools namespace to wkg config${NC}"
+        else
+            echo "Please configure the fastertools namespace manually by editing:"
+            echo "  $WKG_CONFIG"
+            echo ""
+            echo "Add this line under [namespace_registries]:"
+            echo '  fastertools = "ghcr.io"'
+            exit 1
+        fi
+    else
+        echo -e "${GREEN}✓ fastertools namespace already configured${NC}"
+    fi
+fi
+
 # Fetch WIT dependencies
 echo ""
 echo "Fetching WIT dependencies..."
