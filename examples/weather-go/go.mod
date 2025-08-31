@@ -1,4 +1,4 @@
-module weather-go
+module weather_go
 
 go 1.23.0
 

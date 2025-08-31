@@ -10,10 +10,10 @@ import (
 	"strings"
 
 	"go.bytecodealliance.org/cm"
-	outgoinghandler "weather-go/internal/wasi/http/outgoing-handler"
-	"weather-go/internal/wasi/http/types"
-	"weather-go/internal/wasi/io/poll"
-	"weather-go/internal/wasi/io/streams"
+	outgoinghandler "weather_go/internal/wasi/http/outgoing-handler"
+	"weather_go/internal/wasi/http/types"
+	"weather_go/internal/wasi/io/poll"
+	"weather_go/internal/wasi/io/streams"
 )
 
 func init() {
@@ -186,7 +186,6 @@ func (t *WASITransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // wasiBodyReader implements io.ReadCloser for WASI incoming body
-// It holds the response and body resources and cleans them up on Close
 type wasiBodyReader struct {
 	body     types.IncomingBody
 	response types.IncomingResponse
@@ -259,8 +258,8 @@ func (r *wasiBodyReader) finish() error {
 	// Wait for trailers to be ready
 	future.Get()
 	
-	// Now we can safely drop the response
-	r.response.ResourceDrop()
+	// Don't drop response - let GC handle it like in DoGetConcurrently
+	// r.response.ResourceDrop()
 	
 	return nil
 }
@@ -487,25 +486,6 @@ func DoGetConcurrently(urls []string) []HTTPResult {
 	return results
 }
 
-// convertWASIResponse converts a WASI response to http.Response
-func convertWASIResponse(resp types.IncomingResponse) *http.Response {
-	httpResp := &http.Response{
-		StatusCode: int(resp.Status()),
-		Header:     make(http.Header),
-	}
-
-	// Convert headers
-	headers := resp.Headers()
-	entries := headers.Entries()
-	for _, entry := range entries.Slice() {
-		key := string(entry.F0)
-		value := string(entry.F1.Slice())
-		httpResp.Header.Add(key, value)
-	}
-	// Don't drop headers - they're owned by the response
-
-	return httpResp
-}
 
 // FetchMultiWeatherConcurrent fetches weather for multiple cities concurrently
 func FetchMultiWeatherConcurrent(cities []string) []weatherResult {

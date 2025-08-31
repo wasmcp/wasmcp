@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"go.bytecodealliance.org/cm"
-	"weather-go/internal/fastertools/mcp/tools"
-	toolscapabilities "weather-go/internal/fastertools/mcp/tools-capabilities"
-	"weather-go/internal/fastertools/mcp/types"
+	"weather_go/internal/fastertools/mcp/tools"
+	toolscapabilities "weather_go/internal/fastertools/mcp/tools-capabilities"
+	"weather_go/internal/fastertools/mcp/types"
 )
 
 // WeatherData represents the weather response structure

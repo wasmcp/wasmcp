@@ -1,4 +1,4 @@
-# test-weather-go
+# weather-go
 
 An MCP server written in Go
 
