@@ -1,7 +1,7 @@
 .PHONY: build test clean run help setup deps-check
 
 # Component paths
-PROVIDER_WASM = test_weather_go-provider.wasm
+PROVIDER_WASM = {{project-name | snake_case}}-provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Transport package from registry (tools-only server)
@@ -60,15 +60,15 @@ wit-build: wit-deps ## Build WIT package
 bindgen: wit-build ## Generate Go bindings
 	@echo "Generating Go bindings..."
 	@rm -rf internal
-	@wit-bindgen-go generate --world test-weather-go --out internal ./test-weather-go:provider.wasm
+	@wit-bindgen-go generate --world {{project-name | kebab_case}} --out internal ./{{project-name | kebab_case}}:provider.wasm
 	@echo "✅ Bindings generated"
 
 build-provider: bindgen ## Build the provider component
 	@echo "Building provider component with TinyGo..."
 	@$(TINYGO) build -target=wasip2 -o $(PROVIDER_WASM) \
 		-scheduler=asyncify \
-		--wit-package test-weather-go:provider.wasm \
-		--wit-world test-weather-go \
+		--wit-package {{project-name | kebab_case}}:provider.wasm \
+		--wit-world {{project-name | kebab_case}} \
 		main.go
 	@echo "✅ Provider component built"
 
@@ -87,8 +87,8 @@ build-optimized: ## Build optimized version without debug info
 	@echo "Building optimized provider component..."
 	@$(TINYGO) build -target=wasip2 -o $(PROVIDER_WASM) \
 		-scheduler=asyncify \
-		--wit-package test-weather-go:provider.wasm \
-		--wit-world test-weather-go \
+		--wit-package {{project-name | kebab_case}}:provider.wasm \
+		--wit-world {{project-name | kebab_case}} \
 		-no-debug \
 		main.go
 	@echo "Downloading transport from registry..."

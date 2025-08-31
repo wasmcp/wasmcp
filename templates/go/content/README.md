@@ -1,6 +1,6 @@
-# test-weather-go
+# {{project-name}}
 
-An MCP server written in Go
+{{project-description}}
 
 ## Quick Start
 

@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	"go.bytecodealliance.org/cm"
-	"test_weather_go/internal/fastertools/mcp/tools"
-	toolscapabilities "test_weather_go/internal/fastertools/mcp/tools-capabilities"
-	"test_weather_go/internal/fastertools/mcp/types"
+	"{{project-name | snake_case}}/internal/fastertools/mcp/tools"
+	toolscapabilities "{{project-name | snake_case}}/internal/fastertools/mcp/tools-capabilities"
+	"{{project-name | snake_case}}/internal/fastertools/mcp/types"
 
 	// Enable WASI HTTP support
 	_ "github.com/ydnar/wasi-http-go/wasihttp"

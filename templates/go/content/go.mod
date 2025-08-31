@@ -1,4 +1,4 @@
-module test_weather_go
+module {{project-name | snake_case}}
 
 go 1.23.0
 

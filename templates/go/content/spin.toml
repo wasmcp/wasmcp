@@ -1,10 +1,10 @@
 spin_manifest_version = 2
 
 [application]
-name = "test-weather-go"
+name = "{{project-name}}"
 version = "0.1.0"
 authors = ["MCP Developers"]
-description = "An MCP server written in Go"
+description = "{{project-description}}"
 
 [[trigger.http]]
 route = "/mcp"
