@@ -1,50 +1,64 @@
 /**
- * Type definitions for MCP tools
+ * Type definitions for MCP tools with strict typing
  */
 
 export interface ToolSchema {
-    type: 'object';
-    properties: Record<string, any>;
-    required?: string[];
+  readonly type: 'object';
+  readonly properties: Record<string, unknown>;
+  readonly required?: readonly string[];
 }
 
-export interface ToolDefinition {
-    name: string;
-    description: string;
-    schema: ToolSchema;
-    execute: (args: any) => Promise<string>;
+export interface ToolDefinition<TArgs = Record<string, unknown>> {
+  readonly name: string;
+  readonly description: string;
+  readonly schema: ToolSchema;
+  readonly execute: (args: TArgs) => Promise<string>;
 }
 
+// Weather-specific types
 export interface WeatherData {
-    location: string;
-    temperature: string;
-    conditions: string;
-    humidity: string;
-    wind: string;
+  readonly location: string;
+  readonly temperature: string;
+  readonly conditions: string;
+  readonly humidity: string;
+  readonly wind: string;
 }
 
 export interface GeocodingResult {
-    results?: Array<{
-        name: string;
-        country: string;
-        latitude: number;
-        longitude: number;
-    }>;
+  readonly results?: readonly {
+    readonly name: string;
+    readonly country: string;
+    readonly latitude: number;
+    readonly longitude: number;
+  }[];
 }
 
 export interface WeatherApiResponse {
-    current: {
-        temperature_2m: number;
-        apparent_temperature: number;
-        relative_humidity_2m: number;
-        wind_speed_10m: number;
-        weather_code: number;
-    };
+  readonly current: {
+    readonly temperature_2m: number;
+    readonly apparent_temperature: number;
+    readonly relative_humidity_2m: number;
+    readonly wind_speed_10m: number;
+    readonly weather_code: number;
+  };
 }
 
 export interface CityWeatherResult {
-    city: string;
-    success: boolean;
-    data?: string;
-    error?: string;
+  readonly city: string;
+  readonly success: boolean;
+  readonly data?: string;
+  readonly error?: string;
+}
+
+// Tool argument types - must extend Record<string, unknown> for generic constraint
+export interface EchoArgs extends Record<string, unknown> {
+  readonly message: string;
+}
+
+export interface WeatherArgs extends Record<string, unknown> {
+  readonly location: string;
+}
+
+export interface MultiWeatherArgs extends Record<string, unknown> {
+  readonly cities: readonly string[];
 }

@@ -1,0 +1,4 @@
+[template]
+id = "wasmcp-typescript"
+description = "TypeScript MCP capability provider component"
+exclude = ["node_modules", "*.wasm", "bundled.js", "package-lock.json"]

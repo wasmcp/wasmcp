@@ -25,7 +25,7 @@ build: ## Build and compose everything into mcp-http-server.wasm
 	@echo "Bundling TypeScript..."
 	@npm run bundle
 	@echo "Building provider component..."
-	@npx jco componentize bundled.js --wit wit --world-name {{project-name | kebab_case}} --out $(PROVIDER_WASM)
+	@npx jco componentize bundled.js --wit wit --world-name "{{project-name | kebab_case}}" --out $(PROVIDER_WASM)
 	@echo "Downloading transport from registry..."
 	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
 	@echo "Plugging provider into transport..."
