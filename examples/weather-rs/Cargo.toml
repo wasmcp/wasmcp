@@ -1,7 +1,8 @@
 [package]
 name = "weather_rs"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.89"
 
 [lib]
 crate-type = ["cdylib"]
@@ -34,3 +35,34 @@ world = "tools-provider"
 opt-level = "s"
 lto = true
 strip = true
+
+[lints.rust]
+# Rustc lints
+missing_docs = "warn"
+rust_2024_compatibility = "warn"
+
+[lints.clippy]
+# Pedantic lints
+pedantic = { level = "warn", priority = -1 }
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+
+# Restriction lints
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+unimplemented = "warn"
+todo = "warn"
+
+# Correctness
+correctness = "deny"
+
+# Performance
+perf = "warn"
+
+# Style
+needless_pass_by_value = "warn"
+redundant_closure_for_method_calls = "warn"
+inconsistent_struct_constructor = "warn"

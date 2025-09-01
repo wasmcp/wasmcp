@@ -9,7 +9,7 @@ The CI workflow runs on:
 It performs:
 1. Builds the mcp-http-transport WebAssembly component
 2. Runs available tests
-3. Uploads the built WASM artifact
+3. Uploads the built Wasm artifact
 
 ## Release Workflow
 
@@ -26,7 +26,7 @@ It performs:
 3. Publishes to GitHub Container Registry at:
    - `ghcr.io/fastertools/mcp-http-transport:<version>`
    - `ghcr.io/fastertools/mcp-http-transport:latest`
-4. Creates a GitHub release with the WASM artifact
+4. Creates a GitHub release with the Wasm artifact
 
 ## Required Secrets
 

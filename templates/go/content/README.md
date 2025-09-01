@@ -27,7 +27,7 @@ The composition happens at build time, producing a single `mcp-http-server.wasm`
 
 ### Prerequisites
 
-- **Go 1.23+** and **TinyGo 0.34+** - Required for WASM compilation
+- **Go 1.23+** and **TinyGo 0.34+** - Required for Wasm compilation
 - **wasm-tools** - Component model toolchain
 - **wit-bindgen-go** - Generate Go bindings from WIT interfaces
 
@@ -53,7 +53,7 @@ The build process has three stages:
 
 ```bash
 make bindgen         # Generate Go bindings from WIT
-make build-provider  # Compile Go to WASM component
+make build-provider  # Compile Go to Wasm component
 make build          # Compose with transport
 ```
 
@@ -80,7 +80,7 @@ func handleMyTool(ctx context.Context, args MyToolArgs) (*CallToolResult, error)
 }
 ```
 
-## Concurrency in TinyGo/WASM
+## Concurrency in TinyGo/Wasm
 
 TinyGo runs with `GOMAXPROCS=1` and uses cooperative scheduling, meaning goroutines execute sequentially on a single thread. Traditional Go concurrency patterns won't provide parallel execution.
 

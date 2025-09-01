@@ -7,11 +7,17 @@
 
 This project represents the [Model Context Protocol 2025-06-18+](https://modelcontextprotocol.io/specification/2025-06-18) spec in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) language.
 
-These types enable you to flexibly build abstractions for MCP implementations around WebAssembly components. Included is a useful  example architecture: Write MCP transports once in one language, and plug in the capability providers from components authored in other languages. Like a "universal SDK" for MCP servers, built from binary bricks.
+These types enable you to flexibly build secure, performant, polyglot abstractions for MCP implementations around WebAssembly components. Included is a useful  example architecture: Write MCP transports once in one language, and plug in the capability providers from components authored in other languages. Like a "universal SDK" for MCP servers, where you can snap together transports and capabilities across languages like binary lego bricks.
 
-The composition process (`provider + transport = mcp-http-server.wasm`) produces a standard Wasm component that runs directly on any runtime that supports the Wasm component model. Some examples are [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/fermyon/spin), [wasmCloud](https://github.com/wasmCloud/wasmCloud) or the many emerging platforms and runtimes that are adopting this broad-reaching architecture for building interoperable WebAssembly libraries, applications, and environments.
+The composition process (`provider + transport = mcp-http-server.wasm`) produces a standard Wasm component that runs directly on any runtime that supports the component model. Some examples are [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/fermyon/spin), [wasmCloud](https://github.com/wasmCloud/wasmCloud) or the many emerging platforms and runtimes that are adopting this broad-reaching architecture for building interoperable WebAssembly libraries, applications, and environments.
 
-## Quick Start
+## Why components?
+
+From https://component-model.bytecodealliance.org/design/why-component-model.html#benefits-of-the-component-model
+
+>Moreover, a component interacts with a runtime or other components only by calling its imports and having its exports called. Specifically, unlike core modules, a component may not export a memory and thus it cannot indirectly communicate to others by writing to its memory and having others read from that memory. This not only reinforces sandboxing, but enables interoperation between languages that make different assumptions about memory: for example, allowing a component that relies on garbage-collected memory to interoperate with one that uses conventional linear memory.
+
+## Quick start
 
 Try running one of the example servers in your favorite source language.
 ```bash

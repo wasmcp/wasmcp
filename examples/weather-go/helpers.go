@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"go.bytecodealliance.org/cm"
 	"weather_go/internal/fastertools/mcp/tools"
 	toolscapabilities "weather_go/internal/fastertools/mcp/tools-capabilities"
 	"weather_go/internal/fastertools/mcp/types"
+
+	"go.bytecodealliance.org/cm"
 )
 
 // Server wraps the MCP server functionality
@@ -124,7 +125,7 @@ func AddTool[T any](s *Server, tool *Tool, handler func(context.Context, T) (*Ca
 	}
 }
 
-// Run initializes the WASM exports and starts the server
+// Run initializes the Wasm exports and starts the server
 func (s *Server) Run(ctx context.Context, transport interface{}) {
 	// Wire up the exports to the generated bindings
 	toolscapabilities.Exports.HandleListTools = s.handleListTools
@@ -134,7 +135,7 @@ func (s *Server) Run(ctx context.Context, transport interface{}) {
 // handleListTools implements the list tools handler
 func (s *Server) handleListTools(request tools.ListToolsRequest) cm.Result[toolscapabilities.ListToolsResponseShape, tools.ListToolsResponse, types.McpError] {
 	toolsList := make([]tools.Tool, 0, len(s.tools))
-	
+
 	for _, rt := range s.tools {
 		toolsList = append(toolsList, tools.Tool{
 			Base: types.BaseMetadata{
@@ -148,13 +149,13 @@ func (s *Server) handleListTools(request tools.ListToolsRequest) cm.Result[tools
 			Meta:         cm.None[types.MetaFields](),
 		})
 	}
-	
+
 	response := tools.ListToolsResponse{
 		Tools:      cm.ToList(toolsList),
 		NextCursor: cm.None[types.Cursor](),
 		Meta:       cm.None[types.MetaFields](),
 	}
-	
+
 	return cm.OK[cm.Result[toolscapabilities.ListToolsResponseShape, tools.ListToolsResponse, types.McpError]](response)
 }
 
@@ -164,7 +165,7 @@ func (s *Server) handleCallTool(request tools.CallToolRequest) cm.Result[toolsca
 	if !exists {
 		return mcpErrorResult(ErrorCodeToolNotFound, fmt.Sprintf("Unknown tool: %s", request.Name))
 	}
-	
+
 	// Convert request to our internal format
 	var arguments string
 	if request.Arguments.Some() != nil {
@@ -174,7 +175,7 @@ func (s *Server) handleCallTool(request tools.CallToolRequest) cm.Result[toolsca
 		Name:      request.Name,
 		Arguments: arguments,
 	}
-	
+
 	// Call the handler
 	result, err := rt.handler(context.Background(), callReq)
 	if err != nil {
@@ -185,7 +186,7 @@ func (s *Server) handleCallTool(request tools.CallToolRequest) cm.Result[toolsca
 		// Otherwise treat as internal error
 		return mcpErrorResult(ErrorCodeInternal, err.Error())
 	}
-	
+
 	// Convert our result to WIT types
 	return convertToWitResult(result)
 }
@@ -224,7 +225,7 @@ func MultiTextResult(texts ...string) *CallToolResult {
 
 func convertToWitResult(result *CallToolResult) cm.Result[toolscapabilities.ToolResultShape, tools.ToolResult, types.McpError] {
 	contentBlocks := make([]types.ContentBlock, len(result.Content))
-	
+
 	for i, c := range result.Content {
 		if tc, ok := c.(*TextContent); ok {
 			contentBlocks[i] = types.ContentBlockText(types.TextContent{
@@ -234,14 +235,14 @@ func convertToWitResult(result *CallToolResult) cm.Result[toolscapabilities.Tool
 			})
 		}
 	}
-	
+
 	witResult := tools.ToolResult{
 		Content:           cm.ToList(contentBlocks),
 		StructuredContent: cm.None[types.JSONValue](),
 		IsError:           cm.Some(result.IsError),
 		Meta:              cm.None[types.MetaFields](),
 	}
-	
+
 	return cm.OK[cm.Result[toolscapabilities.ToolResultShape, tools.ToolResult, types.McpError]](witResult)
 }
 
@@ -255,7 +256,7 @@ func mcpErrorResult(code ErrorCode, message string) cm.Result[toolscapabilities.
 	default:
 		witCode = types.ErrorCodeInternalError()
 	}
-	
+
 	return cm.Err[cm.Result[toolscapabilities.ToolResultShape, tools.ToolResult, types.McpError]](types.McpError{
 		Code:    witCode,
 		Message: message,
