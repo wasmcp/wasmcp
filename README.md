@@ -7,9 +7,9 @@
 
 [wit/](./wit/) expresses the [Model Context Protocol 2025-06-18+](https://modelcontextprotocol.io/specification/2025-06-18) spec in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) language.
 
-These [published](https://github.com/orgs/fastertools/packages/container/package/mcp) types enable you to flexibly build secure, performant, polyglot abstractions for MCP implementations around WebAssembly components.
+These [published](https://github.com/orgs/fastertools/packages/container/package/mcp) types let you write secure, efficient, polyglot abstractions for MCP implementations around WebAssembly components.
 
-Included is a useful  example architecture: Write MCP transports once, in one language, and plug in capabilities implemented in other languages. Like a "universal SDK" for MCP servers, where you can snap together transports and capabilities across languages like binary lego bricks.
+Included is a useful  example architecture: Write MCP transports once, in one language, and plug in MCP capabilities implemented in other languages. Like a "universal SDK" for MCP servers, where you can snap together transports and capabilities across languages like binary lego bricks.
 
 The composition process (`provider + transport = mcp-http-server.wasm`) produces a functional MCP server as a standalone Wasm component binary. You can run it on any runtime that supports the component model. Some examples are [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/spinframework/spin), [wasmCloud](https://github.com/wasmCloud/wasmCloud) or the many emerging platforms and runtimes that are adopting this broad-reaching architecture for building interoperable WebAssembly libraries, applications, and environments.
 
@@ -60,7 +60,7 @@ claude mcp add -t http wasmTools http://localhost:8080/mcp
 
 ## Spin
 
-Spin users can run Wasm components out-of-the-box.
+Spin users can run Wasm components out of the box.
 
 ```bash
 spin up --from mcp-http-server.wasm
@@ -73,9 +73,14 @@ You can install the templates in this repo to scaffold new MCP provider componen
 spin templates install --git https://github.com/fastertools/wasmcp --upgrade
 ```
 
-The resulting structure will include a `spin.toml` file that lets you deploy with:
+The resulting structure will include a `spin.toml` file that you can use for composing, running, and deploying components.
 ```bash
-spin deploy
+spin cloud deploy
+```
+```
+View application:   https://weather-py-xxxxxxxx.fermyon.app/
+  Routes:
+  - mcp-server: https://weather-py-xxxxxxxx.fermyon.app/mcp
 ```
 
 ## Examples
@@ -100,7 +105,7 @@ world weather-js {
 
 A capability provider component does not necessarily depend on I/O. It can be a pure computational component that can run in browsers, embedded systems, or any WebAssembly hosts - it just exports functions that transform MCP requests to responses.
 
-A provider with I/O directly for outbound HTTP or indirectly via composition with an HTTP transport component uses the WebAssembly System Interface ([WASI](https://github.com/WebAssembly/WASI)) to interact with the outside world.
+A provider with I/O, directly for outbound HTTP or indirectly via composition with an HTTP transport component, uses the WebAssembly System Interface ([WASI](https://github.com/WebAssembly/WASI)) to interact with the outside world.
 
 ## Components
 

@@ -16,6 +16,6 @@ world weather-js {
 
 A capability provider component does not necessarily depend on I/O. An MCP provider can be a pure computational component that can run in browsers, embedded systems, or any WebAssembly host - it just exports functions that transform MCP requests to responses.
 
-A provider with I/O (directly for outbound HTTP or indirectly via composition with an HTTP transport component) uses the WebAssembly System Interface ([WASI](https://github.com/WebAssembly/WASI)) to interact with the outside world.
+A provider with I/O, directly for outbound HTTP or indirectly via composition with an HTTP transport component, uses the WebAssembly System Interface ([WASI](https://github.com/WebAssembly/WASI)) to interact with the outside world.
 
 The composition process (`provider + transport = mcp-http-server.wasm`) produces a standard WASI component that runs directly on any compliant runtime.
