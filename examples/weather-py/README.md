@@ -101,7 +101,7 @@ async def _fetch_json(self, url: str) -> dict:
 ### Debugging
 
 ```bash
-# Test Python code locally (without WASM)
+# Test Python code locally (without Wasm)
 make test-local
 
 # Regenerate bindings if WIT files change

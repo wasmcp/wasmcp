@@ -12,12 +12,12 @@ from functools import wraps
 from dataclasses import dataclass, field
 
 # Import componentize-py's built-in async HTTP support
-# These are only available when running as WASM
+# These are only available when running as Wasm
 try:
     import poll_loop
     from poll_loop import PollLoop, Stream
 except ImportError:
-    # Not running in WASM environment
+    # Not running in Wasm environment
     poll_loop = None
     PollLoop = None
     Stream = None

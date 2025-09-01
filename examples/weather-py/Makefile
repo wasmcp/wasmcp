@@ -89,7 +89,7 @@ serve: ## Serve already built mcp-http-server.wasm
 		exit 1; \
 	fi
 
-test-local: $(VENV) ## Test the Python code locally (without WASM)
+test-local: $(VENV) ## Test the Python code locally (without Wasm)
 	@echo "Testing Python implementation locally..."
 	@$(PYTHON) app.py
 

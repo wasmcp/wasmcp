@@ -1,0 +1,6 @@
+# Clippy configuration
+msrv = "1.89"
+warn-on-all-wildcard-imports = true
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+allow-panic-in-tests = true

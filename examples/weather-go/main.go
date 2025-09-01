@@ -30,13 +30,13 @@ type MultiWeatherArgs struct {
 func init() {
 	// Configure WASI HTTP transport
 	http.DefaultTransport = &wasihttp.Transport{}
-	
+
 	// Create the server
 	server := NewServer(
 		&Implementation{Name: "weather_go", Version: "v1.0.0"},
 		nil,
 	)
-	
+
 	// Register echo tool
 	AddTool(server, &Tool{
 		Name:        "echo",
@@ -52,7 +52,7 @@ func init() {
 			"required": ["message"]
 		}`),
 	}, handleEcho)
-	
+
 	// Register weather tool
 	AddTool(server, &Tool{
 		Name:        "get_weather",
@@ -68,7 +68,7 @@ func init() {
 			"required": ["location"]
 		}`),
 	}, handleWeather)
-	
+
 	// Register multi-weather tool
 	AddTool(server, &Tool{
 		Name:        "multi_weather",
@@ -89,7 +89,7 @@ func init() {
 			"required": ["cities"]
 		}`),
 	}, handleMultiWeather)
-	
+
 	// Run the server
 	server.Run(context.Background(), nil)
 }
@@ -111,18 +111,18 @@ func handleMultiWeather(ctx context.Context, args MultiWeatherArgs) (*CallToolRe
 	if len(args.Cities) == 0 {
 		return ErrorResult("No cities provided"), nil
 	}
-	
+
 	if len(args.Cities) > 5 {
 		return ErrorResult("Maximum 5 cities allowed"), nil
 	}
-	
+
 	// Fetch weather data concurrently using WASI polling
 	results := fetchMultiWeatherConcurrent(args.Cities)
-	
+
 	// Format results
 	var output strings.Builder
 	output.WriteString("=== Concurrent Weather Results ===\n\n")
-	
+
 	for _, result := range results {
 		if result.err != nil {
 			output.WriteString(fmt.Sprintf("Error fetching weather for %s: %v\n\n", result.city, result.err))
@@ -131,9 +131,9 @@ func handleMultiWeather(ctx context.Context, args MultiWeatherArgs) (*CallToolRe
 			output.WriteString("\n\n")
 		}
 	}
-	
+
 	output.WriteString("=== All requests completed concurrently ===")
-	
+
 	return TextResult(output.String()), nil
 }
 
@@ -141,18 +141,18 @@ func getWeatherForCity(location string) (string, error) {
 	// Geocode the location
 	geocodingURL := fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1",
 		url.QueryEscape(location))
-	
+
 	resp, err := http.Get(geocodingURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to geocode location: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
-	
+
 	var geocodingData struct {
 		Results []struct {
 			Latitude  float64 `json:"latitude"`
@@ -161,32 +161,32 @@ func getWeatherForCity(location string) (string, error) {
 			Country   string  `json:"country"`
 		} `json:"results"`
 	}
-	
+
 	if err := json.Unmarshal(body, &geocodingData); err != nil {
 		return "", fmt.Errorf("failed to parse geocoding response: %w", err)
 	}
-	
+
 	if len(geocodingData.Results) == 0 {
 		return "", fmt.Errorf("location '%s' not found", location)
 	}
-	
+
 	loc := geocodingData.Results[0]
-	
+
 	// Fetch weather data
 	weatherURL := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
 		loc.Latitude, loc.Longitude)
-	
+
 	weatherResp, err := http.Get(weatherURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch weather: %w", err)
 	}
 	defer weatherResp.Body.Close()
-	
+
 	weatherBody, err := io.ReadAll(weatherResp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read weather response: %w", err)
 	}
-	
+
 	var weatherData struct {
 		Current struct {
 			Temperature         float64 `json:"temperature_2m"`
@@ -196,13 +196,13 @@ func getWeatherForCity(location string) (string, error) {
 			WeatherCode         int     `json:"weather_code"`
 		} `json:"current"`
 	}
-	
+
 	if err := json.Unmarshal(weatherBody, &weatherData); err != nil {
 		return "", fmt.Errorf("failed to parse weather response: %w", err)
 	}
-	
+
 	conditions := getWeatherCondition(weatherData.Current.WeatherCode)
-	
+
 	result := fmt.Sprintf(`Weather in %s, %s:
 Temperature: %.1f°C (feels like %.1f°C)
 Conditions: %s
@@ -215,7 +215,7 @@ Wind: %.1f km/h`,
 		conditions,
 		weatherData.Current.Humidity,
 		weatherData.Current.WindSpeed)
-	
+
 	return result, nil
 }
 
@@ -229,34 +229,34 @@ func fetchMultiWeatherConcurrent(cities []string) []weatherResult {
 	// Build URLs for all cities (geocoding first)
 	geocodeURLs := make([]string, len(cities))
 	for i, city := range cities {
-		geocodeURLs[i] = fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", 
+		geocodeURLs[i] = fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1",
 			url.QueryEscape(city))
 	}
-	
+
 	// Fetch all geocoding results concurrently using WASI polling
 	client := wasihttp.DefaultClient
 	geocodeResponses := client.GetConcurrently(geocodeURLs)
-	
+
 	// Process geocoding results and build weather URLs
 	weatherURLs := make([]string, 0, len(cities))
 	cityIndexMap := make(map[int]int) // maps weather request index to city index
 	results := make([]weatherResult, len(cities))
-	
+
 	for i, resp := range geocodeResponses {
 		results[i].city = cities[i]
-		
+
 		if resp.Error != nil {
 			results[i].err = fmt.Errorf("geocoding failed: %v", resp.Error)
 			continue
 		}
-		
+
 		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			results[i].err = fmt.Errorf("reading geocode response: %v", err)
 			continue
 		}
-		
+
 		var geocodingData struct {
 			Results []struct {
 				Latitude  float64 `json:"latitude"`
@@ -265,48 +265,48 @@ func fetchMultiWeatherConcurrent(cities []string) []weatherResult {
 				Country   string  `json:"country"`
 			} `json:"results"`
 		}
-		
+
 		if err := json.Unmarshal(body, &geocodingData); err != nil {
 			results[i].err = fmt.Errorf("parsing geocode response: %v", err)
 			continue
 		}
-		
+
 		if len(geocodingData.Results) == 0 {
 			results[i].err = fmt.Errorf("location not found")
 			continue
 		}
-		
+
 		loc := geocodingData.Results[0]
-		
+
 		// Build weather URL
 		weatherURL := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
 			loc.Latitude, loc.Longitude)
 		cityIndexMap[len(weatherURLs)] = i
 		weatherURLs = append(weatherURLs, weatherURL)
-		
+
 		// Store location info for later formatting
 		results[i].weather = fmt.Sprintf("%s, %s", loc.Name, loc.Country)
 	}
-	
+
 	// Fetch all weather data concurrently
 	if len(weatherURLs) > 0 {
 		weatherResponses := client.GetConcurrently(weatherURLs)
-		
+
 		for weatherIdx, resp := range weatherResponses {
 			cityIdx := cityIndexMap[weatherIdx]
-			
+
 			if resp.Error != nil {
 				results[cityIdx].err = fmt.Errorf("weather fetch failed: %v", resp.Error)
 				continue
 			}
-			
+
 			body, err := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			if err != nil {
 				results[cityIdx].err = fmt.Errorf("reading weather response: %v", err)
 				continue
 			}
-			
+
 			var weatherData struct {
 				Current struct {
 					Temperature         float64 `json:"temperature_2m"`
@@ -316,17 +316,17 @@ func fetchMultiWeatherConcurrent(cities []string) []weatherResult {
 					WeatherCode         int     `json:"weather_code"`
 				} `json:"current"`
 			}
-			
+
 			if err := json.Unmarshal(body, &weatherData); err != nil {
 				results[cityIdx].err = fmt.Errorf("parsing weather response: %v", err)
 				continue
 			}
-			
+
 			conditions := getWeatherCondition(weatherData.Current.WeatherCode)
-			
+
 			// Get location name from previous storage
 			locName := results[cityIdx].weather
-			
+
 			results[cityIdx].weather = fmt.Sprintf(`Weather in %s:
 Temperature: %.1f°C (feels like %.1f°C)
 Conditions: %s
@@ -340,7 +340,7 @@ Wind: %.1f km/h`,
 				weatherData.Current.WindSpeed)
 		}
 	}
-	
+
 	return results
 }
 
@@ -375,12 +375,12 @@ func getWeatherCondition(code int) string {
 		96: "Thunderstorm with slight hail",
 		99: "Thunderstorm with heavy hail",
 	}
-	
+
 	if condition, ok := conditions[code]; ok {
 		return condition
 	}
 	return "Unknown"
 }
 
-// main is required for TinyGo/WASM but remains empty
+// main is required for TinyGo/Wasm but remains empty
 func main() {}
