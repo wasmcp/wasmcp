@@ -1,0 +1,43 @@
+[package]
+name = "mcp-authorization"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Core dependencies
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+base64 = "0.22"
+thiserror = "2.0"
+
+# JWT validation
+jsonwebtoken = { version = "9.3", default-features = false, features = ["use_pem"] }
+sha2 = "0.10"
+hmac = "0.12"
+
+# HTTP client for JWKS fetching (wasi-compatible)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Time handling
+chrono = { version = "0.4", default-features = false, features = ["serde", "std", "clock"] }
+
+# Component model
+wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
+
+# Policy engine
+regorus = { version = "0.3", default-features = false, features = ["std"] }
+
+[package.metadata.component]
+package = "fastertools:mcp-authorization"
+
+[package.metadata.component.bindings]
+derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
+
+[package.metadata.component.target]
+path = "wit"
+
+[workspace]

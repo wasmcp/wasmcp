@@ -34,6 +34,7 @@ full = ["tools", "resources", "prompts", "sampling", "elicitation", "roots", "co
 
 # Transport features
 sse = []  # Server-Sent Events for subscriptions and notifications
+auth = []  # OAuth 2.0 authorization support
 
 # State management (future)
 # sessions = ["dep:wasi-keyvalue"]  # Stateful session support

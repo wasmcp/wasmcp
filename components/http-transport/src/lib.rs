@@ -24,6 +24,13 @@ use bindings::fastertools::mcp::{
     types::{McpError, ErrorCode},
 };
 
+// Authorization imports when feature is enabled
+#[cfg(feature = "auth")]
+use bindings::fastertools::mcp::{
+    authorization::{AuthRequest, AuthResponse},
+    oauth_discovery,
+};
+
 mod adapter;
 use adapter::WitMcpAdapter;
 
@@ -82,12 +89,31 @@ impl McpServer {
 
 #[spin_sdk::http_component]
 async fn handle_request(req: Request) -> Result<impl IntoResponse> {
-    let _path = req.uri();
+    let path = req.uri();
+    
+    // Handle OAuth discovery endpoints when auth is enabled
+    #[cfg(feature = "auth")]
+    {
+        if path == "/.well-known/oauth-protected-resource" {
+            return handle_resource_metadata();
+        }
+        if path == "/.well-known/oauth-authorization-server" {
+            return handle_server_metadata();
+        }
+    }
     
     // Handle SSE endpoint if enabled
     #[cfg(feature = "sse")]
-    if _path == "/mcp/sse" {
+    if path == "/mcp/sse" {
         return handle_sse_request(req).await;
+    }
+    
+    // Apply authorization if enabled
+    #[cfg(feature = "auth")]
+    {
+        if let Err(auth_error) = authorize_request(&req).await {
+            return Ok(create_auth_error_response(auth_error));
+        }
     }
     
     // Handle standard JSON-RPC endpoint
@@ -364,4 +390,121 @@ impl ErrorCode {
             ErrorCode::CustomCode(code) => *code,
         }
     }
+}
+
+// Authorization support functions
+#[cfg(feature = "auth")]
+async fn authorize_request(req: &Request) -> Result<(), McpError> {
+    // Extract bearer token from Authorization header
+    let token = req.headers()
+        .find(|(name, _)| name.eq_ignore_ascii_case("authorization"))
+        .and_then(|(_, value)| value.as_str())
+        .and_then(|auth| auth.strip_prefix("Bearer "))
+        .ok_or_else(|| McpError {
+            code: ErrorCode::Unauthorized,
+            message: "Missing or invalid Authorization header".to_string(),
+            data: None,
+        })?;
+    
+    // Collect request headers
+    let headers: Vec<(String, String)> = req.headers()
+        .map(|(name, value)| {
+            (name.to_string(), value.as_str().unwrap_or("").to_string())
+        })
+        .collect();
+    
+    // Build authorization request
+    let auth_request = AuthRequest {
+        token: token.to_string(),
+        method: req.method().to_string(),
+        path: req.uri().to_string(),
+        headers,
+        body: Some(req.body().to_vec()),
+        expected_issuer: std::env::var("MCP_EXPECTED_ISSUER").ok(),
+        expected_audience: std::env::var("MCP_EXPECTED_AUDIENCE").ok(),
+        jwks_uri: std::env::var("MCP_JWKS_URI").ok(),
+    };
+    
+    // Call the authorization component
+    match bindings::fastertools::mcp::authorization::authorize(&auth_request) {
+        AuthResponse::Authorized(_context) => Ok(()),
+        AuthResponse::Unauthorized(error) => Err(McpError {
+            code: if error.status == 403 {
+                ErrorCode::Unauthorized
+            } else {
+                ErrorCode::InvalidRequest
+            },
+            message: error.description,
+            data: error.www_authenticate,
+        }),
+    }
+}
+
+#[cfg(feature = "auth")]
+fn handle_resource_metadata() -> Result<impl IntoResponse> {
+    let metadata = oauth_discovery::get_resource_metadata();
+    let json = serde_json::json!({
+        "resource": metadata.resource,
+        "authorization_servers": metadata.authorization_servers,
+        "scopes_supported": metadata.scopes_supported,
+        "bearer_methods_supported": metadata.bearer_methods_supported,
+        "resource_documentation": metadata.resource_documentation,
+    });
+    
+    Ok(Response::builder()
+        .status(200)
+        .header("content-type", "application/json")
+        .header("access-control-allow-origin", "*")
+        .body(serde_json::to_string(&json)?)
+        .build())
+}
+
+#[cfg(feature = "auth")]
+fn handle_server_metadata() -> Result<impl IntoResponse> {
+    let metadata = oauth_discovery::get_server_metadata();
+    let json = serde_json::json!({
+        "issuer": metadata.issuer,
+        "authorization_endpoint": metadata.authorization_endpoint,
+        "token_endpoint": metadata.token_endpoint,
+        "jwks_uri": metadata.jwks_uri,
+        "response_types_supported": metadata.response_types_supported,
+        "grant_types_supported": metadata.grant_types_supported,
+        "code_challenge_methods_supported": metadata.code_challenge_methods_supported,
+        "scopes_supported": metadata.scopes_supported,
+        "token_endpoint_auth_methods_supported": metadata.token_endpoint_auth_methods_supported,
+        "service_documentation": metadata.service_documentation,
+        "registration_endpoint": metadata.registration_endpoint,
+    });
+    
+    Ok(Response::builder()
+        .status(200)
+        .header("content-type", "application/json")
+        .header("access-control-allow-origin", "*")
+        .body(serde_json::to_string(&json)?)
+        .build())
+}
+
+#[cfg(feature = "auth")]
+fn create_auth_error_response(error: McpError) -> Response {
+    let status = if error.code.into_code() == -32005 { 401 } else { 403 };
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "error": {
+            "code": error.code.into_code(),
+            "message": error.message,
+            "data": error.data
+        }
+    });
+    
+    let mut builder = Response::builder()
+        .status(status as u16)
+        .header("content-type", "application/json")
+        .header("access-control-allow-origin", "*");
+    
+    // Add WWW-Authenticate header if provided
+    if let Some(www_auth) = error.data {
+        builder = builder.header("www-authenticate", www_auth);
+    }
+    
+    builder.body(serde_json::to_string(&body).unwrap()).build()
 }
