@@ -5,9 +5,9 @@
 **Build MCP servers on the [WebAssembly Component Model](https://component-model.bytecodealliance.org/)**
 </div>
 
-This project represents the [Model Context Protocol 2025-06-18+](https://modelcontextprotocol.io/specification/2025-06-18) spec in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) language.
+[wit/](./wit/) expresses the [Model Context Protocol 2025-06-18+](https://modelcontextprotocol.io/specification/2025-06-18) spec in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) language.
 
-These types enable you to flexibly build secure, performant, polyglot abstractions for MCP implementations around WebAssembly components.
+These [published](https://github.com/orgs/fastertools/packages/container/package/mcp) types enable you to flexibly build secure, performant, polyglot abstractions for MCP implementations around WebAssembly components.
 
 Included is a useful  example architecture: Write MCP transports once, in one language, and plug in capabilities implemented in other languages. Like a "universal SDK" for MCP servers, where you can snap together transports and capabilities across languages like binary lego bricks.
 
