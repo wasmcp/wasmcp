@@ -1,0 +1,16 @@
+package fastertools:mcp@0.1.12;
+
+world authorization-component {
+    // Import types needed
+    import types;
+    
+    // Include WASI config imports world (just like wasmtime does)
+    include wasi:config/imports@0.2.0-draft;
+    
+    // Export authorization interfaces
+    export authorization;
+    export jwt-validator;
+    export policy-engine;
+    export oauth-discovery;
+    export mcp-authorization;
+}

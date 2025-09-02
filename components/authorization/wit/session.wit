@@ -1,0 +1,122 @@
+/// Session management and capability negotiation for MCP
+
+interface session {
+    use types.{mcp-error, meta-fields};
+
+    /// Protocol versions supported by MCP
+    /// These correspond to official MCP specification versions
+    enum protocol-version {
+        /// MCP 2024-11-05 specification
+        mcp-v20241105,
+        /// MCP 2025-03-26 specification
+        mcp-v20250326,
+        /// MCP 2025-06-18 specification  
+        mcp-v20250618,
+        /// Latest draft specification (DRAFT-2025-v3)
+        draft-v2025-v3,
+    }
+
+    /// Information about an MCP implementation
+    record implementation-info {
+        /// Implementation name (e.g., "weather-server")
+        name: string,
+        /// Implementation version (e.g., "1.0.0")
+        version: string,
+        /// Optional human-readable title
+        title: option<string>,
+    }
+
+    /// Capabilities that a client supports
+    record client-capabilities {
+        /// Experimental/custom capabilities
+        experimental: option<meta-fields>,
+        /// Support for roots (directory access)
+        roots: option<roots-capability>,
+        /// Support for LLM sampling
+        sampling: option<bool>,
+        /// Support for user elicitation
+        elicitation: option<bool>,
+    }
+
+    /// Capabilities that a server provides
+    record server-capabilities {
+        /// Experimental/custom capabilities
+        experimental: option<meta-fields>,
+        /// Server can send log messages
+        logging: option<bool>,
+        /// Server supports argument autocompletion
+        completions: option<bool>,
+        /// Server offers prompts
+        prompts: option<prompts-capability>,
+        /// Server offers resources
+        resources: option<resources-capability>,
+        /// Server offers tools
+        tools: option<tools-capability>,
+    }
+
+    /// Root listing capability details
+    record roots-capability {
+        /// Server will notify when roots list changes
+        list-changed: option<bool>,
+    }
+
+    /// Prompts capability details
+    record prompts-capability {
+        /// Server will notify when prompts list changes
+        list-changed: option<bool>,
+    }
+
+    /// Resources capability details
+    record resources-capability {
+        /// Server supports resource subscriptions
+        subscribe: option<bool>,
+        /// Server will notify when resource list changes
+        list-changed: option<bool>,
+    }
+
+    /// Tools capability details
+    record tools-capability {
+        /// Server will notify when tools list changes
+        list-changed: option<bool>,
+    }
+
+    /// Initialize request sent by client on connection
+    record initialize-request {
+        /// Protocol version the client supports
+        protocol-version: protocol-version,
+        /// Client's capabilities
+        capabilities: client-capabilities,
+        /// Client implementation details
+        client-info: implementation-info,
+        /// Optional metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Initialize response from server
+    record initialize-response {
+        /// Protocol version the server will use
+        protocol-version: protocol-version,
+        /// Server's capabilities
+        capabilities: server-capabilities,
+        /// Server implementation details
+        server-info: implementation-info,
+        /// Optional instructions for using the server
+        instructions: option<string>,
+        /// Optional metadata
+        meta: option<meta-fields>,
+    }
+
+    /// Session lifecycle operations
+    
+    /// Initialize the MCP session
+    initialize: func(request: initialize-request) -> result<initialize-response, mcp-error>;
+    
+    /// Notify server that initialization is complete
+    initialized: func() -> result<_, mcp-error>;
+    
+    /// Ping to check if connection is alive
+    ping: func() -> result<_, mcp-error>;
+    
+    /// Shutdown the session gracefully
+    shutdown: func() -> result<_, mcp-error>;
+}

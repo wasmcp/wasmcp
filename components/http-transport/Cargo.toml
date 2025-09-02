@@ -16,7 +16,7 @@ wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
 rmcp = { version = "0.5", default-features = false, features = ["server", "macros", "base64"] }
 
 [features]
-default = ["full"]
+default = ["tools", "auth"]
 
 # Capabilities - choose which capabilities this transport will support
 tools = []
@@ -34,6 +34,7 @@ full = ["tools", "resources", "prompts", "sampling", "elicitation", "roots", "co
 
 # Transport features
 sse = []  # Server-Sent Events for subscriptions and notifications
+auth = []  # OAuth 2.0 authorization support
 
 # State management (future)
 # sessions = ["dep:wasi-keyvalue"]  # Stateful session support
@@ -46,7 +47,12 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "fastertools:mcp"
-version = "0.1.10"
-world = "full-transport" # Should correspond with the enabled features 
+version = "0.1.12"
+# Note: Choose world based on features when building:
+# - tools only: tools-transport
+# - tools + auth: tools-auth-transport
+# - tools + resources + auth: tools-resources-auth-transport
+# - all features + auth: full-auth-transport
+world = "tools-auth-transport" # Use tools transport with auth 
 
 [workspace]

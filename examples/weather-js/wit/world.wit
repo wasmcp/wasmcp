@@ -2,5 +2,5 @@ package weather-js:provider;
 
 /// MCP tools for An MCP server written in JavaScript
 world weather-js {
-    export fastertools:mcp/tools-capabilities@0.1.10;
+    export fastertools:mcp/tools-capabilities@0.1.12;
 }

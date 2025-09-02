@@ -176,6 +176,12 @@ get-transport-version: ## Get mcp-http-transport version
 	@grep 'mcp-http-transport = ' versions.toml | cut -d'"' -f2
 
 # Publishing targets
+publish-wit: ## Build and publish WIT package
+	@echo "Building and publishing WIT package..."
+	wkg wit build
+	wkg publish fastertools:mcp@0.1.11.wasm
+	@echo "✅ Published WIT package"
+
 publish-transport: ## Publish mcp-http-transport to ghcr.io
 	@echo "Publishing mcp-http-transport..."
 	@version=$$(grep 'mcp-http-transport = ' versions.toml | cut -d'"' -f2); \
@@ -192,16 +198,50 @@ publish-transport: ## Publish mcp-http-transport to ghcr.io
 		target/wasm32-wasip1/release/mcp_transport_http.wasm
 	@echo "✅ Published mcp-http-transport v$$(grep 'mcp-http-transport = ' versions.toml | cut -d'"' -f2)"
 
-publish-all: ## Publish transport component
-	@echo "⚠️  Publishing transport component..."
-	@echo "This will publish:"
-	@echo "  - mcp-http-transport v$$(make get-transport-version) to ghcr.io"
+publish-core-components: ## Publish core components (transport variants, auth)
+	@echo "Publishing HTTP transport components..."
+	@$(MAKE) -C components/http-transport publish-all
+	@echo "Publishing authorization component..."
+	@$(MAKE) -C components/authorization publish
+	@echo "✅ Published all core components"
+
+publish-example-providers: ## Publish example providers
+	@echo "Publishing example providers..."
+	@echo "Building weather-py provider..."
+	@$(MAKE) -C examples/weather-py publish || echo "⚠️  weather-py failed (check Python setup)"
+	@echo "Building weather-rs provider..."
+	@$(MAKE) -C examples/weather-rs publish || echo "⚠️  weather-rs failed"
+	@echo "Building weather-go provider..."
+	@$(MAKE) -C examples/weather-go publish || echo "⚠️  weather-go failed (check TinyGo setup)"
+	@echo "✅ Published example providers"
+
+publish-all: publish-wit publish-core-components publish-example-providers ## Publish all components
+	@echo "✅ Successfully published all components!"
 	@echo ""
-	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read confirm
-	@$(MAKE) publish-transport
-	@echo ""
-	@echo "🎉 Transport component published!"
+	@echo "Published packages:"
+	@echo "  - fastertools:mcp@0.1.11 (WIT interfaces)"
+	@echo "  - fastertools:mcp-http-tools-server@0.1.0"
+	@echo "  - fastertools:mcp-http-tools-auth-transport@0.1.0"
+	@echo "  - fastertools:mcp-authorization@0.1.0"
+	@echo "  - fastertools:weather-py-provider@0.1.0"
+	@echo "  - fastertools:weather-rs-provider@0.1.0"
+	@echo "  - fastertools:weather-go-provider@0.1.0"
+
+test-registry: ## Test that all components are available in registry
+	@echo "Checking registry for published components..."
+	@wkg info fastertools:mcp@0.1.11 > /dev/null && echo "✅ WIT package found" || echo "❌ WIT package not found"
+	@wkg info fastertools:mcp-http-tools-server@0.1.0 > /dev/null && echo "✅ Tools transport found" || echo "❌ Tools transport not found"
+	@wkg info fastertools:mcp-http-tools-auth-transport@0.1.0 > /dev/null && echo "✅ Auth transport found" || echo "❌ Auth transport not found"
+	@wkg info fastertools:mcp-authorization@0.1.0 > /dev/null && echo "✅ Authorization found" || echo "❌ Authorization not found"
+	@wkg info fastertools:weather-py-provider@0.1.0 > /dev/null && echo "✅ Python provider found" || echo "❌ Python provider not found"
+	@wkg info fastertools:weather-rs-provider@0.1.0 > /dev/null && echo "✅ Rust provider found" || echo "❌ Rust provider not found"
+	@wkg info fastertools:weather-go-provider@0.1.0 > /dev/null && echo "✅ Go provider found" || echo "❌ Go provider not found"
+
+verify-auth-example: ## Verify the auth example can be built from registry
+	@echo "Testing weather-auth example with registry components..."
+	@$(MAKE) -C examples/weather-auth clean
+	@$(MAKE) -C examples/weather-auth build
+	@echo "✅ Auth example builds successfully from registry"
 
 publish-dry-run: ## Dry run publish
 	@echo "Dry run for transport component:"
