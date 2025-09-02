@@ -5,13 +5,11 @@
 **Build MCP servers on the [WebAssembly Component Model](https://component-model.bytecodealliance.org/)**
 </div>
 
-[wit/](./wit/) expresses the [Model Context Protocol 2025-06-18+](https://modelcontextprotocol.io/specification/2025-06-18) spec in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) language.
+[wit/](./wit/) expresses the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18) specification in [WIT](https://component-model.bytecodealliance.org/design/wit.html) (WebAssembly Interface Types).
 
-These [published](https://github.com/orgs/fastertools/packages/container/package/mcp) types let you write secure, efficient, polyglot abstractions for MCP implementations around WebAssembly components.
+These [published types](https://github.com/orgs/fastertools/packages/container/package/mcp) enable polyglot MCP implementations via WebAssembly components. Transport components can be written once and reused with capability providers in any language.
 
-Included is a useful  example architecture: Write MCP transports once, in one language, and plug in MCP capabilities implemented in other languages. Like a "universal SDK" for MCP servers, where you can snap together transports and capabilities across languages like binary lego bricks.
-
-The composition process (`provider + transport = mcp-http-server.wasm`) produces a functional MCP server as a standalone Wasm component binary. You can run it on any runtime that supports the component model. Some examples are [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/spinframework/spin), [wasmCloud](https://github.com/wasmCloud/wasmCloud) or the many emerging platforms and runtimes that are adopting this broad-reaching architecture for building interoperable WebAssembly libraries, applications, and environments.
+The composition process (`provider + transport = mcp-http-server.wasm`) produces a standalone MCP server that runs on any component model runtime: [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/spinframework/spin), [wasmCloud](https://github.com/wasmCloud/wasmCloud), and others.
 
 ## Quick start
 
