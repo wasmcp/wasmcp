@@ -139,7 +139,7 @@ serve-auth: ## Serve already built mcp-http-auth-server.wasm with OAuth
 				-Sconfig-var="jwt.expected_audience=$$JWT_AUDIENCE" \
 				-Sconfig-var="jwt.jwks_uri=$$JWT_JWKS_URI" \
 				-Sconfig-var="oauth.resource_url=http://0.0.0.0:8080/mcp" \
-				mcp-http-auth-server.wasm; \
+				$(MCP_AUTH_SERVER_WASM); \
 		else \
 			echo "Using default test configuration. Set these environment variables to override:"; \
 			echo "  JWT_ISSUER    - OAuth issuer URL (e.g., https://your-domain.authkit.app)"; \
@@ -150,7 +150,7 @@ serve-auth: ## Serve already built mcp-http-auth-server.wasm with OAuth
 				-Sconfig-var="jwt.expected_issuer=https://test.example.com/" \
 				-Sconfig-var="jwt.expected_audience=https://mcp.example.com" \
 				-Sconfig-var="oauth.resource_url=http://0.0.0.0:8080/mcp" \
-				mcp-http-auth-server.wasm; \
+				$(MCP_AUTH_SERVER_WASM); \
 		fi \
 	else \
 		echo "Error: wasmtime is required for auth mode (WASI config support)."; \

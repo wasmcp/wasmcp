@@ -201,21 +201,21 @@ test-tools: ## Test tools/list endpoint
 
 test-echo: ## Test echo tool
 	@echo "Testing echo tool..."
-	@echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello from Go!"}},"id":3}' | \
+	@echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello World"}},"id":3}' | \
 		curl -s -X POST http://localhost:8080/mcp \
 		-H "Content-Type: application/json" \
 		-d @- | python3 -m json.tool
 
 test-weather: ## Test weather tool
 	@echo "Testing get_weather tool..."
-	@echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather","arguments":{"location":"Tokyo"}},"id":4}' | \
+	@echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather","arguments":{"location":"London"}},"id":4}' | \
 		curl -s -X POST http://localhost:8080/mcp \
 		-H "Content-Type: application/json" \
 		-d @- | python3 -m json.tool
 
 test-multi: ## Test multi_weather tool
 	@echo "Testing multi_weather tool..."
-	@echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"multi_weather","arguments":{"cities":["Tokyo","London","New York"]}},"id":5}' | \
+	@echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"multi_weather","arguments":{"cities":["London","Paris","Berlin"]}},"id":5}' | \
 		curl -s -X POST http://localhost:8080/mcp \
 		-H "Content-Type: application/json" \
 		-d @- | python3 -m json.tool
