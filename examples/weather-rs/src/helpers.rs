@@ -155,17 +155,8 @@ macro_rules! register_tools {
             }
             
             fn get_auth_config() -> Option<$crate::bindings::fastertools::mcp::authorization::ProviderAuthConfig> {
-                // Toggle authentication by commenting/uncommenting the line below:
-                // return None;  // <- Uncomment this line to disable auth
-                
-                // Enable OAuth 2.0 authentication
-                Some($crate::bindings::fastertools::mcp::authorization::ProviderAuthConfig {
-                    expected_issuer: "https://divine-lion-50-staging.authkit.app".to_string(),
-                    expected_audiences: vec!["client_01JZM53FW3WYV08AFC4QWQ3BNB".to_string()],
-                    jwks_uri: "https://divine-lion-50-staging.authkit.app/oauth2/jwks".to_string(),
-                    policy: None,  // No additional Rego policy for now
-                    policy_data: None,
-                })
+                // Delegate to the auth_config function in lib.rs
+                $crate::auth_config()
             }
         }
         

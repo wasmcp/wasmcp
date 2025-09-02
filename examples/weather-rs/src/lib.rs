@@ -11,11 +11,46 @@ mod bindings;
 #[macro_use]
 mod helpers;
 
+use bindings::fastertools::mcp::authorization::ProviderAuthConfig;
+
 use futures::future::join_all;
 use helpers::{parse_args, text_result, IntoToolResult, McpError, Tool, ToolResult};
 use serde::Deserialize;
 use serde_json::json;
 use spin_sdk::http::{send, Request, Response};
+
+// ==============================================================================
+// AUTHENTICATION CONFIGURATION
+// ==============================================================================
+
+/// OAuth 2.0 authentication configuration.
+/// 
+/// To enable authentication:
+/// 1. Uncomment the auth_config() function below
+/// 2. Replace the placeholder values with your actual OAuth provider details
+/// 3. Run `make build` to rebuild with authentication enabled
+/// 
+/// To disable authentication:
+/// - Comment out the auth_config() function or have it return None
+pub fn auth_config() -> Option<ProviderAuthConfig> {
+    // Uncomment and configure the lines below to enable OAuth 2.0 authentication:
+    /*
+    Some(ProviderAuthConfig {
+        expected_issuer: "https://your-auth-domain.example.com".to_string(),
+        expected_audiences: vec!["your-client-id".to_string()],
+        jwks_uri: "https://your-auth-domain.example.com/oauth2/jwks".to_string(),
+        policy: None,  // Optional: Add Rego policy as a string for additional authorization rules
+        policy_data: None,  // Optional: Add policy data as JSON string
+    })
+    */
+    
+    // Authentication disabled by default - return None for no auth
+    None
+}
+
+// ==============================================================================
+// MCP PROVIDER IMPLEMENTATION
+// ==============================================================================
 
 /// The main component struct required by the WIT bindings.
 pub struct Component;
