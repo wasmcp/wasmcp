@@ -5,7 +5,7 @@
 **Build MCP servers on the [WebAssembly Component Model](https://component-model.bytecodealliance.org/)**
 </div>
 
-[wit/](./wit/) expresses the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18) specification in [WIT](https://component-model.bytecodealliance.org/design/wit.html) (WebAssembly Interface Types).
+[wit/](./wit/) expresses the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18) specification in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (WebAssembly Interface Type) language.
 
 These [published types](https://github.com/orgs/fastertools/packages/container/package/mcp) enable polyglot MCP implementations via WebAssembly components. Transport components can be written once and reused with capability providers in any language.
 
