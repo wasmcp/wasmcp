@@ -171,8 +171,3 @@ test-auth-discovery: ## Test OAuth discovery endpoints
 	@echo ""
 	@echo "Testing OAuth authorization server metadata..."
 	@curl -s http://localhost:8080/.well-known/oauth-authorization-server | python3 -m json.tool
-
-publish: ## Build and publish provider component to registry
-	@echo "Publishing weather-js provider to registry..."
-	wkg publish --package '$(PROVIDER_PKG)' $(PROVIDER_WASM)
-	@echo "✅ Published $(PROVIDER_PKG)"

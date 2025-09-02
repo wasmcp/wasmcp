@@ -10,9 +10,6 @@ TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.1.0
 TRANSPORT_AUTH_PKG = fastertools:mcp-transport-http-tools-auth@0.1.0
 AUTH_PKG = fastertools:mcp-authorization@0.1.0
 
-# Provider package for publishing
-PROVIDER_PKG = fastertools:weather_ts-provider@0.1.0
-
 help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
@@ -178,8 +175,3 @@ test-auth-discovery: ## Test OAuth discovery endpoints
 	@echo ""
 	@echo "Testing OAuth authorization server metadata..."
 	@curl -s http://localhost:8080/.well-known/oauth-authorization-server | python3 -m json.tool
-
-publish: ## Build and publish provider component to registry
-	@echo "Publishing weather-ts provider to registry..."
-	wkg publish --package '$(PROVIDER_PKG)' $(PROVIDER_WASM)
-	@echo "✅ Published $(PROVIDER_PKG)"

@@ -10,12 +10,8 @@ TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.1.0
 TRANSPORT_AUTH_PKG = fastertools:mcp-transport-http-tools-auth@0.1.0
 AUTH_PKG = fastertools:mcp-authorization@0.1.0
 
-# Provider package for publishing
-PROVIDER_PKG = fastertools:weather_go-provider@0.1.0
-
 # Go/TinyGo configuration
 TINYGO = tinygo
-WASM_TOOLS = wasm-tools
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -31,10 +27,6 @@ deps-check: ## Check if required tools are installed
 	@echo "Checking for required tools..."
 	@which $(TINYGO) > /dev/null || { \
 		echo "❌ TinyGo not found. Please install from: https://tinygo.org/getting-started/"; \
-		exit 1; \
-	}
-	@which $(WASM_TOOLS) > /dev/null || { \
-		echo "❌ wasm-tools not found. Please install from: https://github.com/bytecodealliance/wasm-tools/releases"; \
 		exit 1; \
 	}
 	@which wkg > /dev/null || { \
@@ -243,17 +235,3 @@ test-auth-discovery: ## Test OAuth discovery endpoints
 	@echo ""
 	@echo "Testing OAuth authorization server metadata..."
 	@curl -s http://localhost:8080/.well-known/oauth-authorization-server | python3 -m json.tool
-
-publish: build-provider ## Build and publish provider component to registry
-	@echo "Publishing weather-go provider to registry..."
-	wkg publish --package '$(PROVIDER_PKG)' $(PROVIDER_WASM)
-	@echo "✅ Published $(PROVIDER_PKG)"
-
-# Component introspection
-inspect: ## Inspect the built component
-	@if [ -f $(MCP_SERVER_WASM) ]; then \
-		echo "Component exports:"; \
-		$(WASM_TOOLS) component wit $(MCP_SERVER_WASM) | head -20; \
-	else \
-		echo "Component not built yet. Run 'make build' first."; \
-	fi
