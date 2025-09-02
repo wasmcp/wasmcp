@@ -4,9 +4,7 @@ use serde_json::{json, Value};
 
 // Use rmcp types for protocol compliance
 use rmcp::model::{
-    ServerInfo,
-    InitializeRequestParam, ServerCapabilities as RmcpServerCapabilities,
-    Implementation, ProtocolVersion,
+    InitializeRequestParam,
 };
 
 #[cfg(feature = "tools")]
@@ -46,45 +44,6 @@ impl McpServer {
         }
     }
     
-    /// Get server info using rmcp types for client compatibility
-    fn get_server_info(&self) -> Result<ServerInfo> {
-        Ok(ServerInfo {
-            protocol_version: ProtocolVersion::default(),
-            capabilities: RmcpServerCapabilities {
-                #[cfg(feature = "tools")]
-                tools: Some(rmcp::model::ToolsCapability {
-                    list_changed: Some(false),
-                }),
-                #[cfg(not(feature = "tools"))]
-                tools: None,
-                
-                #[cfg(feature = "resources")]
-                resources: Some(rmcp::model::ResourcesCapability {
-                    #[cfg(feature = "sse")]
-                    subscribe: Some(true),
-                    #[cfg(not(feature = "sse"))]
-                    subscribe: None,
-                    list_changed: Some(false),
-                }),
-                #[cfg(not(feature = "resources"))]
-                resources: None,
-                
-                #[cfg(feature = "prompts")]
-                prompts: Some(rmcp::model::PromptsCapability {
-                    list_changed: Some(false),
-                }),
-                #[cfg(not(feature = "prompts"))]
-                prompts: None,
-                
-                ..Default::default()
-            },
-            server_info: Implementation {
-                name: "wasmcp-server".to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-            },
-            instructions: None,
-        })
-    }
 }
 
 #[spin_sdk::http_component]
@@ -193,28 +152,75 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
     match method {
         // Core methods - always available
         "initialize" => {
-            // Use rmcp type for deserialization
-            let _params: InitializeRequestParam = if let Some(p) = params {
-                serde_json::from_value(p).map_err(|e| McpError {
+            // Convert JSON-RPC params to WIT request
+            let wit_request = if let Some(p) = params {
+                // Parse the incoming params
+                let params: InitializeRequestParam = serde_json::from_value(p).map_err(|e| McpError {
                     code: ErrorCode::InvalidParams,
                     message: format!("Invalid params: {}", e),
                     data: None,
-                })?
+                })?;
+                
+                // Convert to WIT types - would need proper conversion here
+                // For now, create a minimal request
+                bindings::fastertools::mcp::session::InitializeRequest {
+                    protocol_version: bindings::fastertools::mcp::session::ProtocolVersion::McpV20250618,
+                    capabilities: bindings::fastertools::mcp::session::ClientCapabilities {
+                        experimental: None,
+                        roots: None,
+                        sampling: None,
+                        elicitation: None,
+                    },
+                    client_info: bindings::fastertools::mcp::session::ImplementationInfo {
+                        name: params.client_info.name,
+                        version: params.client_info.version,
+                        title: None,
+                    },
+                    meta: None,
+                }
             } else {
-                InitializeRequestParam::default()
+                // Default request
+                bindings::fastertools::mcp::session::InitializeRequest {
+                    protocol_version: bindings::fastertools::mcp::session::ProtocolVersion::McpV20250618,
+                    capabilities: bindings::fastertools::mcp::session::ClientCapabilities {
+                        experimental: None,
+                        roots: None,
+                        sampling: None,
+                        elicitation: None,
+                    },
+                    client_info: bindings::fastertools::mcp::session::ImplementationInfo {
+                        name: "unknown".to_string(),
+                        version: "0.0.0".to_string(),
+                        title: None,
+                    },
+                    meta: None,
+                }
             };
             
-            let server_info = server.get_server_info().map_err(|e| McpError {
+            // Call the provider's core-capabilities
+            let response = bindings::fastertools::mcp::core_capabilities::handle_initialize(&wit_request)?;
+            
+            // Convert WIT response back to rmcp/JSON format
+            let result = server.adapter.convert_initialize_to_rmcp(response).map_err(|e| McpError {
                 code: ErrorCode::InternalError,
                 message: e.to_string(),
                 data: None,
             })?;
-            Ok(serde_json::to_value(server_info).unwrap())
+            Ok(serde_json::to_value(result).unwrap())
         },
         
-        "initialized" | "notifications/initialized" => Ok(Value::Null),
-        "ping" => Ok(json!({})),
-        "shutdown" => Ok(json!({})),
+        "initialized" | "notifications/initialized" => {
+            bindings::fastertools::mcp::core_capabilities::handle_initialized()?;
+            Ok(Value::Null)
+        },
+        "ping" => {
+            bindings::fastertools::mcp::core_capabilities::handle_ping()?;
+            Ok(json!({}))
+        },
+        "shutdown" => {
+            bindings::fastertools::mcp::core_capabilities::handle_shutdown()?;
+            Ok(json!({}))
+        },
         
         // Tools methods - only if feature enabled
         #[cfg(feature = "tools")]
@@ -426,16 +432,21 @@ async fn authorize_request(req: &Request) -> Result<(), McpError> {
         })
         .collect();
     
-    // Build authorization request
+    // Get auth configuration from the provider (REQUIRED when auth is enabled)
+    let provider_config = bindings::fastertools::mcp::auth_config::get_auth_config();
+    
+    // Build authorization request with provider's required configuration
     let auth_request = AuthRequest {
         token: token.to_string(),
         method: req.method().to_string(),
         path: req.uri().to_string(),
         headers,
         body: Some(req.body().to_vec()),
-        expected_issuer: std::env::var("MCP_EXPECTED_ISSUER").ok(),
-        expected_audience: std::env::var("MCP_EXPECTED_AUDIENCE").ok(),
-        jwks_uri: std::env::var("MCP_JWKS_URI").ok(),
+        expected_issuer: provider_config.expected_issuer,
+        expected_audiences: provider_config.expected_audiences,
+        jwks_uri: provider_config.jwks_uri,
+        policy: provider_config.policy,
+        policy_data: provider_config.policy_data,
     };
     
     // Call the authorization component

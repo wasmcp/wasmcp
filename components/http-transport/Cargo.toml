@@ -1,6 +1,6 @@
 [package]
 name = "mcp_transport_http"
-version = "0.1.0"
+version = "0.1.3"
 edition = "2021"
 
 [lib]
@@ -16,7 +16,7 @@ wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
 rmcp = { version = "0.5", default-features = false, features = ["server", "macros", "base64"] }
 
 [features]
-default = ["tools", "auth"]
+default = ["tools"]
 
 # Capabilities - choose which capabilities this transport will support
 tools = []
@@ -47,12 +47,12 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "fastertools:mcp"
-version = "0.1.12"
+version = "0.1.16"
 # Note: Choose world based on features when building:
 # - tools only: tools-transport
 # - tools + auth: tools-auth-transport
 # - tools + resources + auth: tools-resources-auth-transport
 # - all features + auth: full-auth-transport
-world = "tools-auth-transport" # Use tools transport with auth 
+world = "tools-transport" 
 
 [workspace]

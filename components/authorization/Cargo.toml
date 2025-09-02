@@ -1,6 +1,6 @@
 [package]
 name = "mcp-authorization"
-version = "0.1.0"
+version = "0.1.3"
 edition = "2021"
 
 [lib]
@@ -39,10 +39,8 @@ package = "fastertools:mcp"
 derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
-path = "wit"
-world = "authorization-component"
-
-[package.metadata.component.target.dependencies]
-"wasi:config" = { path = "wit/deps/config" }
+package = "fastertools:mcp"
+version = "0.1.16"
+world = "authorization-provider"
 
 [workspace]

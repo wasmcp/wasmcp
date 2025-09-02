@@ -1,6 +1,26 @@
 /// Authorization and authentication interfaces for MCP servers
 /// Provides JWT validation, OAuth discovery, and policy-based authorization
 
+/// Auth configuration that providers can export
+interface auth-config {
+    /// Provider declares its authentication requirements
+    record provider-auth-config {
+        /// Expected JWT issuer (REQUIRED for auth)
+        expected-issuer: string,
+        /// Expected JWT audiences (REQUIRED for auth - must have at least one)
+        expected-audiences: list<string>,
+        /// JWKS URI for key discovery (REQUIRED for auth)
+        jwks-uri: string,
+        /// Optional Rego policy for authorization
+        policy: option<string>,
+        /// Optional data for policy evaluation
+        policy-data: option<string>,
+    }
+    
+    /// Provider returns its auth configuration
+    get-auth-config: func() -> provider-auth-config;
+}
+
 interface authorization {
     use types.{mcp-error, json-value, meta-fields};
     
@@ -37,11 +57,15 @@ interface authorization {
         /// Request body for policy evaluation (e.g., MCP JSON-RPC payload)
         body: option<list<u8>>,
         /// Expected issuer for validation
-        expected-issuer: option<string>,
-        /// Expected audience for validation  
-        expected-audience: option<string>,
+        expected-issuer: string,
+        /// Expected audiences for validation (token must match at least one)
+        expected-audiences: list<string>,
         /// JWKS URI for key discovery
-        jwks-uri: option<string>,
+        jwks-uri: string,
+        /// Optional Rego policy to evaluate (if not provided, allows all authenticated requests)
+        policy: option<string>,
+        /// Optional data for policy evaluation (JSON string)
+        policy-data: option<string>,
     }
     
     /// Authorization response - either authorized with context or unauthorized with error
@@ -155,12 +179,12 @@ interface jwt-validator {
     record jwt-request {
         /// JWT token to validate
         token: string,
-        /// Expected issuer (if not specified, any issuer is accepted)
-        expected-issuer: option<string>,
-        /// Expected audience (if not specified, audience is not validated)
-        expected-audience: option<string>,
+        /// Expected issuer
+        expected-issuer: string,
+        /// Expected audiences (token must match at least one)
+        expected-audiences: list<string>,
         /// JWKS URI for fetching public keys
-        jwks-uri: option<string>,
+        jwks-uri: string,
         /// Optional JWKS JSON for offline validation
         jwks-json: option<string>,
         /// Validate token expiration (default: true)

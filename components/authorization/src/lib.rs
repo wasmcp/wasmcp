@@ -2,9 +2,6 @@ mod jwt;
 mod policy;
 mod discovery;
 mod mcp;
-mod config;
-
-use config::{get_config, ConfigKeys};
 
 // Component bindings will be generated here
 #[allow(warnings)]
@@ -35,27 +32,19 @@ struct Component;
 /// Authorization implementation
 impl AuthGuest for Component {
     fn authorize(request: AuthRequest) -> AuthResponse {
-        // Get configuration from WASI config runtime
-        // Use values from request as fallback if not configured
-        let expected_issuer = get_config(ConfigKeys::EXPECTED_ISSUER)
-            .or(request.expected_issuer.clone())
-            .or_else(|| Some("https://test.example.com/".to_string()));
-        let expected_audience = get_config(ConfigKeys::EXPECTED_AUDIENCE)
-            .or(request.expected_audience.clone())
-            .or_else(|| Some("https://mcp.example.com".to_string()));
-        let jwks_uri = get_config(ConfigKeys::JWKS_URI)
-            .or(request.jwks_uri.clone());
+        // All configuration comes from the request (required fields)
+        let expected_issuer = request.expected_issuer.clone();
+        let expected_audiences = request.expected_audiences.clone();
+        let jwks_uri = request.jwks_uri.clone();
         
-        // Get validation leeway from config (default to 60 seconds)
-        let clock_skew = get_config(ConfigKeys::VALIDATION_LEEWAY)
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(60);
+        // Default clock skew to 60 seconds
+        let clock_skew = 60;
         
         // First validate the JWT token
         let jwt_request = JwtRequest {
             token: request.token.clone(),
             expected_issuer,
-            expected_audience,
+            expected_audiences,
             jwks_uri,
             jwks_json: None,
             validate_exp: Some(true),
@@ -111,11 +100,11 @@ impl AuthGuest for Component {
                         "mcp": parse_mcp_context(&json_value),
                     });
 
-                    // Check if we have a policy configured (via environment or default)
-                    if let Some(policy) = get_configured_policy() {
+                    // If policy is provided, evaluate it
+                    if let Some(policy) = request.policy.clone() {
                         let policy_request = PolicyRequest {
                             policy,
-                            data: get_configured_policy_data(),
+                            data: request.policy_data.clone(),
                             input: serde_json::to_string(&policy_input).unwrap(),
                             query: Some("data.mcp.authorization.allow".to_string()),
                         };
@@ -142,6 +131,7 @@ impl AuthGuest for Component {
                             }
                         }
                     }
+                    // If no policy provided, allow all authenticated requests
                 }
             }
         }
@@ -262,77 +252,6 @@ fn parse_mcp_context(json: &serde_json::Value) -> serde_json::Value {
     }
 }
 
-fn get_configured_policy() -> Option<String> {
-    // Check policy mode from config
-    let mode = get_config(ConfigKeys::POLICY_MODE).unwrap_or_else(|| "default".to_string());
-    
-    match mode.as_str() {
-        "none" => None, // No policy enforcement
-        "custom" => {
-            // Custom policy mode - requires policy to be provided via config
-            // Note: In a component model environment, we cannot read files directly
-            // The policy must be provided as a configuration value
-            if let Some(policy_content) = get_config(ConfigKeys::POLICY_CONTENT) {
-                Some(policy_content)
-            } else {
-                eprintln!("Custom policy mode requires 'policy.content' configuration");
-                eprintln!("Falling back to default permissive policy");
-                // Fall back to default permissive policy
-                Some(r#"
-                    package mcp.authorization
-                    
-                    # Default to allow for authenticated users
-                    default allow = true
-                "#.to_string())
-            }
-        }
-        "rbac" => {
-            // Return RBAC policy
-            Some(r#"
-                package mcp.authorization
-                
-                default allow = false
-                
-                # RBAC-based authorization
-                allow if {
-                    input.token.scopes[_] == "admin"
-                }
-                
-                allow if {
-                    input.mcp.method == "tools/list"
-                    input.token.scopes[_] == "read"
-                }
-                
-                allow if {
-                    input.mcp.method == "tools/call"
-                    input.token.scopes[_] == "execute"
-                }
-            "#.to_string())
-        }
-        _ => {
-            // Default permissive policy - allow all authenticated users
-            Some(r#"
-                package mcp.authorization
-                
-                # Default to allow for authenticated users
-                default allow = true
-                
-                # This permissive policy allows all authenticated requests
-                # The JWT validation already ensures:
-                # - Valid signature from JWKS
-                # - Correct issuer
-                # - Correct audience
-                # - Not expired
-                # If you need more restrictions, set policy.mode to "rbac" or "custom"
-            "#.to_string())
-        }
-    }
-}
-
-fn get_configured_policy_data() -> Option<String> {
-    // Optional external data for policy evaluation
-    None
-}
 
 // Export the component - this generates the WebAssembly exports
 bindings::export!(Component with_types_in bindings);

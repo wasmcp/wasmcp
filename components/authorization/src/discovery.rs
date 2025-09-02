@@ -1,23 +1,13 @@
 use crate::bindings::exports::fastertools::mcp::oauth_discovery::{
     ResourceMetadata, ServerMetadata,
 };
-use crate::config::{get_config, ConfigKeys};
 
 /// Get OAuth 2.0 Protected Resource Metadata
-/// This should be customized based on deployment configuration
+/// Returns hardcoded values - the transport should provide actual values
 pub fn get_resource_metadata() -> ResourceMetadata {
-    // Get values from WASI config runtime
-    let resource_url = get_config(ConfigKeys::RESOURCE_URL)
-        .unwrap_or_else(|| "https://mcp.example.com".to_string());
-    
-    // Use JWT issuer as the authorization server (AuthKit domain)
-    let auth_server = get_config(ConfigKeys::EXPECTED_ISSUER)
-        .or_else(|| get_config(ConfigKeys::AUTH_SERVER))
-        .unwrap_or_else(|| "https://auth.example.com".to_string());
-    
     ResourceMetadata {
-        resource_url,
-        authorization_servers: vec![auth_server],
+        resource_url: "https://mcp.example.com".to_string(),
+        authorization_servers: vec!["https://auth.example.com".to_string()],
         scopes_supported: Some(vec![
             "mcp:tools:read".to_string(),
             "mcp:tools:write".to_string(),
@@ -31,27 +21,13 @@ pub fn get_resource_metadata() -> ResourceMetadata {
 }
 
 /// Get OAuth 2.0 Authorization Server Metadata
-/// This provides discovery information about the authorization server
+/// Returns hardcoded values - the transport should provide actual values
 pub fn get_server_metadata() -> ServerMetadata {
-    // Use JWT issuer as the base for OAuth endpoints (AuthKit domain)
-    // This allows using a single config value for both JWT validation and OAuth discovery
-    let issuer = get_config(ConfigKeys::EXPECTED_ISSUER)
-        .or_else(|| get_config(ConfigKeys::AUTH_ISSUER))
-        .unwrap_or_else(|| "https://auth.example.com".to_string());
-    
-    // AuthKit uses standard OAuth 2.0 endpoints
-    let auth_endpoint = get_config(ConfigKeys::AUTH_ENDPOINT)
-        .unwrap_or_else(|| format!("{}/oauth2/authorize", issuer));
-    
-    let token_endpoint = get_config(ConfigKeys::TOKEN_ENDPOINT)
-        .unwrap_or_else(|| format!("{}/oauth2/token", issuer));
-    
-    // Use the configured JWKS URI or construct from issuer
-    let jwks_uri = get_config(ConfigKeys::JWKS_URI)
-        .unwrap_or_else(|| format!("{}/oauth2/jwks", issuer));
-    
-    let registration_endpoint = get_config(ConfigKeys::REGISTRATION_ENDPOINT)
-        .or_else(|| Some(format!("{}/oauth2/register", issuer)));
+    let issuer = "https://auth.example.com".to_string();
+    let auth_endpoint = format!("{}/oauth2/authorize", issuer);
+    let token_endpoint = format!("{}/oauth2/token", issuer);
+    let jwks_uri = format!("{}/oauth2/jwks", issuer);
+    let registration_endpoint = Some(format!("{}/oauth2/register", issuer));
     
     ServerMetadata {
         issuer,

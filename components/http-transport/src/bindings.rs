@@ -1100,7 +1100,7 @@ pub mod fastertools {
                     };
                     let ptr16 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.12")]
+                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.16")]
                     unsafe extern "C" {
                         #[link_name = "initialize"]
                         fn wit_import17(_: *mut u8, _: *mut u8);
@@ -1596,7 +1596,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.12")]
+                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.16")]
                     unsafe extern "C" {
                         #[link_name = "initialized"]
                         fn wit_import1(_: *mut u8);
@@ -1710,7 +1710,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.12")]
+                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.16")]
                     unsafe extern "C" {
                         #[link_name = "ping"]
                         fn wit_import1(_: *mut u8);
@@ -1824,7 +1824,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.12")]
+                    #[link(wasm_import_module = "fastertools:mcp/session@0.1.16")]
                     unsafe extern "C" {
                         #[link_name = "shutdown"]
                         fn wit_import1(_: *mut u8);
@@ -2914,7 +2914,7 @@ pub mod fastertools {
                     };
                     let ptr67 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/notifications@0.1.12")]
+                    #[link(wasm_import_module = "fastertools:mcp/notifications@0.1.16")]
                     unsafe extern "C" {
                         #[link_name = "send-notification"]
                         fn wit_import68(
@@ -3080,7 +3080,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/notifications@0.1.12")]
+                    #[link(wasm_import_module = "fastertools:mcp/notifications@0.1.16")]
                     unsafe extern "C" {
                         #[link_name = "set-log-level"]
                         fn wit_import1(_: i32, _: *mut u8);
@@ -3178,546 +3178,667 @@ pub mod fastertools {
                 }
             }
         }
-        /// Authorization and authentication interfaces for MCP servers
-        /// Provides JWT validation, OAuth discovery, and policy-based authorization
+        /// Core capabilities interface that all MCP implementations must provide
+        /// This contains only the essential session management functions
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod authorization {
+        pub mod core_capabilities {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type MetaFields = super::super::super::fastertools::mcp::types::MetaFields;
-            /// Authorization context passed between components after successful authentication
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct AuthContext {
-                /// OAuth client ID that made the request
-                pub client_id: Option<_rt::String>,
-                /// Subject (user ID) from the token
-                pub user_id: Option<_rt::String>,
-                /// OAuth scopes granted to this token
-                pub scopes: _rt::Vec<_rt::String>,
-                /// Token issuer URL
-                pub issuer: Option<_rt::String>,
-                /// Audience claim from token
-                pub audience: Option<_rt::String>,
-                /// Additional claims from token as key-value pairs
-                pub claims: MetaFields,
-                /// Expiration timestamp (Unix seconds)
-                pub exp: Option<u64>,
-                /// Issued at timestamp (Unix seconds)
-                pub iat: Option<u64>,
-            }
-            impl ::core::fmt::Debug for AuthContext {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("AuthContext")
-                        .field("client-id", &self.client_id)
-                        .field("user-id", &self.user_id)
-                        .field("scopes", &self.scopes)
-                        .field("issuer", &self.issuer)
-                        .field("audience", &self.audience)
-                        .field("claims", &self.claims)
-                        .field("exp", &self.exp)
-                        .field("iat", &self.iat)
-                        .finish()
-                }
-            }
-            /// Authorization request containing all context needed for authorization decisions
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct AuthRequest {
-                /// Bearer token extracted from Authorization header
-                pub token: _rt::String,
-                /// HTTP method (GET, POST, etc.)
-                pub method: _rt::String,
-                /// Request path
-                pub path: _rt::String,
-                /// Request headers as key-value pairs
-                pub headers: _rt::Vec<(_rt::String, _rt::String)>,
-                /// Request body for policy evaluation (e.g., MCP JSON-RPC payload)
-                pub body: Option<_rt::Vec<u8>>,
-                /// Expected issuer for validation
-                pub expected_issuer: Option<_rt::String>,
-                /// Expected audience for validation
-                pub expected_audience: Option<_rt::String>,
-                /// JWKS URI for key discovery
-                pub jwks_uri: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for AuthRequest {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("AuthRequest")
-                        .field("token", &self.token)
-                        .field("method", &self.method)
-                        .field("path", &self.path)
-                        .field("headers", &self.headers)
-                        .field("body", &self.body)
-                        .field("expected-issuer", &self.expected_issuer)
-                        .field("expected-audience", &self.expected_audience)
-                        .field("jwks-uri", &self.jwks_uri)
-                        .finish()
-                }
-            }
-            /// Authorization error details for proper OAuth 2.0 error responses
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct AuthError {
-                /// HTTP status code (401, 403, etc.)
-                pub status: u16,
-                /// OAuth error code (invalid_token, insufficient_scope, etc.)
-                pub error_code: _rt::String,
-                /// Human-readable error description
-                pub description: _rt::String,
-                /// WWW-Authenticate header value for 401 responses
-                pub www_authenticate: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for AuthError {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("AuthError")
-                        .field("status", &self.status)
-                        .field("error-code", &self.error_code)
-                        .field("description", &self.description)
-                        .field("www-authenticate", &self.www_authenticate)
-                        .finish()
-                }
-            }
-            impl ::core::fmt::Display for AuthError {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    write!(f, "{:?}", self)
-                }
-            }
-            impl std::error::Error for AuthError {}
-            /// Authorization response - either authorized with context or unauthorized with error
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub enum AuthResponse {
-                /// Request is authorized, includes auth context for downstream use
-                Authorized(AuthContext),
-                /// Request is unauthorized, includes error details for response
-                Unauthorized(AuthError),
-            }
-            impl ::core::fmt::Debug for AuthResponse {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    match self {
-                        AuthResponse::Authorized(e) => {
-                            f.debug_tuple("AuthResponse::Authorized").field(e).finish()
-                        }
-                        AuthResponse::Unauthorized(e) => {
-                            f.debug_tuple("AuthResponse::Unauthorized").field(e).finish()
-                        }
-                    }
-                }
-            }
+            pub type McpError = super::super::super::fastertools::mcp::types::McpError;
+            pub type InitializeRequest = super::super::super::fastertools::mcp::session::InitializeRequest;
+            pub type InitializeResponse = super::super::super::fastertools::mcp::session::InitializeResponse;
             #[allow(unused_unsafe, clippy::all)]
-            /// Main authorization function - validates token and applies policies
-            pub fn authorize(request: &AuthRequest) -> AuthResponse {
+            /// Handle session initialization
+            /// Implementations should declare their capabilities here
+            pub fn handle_initialize(
+                request: &InitializeRequest,
+            ) -> Result<InitializeResponse, McpError> {
                 unsafe {
-                    #[repr(align(8))]
+                    let mut cleanup_list = _rt::Vec::new();
+                    #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+                    #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                     struct RetArea(
                         [::core::mem::MaybeUninit<
                             u8,
-                        >; 40 + 16 * ::core::mem::size_of::<*const u8>()],
+                        >; 16 + 18 * ::core::mem::size_of::<*const u8>()],
                     );
                     let mut ret_area = RetArea(
-                        [::core::mem::MaybeUninit::uninit(); 40
-                            + 16 * ::core::mem::size_of::<*const u8>()],
+                        [::core::mem::MaybeUninit::uninit(); 16
+                            + 18 * ::core::mem::size_of::<*const u8>()],
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    let AuthRequest {
-                        token: token1,
-                        method: method1,
-                        path: path1,
-                        headers: headers1,
-                        body: body1,
-                        expected_issuer: expected_issuer1,
-                        expected_audience: expected_audience1,
-                        jwks_uri: jwks_uri1,
+                    let super::super::super::fastertools::mcp::session::InitializeRequest {
+                        protocol_version: protocol_version1,
+                        capabilities: capabilities1,
+                        client_info: client_info1,
+                        meta: meta1,
                     } = request;
-                    let vec2 = token1;
-                    let ptr2 = vec2.as_ptr().cast::<u8>();
-                    let len2 = vec2.len();
-                    *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<usize>() = len2;
-                    *ptr0.add(0).cast::<*mut u8>() = ptr2.cast_mut();
-                    let vec3 = method1;
-                    let ptr3 = vec3.as_ptr().cast::<u8>();
-                    let len3 = vec3.len();
-                    *ptr0.add(3 * ::core::mem::size_of::<*const u8>()).cast::<usize>() = len3;
-                    *ptr0
-                        .add(2 * ::core::mem::size_of::<*const u8>())
-                        .cast::<*mut u8>() = ptr3.cast_mut();
-                    let vec4 = path1;
-                    let ptr4 = vec4.as_ptr().cast::<u8>();
-                    let len4 = vec4.len();
-                    *ptr0.add(5 * ::core::mem::size_of::<*const u8>()).cast::<usize>() = len4;
-                    *ptr0
-                        .add(4 * ::core::mem::size_of::<*const u8>())
-                        .cast::<*mut u8>() = ptr4.cast_mut();
-                    let vec8 = headers1;
-                    let len8 = vec8.len();
-                    let layout8 = _rt::alloc::Layout::from_size_align_unchecked(
-                        vec8.len() * (4 * ::core::mem::size_of::<*const u8>()),
-                        ::core::mem::size_of::<*const u8>(),
-                    );
-                    let result8 = if layout8.size() != 0 {
-                        let ptr = _rt::alloc::alloc(layout8).cast::<u8>();
-                        if ptr.is_null() {
-                            _rt::alloc::handle_alloc_error(layout8);
-                        }
-                        ptr
-                    } else {
-                        ::core::ptr::null_mut()
-                    };
-                    for (i, e) in vec8.into_iter().enumerate() {
-                        let base = result8
-                            .add(i * (4 * ::core::mem::size_of::<*const u8>()));
-                        {
-                            let (t5_0, t5_1) = e;
-                            let vec6 = t5_0;
-                            let ptr6 = vec6.as_ptr().cast::<u8>();
-                            let len6 = vec6.len();
-                            *base
+                    *ptr0.add(0).cast::<u8>() = (protocol_version1.clone() as i32) as u8;
+                    let super::super::super::fastertools::mcp::session::ClientCapabilities {
+                        experimental: experimental2,
+                        roots: roots2,
+                        sampling: sampling2,
+                        elicitation: elicitation2,
+                    } = capabilities1;
+                    match experimental2 {
+                        Some(e) => {
+                            *ptr0
                                 .add(::core::mem::size_of::<*const u8>())
-                                .cast::<usize>() = len6;
-                            *base.add(0).cast::<*mut u8>() = ptr6.cast_mut();
-                            let vec7 = t5_1;
-                            let ptr7 = vec7.as_ptr().cast::<u8>();
-                            let len7 = vec7.len();
-                            *base
+                                .cast::<u8>() = (1i32) as u8;
+                            let vec6 = e;
+                            let len6 = vec6.len();
+                            let layout6 = _rt::alloc::Layout::from_size_align_unchecked(
+                                vec6.len() * (4 * ::core::mem::size_of::<*const u8>()),
+                                ::core::mem::size_of::<*const u8>(),
+                            );
+                            let result6 = if layout6.size() != 0 {
+                                let ptr = _rt::alloc::alloc(layout6).cast::<u8>();
+                                if ptr.is_null() {
+                                    _rt::alloc::handle_alloc_error(layout6);
+                                }
+                                ptr
+                            } else {
+                                ::core::ptr::null_mut()
+                            };
+                            for (i, e) in vec6.into_iter().enumerate() {
+                                let base = result6
+                                    .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                {
+                                    let (t3_0, t3_1) = e;
+                                    let vec4 = t3_0;
+                                    let ptr4 = vec4.as_ptr().cast::<u8>();
+                                    let len4 = vec4.len();
+                                    *base
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len4;
+                                    *base.add(0).cast::<*mut u8>() = ptr4.cast_mut();
+                                    let vec5 = t3_1;
+                                    let ptr5 = vec5.as_ptr().cast::<u8>();
+                                    let len5 = vec5.len();
+                                    *base
+                                        .add(3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len5;
+                                    *base
+                                        .add(2 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = ptr5.cast_mut();
+                                }
+                            }
+                            *ptr0
                                 .add(3 * ::core::mem::size_of::<*const u8>())
-                                .cast::<usize>() = len7;
-                            *base
+                                .cast::<usize>() = len6;
+                            *ptr0
                                 .add(2 * ::core::mem::size_of::<*const u8>())
-                                .cast::<*mut u8>() = ptr7.cast_mut();
+                                .cast::<*mut u8>() = result6;
+                            cleanup_list.extend_from_slice(&[(result6, layout6)]);
                         }
-                    }
-                    *ptr0.add(7 * ::core::mem::size_of::<*const u8>()).cast::<usize>() = len8;
+                        None => {
+                            *ptr0
+                                .add(::core::mem::size_of::<*const u8>())
+                                .cast::<u8>() = (0i32) as u8;
+                        }
+                    };
+                    match roots2 {
+                        Some(e) => {
+                            *ptr0
+                                .add(4 * ::core::mem::size_of::<*const u8>())
+                                .cast::<u8>() = (1i32) as u8;
+                            let super::super::super::fastertools::mcp::session::RootsCapability {
+                                list_changed: list_changed7,
+                            } = e;
+                            match list_changed7 {
+                                Some(e) => {
+                                    *ptr0
+                                        .add(1 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    *ptr0
+                                        .add(2 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (match e {
+                                        true => 1,
+                                        false => 0,
+                                    }) as u8;
+                                }
+                                None => {
+                                    *ptr0
+                                        .add(1 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                        }
+                        None => {
+                            *ptr0
+                                .add(4 * ::core::mem::size_of::<*const u8>())
+                                .cast::<u8>() = (0i32) as u8;
+                        }
+                    };
+                    match sampling2 {
+                        Some(e) => {
+                            *ptr0
+                                .add(3 + 4 * ::core::mem::size_of::<*const u8>())
+                                .cast::<u8>() = (1i32) as u8;
+                            *ptr0
+                                .add(4 + 4 * ::core::mem::size_of::<*const u8>())
+                                .cast::<u8>() = (match e {
+                                true => 1,
+                                false => 0,
+                            }) as u8;
+                        }
+                        None => {
+                            *ptr0
+                                .add(3 + 4 * ::core::mem::size_of::<*const u8>())
+                                .cast::<u8>() = (0i32) as u8;
+                        }
+                    };
+                    match elicitation2 {
+                        Some(e) => {
+                            *ptr0
+                                .add(5 + 4 * ::core::mem::size_of::<*const u8>())
+                                .cast::<u8>() = (1i32) as u8;
+                            *ptr0
+                                .add(6 + 4 * ::core::mem::size_of::<*const u8>())
+                                .cast::<u8>() = (match e {
+                                true => 1,
+                                false => 0,
+                            }) as u8;
+                        }
+                        None => {
+                            *ptr0
+                                .add(5 + 4 * ::core::mem::size_of::<*const u8>())
+                                .cast::<u8>() = (0i32) as u8;
+                        }
+                    };
+                    let super::super::super::fastertools::mcp::session::ImplementationInfo {
+                        name: name8,
+                        version: version8,
+                        title: title8,
+                    } = client_info1;
+                    let vec9 = name8;
+                    let ptr9 = vec9.as_ptr().cast::<u8>();
+                    let len9 = vec9.len();
                     *ptr0
-                        .add(6 * ::core::mem::size_of::<*const u8>())
-                        .cast::<*mut u8>() = result8;
-                    match body1 {
+                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                        .cast::<usize>() = len9;
+                    *ptr0
+                        .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                        .cast::<*mut u8>() = ptr9.cast_mut();
+                    let vec10 = version8;
+                    let ptr10 = vec10.as_ptr().cast::<u8>();
+                    let len10 = vec10.len();
+                    *ptr0
+                        .add(8 + 7 * ::core::mem::size_of::<*const u8>())
+                        .cast::<usize>() = len10;
+                    *ptr0
+                        .add(8 + 6 * ::core::mem::size_of::<*const u8>())
+                        .cast::<*mut u8>() = ptr10.cast_mut();
+                    match title8 {
                         Some(e) => {
                             *ptr0
-                                .add(8 * ::core::mem::size_of::<*const u8>())
-                                .cast::<u8>() = (1i32) as u8;
-                            let vec9 = e;
-                            let ptr9 = vec9.as_ptr().cast::<u8>();
-                            let len9 = vec9.len();
-                            *ptr0
-                                .add(10 * ::core::mem::size_of::<*const u8>())
-                                .cast::<usize>() = len9;
-                            *ptr0
-                                .add(9 * ::core::mem::size_of::<*const u8>())
-                                .cast::<*mut u8>() = ptr9.cast_mut();
-                        }
-                        None => {
-                            *ptr0
-                                .add(8 * ::core::mem::size_of::<*const u8>())
-                                .cast::<u8>() = (0i32) as u8;
-                        }
-                    };
-                    match expected_issuer1 {
-                        Some(e) => {
-                            *ptr0
-                                .add(11 * ::core::mem::size_of::<*const u8>())
-                                .cast::<u8>() = (1i32) as u8;
-                            let vec10 = e;
-                            let ptr10 = vec10.as_ptr().cast::<u8>();
-                            let len10 = vec10.len();
-                            *ptr0
-                                .add(13 * ::core::mem::size_of::<*const u8>())
-                                .cast::<usize>() = len10;
-                            *ptr0
-                                .add(12 * ::core::mem::size_of::<*const u8>())
-                                .cast::<*mut u8>() = ptr10.cast_mut();
-                        }
-                        None => {
-                            *ptr0
-                                .add(11 * ::core::mem::size_of::<*const u8>())
-                                .cast::<u8>() = (0i32) as u8;
-                        }
-                    };
-                    match expected_audience1 {
-                        Some(e) => {
-                            *ptr0
-                                .add(14 * ::core::mem::size_of::<*const u8>())
+                                .add(8 + 8 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (1i32) as u8;
                             let vec11 = e;
                             let ptr11 = vec11.as_ptr().cast::<u8>();
                             let len11 = vec11.len();
                             *ptr0
-                                .add(16 * ::core::mem::size_of::<*const u8>())
+                                .add(8 + 10 * ::core::mem::size_of::<*const u8>())
                                 .cast::<usize>() = len11;
                             *ptr0
-                                .add(15 * ::core::mem::size_of::<*const u8>())
+                                .add(8 + 9 * ::core::mem::size_of::<*const u8>())
                                 .cast::<*mut u8>() = ptr11.cast_mut();
                         }
                         None => {
                             *ptr0
-                                .add(14 * ::core::mem::size_of::<*const u8>())
+                                .add(8 + 8 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (0i32) as u8;
                         }
                     };
-                    match jwks_uri1 {
+                    match meta1 {
                         Some(e) => {
                             *ptr0
-                                .add(17 * ::core::mem::size_of::<*const u8>())
+                                .add(8 + 11 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (1i32) as u8;
-                            let vec12 = e;
-                            let ptr12 = vec12.as_ptr().cast::<u8>();
-                            let len12 = vec12.len();
+                            let vec15 = e;
+                            let len15 = vec15.len();
+                            let layout15 = _rt::alloc::Layout::from_size_align_unchecked(
+                                vec15.len() * (4 * ::core::mem::size_of::<*const u8>()),
+                                ::core::mem::size_of::<*const u8>(),
+                            );
+                            let result15 = if layout15.size() != 0 {
+                                let ptr = _rt::alloc::alloc(layout15).cast::<u8>();
+                                if ptr.is_null() {
+                                    _rt::alloc::handle_alloc_error(layout15);
+                                }
+                                ptr
+                            } else {
+                                ::core::ptr::null_mut()
+                            };
+                            for (i, e) in vec15.into_iter().enumerate() {
+                                let base = result15
+                                    .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                {
+                                    let (t12_0, t12_1) = e;
+                                    let vec13 = t12_0;
+                                    let ptr13 = vec13.as_ptr().cast::<u8>();
+                                    let len13 = vec13.len();
+                                    *base
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len13;
+                                    *base.add(0).cast::<*mut u8>() = ptr13.cast_mut();
+                                    let vec14 = t12_1;
+                                    let ptr14 = vec14.as_ptr().cast::<u8>();
+                                    let len14 = vec14.len();
+                                    *base
+                                        .add(3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len14;
+                                    *base
+                                        .add(2 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = ptr14.cast_mut();
+                                }
+                            }
                             *ptr0
-                                .add(19 * ::core::mem::size_of::<*const u8>())
-                                .cast::<usize>() = len12;
+                                .add(8 + 13 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>() = len15;
                             *ptr0
-                                .add(18 * ::core::mem::size_of::<*const u8>())
-                                .cast::<*mut u8>() = ptr12.cast_mut();
+                                .add(8 + 12 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>() = result15;
+                            cleanup_list.extend_from_slice(&[(result15, layout15)]);
                         }
                         None => {
                             *ptr0
-                                .add(17 * ::core::mem::size_of::<*const u8>())
+                                .add(8 + 11 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (0i32) as u8;
                         }
                     };
-                    let ptr13 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    let ptr16 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "fastertools:mcp/authorization@0.1.12")]
+                    #[link(
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.1.16"
+                    )]
                     unsafe extern "C" {
-                        #[link_name = "authorize"]
-                        fn wit_import14(_: *mut u8, _: *mut u8);
+                        #[link_name = "handle-initialize"]
+                        fn wit_import17(_: *mut u8, _: *mut u8);
                     }
                     #[cfg(not(target_arch = "wasm32"))]
-                    unsafe extern "C" fn wit_import14(_: *mut u8, _: *mut u8) {
+                    unsafe extern "C" fn wit_import17(_: *mut u8, _: *mut u8) {
                         unreachable!()
                     }
-                    unsafe { wit_import14(ptr0, ptr13) };
-                    let l15 = i32::from(*ptr13.add(0).cast::<u8>());
-                    let v62 = match l15 {
+                    unsafe { wit_import17(ptr0, ptr16) };
+                    let l18 = i32::from(*ptr16.add(0).cast::<u8>());
+                    let result79 = match l18 {
                         0 => {
-                            let e62 = {
-                                let l16 = i32::from(*ptr13.add(8).cast::<u8>());
+                            let e = {
+                                let l19 = i32::from(
+                                    *ptr16.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
+                                );
                                 let l20 = i32::from(
-                                    *ptr13
-                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                    *ptr16
+                                        .add(2 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                let l24 = *ptr13
-                                    .add(8 + 6 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<*mut u8>();
-                                let l25 = *ptr13
-                                    .add(8 + 7 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<usize>();
-                                let base29 = l24;
-                                let len29 = l25;
-                                let mut result29 = _rt::Vec::with_capacity(len29);
-                                for i in 0..len29 {
-                                    let base = base29
-                                        .add(i * (2 * ::core::mem::size_of::<*const u8>()));
-                                    let e29 = {
-                                        let l26 = *base.add(0).cast::<*mut u8>();
-                                        let l27 = *base
-                                            .add(::core::mem::size_of::<*const u8>())
-                                            .cast::<usize>();
-                                        let len28 = l27;
-                                        let bytes28 = _rt::Vec::from_raw_parts(
-                                            l26.cast(),
-                                            len28,
-                                            len28,
-                                        );
-                                        _rt::string_lift(bytes28)
-                                    };
-                                    result29.push(e29);
-                                }
-                                _rt::cabi_dealloc(
-                                    base29,
-                                    len29 * (2 * ::core::mem::size_of::<*const u8>()),
-                                    ::core::mem::size_of::<*const u8>(),
-                                );
                                 let l30 = i32::from(
-                                    *ptr13
-                                        .add(8 + 8 * ::core::mem::size_of::<*const u8>())
+                                    *ptr16
+                                        .add(5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l32 = i32::from(
+                                    *ptr16
+                                        .add(2 + 5 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
                                 let l34 = i32::from(
-                                    *ptr13
-                                        .add(8 + 11 * ::core::mem::size_of::<*const u8>())
+                                    *ptr16
+                                        .add(4 + 5 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                let l38 = *ptr13
-                                    .add(8 + 14 * ::core::mem::size_of::<*const u8>())
+                                let l37 = i32::from(
+                                    *ptr16
+                                        .add(7 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l42 = i32::from(
+                                    *ptr16
+                                        .add(12 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l45 = *ptr16
+                                    .add(16 + 5 * ::core::mem::size_of::<*const u8>())
                                     .cast::<*mut u8>();
-                                let l39 = *ptr13
-                                    .add(8 + 15 * ::core::mem::size_of::<*const u8>())
+                                let l46 = *ptr16
+                                    .add(16 + 6 * ::core::mem::size_of::<*const u8>())
                                     .cast::<usize>();
-                                let base46 = l38;
-                                let len46 = l39;
-                                let mut result46 = _rt::Vec::with_capacity(len46);
-                                for i in 0..len46 {
-                                    let base = base46
-                                        .add(i * (4 * ::core::mem::size_of::<*const u8>()));
-                                    let e46 = {
-                                        let l40 = *base.add(0).cast::<*mut u8>();
-                                        let l41 = *base
-                                            .add(::core::mem::size_of::<*const u8>())
-                                            .cast::<usize>();
-                                        let len42 = l41;
-                                        let bytes42 = _rt::Vec::from_raw_parts(
-                                            l40.cast(),
-                                            len42,
-                                            len42,
-                                        );
-                                        let l43 = *base
-                                            .add(2 * ::core::mem::size_of::<*const u8>())
-                                            .cast::<*mut u8>();
-                                        let l44 = *base
-                                            .add(3 * ::core::mem::size_of::<*const u8>())
-                                            .cast::<usize>();
-                                        let len45 = l44;
-                                        let bytes45 = _rt::Vec::from_raw_parts(
-                                            l43.cast(),
-                                            len45,
-                                            len45,
-                                        );
-                                        (_rt::string_lift(bytes42), _rt::string_lift(bytes45))
-                                    };
-                                    result46.push(e46);
-                                }
-                                _rt::cabi_dealloc(
-                                    base46,
-                                    len46 * (4 * ::core::mem::size_of::<*const u8>()),
-                                    ::core::mem::size_of::<*const u8>(),
+                                let len47 = l46;
+                                let bytes47 = _rt::Vec::from_raw_parts(
+                                    l45.cast(),
+                                    len47,
+                                    len47,
                                 );
-                                let l47 = i32::from(
-                                    *ptr13
-                                        .add(8 + 16 * ::core::mem::size_of::<*const u8>())
+                                let l48 = *ptr16
+                                    .add(16 + 7 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l49 = *ptr16
+                                    .add(16 + 8 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len50 = l49;
+                                let bytes50 = _rt::Vec::from_raw_parts(
+                                    l48.cast(),
+                                    len50,
+                                    len50,
+                                );
+                                let l51 = i32::from(
+                                    *ptr16
+                                        .add(16 + 9 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                let l49 = i32::from(
-                                    *ptr13
-                                        .add(24 + 16 * ::core::mem::size_of::<*const u8>())
+                                let l55 = i32::from(
+                                    *ptr16
+                                        .add(16 + 12 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                AuthContext {
-                                    client_id: match l16 {
+                                let l59 = i32::from(
+                                    *ptr16
+                                        .add(16 + 15 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                super::super::super::fastertools::mcp::session::InitializeResponse {
+                                    protocol_version: super::super::super::fastertools::mcp::session::ProtocolVersion::_lift(
+                                        l19 as u8,
+                                    ),
+                                    capabilities: super::super::super::fastertools::mcp::session::ServerCapabilities {
+                                        experimental: match l20 {
+                                            0 => None,
+                                            1 => {
+                                                let e = {
+                                                    let l21 = *ptr16
+                                                        .add(3 * ::core::mem::size_of::<*const u8>())
+                                                        .cast::<*mut u8>();
+                                                    let l22 = *ptr16
+                                                        .add(4 * ::core::mem::size_of::<*const u8>())
+                                                        .cast::<usize>();
+                                                    let base29 = l21;
+                                                    let len29 = l22;
+                                                    let mut result29 = _rt::Vec::with_capacity(len29);
+                                                    for i in 0..len29 {
+                                                        let base = base29
+                                                            .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                                        let e29 = {
+                                                            let l23 = *base.add(0).cast::<*mut u8>();
+                                                            let l24 = *base
+                                                                .add(::core::mem::size_of::<*const u8>())
+                                                                .cast::<usize>();
+                                                            let len25 = l24;
+                                                            let bytes25 = _rt::Vec::from_raw_parts(
+                                                                l23.cast(),
+                                                                len25,
+                                                                len25,
+                                                            );
+                                                            let l26 = *base
+                                                                .add(2 * ::core::mem::size_of::<*const u8>())
+                                                                .cast::<*mut u8>();
+                                                            let l27 = *base
+                                                                .add(3 * ::core::mem::size_of::<*const u8>())
+                                                                .cast::<usize>();
+                                                            let len28 = l27;
+                                                            let bytes28 = _rt::Vec::from_raw_parts(
+                                                                l26.cast(),
+                                                                len28,
+                                                                len28,
+                                                            );
+                                                            (_rt::string_lift(bytes25), _rt::string_lift(bytes28))
+                                                        };
+                                                        result29.push(e29);
+                                                    }
+                                                    _rt::cabi_dealloc(
+                                                        base29,
+                                                        len29 * (4 * ::core::mem::size_of::<*const u8>()),
+                                                        ::core::mem::size_of::<*const u8>(),
+                                                    );
+                                                    result29
+                                                };
+                                                Some(e)
+                                            }
+                                            _ => _rt::invalid_enum_discriminant(),
+                                        },
+                                        logging: match l30 {
+                                            0 => None,
+                                            1 => {
+                                                let e = {
+                                                    let l31 = i32::from(
+                                                        *ptr16
+                                                            .add(1 + 5 * ::core::mem::size_of::<*const u8>())
+                                                            .cast::<u8>(),
+                                                    );
+                                                    _rt::bool_lift(l31 as u8)
+                                                };
+                                                Some(e)
+                                            }
+                                            _ => _rt::invalid_enum_discriminant(),
+                                        },
+                                        completions: match l32 {
+                                            0 => None,
+                                            1 => {
+                                                let e = {
+                                                    let l33 = i32::from(
+                                                        *ptr16
+                                                            .add(3 + 5 * ::core::mem::size_of::<*const u8>())
+                                                            .cast::<u8>(),
+                                                    );
+                                                    _rt::bool_lift(l33 as u8)
+                                                };
+                                                Some(e)
+                                            }
+                                            _ => _rt::invalid_enum_discriminant(),
+                                        },
+                                        prompts: match l34 {
+                                            0 => None,
+                                            1 => {
+                                                let e = {
+                                                    let l35 = i32::from(
+                                                        *ptr16
+                                                            .add(5 + 5 * ::core::mem::size_of::<*const u8>())
+                                                            .cast::<u8>(),
+                                                    );
+                                                    super::super::super::fastertools::mcp::session::PromptsCapability {
+                                                        list_changed: match l35 {
+                                                            0 => None,
+                                                            1 => {
+                                                                let e = {
+                                                                    let l36 = i32::from(
+                                                                        *ptr16
+                                                                            .add(6 + 5 * ::core::mem::size_of::<*const u8>())
+                                                                            .cast::<u8>(),
+                                                                    );
+                                                                    _rt::bool_lift(l36 as u8)
+                                                                };
+                                                                Some(e)
+                                                            }
+                                                            _ => _rt::invalid_enum_discriminant(),
+                                                        },
+                                                    }
+                                                };
+                                                Some(e)
+                                            }
+                                            _ => _rt::invalid_enum_discriminant(),
+                                        },
+                                        resources: match l37 {
+                                            0 => None,
+                                            1 => {
+                                                let e = {
+                                                    let l38 = i32::from(
+                                                        *ptr16
+                                                            .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                                            .cast::<u8>(),
+                                                    );
+                                                    let l40 = i32::from(
+                                                        *ptr16
+                                                            .add(10 + 5 * ::core::mem::size_of::<*const u8>())
+                                                            .cast::<u8>(),
+                                                    );
+                                                    super::super::super::fastertools::mcp::session::ResourcesCapability {
+                                                        subscribe: match l38 {
+                                                            0 => None,
+                                                            1 => {
+                                                                let e = {
+                                                                    let l39 = i32::from(
+                                                                        *ptr16
+                                                                            .add(9 + 5 * ::core::mem::size_of::<*const u8>())
+                                                                            .cast::<u8>(),
+                                                                    );
+                                                                    _rt::bool_lift(l39 as u8)
+                                                                };
+                                                                Some(e)
+                                                            }
+                                                            _ => _rt::invalid_enum_discriminant(),
+                                                        },
+                                                        list_changed: match l40 {
+                                                            0 => None,
+                                                            1 => {
+                                                                let e = {
+                                                                    let l41 = i32::from(
+                                                                        *ptr16
+                                                                            .add(11 + 5 * ::core::mem::size_of::<*const u8>())
+                                                                            .cast::<u8>(),
+                                                                    );
+                                                                    _rt::bool_lift(l41 as u8)
+                                                                };
+                                                                Some(e)
+                                                            }
+                                                            _ => _rt::invalid_enum_discriminant(),
+                                                        },
+                                                    }
+                                                };
+                                                Some(e)
+                                            }
+                                            _ => _rt::invalid_enum_discriminant(),
+                                        },
+                                        tools: match l42 {
+                                            0 => None,
+                                            1 => {
+                                                let e = {
+                                                    let l43 = i32::from(
+                                                        *ptr16
+                                                            .add(13 + 5 * ::core::mem::size_of::<*const u8>())
+                                                            .cast::<u8>(),
+                                                    );
+                                                    super::super::super::fastertools::mcp::session::ToolsCapability {
+                                                        list_changed: match l43 {
+                                                            0 => None,
+                                                            1 => {
+                                                                let e = {
+                                                                    let l44 = i32::from(
+                                                                        *ptr16
+                                                                            .add(14 + 5 * ::core::mem::size_of::<*const u8>())
+                                                                            .cast::<u8>(),
+                                                                    );
+                                                                    _rt::bool_lift(l44 as u8)
+                                                                };
+                                                                Some(e)
+                                                            }
+                                                            _ => _rt::invalid_enum_discriminant(),
+                                                        },
+                                                    }
+                                                };
+                                                Some(e)
+                                            }
+                                            _ => _rt::invalid_enum_discriminant(),
+                                        },
+                                    },
+                                    server_info: super::super::super::fastertools::mcp::session::ImplementationInfo {
+                                        name: _rt::string_lift(bytes47),
+                                        version: _rt::string_lift(bytes50),
+                                        title: match l51 {
+                                            0 => None,
+                                            1 => {
+                                                let e = {
+                                                    let l52 = *ptr16
+                                                        .add(16 + 10 * ::core::mem::size_of::<*const u8>())
+                                                        .cast::<*mut u8>();
+                                                    let l53 = *ptr16
+                                                        .add(16 + 11 * ::core::mem::size_of::<*const u8>())
+                                                        .cast::<usize>();
+                                                    let len54 = l53;
+                                                    let bytes54 = _rt::Vec::from_raw_parts(
+                                                        l52.cast(),
+                                                        len54,
+                                                        len54,
+                                                    );
+                                                    _rt::string_lift(bytes54)
+                                                };
+                                                Some(e)
+                                            }
+                                            _ => _rt::invalid_enum_discriminant(),
+                                        },
+                                    },
+                                    instructions: match l55 {
                                         0 => None,
                                         1 => {
                                             let e = {
-                                                let l17 = *ptr13
-                                                    .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                                let l56 = *ptr16
+                                                    .add(16 + 13 * ::core::mem::size_of::<*const u8>())
                                                     .cast::<*mut u8>();
-                                                let l18 = *ptr13
-                                                    .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                                let l57 = *ptr16
+                                                    .add(16 + 14 * ::core::mem::size_of::<*const u8>())
                                                     .cast::<usize>();
-                                                let len19 = l18;
-                                                let bytes19 = _rt::Vec::from_raw_parts(
-                                                    l17.cast(),
-                                                    len19,
-                                                    len19,
+                                                let len58 = l57;
+                                                let bytes58 = _rt::Vec::from_raw_parts(
+                                                    l56.cast(),
+                                                    len58,
+                                                    len58,
                                                 );
-                                                _rt::string_lift(bytes19)
+                                                _rt::string_lift(bytes58)
                                             };
                                             Some(e)
                                         }
                                         _ => _rt::invalid_enum_discriminant(),
                                     },
-                                    user_id: match l20 {
+                                    meta: match l59 {
                                         0 => None,
                                         1 => {
                                             let e = {
-                                                let l21 = *ptr13
-                                                    .add(8 + 4 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<*mut u8>();
-                                                let l22 = *ptr13
-                                                    .add(8 + 5 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<usize>();
-                                                let len23 = l22;
-                                                let bytes23 = _rt::Vec::from_raw_parts(
-                                                    l21.cast(),
-                                                    len23,
-                                                    len23,
-                                                );
-                                                _rt::string_lift(bytes23)
-                                            };
-                                            Some(e)
-                                        }
-                                        _ => _rt::invalid_enum_discriminant(),
-                                    },
-                                    scopes: result29,
-                                    issuer: match l30 {
-                                        0 => None,
-                                        1 => {
-                                            let e = {
-                                                let l31 = *ptr13
-                                                    .add(8 + 9 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<*mut u8>();
-                                                let l32 = *ptr13
-                                                    .add(8 + 10 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<usize>();
-                                                let len33 = l32;
-                                                let bytes33 = _rt::Vec::from_raw_parts(
-                                                    l31.cast(),
-                                                    len33,
-                                                    len33,
-                                                );
-                                                _rt::string_lift(bytes33)
-                                            };
-                                            Some(e)
-                                        }
-                                        _ => _rt::invalid_enum_discriminant(),
-                                    },
-                                    audience: match l34 {
-                                        0 => None,
-                                        1 => {
-                                            let e = {
-                                                let l35 = *ptr13
-                                                    .add(8 + 12 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<*mut u8>();
-                                                let l36 = *ptr13
-                                                    .add(8 + 13 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<usize>();
-                                                let len37 = l36;
-                                                let bytes37 = _rt::Vec::from_raw_parts(
-                                                    l35.cast(),
-                                                    len37,
-                                                    len37,
-                                                );
-                                                _rt::string_lift(bytes37)
-                                            };
-                                            Some(e)
-                                        }
-                                        _ => _rt::invalid_enum_discriminant(),
-                                    },
-                                    claims: result46,
-                                    exp: match l47 {
-                                        0 => None,
-                                        1 => {
-                                            let e = {
-                                                let l48 = *ptr13
+                                                let l60 = *ptr16
                                                     .add(16 + 16 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<i64>();
-                                                l48 as u64
-                                            };
-                                            Some(e)
-                                        }
-                                        _ => _rt::invalid_enum_discriminant(),
-                                    },
-                                    iat: match l49 {
-                                        0 => None,
-                                        1 => {
-                                            let e = {
-                                                let l50 = *ptr13
-                                                    .add(32 + 16 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<i64>();
-                                                l50 as u64
+                                                    .cast::<*mut u8>();
+                                                let l61 = *ptr16
+                                                    .add(16 + 17 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let base68 = l60;
+                                                let len68 = l61;
+                                                let mut result68 = _rt::Vec::with_capacity(len68);
+                                                for i in 0..len68 {
+                                                    let base = base68
+                                                        .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                                    let e68 = {
+                                                        let l62 = *base.add(0).cast::<*mut u8>();
+                                                        let l63 = *base
+                                                            .add(::core::mem::size_of::<*const u8>())
+                                                            .cast::<usize>();
+                                                        let len64 = l63;
+                                                        let bytes64 = _rt::Vec::from_raw_parts(
+                                                            l62.cast(),
+                                                            len64,
+                                                            len64,
+                                                        );
+                                                        let l65 = *base
+                                                            .add(2 * ::core::mem::size_of::<*const u8>())
+                                                            .cast::<*mut u8>();
+                                                        let l66 = *base
+                                                            .add(3 * ::core::mem::size_of::<*const u8>())
+                                                            .cast::<usize>();
+                                                        let len67 = l66;
+                                                        let bytes67 = _rt::Vec::from_raw_parts(
+                                                            l65.cast(),
+                                                            len67,
+                                                            len67,
+                                                        );
+                                                        (_rt::string_lift(bytes64), _rt::string_lift(bytes67))
+                                                    };
+                                                    result68.push(e68);
+                                                }
+                                                _rt::cabi_dealloc(
+                                                    base68,
+                                                    len68 * (4 * ::core::mem::size_of::<*const u8>()),
+                                                    ::core::mem::size_of::<*const u8>(),
+                                                );
+                                                result68
                                             };
                                             Some(e)
                                         }
@@ -3725,62 +3846,75 @@ pub mod fastertools {
                                     },
                                 }
                             };
-                            AuthResponse::Authorized(e62)
+                            Ok(e)
                         }
-                        n => {
-                            debug_assert_eq!(n, 1, "invalid enum discriminant");
-                            let e62 = {
-                                let l51 = i32::from(*ptr13.add(8).cast::<u16>());
-                                let l52 = *ptr13
+                        1 => {
+                            let e = {
+                                let l69 = i32::from(
+                                    *ptr16.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
+                                );
+                                use super::super::super::fastertools::mcp::types::ErrorCode as V71;
+                                let v71 = match l69 {
+                                    0 => V71::ParseError,
+                                    1 => V71::InvalidRequest,
+                                    2 => V71::MethodNotFound,
+                                    3 => V71::InvalidParams,
+                                    4 => V71::InternalError,
+                                    5 => V71::ResourceNotFound,
+                                    6 => V71::ToolNotFound,
+                                    7 => V71::PromptNotFound,
+                                    8 => V71::Unauthorized,
+                                    9 => V71::RateLimited,
+                                    10 => V71::Timeout,
+                                    11 => V71::Cancelled,
+                                    n => {
+                                        debug_assert_eq!(n, 12, "invalid enum discriminant");
+                                        let e71 = {
+                                            let l70 = *ptr16
+                                                .add(4 + 1 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<i32>();
+                                            l70
+                                        };
+                                        V71::CustomCode(e71)
+                                    }
+                                };
+                                let l72 = *ptr16
                                     .add(8 + 1 * ::core::mem::size_of::<*const u8>())
                                     .cast::<*mut u8>();
-                                let l53 = *ptr13
+                                let l73 = *ptr16
                                     .add(8 + 2 * ::core::mem::size_of::<*const u8>())
                                     .cast::<usize>();
-                                let len54 = l53;
-                                let bytes54 = _rt::Vec::from_raw_parts(
-                                    l52.cast(),
-                                    len54,
-                                    len54,
+                                let len74 = l73;
+                                let bytes74 = _rt::Vec::from_raw_parts(
+                                    l72.cast(),
+                                    len74,
+                                    len74,
                                 );
-                                let l55 = *ptr13
-                                    .add(8 + 3 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<*mut u8>();
-                                let l56 = *ptr13
-                                    .add(8 + 4 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<usize>();
-                                let len57 = l56;
-                                let bytes57 = _rt::Vec::from_raw_parts(
-                                    l55.cast(),
-                                    len57,
-                                    len57,
-                                );
-                                let l58 = i32::from(
-                                    *ptr13
-                                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                let l75 = i32::from(
+                                    *ptr16
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                AuthError {
-                                    status: l51 as u16,
-                                    error_code: _rt::string_lift(bytes54),
-                                    description: _rt::string_lift(bytes57),
-                                    www_authenticate: match l58 {
+                                super::super::super::fastertools::mcp::types::McpError {
+                                    code: v71,
+                                    message: _rt::string_lift(bytes74),
+                                    data: match l75 {
                                         0 => None,
                                         1 => {
                                             let e = {
-                                                let l59 = *ptr13
-                                                    .add(8 + 6 * ::core::mem::size_of::<*const u8>())
+                                                let l76 = *ptr16
+                                                    .add(8 + 4 * ::core::mem::size_of::<*const u8>())
                                                     .cast::<*mut u8>();
-                                                let l60 = *ptr13
-                                                    .add(8 + 7 * ::core::mem::size_of::<*const u8>())
+                                                let l77 = *ptr16
+                                                    .add(8 + 5 * ::core::mem::size_of::<*const u8>())
                                                     .cast::<usize>();
-                                                let len61 = l60;
-                                                let bytes61 = _rt::Vec::from_raw_parts(
-                                                    l59.cast(),
-                                                    len61,
-                                                    len61,
+                                                let len78 = l77;
+                                                let bytes78 = _rt::Vec::from_raw_parts(
+                                                    l76.cast(),
+                                                    len78,
+                                                    len78,
                                                 );
-                                                _rt::string_lift(bytes61)
+                                                _rt::string_lift(bytes78)
                                             };
                                             Some(e)
                                         }
@@ -3788,132 +3922,40 @@ pub mod fastertools {
                                     },
                                 }
                             };
-                            AuthResponse::Unauthorized(e62)
+                            Err(e)
                         }
+                        _ => _rt::invalid_enum_discriminant(),
                     };
-                    let result63 = v62;
-                    if layout8.size() != 0 {
-                        _rt::alloc::dealloc(result8.cast(), layout8);
+                    for (ptr, layout) in cleanup_list {
+                        if layout.size() != 0 {
+                            _rt::alloc::dealloc(ptr.cast(), layout);
+                        }
                     }
-                    result63
-                }
-            }
-        }
-        /// OAuth 2.0 discovery endpoints per RFC 8414 and RFC 9728
-        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod oauth_discovery {
-            #[used]
-            #[doc(hidden)]
-            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            /// OAuth 2.0 Protected Resource Metadata per RFC 9728
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ResourceMetadata {
-                /// Resource identifier (canonical URI of the MCP server)
-                pub resource_url: _rt::String,
-                /// List of authorization server URLs that can issue tokens for this resource
-                pub authorization_servers: _rt::Vec<_rt::String>,
-                /// Scopes supported by this resource
-                pub scopes_supported: Option<_rt::Vec<_rt::String>>,
-                /// Bearer token types supported
-                pub bearer_methods_supported: Option<_rt::Vec<_rt::String>>,
-                /// Resource-specific metadata
-                pub resource_documentation: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for ResourceMetadata {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ResourceMetadata")
-                        .field("resource-url", &self.resource_url)
-                        .field("authorization-servers", &self.authorization_servers)
-                        .field("scopes-supported", &self.scopes_supported)
-                        .field(
-                            "bearer-methods-supported",
-                            &self.bearer_methods_supported,
-                        )
-                        .field("resource-documentation", &self.resource_documentation)
-                        .finish()
-                }
-            }
-            /// OAuth 2.0 Authorization Server Metadata per RFC 8414
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ServerMetadata {
-                /// Authorization server identifier
-                pub issuer: _rt::String,
-                /// Authorization endpoint URL
-                pub authorization_endpoint: _rt::String,
-                /// Token endpoint URL
-                pub token_endpoint: _rt::String,
-                /// JWKS URI for key discovery
-                pub jwks_uri: _rt::String,
-                /// Supported response types
-                pub response_types_supported: _rt::Vec<_rt::String>,
-                /// Supported grant types
-                pub grant_types_supported: _rt::Vec<_rt::String>,
-                /// Supported code challenge methods for PKCE
-                pub code_challenge_methods_supported: _rt::Vec<_rt::String>,
-                /// Supported scopes
-                pub scopes_supported: Option<_rt::Vec<_rt::String>>,
-                /// Token endpoint auth methods supported
-                pub token_endpoint_auth_methods_supported: Option<_rt::Vec<_rt::String>>,
-                /// Service documentation URL
-                pub service_documentation: Option<_rt::String>,
-                /// Registration endpoint for dynamic client registration
-                pub registration_endpoint: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for ServerMetadata {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ServerMetadata")
-                        .field("issuer", &self.issuer)
-                        .field("authorization-endpoint", &self.authorization_endpoint)
-                        .field("token-endpoint", &self.token_endpoint)
-                        .field("jwks-uri", &self.jwks_uri)
-                        .field(
-                            "response-types-supported",
-                            &self.response_types_supported,
-                        )
-                        .field("grant-types-supported", &self.grant_types_supported)
-                        .field(
-                            "code-challenge-methods-supported",
-                            &self.code_challenge_methods_supported,
-                        )
-                        .field("scopes-supported", &self.scopes_supported)
-                        .field(
-                            "token-endpoint-auth-methods-supported",
-                            &self.token_endpoint_auth_methods_supported,
-                        )
-                        .field("service-documentation", &self.service_documentation)
-                        .field("registration-endpoint", &self.registration_endpoint)
-                        .finish()
+                    result79
                 }
             }
             #[allow(unused_unsafe, clippy::all)]
-            /// Get OAuth 2.0 Protected Resource Metadata
-            pub fn get_resource_metadata() -> ResourceMetadata {
+            /// Handle initialization complete notification
+            pub fn handle_initialized() -> Result<(), McpError> {
                 unsafe {
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                     #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                     struct RetArea(
                         [::core::mem::MaybeUninit<
                             u8,
-                        >; 13 * ::core::mem::size_of::<*const u8>()],
+                        >; 8 + 6 * ::core::mem::size_of::<*const u8>()],
                     );
                     let mut ret_area = RetArea(
-                        [::core::mem::MaybeUninit::uninit(); 13
-                            * ::core::mem::size_of::<*const u8>()],
+                        [::core::mem::MaybeUninit::uninit(); 8
+                            + 6 * ::core::mem::size_of::<*const u8>()],
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/oauth-discovery@0.1.12"
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.1.16"
                     )]
                     unsafe extern "C" {
-                        #[link_name = "get-resource-metadata"]
+                        #[link_name = "handle-initialized"]
                         fn wit_import1(_: *mut u8);
                     }
                     #[cfg(not(target_arch = "wasm32"))]
@@ -3921,184 +3963,115 @@ pub mod fastertools {
                         unreachable!()
                     }
                     unsafe { wit_import1(ptr0) };
-                    let l2 = *ptr0.add(0).cast::<*mut u8>();
-                    let l3 = *ptr0
-                        .add(::core::mem::size_of::<*const u8>())
-                        .cast::<usize>();
-                    let len4 = l3;
-                    let bytes4 = _rt::Vec::from_raw_parts(l2.cast(), len4, len4);
-                    let l5 = *ptr0
-                        .add(2 * ::core::mem::size_of::<*const u8>())
-                        .cast::<*mut u8>();
-                    let l6 = *ptr0
-                        .add(3 * ::core::mem::size_of::<*const u8>())
-                        .cast::<usize>();
-                    let base10 = l5;
-                    let len10 = l6;
-                    let mut result10 = _rt::Vec::with_capacity(len10);
-                    for i in 0..len10 {
-                        let base = base10
-                            .add(i * (2 * ::core::mem::size_of::<*const u8>()));
-                        let e10 = {
-                            let l7 = *base.add(0).cast::<*mut u8>();
-                            let l8 = *base
-                                .add(::core::mem::size_of::<*const u8>())
-                                .cast::<usize>();
-                            let len9 = l8;
-                            let bytes9 = _rt::Vec::from_raw_parts(l7.cast(), len9, len9);
-                            _rt::string_lift(bytes9)
-                        };
-                        result10.push(e10);
-                    }
-                    _rt::cabi_dealloc(
-                        base10,
-                        len10 * (2 * ::core::mem::size_of::<*const u8>()),
-                        ::core::mem::size_of::<*const u8>(),
-                    );
-                    let l11 = i32::from(
-                        *ptr0.add(4 * ::core::mem::size_of::<*const u8>()).cast::<u8>(),
-                    );
-                    let l18 = i32::from(
-                        *ptr0.add(7 * ::core::mem::size_of::<*const u8>()).cast::<u8>(),
-                    );
-                    let l25 = i32::from(
-                        *ptr0.add(10 * ::core::mem::size_of::<*const u8>()).cast::<u8>(),
-                    );
-                    let result29 = ResourceMetadata {
-                        resource_url: _rt::string_lift(bytes4),
-                        authorization_servers: result10,
-                        scopes_supported: match l11 {
-                            0 => None,
-                            1 => {
-                                let e = {
-                                    let l12 = *ptr0
-                                        .add(5 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<*mut u8>();
-                                    let l13 = *ptr0
-                                        .add(6 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<usize>();
-                                    let base17 = l12;
-                                    let len17 = l13;
-                                    let mut result17 = _rt::Vec::with_capacity(len17);
-                                    for i in 0..len17 {
-                                        let base = base17
-                                            .add(i * (2 * ::core::mem::size_of::<*const u8>()));
-                                        let e17 = {
-                                            let l14 = *base.add(0).cast::<*mut u8>();
-                                            let l15 = *base
-                                                .add(::core::mem::size_of::<*const u8>())
-                                                .cast::<usize>();
-                                            let len16 = l15;
-                                            let bytes16 = _rt::Vec::from_raw_parts(
-                                                l14.cast(),
-                                                len16,
-                                                len16,
-                                            );
-                                            _rt::string_lift(bytes16)
+                    let l2 = i32::from(*ptr0.add(0).cast::<u8>());
+                    let result13 = match l2 {
+                        0 => {
+                            let e = ();
+                            Ok(e)
+                        }
+                        1 => {
+                            let e = {
+                                let l3 = i32::from(
+                                    *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
+                                );
+                                use super::super::super::fastertools::mcp::types::ErrorCode as V5;
+                                let v5 = match l3 {
+                                    0 => V5::ParseError,
+                                    1 => V5::InvalidRequest,
+                                    2 => V5::MethodNotFound,
+                                    3 => V5::InvalidParams,
+                                    4 => V5::InternalError,
+                                    5 => V5::ResourceNotFound,
+                                    6 => V5::ToolNotFound,
+                                    7 => V5::PromptNotFound,
+                                    8 => V5::Unauthorized,
+                                    9 => V5::RateLimited,
+                                    10 => V5::Timeout,
+                                    11 => V5::Cancelled,
+                                    n => {
+                                        debug_assert_eq!(n, 12, "invalid enum discriminant");
+                                        let e5 = {
+                                            let l4 = *ptr0
+                                                .add(4 + 1 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<i32>();
+                                            l4
                                         };
-                                        result17.push(e17);
+                                        V5::CustomCode(e5)
                                     }
-                                    _rt::cabi_dealloc(
-                                        base17,
-                                        len17 * (2 * ::core::mem::size_of::<*const u8>()),
-                                        ::core::mem::size_of::<*const u8>(),
-                                    );
-                                    result17
                                 };
-                                Some(e)
-                            }
-                            _ => _rt::invalid_enum_discriminant(),
-                        },
-                        bearer_methods_supported: match l18 {
-                            0 => None,
-                            1 => {
-                                let e = {
-                                    let l19 = *ptr0
-                                        .add(8 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<*mut u8>();
-                                    let l20 = *ptr0
-                                        .add(9 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<usize>();
-                                    let base24 = l19;
-                                    let len24 = l20;
-                                    let mut result24 = _rt::Vec::with_capacity(len24);
-                                    for i in 0..len24 {
-                                        let base = base24
-                                            .add(i * (2 * ::core::mem::size_of::<*const u8>()));
-                                        let e24 = {
-                                            let l21 = *base.add(0).cast::<*mut u8>();
-                                            let l22 = *base
-                                                .add(::core::mem::size_of::<*const u8>())
-                                                .cast::<usize>();
-                                            let len23 = l22;
-                                            let bytes23 = _rt::Vec::from_raw_parts(
-                                                l21.cast(),
-                                                len23,
-                                                len23,
-                                            );
-                                            _rt::string_lift(bytes23)
-                                        };
-                                        result24.push(e24);
-                                    }
-                                    _rt::cabi_dealloc(
-                                        base24,
-                                        len24 * (2 * ::core::mem::size_of::<*const u8>()),
-                                        ::core::mem::size_of::<*const u8>(),
-                                    );
-                                    result24
-                                };
-                                Some(e)
-                            }
-                            _ => _rt::invalid_enum_discriminant(),
-                        },
-                        resource_documentation: match l25 {
-                            0 => None,
-                            1 => {
-                                let e = {
-                                    let l26 = *ptr0
-                                        .add(11 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<*mut u8>();
-                                    let l27 = *ptr0
-                                        .add(12 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<usize>();
-                                    let len28 = l27;
-                                    let bytes28 = _rt::Vec::from_raw_parts(
-                                        l26.cast(),
-                                        len28,
-                                        len28,
-                                    );
-                                    _rt::string_lift(bytes28)
-                                };
-                                Some(e)
-                            }
-                            _ => _rt::invalid_enum_discriminant(),
-                        },
+                                let l6 = *ptr0
+                                    .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l7 = *ptr0
+                                    .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len8 = l7;
+                                let bytes8 = _rt::Vec::from_raw_parts(
+                                    l6.cast(),
+                                    len8,
+                                    len8,
+                                );
+                                let l9 = i32::from(
+                                    *ptr0
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                super::super::super::fastertools::mcp::types::McpError {
+                                    code: v5,
+                                    message: _rt::string_lift(bytes8),
+                                    data: match l9 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l10 = *ptr0
+                                                    .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<*mut u8>();
+                                                let l11 = *ptr0
+                                                    .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let len12 = l11;
+                                                let bytes12 = _rt::Vec::from_raw_parts(
+                                                    l10.cast(),
+                                                    len12,
+                                                    len12,
+                                                );
+                                                _rt::string_lift(bytes12)
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                }
+                            };
+                            Err(e)
+                        }
+                        _ => _rt::invalid_enum_discriminant(),
                     };
-                    result29
+                    result13
                 }
             }
             #[allow(unused_unsafe, clippy::all)]
-            /// Get OAuth 2.0 Authorization Server Metadata
-            pub fn get_server_metadata() -> ServerMetadata {
+            /// Handle ping request for keepalive
+            pub fn handle_ping() -> Result<(), McpError> {
                 unsafe {
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                     #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                     struct RetArea(
                         [::core::mem::MaybeUninit<
                             u8,
-                        >; 26 * ::core::mem::size_of::<*const u8>()],
+                        >; 8 + 6 * ::core::mem::size_of::<*const u8>()],
                     );
                     let mut ret_area = RetArea(
-                        [::core::mem::MaybeUninit::uninit(); 26
-                            * ::core::mem::size_of::<*const u8>()],
+                        [::core::mem::MaybeUninit::uninit(); 8
+                            + 6 * ::core::mem::size_of::<*const u8>()],
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/oauth-discovery@0.1.12"
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.1.16"
                     )]
                     unsafe extern "C" {
-                        #[link_name = "get-server-metadata"]
+                        #[link_name = "handle-ping"]
                         fn wit_import1(_: *mut u8);
                     }
                     #[cfg(not(target_arch = "wasm32"))]
@@ -4106,282 +4079,207 @@ pub mod fastertools {
                         unreachable!()
                     }
                     unsafe { wit_import1(ptr0) };
-                    let l2 = *ptr0.add(0).cast::<*mut u8>();
-                    let l3 = *ptr0
-                        .add(::core::mem::size_of::<*const u8>())
-                        .cast::<usize>();
-                    let len4 = l3;
-                    let bytes4 = _rt::Vec::from_raw_parts(l2.cast(), len4, len4);
-                    let l5 = *ptr0
-                        .add(2 * ::core::mem::size_of::<*const u8>())
-                        .cast::<*mut u8>();
-                    let l6 = *ptr0
-                        .add(3 * ::core::mem::size_of::<*const u8>())
-                        .cast::<usize>();
-                    let len7 = l6;
-                    let bytes7 = _rt::Vec::from_raw_parts(l5.cast(), len7, len7);
-                    let l8 = *ptr0
-                        .add(4 * ::core::mem::size_of::<*const u8>())
-                        .cast::<*mut u8>();
-                    let l9 = *ptr0
-                        .add(5 * ::core::mem::size_of::<*const u8>())
-                        .cast::<usize>();
-                    let len10 = l9;
-                    let bytes10 = _rt::Vec::from_raw_parts(l8.cast(), len10, len10);
-                    let l11 = *ptr0
-                        .add(6 * ::core::mem::size_of::<*const u8>())
-                        .cast::<*mut u8>();
-                    let l12 = *ptr0
-                        .add(7 * ::core::mem::size_of::<*const u8>())
-                        .cast::<usize>();
-                    let len13 = l12;
-                    let bytes13 = _rt::Vec::from_raw_parts(l11.cast(), len13, len13);
-                    let l14 = *ptr0
-                        .add(8 * ::core::mem::size_of::<*const u8>())
-                        .cast::<*mut u8>();
-                    let l15 = *ptr0
-                        .add(9 * ::core::mem::size_of::<*const u8>())
-                        .cast::<usize>();
-                    let base19 = l14;
-                    let len19 = l15;
-                    let mut result19 = _rt::Vec::with_capacity(len19);
-                    for i in 0..len19 {
-                        let base = base19
-                            .add(i * (2 * ::core::mem::size_of::<*const u8>()));
-                        let e19 = {
-                            let l16 = *base.add(0).cast::<*mut u8>();
-                            let l17 = *base
-                                .add(::core::mem::size_of::<*const u8>())
-                                .cast::<usize>();
-                            let len18 = l17;
-                            let bytes18 = _rt::Vec::from_raw_parts(
-                                l16.cast(),
-                                len18,
-                                len18,
-                            );
-                            _rt::string_lift(bytes18)
-                        };
-                        result19.push(e19);
-                    }
-                    _rt::cabi_dealloc(
-                        base19,
-                        len19 * (2 * ::core::mem::size_of::<*const u8>()),
-                        ::core::mem::size_of::<*const u8>(),
-                    );
-                    let l20 = *ptr0
-                        .add(10 * ::core::mem::size_of::<*const u8>())
-                        .cast::<*mut u8>();
-                    let l21 = *ptr0
-                        .add(11 * ::core::mem::size_of::<*const u8>())
-                        .cast::<usize>();
-                    let base25 = l20;
-                    let len25 = l21;
-                    let mut result25 = _rt::Vec::with_capacity(len25);
-                    for i in 0..len25 {
-                        let base = base25
-                            .add(i * (2 * ::core::mem::size_of::<*const u8>()));
-                        let e25 = {
-                            let l22 = *base.add(0).cast::<*mut u8>();
-                            let l23 = *base
-                                .add(::core::mem::size_of::<*const u8>())
-                                .cast::<usize>();
-                            let len24 = l23;
-                            let bytes24 = _rt::Vec::from_raw_parts(
-                                l22.cast(),
-                                len24,
-                                len24,
-                            );
-                            _rt::string_lift(bytes24)
-                        };
-                        result25.push(e25);
-                    }
-                    _rt::cabi_dealloc(
-                        base25,
-                        len25 * (2 * ::core::mem::size_of::<*const u8>()),
-                        ::core::mem::size_of::<*const u8>(),
-                    );
-                    let l26 = *ptr0
-                        .add(12 * ::core::mem::size_of::<*const u8>())
-                        .cast::<*mut u8>();
-                    let l27 = *ptr0
-                        .add(13 * ::core::mem::size_of::<*const u8>())
-                        .cast::<usize>();
-                    let base31 = l26;
-                    let len31 = l27;
-                    let mut result31 = _rt::Vec::with_capacity(len31);
-                    for i in 0..len31 {
-                        let base = base31
-                            .add(i * (2 * ::core::mem::size_of::<*const u8>()));
-                        let e31 = {
-                            let l28 = *base.add(0).cast::<*mut u8>();
-                            let l29 = *base
-                                .add(::core::mem::size_of::<*const u8>())
-                                .cast::<usize>();
-                            let len30 = l29;
-                            let bytes30 = _rt::Vec::from_raw_parts(
-                                l28.cast(),
-                                len30,
-                                len30,
-                            );
-                            _rt::string_lift(bytes30)
-                        };
-                        result31.push(e31);
-                    }
-                    _rt::cabi_dealloc(
-                        base31,
-                        len31 * (2 * ::core::mem::size_of::<*const u8>()),
-                        ::core::mem::size_of::<*const u8>(),
-                    );
-                    let l32 = i32::from(
-                        *ptr0.add(14 * ::core::mem::size_of::<*const u8>()).cast::<u8>(),
-                    );
-                    let l39 = i32::from(
-                        *ptr0.add(17 * ::core::mem::size_of::<*const u8>()).cast::<u8>(),
-                    );
-                    let l46 = i32::from(
-                        *ptr0.add(20 * ::core::mem::size_of::<*const u8>()).cast::<u8>(),
-                    );
-                    let l50 = i32::from(
-                        *ptr0.add(23 * ::core::mem::size_of::<*const u8>()).cast::<u8>(),
-                    );
-                    let result54 = ServerMetadata {
-                        issuer: _rt::string_lift(bytes4),
-                        authorization_endpoint: _rt::string_lift(bytes7),
-                        token_endpoint: _rt::string_lift(bytes10),
-                        jwks_uri: _rt::string_lift(bytes13),
-                        response_types_supported: result19,
-                        grant_types_supported: result25,
-                        code_challenge_methods_supported: result31,
-                        scopes_supported: match l32 {
-                            0 => None,
-                            1 => {
-                                let e = {
-                                    let l33 = *ptr0
-                                        .add(15 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<*mut u8>();
-                                    let l34 = *ptr0
-                                        .add(16 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<usize>();
-                                    let base38 = l33;
-                                    let len38 = l34;
-                                    let mut result38 = _rt::Vec::with_capacity(len38);
-                                    for i in 0..len38 {
-                                        let base = base38
-                                            .add(i * (2 * ::core::mem::size_of::<*const u8>()));
-                                        let e38 = {
-                                            let l35 = *base.add(0).cast::<*mut u8>();
-                                            let l36 = *base
-                                                .add(::core::mem::size_of::<*const u8>())
-                                                .cast::<usize>();
-                                            let len37 = l36;
-                                            let bytes37 = _rt::Vec::from_raw_parts(
-                                                l35.cast(),
-                                                len37,
-                                                len37,
-                                            );
-                                            _rt::string_lift(bytes37)
+                    let l2 = i32::from(*ptr0.add(0).cast::<u8>());
+                    let result13 = match l2 {
+                        0 => {
+                            let e = ();
+                            Ok(e)
+                        }
+                        1 => {
+                            let e = {
+                                let l3 = i32::from(
+                                    *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
+                                );
+                                use super::super::super::fastertools::mcp::types::ErrorCode as V5;
+                                let v5 = match l3 {
+                                    0 => V5::ParseError,
+                                    1 => V5::InvalidRequest,
+                                    2 => V5::MethodNotFound,
+                                    3 => V5::InvalidParams,
+                                    4 => V5::InternalError,
+                                    5 => V5::ResourceNotFound,
+                                    6 => V5::ToolNotFound,
+                                    7 => V5::PromptNotFound,
+                                    8 => V5::Unauthorized,
+                                    9 => V5::RateLimited,
+                                    10 => V5::Timeout,
+                                    11 => V5::Cancelled,
+                                    n => {
+                                        debug_assert_eq!(n, 12, "invalid enum discriminant");
+                                        let e5 = {
+                                            let l4 = *ptr0
+                                                .add(4 + 1 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<i32>();
+                                            l4
                                         };
-                                        result38.push(e38);
+                                        V5::CustomCode(e5)
                                     }
-                                    _rt::cabi_dealloc(
-                                        base38,
-                                        len38 * (2 * ::core::mem::size_of::<*const u8>()),
-                                        ::core::mem::size_of::<*const u8>(),
-                                    );
-                                    result38
                                 };
-                                Some(e)
-                            }
-                            _ => _rt::invalid_enum_discriminant(),
-                        },
-                        token_endpoint_auth_methods_supported: match l39 {
-                            0 => None,
-                            1 => {
-                                let e = {
-                                    let l40 = *ptr0
-                                        .add(18 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<*mut u8>();
-                                    let l41 = *ptr0
-                                        .add(19 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<usize>();
-                                    let base45 = l40;
-                                    let len45 = l41;
-                                    let mut result45 = _rt::Vec::with_capacity(len45);
-                                    for i in 0..len45 {
-                                        let base = base45
-                                            .add(i * (2 * ::core::mem::size_of::<*const u8>()));
-                                        let e45 = {
-                                            let l42 = *base.add(0).cast::<*mut u8>();
-                                            let l43 = *base
-                                                .add(::core::mem::size_of::<*const u8>())
-                                                .cast::<usize>();
-                                            let len44 = l43;
-                                            let bytes44 = _rt::Vec::from_raw_parts(
-                                                l42.cast(),
-                                                len44,
-                                                len44,
-                                            );
-                                            _rt::string_lift(bytes44)
-                                        };
-                                        result45.push(e45);
-                                    }
-                                    _rt::cabi_dealloc(
-                                        base45,
-                                        len45 * (2 * ::core::mem::size_of::<*const u8>()),
-                                        ::core::mem::size_of::<*const u8>(),
-                                    );
-                                    result45
-                                };
-                                Some(e)
-                            }
-                            _ => _rt::invalid_enum_discriminant(),
-                        },
-                        service_documentation: match l46 {
-                            0 => None,
-                            1 => {
-                                let e = {
-                                    let l47 = *ptr0
-                                        .add(21 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<*mut u8>();
-                                    let l48 = *ptr0
-                                        .add(22 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<usize>();
-                                    let len49 = l48;
-                                    let bytes49 = _rt::Vec::from_raw_parts(
-                                        l47.cast(),
-                                        len49,
-                                        len49,
-                                    );
-                                    _rt::string_lift(bytes49)
-                                };
-                                Some(e)
-                            }
-                            _ => _rt::invalid_enum_discriminant(),
-                        },
-                        registration_endpoint: match l50 {
-                            0 => None,
-                            1 => {
-                                let e = {
-                                    let l51 = *ptr0
-                                        .add(24 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<*mut u8>();
-                                    let l52 = *ptr0
-                                        .add(25 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<usize>();
-                                    let len53 = l52;
-                                    let bytes53 = _rt::Vec::from_raw_parts(
-                                        l51.cast(),
-                                        len53,
-                                        len53,
-                                    );
-                                    _rt::string_lift(bytes53)
-                                };
-                                Some(e)
-                            }
-                            _ => _rt::invalid_enum_discriminant(),
-                        },
+                                let l6 = *ptr0
+                                    .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l7 = *ptr0
+                                    .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len8 = l7;
+                                let bytes8 = _rt::Vec::from_raw_parts(
+                                    l6.cast(),
+                                    len8,
+                                    len8,
+                                );
+                                let l9 = i32::from(
+                                    *ptr0
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                super::super::super::fastertools::mcp::types::McpError {
+                                    code: v5,
+                                    message: _rt::string_lift(bytes8),
+                                    data: match l9 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l10 = *ptr0
+                                                    .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<*mut u8>();
+                                                let l11 = *ptr0
+                                                    .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let len12 = l11;
+                                                let bytes12 = _rt::Vec::from_raw_parts(
+                                                    l10.cast(),
+                                                    len12,
+                                                    len12,
+                                                );
+                                                _rt::string_lift(bytes12)
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                }
+                            };
+                            Err(e)
+                        }
+                        _ => _rt::invalid_enum_discriminant(),
                     };
-                    result54
+                    result13
+                }
+            }
+            #[allow(unused_unsafe, clippy::all)]
+            /// Handle shutdown request
+            pub fn handle_shutdown() -> Result<(), McpError> {
+                unsafe {
+                    #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+                    #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
+                    struct RetArea(
+                        [::core::mem::MaybeUninit<
+                            u8,
+                        >; 8 + 6 * ::core::mem::size_of::<*const u8>()],
+                    );
+                    let mut ret_area = RetArea(
+                        [::core::mem::MaybeUninit::uninit(); 8
+                            + 6 * ::core::mem::size_of::<*const u8>()],
+                    );
+                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.1.16"
+                    )]
+                    unsafe extern "C" {
+                        #[link_name = "handle-shutdown"]
+                        fn wit_import1(_: *mut u8);
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    unsafe extern "C" fn wit_import1(_: *mut u8) {
+                        unreachable!()
+                    }
+                    unsafe { wit_import1(ptr0) };
+                    let l2 = i32::from(*ptr0.add(0).cast::<u8>());
+                    let result13 = match l2 {
+                        0 => {
+                            let e = ();
+                            Ok(e)
+                        }
+                        1 => {
+                            let e = {
+                                let l3 = i32::from(
+                                    *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
+                                );
+                                use super::super::super::fastertools::mcp::types::ErrorCode as V5;
+                                let v5 = match l3 {
+                                    0 => V5::ParseError,
+                                    1 => V5::InvalidRequest,
+                                    2 => V5::MethodNotFound,
+                                    3 => V5::InvalidParams,
+                                    4 => V5::InternalError,
+                                    5 => V5::ResourceNotFound,
+                                    6 => V5::ToolNotFound,
+                                    7 => V5::PromptNotFound,
+                                    8 => V5::Unauthorized,
+                                    9 => V5::RateLimited,
+                                    10 => V5::Timeout,
+                                    11 => V5::Cancelled,
+                                    n => {
+                                        debug_assert_eq!(n, 12, "invalid enum discriminant");
+                                        let e5 = {
+                                            let l4 = *ptr0
+                                                .add(4 + 1 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<i32>();
+                                            l4
+                                        };
+                                        V5::CustomCode(e5)
+                                    }
+                                };
+                                let l6 = *ptr0
+                                    .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l7 = *ptr0
+                                    .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len8 = l7;
+                                let bytes8 = _rt::Vec::from_raw_parts(
+                                    l6.cast(),
+                                    len8,
+                                    len8,
+                                );
+                                let l9 = i32::from(
+                                    *ptr0
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                super::super::super::fastertools::mcp::types::McpError {
+                                    code: v5,
+                                    message: _rt::string_lift(bytes8),
+                                    data: match l9 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l10 = *ptr0
+                                                    .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<*mut u8>();
+                                                let l11 = *ptr0
+                                                    .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let len12 = l11;
+                                                let bytes12 = _rt::Vec::from_raw_parts(
+                                                    l10.cast(),
+                                                    len12,
+                                                    len12,
+                                                );
+                                                _rt::string_lift(bytes12)
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                }
+                            };
+                            Err(e)
+                        }
+                        _ => _rt::invalid_enum_discriminant(),
+                    };
+                    result13
                 }
             }
         }
@@ -4655,7 +4553,7 @@ pub mod fastertools {
                     let ptr10 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/tools-capabilities@0.1.12"
+                        wasm_import_module = "fastertools:mcp/tools-capabilities@0.1.16"
                     )]
                     unsafe extern "C" {
                         #[link_name = "handle-list-tools"]
@@ -5288,7 +5186,7 @@ pub mod fastertools {
                     let ptr11 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/tools-capabilities@0.1.12"
+                        wasm_import_module = "fastertools:mcp/tools-capabilities@0.1.16"
                     )]
                     unsafe extern "C" {
                         #[link_name = "handle-call-tool"]
@@ -6875,12 +6773,12 @@ mod _rt {
 }
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.1.12:tools-auth-transport:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.1.16:tools-transport:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 5350] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xdb(\x01A\x02\x01A\x1b\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4643] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x9d#\x01A\x02\x01A\x1b\
 \x01B;\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajson-va\
 lue\x03\0\x02\x01o\x02ss\x01p\x04\x04\0\x0bmeta-fields\x03\0\x05\x01p\x01\x01k\x07\
 \x01ku\x01ks\x01r\x03\x08audience\x08\x08priority\x09\x0dlast-modified\x0a\x04\0\
@@ -6908,7 +6806,7 @@ user\x09assistant\x06system\x04\0\x0cmessage-role\x03\01\x01r\x01\x04name\x0a\x0
 \0\x0amodel-hint\x03\03\x01p4\x01k5\x01r\x04\x05hints6\x0dcost-priority\x09\x0es\
 peed-priority\x09\x15intelligence-priority\x09\x04\0\x11model-preferences\x03\07\
 \x01r\x04\x0curi-templates\x04names\x0bdescription\x0a\x09mime-type\x0a\x04\0\x11\
-resource-template\x03\09\x03\0\x1cfastertools:mcp/types@0.1.12\x05\0\x02\x03\0\0\
+resource-template\x03\09\x03\0\x1cfastertools:mcp/types@0.1.16\x05\0\x02\x03\0\0\
 \x09mcp-error\x02\x03\0\0\x0bmeta-fields\x01B'\x02\x03\x02\x01\x01\x04\0\x09mcp-\
 error\x03\0\0\x02\x03\x02\x01\x02\x04\0\x0bmeta-fields\x03\0\x02\x01m\x04\x0dmcp\
 -v20241105\x0dmcp-v20250326\x0dmcp-v20250618\x0edraft-v2025-v3\x04\0\x10protocol\
@@ -6926,7 +6824,7 @@ tialize-request\x03\0\x1b\x01r\x05\x10protocol-version\x05\x0ccapabilities\x1a\x
 server-info\x08\x0cinstructions\x06\x04meta\x0c\x04\0\x13initialize-response\x03\
 \0\x1d\x01j\x01\x1e\x01\x01\x01@\x01\x07request\x1c\0\x1f\x04\0\x0ainitialize\x01\
 \x20\x01j\0\x01\x01\x01@\0\0!\x04\0\x0binitialized\x01\"\x04\0\x04ping\x01\"\x04\
-\0\x08shutdown\x01\"\x03\0\x1efastertools:mcp/session@0.1.12\x05\x03\x02\x03\0\0\
+\0\x08shutdown\x01\"\x03\0\x1efastertools:mcp/session@0.1.16\x05\x03\x02\x03\0\0\
 \x0eprogress-token\x02\x03\0\0\x0arequest-id\x01B'\x02\x03\x02\x01\x01\x04\0\x09\
 mcp-error\x03\0\0\x02\x03\x02\x01\x02\x04\0\x0bmeta-fields\x03\0\x02\x02\x03\x02\
 \x01\x04\x04\0\x0eprogress-token\x03\0\x04\x02\x03\x02\x01\x05\x04\0\x0arequest-\
@@ -6945,53 +6843,41 @@ y\x04\0\x09log-level\x03\0\x19\x01o\x02ss\x01p\x1b\x01k\x1c\x01r\x05\x05level\x1
 resource-updated\x01\x16\0\x12roots-list-changed\x01\x18\0\x0blog-message\x01\x1f\
 \0\x04\0\x0cnotification\x03\0\x20\x01j\0\x01\x01\x01@\x01\x0cnotification!\0\"\x04\
 \0\x11send-notification\x01#\x01@\x01\x05level\x1a\0\"\x04\0\x0dset-log-level\x01\
-$\x03\0$fastertools:mcp/notifications@0.1.12\x05\x06\x02\x03\0\0\x0ajson-value\x01\
-B\x17\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x07\x04\0\x0a\
-json-value\x03\0\x02\x02\x03\x02\x01\x02\x04\0\x0bmeta-fields\x03\0\x04\x01ks\x01\
-ps\x01kw\x01r\x08\x09client-id\x06\x07user-id\x06\x06scopes\x07\x06issuer\x06\x08\
-audience\x06\x06claims\x05\x03exp\x08\x03iat\x08\x04\0\x0cauth-context\x03\0\x09\
-\x01o\x02ss\x01p\x0b\x01p}\x01k\x0d\x01r\x08\x05tokens\x06methods\x04paths\x07he\
-aders\x0c\x04body\x0e\x0fexpected-issuer\x06\x11expected-audience\x06\x08jwks-ur\
-i\x06\x04\0\x0cauth-request\x03\0\x0f\x01r\x04\x06status{\x0aerror-codes\x0bdesc\
-riptions\x10www-authenticate\x06\x04\0\x0aauth-error\x03\0\x11\x01q\x02\x0aautho\
-rized\x01\x0a\0\x0cunauthorized\x01\x12\0\x04\0\x0dauth-response\x03\0\x13\x01@\x01\
-\x07request\x10\0\x14\x04\0\x09authorize\x01\x15\x03\0$fastertools:mcp/authoriza\
-tion@0.1.12\x05\x08\x01B\x0b\x01ps\x01k\0\x01ks\x01r\x05\x0cresource-urls\x15aut\
-horization-servers\0\x10scopes-supported\x01\x18bearer-methods-supported\x01\x16\
-resource-documentation\x02\x04\0\x11resource-metadata\x03\0\x03\x01r\x0b\x06issu\
-ers\x16authorization-endpoints\x0etoken-endpoints\x08jwks-uris\x18response-types\
--supported\0\x15grant-types-supported\0\x20code-challenge-methods-supported\0\x10\
-scopes-supported\x01%token-endpoint-auth-methods-supported\x01\x15service-docume\
-ntation\x02\x15registration-endpoint\x02\x04\0\x0fserver-metadata\x03\0\x05\x01@\
-\0\0\x04\x04\0\x15get-resource-metadata\x01\x07\x01@\0\0\x06\x04\0\x13get-server\
--metadata\x01\x08\x03\0&fastertools:mcp/oauth-discovery@0.1.12\x05\x09\x02\x03\0\
-\0\x0dcontent-block\x02\x03\0\0\x0bjson-schema\x02\x03\0\0\x0dbase-metadata\x02\x03\
-\0\0\x06cursor\x01B&\x02\x03\x02\x01\x0a\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\
-\x01\x07\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x0b\x04\0\x0bjson-schema\x03\
-\0\x04\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\x06\x02\x03\x02\x01\x0c\x04\0\
-\x0dbase-metadata\x03\0\x08\x02\x03\x02\x01\x02\x04\0\x0bmeta-fields\x03\0\x0a\x02\
-\x03\x02\x01\x0d\x04\0\x06cursor\x03\0\x0c\x02\x03\x02\x01\x04\x04\0\x0eprogress\
--token\x03\0\x0e\x01ks\x01k\x7f\x01r\x05\x05title\x10\x0eread-only-hint\x11\x10d\
-estructive-hint\x11\x0fidempotent-hint\x11\x0fopen-world-hint\x11\x04\0\x10tool-\
-annotations\x03\0\x12\x01k\x05\x01k\x13\x01k\x0b\x01r\x06\x04base\x09\x0bdescrip\
-tion\x10\x0cinput-schema\x05\x0doutput-schema\x14\x0bannotations\x15\x04meta\x16\
-\x04\0\x04tool\x03\0\x17\x01p\x01\x01k\x03\x01r\x04\x07content\x19\x12structured\
--content\x1a\x08is-error\x11\x04meta\x16\x04\0\x0btool-result\x03\0\x1b\x01k\x0d\
-\x01k\x0f\x01r\x03\x06cursor\x1d\x0eprogress-token\x1e\x04meta\x16\x04\0\x12list\
--tools-request\x03\0\x1f\x01p\x18\x01r\x03\x05tools!\x0bnext-cursor\x1d\x04meta\x16\
-\x04\0\x13list-tools-response\x03\0\"\x01r\x04\x04names\x09arguments\x1a\x0eprog\
-ress-token\x1e\x04meta\x16\x04\0\x11call-tool-request\x03\0$\x03\0\x1cfastertool\
-s:mcp/tools@0.1.12\x05\x0e\x02\x03\0\x05\x12list-tools-request\x02\x03\0\x05\x13\
-list-tools-response\x02\x03\0\x05\x11call-tool-request\x02\x03\0\x05\x0btool-res\
-ult\x01B\x10\x02\x03\x02\x01\x01\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x0f\x04\
-\0\x12list-tools-request\x03\0\x02\x02\x03\x02\x01\x10\x04\0\x13list-tools-respo\
-nse\x03\0\x04\x02\x03\x02\x01\x11\x04\0\x11call-tool-request\x03\0\x06\x02\x03\x02\
-\x01\x12\x04\0\x0btool-result\x03\0\x08\x01j\x01\x05\x01\x01\x01@\x01\x07request\
-\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\x01j\x01\x09\x01\x01\x01@\x01\x07r\
-equest\x07\0\x0c\x04\0\x10handle-call-tool\x01\x0d\x03\0)fastertools:mcp/tools-c\
-apabilities@0.1.12\x05\x13\x04\0+fastertools:mcp/tools-auth-transport@0.1.12\x04\
-\0\x0b\x1a\x01\0\x14tools-auth-transport\x03\0\0\0G\x09producers\x01\x0cprocesse\
-d-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+$\x03\0$fastertools:mcp/notifications@0.1.16\x05\x06\x02\x03\0\x01\x12initialize\
+-request\x02\x03\0\x01\x13initialize-response\x01B\x0e\x02\x03\x02\x01\x01\x04\0\
+\x09mcp-error\x03\0\0\x02\x03\x02\x01\x07\x04\0\x12initialize-request\x03\0\x02\x02\
+\x03\x02\x01\x08\x04\0\x13initialize-response\x03\0\x04\x01j\x01\x05\x01\x01\x01\
+@\x01\x07request\x03\0\x06\x04\0\x11handle-initialize\x01\x07\x01j\0\x01\x01\x01\
+@\0\0\x08\x04\0\x12handle-initialized\x01\x09\x04\0\x0bhandle-ping\x01\x09\x04\0\
+\x0fhandle-shutdown\x01\x09\x03\0(fastertools:mcp/core-capabilities@0.1.16\x05\x09\
+\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\x03\0\0\x0bjson-sche\
+ma\x02\x03\0\0\x0dbase-metadata\x02\x03\0\0\x06cursor\x01B&\x02\x03\x02\x01\x0a\x04\
+\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\x0b\x04\0\x0ajson-value\x03\0\x02\x02\
+\x03\x02\x01\x0c\x04\0\x0bjson-schema\x03\0\x04\x02\x03\x02\x01\x01\x04\0\x09mcp\
+-error\x03\0\x06\x02\x03\x02\x01\x0d\x04\0\x0dbase-metadata\x03\0\x08\x02\x03\x02\
+\x01\x02\x04\0\x0bmeta-fields\x03\0\x0a\x02\x03\x02\x01\x0e\x04\0\x06cursor\x03\0\
+\x0c\x02\x03\x02\x01\x04\x04\0\x0eprogress-token\x03\0\x0e\x01ks\x01k\x7f\x01r\x05\
+\x05title\x10\x0eread-only-hint\x11\x10destructive-hint\x11\x0fidempotent-hint\x11\
+\x0fopen-world-hint\x11\x04\0\x10tool-annotations\x03\0\x12\x01k\x05\x01k\x13\x01\
+k\x0b\x01r\x06\x04base\x09\x0bdescription\x10\x0cinput-schema\x05\x0doutput-sche\
+ma\x14\x0bannotations\x15\x04meta\x16\x04\0\x04tool\x03\0\x17\x01p\x01\x01k\x03\x01\
+r\x04\x07content\x19\x12structured-content\x1a\x08is-error\x11\x04meta\x16\x04\0\
+\x0btool-result\x03\0\x1b\x01k\x0d\x01k\x0f\x01r\x03\x06cursor\x1d\x0eprogress-t\
+oken\x1e\x04meta\x16\x04\0\x12list-tools-request\x03\0\x1f\x01p\x18\x01r\x03\x05\
+tools!\x0bnext-cursor\x1d\x04meta\x16\x04\0\x13list-tools-response\x03\0\"\x01r\x04\
+\x04names\x09arguments\x1a\x0eprogress-token\x1e\x04meta\x16\x04\0\x11call-tool-\
+request\x03\0$\x03\0\x1cfastertools:mcp/tools@0.1.16\x05\x0f\x02\x03\0\x04\x12li\
+st-tools-request\x02\x03\0\x04\x13list-tools-response\x02\x03\0\x04\x11call-tool\
+-request\x02\x03\0\x04\x0btool-result\x01B\x10\x02\x03\x02\x01\x01\x04\0\x09mcp-\
+error\x03\0\0\x02\x03\x02\x01\x10\x04\0\x12list-tools-request\x03\0\x02\x02\x03\x02\
+\x01\x11\x04\0\x13list-tools-response\x03\0\x04\x02\x03\x02\x01\x12\x04\0\x11cal\
+l-tool-request\x03\0\x06\x02\x03\x02\x01\x13\x04\0\x0btool-result\x03\0\x08\x01j\
+\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\
+\x01j\x01\x09\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x10handle-call-tool\x01\
+\x0d\x03\0)fastertools:mcp/tools-capabilities@0.1.16\x05\x14\x04\0&fastertools:m\
+cp/tools-transport@0.1.16\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\0\0\0G\x09p\
+roducers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\
+\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

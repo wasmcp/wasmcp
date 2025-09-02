@@ -106,18 +106,11 @@ pub fn validate(request: JwtRequest) -> JwtResult {
         validation.validate_nbf = false;
     }
     
-    // Set expected issuer
-    if let Some(ref iss) = request.expected_issuer {
-        validation.set_issuer(&[iss.as_str()]);
-    } else {
-        validation.set_required_spec_claims(&["sub"]);
-        validation.insecure_disable_signature_validation();
-    }
+    // Set expected issuer (now required)
+    validation.set_issuer(&[request.expected_issuer.as_str()]);
     
-    // Set expected audience
-    if let Some(ref aud) = request.expected_audience {
-        validation.set_audience(&[aud.as_str()]);
-    }
+    // Set expected audiences (now required)
+    validation.set_audience(&request.expected_audiences.iter().map(|s| s.as_str()).collect::<Vec<_>>());
     
     // Get the decoding key
     let decoding_key = match get_decoding_key(&header, &request) {
@@ -176,14 +169,9 @@ fn get_decoding_key(
         return find_key_in_jwks(&jwks, header.kid.as_deref());
     }
     
-    // If JWKS URI is provided, fetch and cache
-    if let Some(ref jwks_uri) = request.jwks_uri {
-        let jwks = fetch_and_cache_jwks(jwks_uri)?;
-        return find_key_in_jwks(&jwks, header.kid.as_deref());
-    }
-    
-    // No key source provided - can't validate signature
-    Err(JwtError::JwksError)
+    // Fetch and cache JWKS (now required)
+    let jwks = fetch_and_cache_jwks(&request.jwks_uri)?;
+    find_key_in_jwks(&jwks, header.kid.as_deref())
 }
 
 fn find_key_in_jwks(jwks: &Jwks, kid: Option<&str>) -> Result<DecodingKey, JwtError> {
