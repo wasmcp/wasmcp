@@ -1,5 +1,4 @@
 use regorus::{Engine, Value};
-use serde_json;
 
 use crate::bindings::exports::fastertools::mcp::policy_engine::{
     PolicyRequest, PolicyResult,

@@ -1,6 +1,0 @@
-package stub:provider;
-
-world stub-provider {
-    export fastertools:mcp/tools-capabilities@0.1.11;
-    export fastertools:mcp/resources-capabilities@0.1.11;
-}

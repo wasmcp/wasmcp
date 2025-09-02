@@ -9,6 +9,8 @@ A production-ready WebAssembly component providing OAuth 2.0 authorization, JWT 
 - **Policy Engine**: OPA/Rego policy evaluation using Regorus
 - **MCP-Aware**: Fine-grained authorization for MCP methods, tools, and resources
 - **Component Model**: Pure WebAssembly component with WIT interfaces
+- **AuthKit/WorkOS Compatible**: Works seamlessly with AuthKit for enterprise authentication
+- **WASI HTTP**: Uses spin-sdk for WASI-compatible HTTP requests (JWKS fetching)
 
 ## Architecture
 
@@ -70,21 +72,38 @@ authorize-resource: func(request: resource-auth-request) -> result<_, auth-error
 
 ## Configuration
 
-The component can be configured through environment variables:
+The component uses WASI config for runtime configuration. When running with `wasmtime serve`, use the `-Sconfig` flag with configuration variables:
 
 ```bash
-# OAuth/JWT Configuration
-MCP_EXPECTED_ISSUER=https://auth.example.com
-MCP_EXPECTED_AUDIENCE=https://mcp.example.com
-MCP_JWKS_URI=https://auth.example.com/.well-known/jwks.json
-
-# Discovery Configuration
-MCP_RESOURCE_URL=https://mcp.example.com
-MCP_AUTH_SERVER=https://auth.example.com
-MCP_AUTH_ENDPOINT=https://auth.example.com/authorize
-MCP_TOKEN_ENDPOINT=https://auth.example.com/token
-MCP_REGISTRATION_ENDPOINT=https://auth.example.com/register
+wasmtime serve -Scli -Sconfig \
+  -Sconfig-var="jwt.expected_issuer=https://auth.example.com" \
+  -Sconfig-var="jwt.expected_audience=my-api-audience" \
+  -Sconfig-var="jwt.jwks_uri=https://auth.example.com/.well-known/jwks.json" \
+  composed-server.wasm
 ```
+
+### Configuration Keys
+
+#### JWT Validation
+- `jwt.expected_issuer` - Expected JWT issuer (required)
+- `jwt.expected_audience` - Expected JWT audience (required)
+- `jwt.jwks_uri` - JWKS endpoint for key discovery (required)
+- `jwt.validation_leeway` - Clock skew tolerance in seconds (optional, default: 0)
+
+#### OAuth Discovery (optional)
+- `oauth.resource_url` - MCP resource URL for discovery
+- `oauth.auth_server` - Authorization server URL (defaults to JWT issuer)
+- `oauth.auth_endpoint` - OAuth authorization endpoint
+- `oauth.token_endpoint` - OAuth token endpoint
+- `oauth.registration_endpoint` - Dynamic client registration endpoint
+
+#### Policy Engine
+- `policy.mode` - Policy mode: `default`, `rbac`, `custom`, or `none`
+  - `default` - Permissive, allows all authenticated users
+  - `rbac` - Role-based access control with scope requirements
+  - `custom` - Use custom policy from `policy.content`
+  - `none` - Skip policy evaluation entirely
+- `policy.content` - Custom OPA/Rego policy content (for custom mode)
 
 ## Policy Examples
 
@@ -127,6 +146,25 @@ tool_authorized if {
     tool_check_passes(tool_name)
 }
 ```
+
+## AuthKit/WorkOS Integration
+
+This component works seamlessly with [AuthKit](https://workos.com/authkit) for enterprise authentication:
+
+```bash
+# Example with AuthKit
+wasmtime serve -Scli -Sconfig \
+  -Sconfig-var="jwt.expected_issuer=https://your-domain.authkit.app" \
+  -Sconfig-var="jwt.expected_audience=client_YOUR_CLIENT_ID" \
+  -Sconfig-var="jwt.jwks_uri=https://your-domain.authkit.app/oauth2/jwks" \
+  composed-server.wasm
+```
+
+AuthKit provides:
+- OAuth 2.0 authorization server with dynamic client registration
+- Enterprise SSO (SAML, OIDC)
+- Multi-factor authentication
+- User management and provisioning
 
 ## Integration with HTTP Transport
 

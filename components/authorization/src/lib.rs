@@ -1,16 +1,10 @@
-use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
 mod jwt;
 mod policy;
 mod discovery;
 mod mcp;
-mod error;
 mod config;
 
-use error::AuthError;
-use config::{get_config, get_required_config, ConfigKeys};
+use config::{get_config, ConfigKeys};
 
 // Component bindings will be generated here
 #[allow(warnings)]
@@ -23,10 +17,10 @@ use bindings::exports::fastertools::mcp::{
         AuthContext, AuthError as WitAuthError, AuthRequest, AuthResponse, Guest as AuthGuest,
     },
     jwt_validator::{
-        Guest as JwtGuest, JwtClaims, JwtError, JwtRequest, JwtResult,
+        Guest as JwtGuest, JwtError, JwtRequest, JwtResult,
     },
     mcp_authorization::{
-        Guest as McpAuthGuest, McpAuthRequest, ResourceAuthRequest, ResourceOperation,
+        Guest as McpAuthGuest, McpAuthRequest, ResourceAuthRequest,
         ToolAuthRequest,
     },
     oauth_discovery::{Guest as OAuthGuest, ResourceMetadata, ServerMetadata},
@@ -275,15 +269,21 @@ fn get_configured_policy() -> Option<String> {
     match mode.as_str() {
         "none" => None, // No policy enforcement
         "custom" => {
-            // Load custom policy from configured path
-            if let Some(path) = get_config(ConfigKeys::POLICY_PATH) {
-                // In a real implementation, this would read from the path
-                // For now, just return the path as a placeholder
-                eprintln!("Would load policy from: {}", path);
-                None
+            // Custom policy mode - requires policy to be provided via config
+            // Note: In a component model environment, we cannot read files directly
+            // The policy must be provided as a configuration value
+            if let Some(policy_content) = get_config(ConfigKeys::POLICY_CONTENT) {
+                Some(policy_content)
             } else {
-                eprintln!("Custom policy mode but no policy path configured");
-                None
+                eprintln!("Custom policy mode requires 'policy.content' configuration");
+                eprintln!("Falling back to default permissive policy");
+                // Fall back to default permissive policy
+                Some(r#"
+                    package mcp.authorization
+                    
+                    # Default to allow for authenticated users
+                    default allow = true
+                "#.to_string())
             }
         }
         "rbac" => {

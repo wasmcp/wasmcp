@@ -1,9 +1,11 @@
-use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
+use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use base64::{Engine as _, engine::general_purpose};
 use spin_sdk::http::{send, Method, Request};
+use once_cell::sync::Lazy;
 
 use crate::bindings::exports::fastertools::mcp::jwt_validator::{
     JwtClaims, JwtError, JwtRequest, JwtResult,
@@ -81,7 +83,9 @@ struct Jwk {
 }
 
 /// Cache for JWKS to avoid repeated fetches
-static mut JWKS_CACHE: Option<HashMap<String, (Jwks, u64)>> = None;
+static JWKS_CACHE: Lazy<Mutex<HashMap<String, (Jwks, u64)>>> = Lazy::new(|| {
+    Mutex::new(HashMap::new())
+});
 const JWKS_CACHE_DURATION: u64 = 3600; // 1 hour
 
 pub fn validate(request: JwtRequest) -> JwtResult {
@@ -218,30 +222,24 @@ fn fetch_and_cache_jwks(uri: &str) -> Result<Jwks, JwtError> {
         .as_secs();
     
     // Check cache
-    unsafe {
-        if JWKS_CACHE.is_none() {
-            JWKS_CACHE = Some(HashMap::new());
-        }
-        
-        if let Some(cache) = &JWKS_CACHE {
-            if let Some((jwks, cached_at)) = cache.get(uri) {
-                if now - cached_at < JWKS_CACHE_DURATION {
-                    return Ok(jwks.clone());
-                }
+    {
+        let cache = JWKS_CACHE.lock().unwrap();
+        if let Some((jwks, cached_at)) = cache.get(uri) {
+            if now - cached_at < JWKS_CACHE_DURATION {
+                return Ok(jwks.clone());
             }
         }
     }
     
-    // Fetch JWKS (in WASI, this would use a different HTTP client)
+    // Fetch JWKS using spin-sdk HTTP client
     let jwks_json = fetch_jwks(uri).map_err(|_| JwtError::JwksError)?;
     let jwks: Jwks = serde_json::from_str(&jwks_json)
         .map_err(|_| JwtError::JwksError)?;
     
     // Update cache
-    unsafe {
-        if let Some(ref mut cache) = JWKS_CACHE {
-            cache.insert(uri.to_string(), (jwks.clone(), now));
-        }
+    {
+        let mut cache = JWKS_CACHE.lock().unwrap();
+        cache.insert(uri.to_string(), (jwks.clone(), now));
     }
     
     Ok(jwks)

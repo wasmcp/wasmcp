@@ -18,12 +18,6 @@ pub fn get_config(key: &str) -> Option<String> {
     }
 }
 
-/// Get required configuration value, panic if not found
-pub fn get_required_config(key: &str) -> String {
-    get_config(key).unwrap_or_else(|| {
-        panic!("Required configuration '{}' not found", key);
-    })
-}
 
 /// Configuration keys used by the authorization component
 pub struct ConfigKeys;
@@ -44,6 +38,6 @@ impl ConfigKeys {
     pub const REGISTRATION_ENDPOINT: &'static str = "oauth.registration_endpoint";
     
     // Policy configuration
-    pub const POLICY_MODE: &'static str = "policy.mode"; // "default", "rbac", "custom"
-    pub const POLICY_PATH: &'static str = "policy.path"; // Path to custom policy file
+    pub const POLICY_MODE: &'static str = "policy.mode"; // "default", "rbac", "custom", "none"
+    pub const POLICY_CONTENT: &'static str = "policy.content"; // Custom policy content (for custom mode)
 }
