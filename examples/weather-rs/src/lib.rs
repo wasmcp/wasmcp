@@ -55,6 +55,26 @@ pub fn auth_config() -> Option<ProviderAuthConfig> {
 /// The main component struct required by the WIT bindings.
 pub struct Component;
 
+/// Server information for MCP clients.
+/// 
+/// Customize this to identify your MCP server.
+pub fn server_info() -> (String, String, String) {
+    (
+        "weather-rs".to_string(),  // Server name
+        "0.1.0".to_string(),                            // Server version
+        "weather-rs MCP Server".to_string(),      // Server title
+    )
+}
+
+/// MCP protocol version to use.
+/// 
+/// Available versions:
+/// - V20250326: Earlier protocol version
+/// - V20250618: Current protocol version (recommended)
+pub fn protocol_version() -> bindings::fastertools::mcp::session::ProtocolVersion {
+    bindings::fastertools::mcp::session::ProtocolVersion::V20250618
+}
+
 /// Arguments for the echo tool.
 #[derive(Deserialize)]
 struct EchoArgs {

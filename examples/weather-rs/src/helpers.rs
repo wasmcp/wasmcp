@@ -121,7 +121,7 @@ macro_rules! register_tools {
                 $crate::helpers::McpError,
             > {
                 Ok($crate::bindings::fastertools::mcp::session::InitializeResponse {
-                    protocol_version: $crate::bindings::fastertools::mcp::session::ProtocolVersion::V20250618,
+                    protocol_version: $crate::protocol_version(),
                     capabilities: $crate::bindings::fastertools::mcp::session::ServerCapabilities {
                         experimental: None,
                         logging: None,
@@ -132,10 +132,13 @@ macro_rules! register_tools {
                             list_changed: None,
                         }),
                     },
-                    server_info: $crate::bindings::fastertools::mcp::session::ImplementationInfo {
-                        name: "weather-rs".to_string(),
-                        version: "0.1.0".to_string(),
-                        title: Some("Weather MCP Server".to_string()),
+                    server_info: {
+                        let (name, version, title) = $crate::server_info();
+                        $crate::bindings::fastertools::mcp::session::ImplementationInfo {
+                            name,
+                            version,
+                            title: Some(title),
+                        }
                     },
                     instructions: None,
                     meta: None,

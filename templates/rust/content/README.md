@@ -1,45 +1,43 @@
 # {{project-name}}
 
-{{project-description}}
+MCP server example in Rust.
 
 ## Quick Start
 
 ```bash
 make setup  # Install dependencies
-make build  # Build server
+make build  # Build server (no auth)
 make serve  # Run on port 8080
 ```
 
 With OAuth authentication:
 ```bash
 make build-auth
-make serve-auth
+make serve-auth  # Configure JWT env vars first
 ```
 
 ## Architecture
 
 WebAssembly components composed at build time:
 - Provider component (this code)
-- HTTP transport (from registry)
-- Authorization (optional)
+- HTTP transport component (from registry)
+- Authorization component (optional)
+
+## Tools
+
+- `echo` - Echo a message
+- `get_weather` - Get weather for a location
+- `multi_weather` - Get weather for multiple cities concurrently
 
 ## Development
 
 ### Prerequisites
 
-- Rust 1.89+
+- Rust 1.89+ (for async traits)
 - cargo-component
 - wasm-tools
-- wac
-- wkg
-
-### Project Structure
-
-```
-src/
-├── lib.rs       # Tool implementations
-└── helpers.rs   # MCP SDK traits
-```
+- wac (for composition)
+- wkg (for registry packages)
 
 ### Adding Tools
 
@@ -69,51 +67,33 @@ impl Tool for MyTool {
 }
 ```
 
-Register with `register_tools!` macro.
-
-## Concurrency
-
-The Spin SDK provides async runtime for Wasm:
-
+Register with:
 ```rust
-let futures = cities.iter().map(|city| {
-    Box::pin(get_weather_for_city(city.clone()))
-});
-let results = futures::future::join_all(futures).await;
+register_tools!(EchoTool, WeatherTool, MyTool);
 ```
 
 ## Testing
 
 ```bash
-make test-all    # Run all tests
-make test-echo   # Test echo tool
+make test-all        # Run all tests
+make test-weather    # Test weather tool
+make test-multi      # Test concurrent fetching
 ```
 
-## OAuth Authentication
+## OAuth Support
 
-Optional OAuth 2.0/JWT support:
-
+Configure JWT validation:
 ```bash
-export JWT_ISSUER="https://auth.example.com"
-export JWT_AUDIENCE="client_123"
-export JWT_JWKS_URI="https://auth.example.com/.well-known/jwks.json"
+export JWT_ISSUER="https://your-domain.authkit.app"
+export JWT_AUDIENCE="client_YOUR_CLIENT_ID"
+export JWT_JWKS_URI="https://your-domain.authkit.app/oauth2/jwks"
 make serve-auth
 ```
 
-Features:
-- JWT validation with JWKS
-- OAuth discovery endpoints
-- OPA/Rego policies
-- Works with AuthKit, Auth0, etc.
-
-## Runtime Options
-
+Test auth:
 ```bash
-# Wasmtime
-wasmtime serve -Scli mcp-http-server.wasm
-
-# Spin (no auth only)
-spin up
+make test-auth-no-token    # Should return 401
+make test-auth-discovery   # OAuth discovery endpoints
 ```
 
 ## License
