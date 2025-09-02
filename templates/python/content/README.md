@@ -6,8 +6,14 @@
 
 ```bash
 make setup  # Install dependencies
-make build  # Build server
+make build  # Build server (no auth)
 make serve  # Run on port 8080
+```
+
+With OAuth authentication:
+```bash
+make build-auth
+make serve-auth  # Configure JWT env vars first
 ```
 
 ## Architecture
@@ -15,6 +21,7 @@ make serve  # Run on port 8080
 WebAssembly components composed at build time:
 - Provider component (this code)
 - HTTP transport (from registry)
+- Authorization (optional)
 
 ## Development
 
@@ -71,13 +78,30 @@ make test-all    # Run all tests
 make test-echo   # Test echo tool
 ```
 
+## OAuth Authentication
+
+Optional OAuth 2.0/JWT support:
+
+```bash
+export JWT_ISSUER="https://auth.example.com"
+export JWT_AUDIENCE="client_123"
+export JWT_JWKS_URI="https://auth.example.com/.well-known/jwks.json"
+make serve-auth
+```
+
+Features:
+- JWT validation with JWKS
+- OAuth discovery endpoints
+- OPA/Rego policies
+- Works with AuthKit, Auth0, etc.
+
 ## Runtime Options
 
 ```bash
 # Wasmtime
 wasmtime serve -Scli mcp-http-server.wasm
 
-# Spin
+# Spin (no auth only)
 spin up
 ```
 

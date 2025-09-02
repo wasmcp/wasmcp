@@ -7,9 +7,9 @@ name = "fastertools:mcp"
 registry = "ghcr.io"
 
 [[packages.versions]]
-requirement = "=0.1.11"
-version = "0.1.11"
-digest = "sha256:eb199b351b1980fb9996283e38e2554e7b8ca8287b015c3963931a0764ec0ad2"
+requirement = "=0.1.12"
+version = "0.1.12"
+digest = "sha256:462b3de9180b0232817271dfc51a435ba781c91b740797f9b0d683860e271eed"
 
 [[packages]]
 name = "wasi:http"

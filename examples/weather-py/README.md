@@ -5,127 +5,105 @@ An MCP server written in Python
 ## Quick Start
 
 ```bash
-# Setup (first time only)
-make setup
-
-# Build the component
-make build
-
-# Run the server
-make serve
+make setup  # Install dependencies
+make build  # Build server (no auth)
+make serve  # Run on port 8080
 ```
 
-## Testing
-
-Test the MCP server with curl:
-
+With OAuth authentication:
 ```bash
-# List available tools
-make test-tools
-
-# Test echo tool
-make test-echo
-
-# Test weather tool
-make test-weather
-
-# Test multi-weather tool
-make test-multi
+make build-auth
+make serve-auth  # Configure JWT env vars first
 ```
+
+## Architecture
+
+WebAssembly components composed at build time:
+- Provider component (this code)
+- HTTP transport (from registry)
+- Authorization (optional)
 
 ## Development
+
+### Prerequisites
+
+- Python 3.10+
+- componentize-py
+- wasm-tools
+- wac
+- wkg
 
 ### Project Structure
 
 ```
-.
-├── app.py                 # Your MCP provider implementation
-├── mcp-http-server.wasm  # Final composed component (provider + transport)
-├── wit/                  # WebAssembly Interface Types
-│   └── world.wit        # World definition
-├── wit_world/           # Generated Python bindings
-├── venv/                # Python virtual environment
-└── requirements.txt     # Python dependencies
+app.py       # Tool implementations
+helpers.py   # MCP SDK decorators
+wit/         # Interface definitions
 ```
 
-### Adding New Tools
+### Adding Tools
 
-1. Add tool definition in `handle_list_tools()`:
-```python
-tools.Tool(
-    base=mcp_types.BaseMetadata(name="my_tool", title="My Tool"),
-    description="What this tool does",
-    input_schema=json.dumps({
-        "type": "object",
-        "properties": {
-            "param": {"type": "string", "description": "Parameter description"}
-        },
-        "required": ["param"]
-    }),
-    output_schema=None,
-    annotations=None,
-    meta=None
-)
-```
-
-2. Handle the tool in `handle_call_tool()`:
-```python
-elif request.name == "my_tool":
-    return self._handle_my_tool(args)
-```
-
-3. Implement the handler:
-```python
-def _handle_my_tool(self, args: dict) -> tools.ToolResult:
-    param = args.get("param")
-    # Your implementation here
-    return self._success(f"Result: {param}")
-```
-
-### HTTP Requests
-
-This template uses componentize-py's built-in poll_loop for async HTTP:
+Use the decorator API:
 
 ```python
-async def _fetch_json(self, url: str) -> dict:
-    request = OutgoingRequest(Fields.from_list([]))
-    request.set_scheme(Scheme_Https())
-    request.set_authority(parsed.netloc)
-    request.set_path_with_query(path_with_query)
-    request.set_method(Method_Get())
-    
-    response = await poll_loop.send(request)
-    # ... handle response
+@mcp.tool
+def my_tool(param: str) -> str:
+    """Tool description."""
+    return f"Result: {param}"
+
+# Or with explicit configuration
+@mcp.tool(name="custom_name", description="Custom description")
+async def async_tool(data: dict) -> str:
+    """Process data asynchronously."""
+    result = await process_data(data)
+    return json.dumps(result)
 ```
 
-### Debugging
+## Concurrency
+
+Use asyncio for concurrent operations:
+
+```python
+@mcp.tool
+async def multi_fetch(urls: List[str]) -> str:
+    tasks = [fetch_url(url) for url in urls]
+    results = await asyncio.gather(*tasks)
+    return json.dumps(results)
+```
+
+## Testing
 
 ```bash
-# Test Python code locally (without Wasm)
-make test-local
-
-# Regenerate bindings if WIT files change
-make bindgen
-
-# Clean all build artifacts
-make clean
+make test-all    # Run all tests
+make test-echo   # Test echo tool
 ```
 
-## Deployment
+## OAuth Authentication
 
-The `mcp-http-server.wasm` file is a standalone WebAssembly component that can run on:
+Optional OAuth 2.0/JWT support:
 
-- **Wasmtime**: `wasmtime serve -Scli mcp-http-server.wasm`
-- **Spin**: `spin up`
-- **Any WASI-compliant runtime**
+```bash
+export JWT_ISSUER="https://auth.example.com"
+export JWT_AUDIENCE="client_123"
+export JWT_JWKS_URI="https://auth.example.com/.well-known/jwks.json"
+make serve-auth
+```
 
-## Requirements
+Features:
+- JWT validation with JWKS
+- OAuth discovery endpoints
+- OPA/Rego policies
+- Works with AuthKit, Auth0, etc.
 
-- Python 3.10+
-- componentize-py
-- wkg (WebAssembly package manager)
-- wac (WebAssembly component tools)
-- wasmtime or Spin runtime
+## Runtime Options
+
+```bash
+# Wasmtime
+wasmtime serve -Scli mcp-http-server.wasm
+
+# Spin (no auth only)
+spin up
+```
 
 ## License
 
