@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.19;
+package fastertools:mcp@0.1.23;
 
 /// World definitions for MCP transports and capabilities
 /// 
@@ -14,7 +14,7 @@ package fastertools:mcp@0.1.19;
 world tools-transport {
     // Core types always needed
     import types;
-    import session;
+    import session-types;
     import notifications;
     
     // Core capabilities for session management (includes optional auth config)
@@ -36,7 +36,7 @@ world tools-provider {
 world tools-resources-transport {
     // Core types always needed
     import types;
-    import session;
+    import session-types;
     import notifications;
     
     // Core capabilities for session management (includes optional auth config)
@@ -60,7 +60,7 @@ world tools-resources-provider {
 world tools-resources-prompts-transport {
     // Core types always needed
     import types;
-    import session;
+    import session-types;
     import notifications;
     
     // Core capabilities for session management (includes optional auth config)
@@ -88,7 +88,7 @@ world tools-resources-prompts-provider {
 world full-transport {
     // Core types always needed
     import types;
-    import session;
+    import session-types;
     import notifications;
     
     // Core capabilities for session management (includes optional auth config)

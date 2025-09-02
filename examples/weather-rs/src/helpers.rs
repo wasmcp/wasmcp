@@ -115,26 +115,26 @@ macro_rules! register_tools {
         
         impl CoreGuest for $crate::Component {
             fn handle_initialize(
-                _request: $crate::bindings::fastertools::mcp::session::InitializeRequest,
+                _request: $crate::bindings::fastertools::mcp::session_types::InitializeRequest,
             ) -> Result<
-                $crate::bindings::fastertools::mcp::session::InitializeResponse,
+                $crate::bindings::fastertools::mcp::session_types::InitializeResponse,
                 $crate::helpers::McpError,
             > {
-                Ok($crate::bindings::fastertools::mcp::session::InitializeResponse {
+                Ok($crate::bindings::fastertools::mcp::session_types::InitializeResponse {
                     protocol_version: $crate::protocol_version(),
-                    capabilities: $crate::bindings::fastertools::mcp::session::ServerCapabilities {
+                    capabilities: $crate::bindings::fastertools::mcp::session_types::ServerCapabilities {
                         experimental: None,
                         logging: None,
                         completions: None,
                         prompts: None,
                         resources: None,
-                        tools: Some($crate::bindings::fastertools::mcp::session::ToolsCapability {
+                        tools: Some($crate::bindings::fastertools::mcp::session_types::ToolsCapability {
                             list_changed: None,
                         }),
                     },
                     server_info: {
                         let (name, version, title) = $crate::server_info();
-                        $crate::bindings::fastertools::mcp::session::ImplementationInfo {
+                        $crate::bindings::fastertools::mcp::session_types::ImplementationInfo {
                             name,
                             version,
                             title: Some(title),
@@ -157,7 +157,7 @@ macro_rules! register_tools {
                 Ok(())
             }
             
-            fn get_auth_config() -> Option<$crate::bindings::fastertools::mcp::authorization::ProviderAuthConfig> {
+            fn get_auth_config() -> Option<$crate::bindings::fastertools::mcp::authorization_types::ProviderAuthConfig> {
                 // Delegate to the auth_config function in lib.rs
                 $crate::auth_config()
             }

@@ -2,8 +2,8 @@
 /// This contains only the essential session management functions
 interface core-capabilities {
     use types.{mcp-error};
-    use session.{initialize-request, initialize-response};
-    use authorization.{provider-auth-config};
+    use session-types.{initialize-request, initialize-response};
+    use authorization-types.{provider-auth-config};
     
     /// Handle session initialization
     /// Implementations should declare their capabilities here

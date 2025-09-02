@@ -33,8 +33,8 @@ impl WitMcpAdapter {
     }
     
     /// Convert WIT protocol version enum to actual protocol version string
-    fn convert_protocol_version(&self, version: crate::bindings::fastertools::mcp::session::ProtocolVersion) -> rmcp::model::ProtocolVersion {
-        use crate::bindings::fastertools::mcp::session::ProtocolVersion as WitVersion;
+    fn convert_protocol_version(&self, version: crate::bindings::fastertools::mcp::session_types::ProtocolVersion) -> rmcp::model::ProtocolVersion {
+        use crate::bindings::fastertools::mcp::session_types::ProtocolVersion as WitVersion;
         use rmcp::model::ProtocolVersion;
         
         match version {
@@ -44,7 +44,7 @@ impl WitMcpAdapter {
     }
     
     /// Convert WIT InitializeResponse to rmcp ServerInfo
-    pub fn convert_initialize_to_rmcp(&self, response: crate::bindings::fastertools::mcp::session::InitializeResponse) -> Result<rmcp::model::ServerInfo> {
+    pub fn convert_initialize_to_rmcp(&self, response: crate::bindings::fastertools::mcp::session_types::InitializeResponse) -> Result<rmcp::model::ServerInfo> {
         use rmcp::model::{ServerInfo, ServerCapabilities, Implementation};
         
         Ok(ServerInfo {

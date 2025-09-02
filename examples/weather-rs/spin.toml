@@ -10,12 +10,21 @@ description = "An MCP server written in Rust"
 route = "/mcp"
 component = "mcp-server"
 
+[[trigger.http]]
+route = "/.well-known/oauth-protected-resource"
+component = "mcp-server"
+
+[[trigger.http]]
+route = "/.well-known/oauth-authorization-server"
+component = "mcp-server"
+
 [component.mcp-server]
 # Using the composed component (provider + transport)
 source = "mcp-http-server.wasm"
 allowed_outbound_hosts = [
     "https://geocoding-api.open-meteo.com",
-    "https://api.open-meteo.com"
+    "https://api.open-meteo.com",
+    "https://divine-lion-50-staging.authkit.app"
 ]
 key_value_stores = ["default"]
 

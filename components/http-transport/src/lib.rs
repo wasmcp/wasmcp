@@ -21,7 +21,7 @@ mod bindings;
 // Always import types and session for core functionality
 use bindings::fastertools::mcp::{
     types::{McpError, ErrorCode},
-    authorization::ProviderAuthConfig,
+    authorization_types::ProviderAuthConfig,
 };
 
 mod adapter;
@@ -181,15 +181,15 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                 
                 // Convert to WIT types - would need proper conversion here
                 // For now, create a minimal request
-                bindings::fastertools::mcp::session::InitializeRequest {
-                    protocol_version: bindings::fastertools::mcp::session::ProtocolVersion::V20250618,
-                    capabilities: bindings::fastertools::mcp::session::ClientCapabilities {
+                bindings::fastertools::mcp::session_types::InitializeRequest {
+                    protocol_version: bindings::fastertools::mcp::session_types::ProtocolVersion::V20250618,
+                    capabilities: bindings::fastertools::mcp::session_types::ClientCapabilities {
                         experimental: None,
                         roots: None,
                         sampling: None,
                         elicitation: None,
                     },
-                    client_info: bindings::fastertools::mcp::session::ImplementationInfo {
+                    client_info: bindings::fastertools::mcp::session_types::ImplementationInfo {
                         name: params.client_info.name,
                         version: params.client_info.version,
                         title: None,
@@ -198,15 +198,15 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                 }
             } else {
                 // Default request
-                bindings::fastertools::mcp::session::InitializeRequest {
-                    protocol_version: bindings::fastertools::mcp::session::ProtocolVersion::V20250618,
-                    capabilities: bindings::fastertools::mcp::session::ClientCapabilities {
+                bindings::fastertools::mcp::session_types::InitializeRequest {
+                    protocol_version: bindings::fastertools::mcp::session_types::ProtocolVersion::V20250618,
+                    capabilities: bindings::fastertools::mcp::session_types::ClientCapabilities {
                         experimental: None,
                         roots: None,
                         sampling: None,
                         elicitation: None,
                     },
-                    client_info: bindings::fastertools::mcp::session::ImplementationInfo {
+                    client_info: bindings::fastertools::mcp::session_types::ImplementationInfo {
                         name: "unknown".to_string(),
                         version: "0.0.0".to_string(),
                         title: None,
