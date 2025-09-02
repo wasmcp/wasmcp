@@ -1,236 +1,314 @@
-# MCP Authorization Component
+# MCP Authorization Flow: JWT Validation & OPA Policy Evaluation
 
-A production-ready WebAssembly component providing OAuth 2.0 authorization, JWT validation, and policy-based access control for MCP servers.
+## Overview
 
-## Features
+The authorization component implements a two-stage security model:
+1. **Authentication** via JWT validation (jsonwebtoken crate)
+2. **Authorization** via OPA policy evaluation (Regorus engine)
 
-- **JWT Validation**: Full JWT token validation with JWKS support
-- **OAuth 2.0 Compliance**: Implements RFC 8414 (Authorization Server Metadata) and RFC 9728 (Protected Resource Metadata)
-- **Policy Engine**: OPA/Rego policy evaluation using Regorus
-- **MCP-Aware**: Fine-grained authorization for MCP methods, tools, and resources
-- **Component Model**: Pure WebAssembly component with WIT interfaces
-- **AuthKit/WorkOS Compatible**: Works seamlessly with AuthKit for enterprise authentication
-- **WASI HTTP**: Uses spin-sdk for WASI-compatible HTTP requests (JWKS fetching)
+## Component Architecture
 
-## Architecture
+The MCP authorization system uses WebAssembly Component Model composition to create secure servers:
 
-This component provides authorization as a pluggable capability that can be composed with MCP transport components:
-
-```
-[HTTP Request] 
-    → [http-transport with auth]
-        → [authorization component]
-            ├── [JWT validation]
-            ├── [Policy evaluation]
-            └── [OAuth discovery]
-        → [MCP provider component]
-    → [HTTP Response]
-```
-
-## WIT Interfaces
-
-The component exports five main interfaces:
-
-### 1. Authorization Interface
-Main authorization function that validates tokens and applies policies.
-
-```wit
-authorize: func(request: auth-request) -> auth-response;
+```mermaid
+graph LR
+    subgraph "Component Composition"
+        Provider[Provider Component<br/>weather-rs, Python, etc.]
+        Auth[Authorization Component<br/>fastertools:mcp-authorization]
+        Transport[HTTP Transport<br/>fastertools:mcp-transport-http-tools-auth]
+        
+        Provider -->|plugs into| TransportAuth[Transport+Auth]
+        Auth -->|plugs into| Transport
+        Transport --> TransportAuth
+        
+        TransportAuth --> Server[Complete MCP Server<br/>mcp-http-auth-server.wasm]
+    end
+    
+    subgraph "Runtime"
+        Client[MCP Client] -->|HTTP + Bearer Token| Server
+        Server -->|WASI Config| Config[JWT Configuration]
+    end
 ```
 
-### 2. JWT Validator Interface
-Standalone JWT validation with JWKS support.
+### Component Packages
 
-```wit
-validate: func(request: jwt-request) -> jwt-result;
-fetch-jwks: func(uri: string) -> result<string, string>;
+Published to the `fastertools` namespace on ghcr.io:
+
+1. **Authorization Component** (`fastertools:mcp-authorization@0.1.0`)
+   - JWT validation with JWKS support
+   - OPA/Rego policy evaluation
+   - OAuth 2.0 discovery endpoints
+   - ~1.8MB (includes Regorus engine)
+
+2. **HTTP Transport Components**
+   - `fastertools:mcp-transport-http-tools@0.1.0` - Without auth
+   - `fastertools:mcp-transport-http-tools-auth@0.1.0` - With auth imports
+   - ~550KB each
+
+3. **Provider Components** (your implementation)
+   - Implements MCP tools, resources, etc.
+   - Language-specific (Rust, Python, Go, etc.)
+
+### Composition Process
+
+```bash
+# Step 1: Authorization plugs into Transport
+wac plug --plug mcp-authorization.wasm \
+         mcp-transport-http-tools-auth.wasm \
+         -o transport-with-auth.wasm
+
+# Step 2: Provider plugs into authorized transport  
+wac plug --plug weather-rs.wasm \
+         transport-with-auth.wasm \
+         -o mcp-http-auth-server.wasm
 ```
 
-### 3. Policy Engine Interface
-OPA/Rego policy evaluation for fine-grained access control.
+Or using registry packages:
+```bash
+# Download from registry
+wkg get fastertools:mcp-authorization@0.1.0 -o auth.wasm
+wkg get fastertools:mcp-transport-http-tools-auth@0.1.0 -o transport.wasm
 
-```wit
-evaluate: func(request: policy-request) -> policy-result;
+# Compose
+wac plug --plug auth.wasm transport.wasm -o transport-auth.wasm
+wac plug --plug provider.wasm transport-auth.wasm -o server.wasm
 ```
 
-### 4. OAuth Discovery Interface
-OAuth 2.0 discovery endpoints for client configuration.
+## Detailed Flow Sequence
 
-```wit
-get-resource-metadata: func() -> resource-metadata;
-get-server-metadata: func() -> server-metadata;
+### Stage 1: JWT Token Validation
+
+```mermaid
+sequenceDiagram
+    Client->>Transport: HTTP Request + Bearer Token
+    Transport->>Auth Component: authorize(token, method, path, body)
+    Auth Component->>JWT Module: validate(token)
+    
+    alt JWKS Cached
+        JWT Module-->>JWT Module: Use cached JWKS
+    else JWKS Not Cached
+        JWT Module->>AuthKit: Fetch JWKS (spin-sdk HTTP)
+        AuthKit-->>JWT Module: JWKS Response
+        JWT Module-->>JWT Module: Cache for 1 hour
+    end
+    
+    JWT Module->>JWT Module: Verify signature (RS256/HS256)
+    JWT Module->>JWT Module: Validate claims (iss, aud, exp, nbf)
+    
+    alt Token Invalid
+        JWT Module-->>Auth Component: JwtResult::Invalid(error)
+        Auth Component-->>Transport: 401 Unauthorized
+    else Token Valid
+        JWT Module-->>Auth Component: JwtResult::Valid(claims)
+    end
 ```
 
-### 5. MCP Authorization Interface
-MCP-specific authorization helpers for methods, tools, and resources.
+### JWT Validation Details
 
-```wit
-authorize-method: func(request: mcp-auth-request) -> result<_, auth-error>;
-authorize-tool: func(request: tool-auth-request) -> result<_, auth-error>;
-authorize-resource: func(request: resource-auth-request) -> result<_, auth-error>;
+The `jsonwebtoken` crate is used for:
+
+1. **Signature Verification**:
+   - Fetches JWKS from issuer's endpoint
+   - Supports RS256 (RSA) and HS256 (HMAC) algorithms
+   - Matches `kid` (key ID) from token header to JWKS
+   - Verifies signature using public key from JWKS
+
+2. **Claims Validation**:
+   ```rust
+   validation.set_issuer(&[expected_issuer]);      // Must match
+   validation.set_audience(&[expected_audience]);   // Must match
+   validation.validate_exp = true;                  // Not expired
+   validation.validate_nbf = true;                  // Not before
+   ```
+
+3. **JWKS Caching**:
+   - Caches JWKS for 1 hour to reduce network calls
+   - Thread-safe using `Lazy<Mutex<HashMap>>`
+
+### Stage 2: OPA Policy Authorization
+
+After JWT validation succeeds, the component evaluates authorization policies:
+
+```mermaid
+sequenceDiagram
+    Auth Component->>Auth Component: Extract MCP context from body
+    Auth Component->>Auth Component: Build policy input
+    Auth Component->>Policy Module: evaluate(policy, input)
+    Policy Module->>Regorus: Evaluate OPA/Rego policy
+    
+    alt Policy Allows
+        Regorus-->>Policy Module: allow = true
+        Policy Module-->>Auth Component: PolicyResult::Allow
+        Auth Component-->>Transport: Authorized(context)
+    else Policy Denies
+        Regorus-->>Policy Module: allow = false
+        Policy Module-->>Auth Component: PolicyResult::Deny(reason)
+        Auth Component-->>Transport: 403 Forbidden
+    end
 ```
+
+### Policy Input Structure
+
+The policy receives comprehensive context:
+
+```json
+{
+  "token": {
+    "sub": "user-123",
+    "iss": "https://auth.example.com",
+    "aud": ["client_ABC"],
+    "scopes": ["mcp:tools:read", "mcp:tools:write"],
+    "client_id": "client_ABC"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/mcp",
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "mcp": {
+    "method": "tools/call",
+    "tool": "dangerous_tool",
+    "arguments": {...}
+  }
+}
+```
+
+### Policy Modes
+
+1. **Default Mode** (Permissive):
+   ```rego
+   package mcp.authorization
+   default allow = true  # All authenticated users allowed
+   ```
+
+2. **RBAC Mode** (Role-based):
+   ```rego
+   allow if {
+       input.mcp.method == "tools/call"
+       input.token.scopes[_] == "mcp:tools:write"
+   }
+   ```
+
+3. **Custom Mode**: User-provided OPA policy via config
+
+## Security Guarantees
+
+1. **No Token Passthrough**: Raw tokens never leave the auth component
+2. **Fail Secure**: Default deny if policy evaluation fails
+3. **Signature Verification**: Cryptographic proof of token authenticity
+4. **Claims Validation**: Ensures token is for this service and not expired
+5. **Policy Isolation**: Each request evaluated independently
+
+## HTTP Status Codes
+
+- **401 Unauthorized**: JWT validation failed (invalid/expired/missing token)
+- **403 Forbidden**: JWT valid but policy denied access (insufficient scope)
+- **500 Internal Server Error**: Policy evaluation error
 
 ## Configuration
 
-The component uses WASI config for runtime configuration. When running with `wasmtime serve`, use the `-Sconfig` flag with configuration variables:
+### Runtime Configuration (WASI Config)
+
+The composed server accepts configuration via wasmtime's `-Sconfig` flag:
 
 ```bash
 wasmtime serve -Scli -Sconfig \
   -Sconfig-var="jwt.expected_issuer=https://auth.example.com" \
-  -Sconfig-var="jwt.expected_audience=my-api-audience" \
+  -Sconfig-var="jwt.expected_audience=client_123" \
   -Sconfig-var="jwt.jwks_uri=https://auth.example.com/.well-known/jwks.json" \
-  composed-server.wasm
+  mcp-http-auth-server.wasm
 ```
 
-### Configuration Keys
-
-#### JWT Validation
-- `jwt.expected_issuer` - Expected JWT issuer (required)
-- `jwt.expected_audience` - Expected JWT audience (required)
-- `jwt.jwks_uri` - JWKS endpoint for key discovery (required)
-- `jwt.validation_leeway` - Clock skew tolerance in seconds (optional, default: 0)
-
-#### OAuth Discovery (optional)
-- `oauth.resource_url` - MCP resource URL for discovery
-- `oauth.auth_server` - Authorization server URL (defaults to JWT issuer)
-- `oauth.auth_endpoint` - OAuth authorization endpoint
-- `oauth.token_endpoint` - OAuth token endpoint
-- `oauth.registration_endpoint` - Dynamic client registration endpoint
-
-#### Policy Engine
-- `policy.mode` - Policy mode: `default`, `rbac`, `custom`, or `none`
-  - `default` - Permissive, allows all authenticated users
-  - `rbac` - Role-based access control with scope requirements
-  - `custom` - Use custom policy from `policy.content`
-  - `none` - Skip policy evaluation entirely
-- `policy.content` - Custom OPA/Rego policy content (for custom mode)
-
-## Policy Examples
-
-### Default Policy
-The default policy (`policies/default.rego`) implements basic OAuth scope-based authorization:
-
-```rego
-# Allow if user has required scope for method
-allow if {
-    input.token.sub != ""
-    method_allowed
-}
-
-method_allowed if {
-    input.mcp.method == "tools/call"
-    "mcp:tools:write" in input.token.scopes
-    tool_allowed
-}
+### Required for JWT Validation
+```bash
+jwt.expected_issuer=https://auth.example.com     # Token issuer
+jwt.expected_audience=client_123                 # Expected audience
+jwt.jwks_uri=https://auth.example.com/.well-known/jwks.json
 ```
 
-### RBAC Policy
-The RBAC policy (`policies/rbac.rego`) implements role-based access control:
-
-```rego
-allow if {
-    user_roles := get_user_roles(input.token.sub)
-    required_permission := get_required_permission
-    some role in user_roles
-    required_permission in data.roles[role].permissions
-}
+### Optional Policy Configuration
+```bash
+policy.mode=rbac           # default|rbac|custom|none
+policy.content=<rego>      # For custom mode
+jwt.validation_leeway=60   # Clock skew tolerance in seconds
 ```
 
-### Tool Authorization Policy
-The tool authorization policy (`policies/tool-authorization.rego`) provides fine-grained control over tool access:
+### AuthKit/WorkOS Integration
 
-```rego
-tool_authorized if {
-    "mcp:tools:write" in input.token.scopes
-    tool_name := input.mcp.tool
-    tool_check_passes(tool_name)
-}
-```
-
-## AuthKit/WorkOS Integration
-
-This component works seamlessly with [AuthKit](https://workos.com/authkit) for enterprise authentication:
+Works seamlessly with AuthKit, for example:
 
 ```bash
-# Example with AuthKit
+export JWT_ISSUER="https://your-domain.authkit.app"
+export JWT_AUDIENCE="client_YOUR_CLIENT_ID"
+export JWT_JWKS_URI="https://your-domain.authkit.app/oauth2/jwks"
+
 wasmtime serve -Scli -Sconfig \
-  -Sconfig-var="jwt.expected_issuer=https://your-domain.authkit.app" \
-  -Sconfig-var="jwt.expected_audience=client_YOUR_CLIENT_ID" \
-  -Sconfig-var="jwt.jwks_uri=https://your-domain.authkit.app/oauth2/jwks" \
-  composed-server.wasm
+  -Sconfig-var="jwt.expected_issuer=$JWT_ISSUER" \
+  -Sconfig-var="jwt.expected_audience=$JWT_AUDIENCE" \
+  -Sconfig-var="jwt.jwks_uri=$JWT_JWKS_URI" \
+  mcp-http-auth-server.wasm
 ```
 
-AuthKit provides:
-- OAuth 2.0 authorization server with dynamic client registration
-- Enterprise SSO (SAML, OIDC)
-- Multi-factor authentication
-- User management and provisioning
+## Key Implementation Files
 
-## Integration with HTTP Transport
+- `src/jwt.rs`: JWT validation using jsonwebtoken crate
+- `src/policy.rs`: OPA policy evaluation using Regorus
+- `src/lib.rs`: Orchestrates JWT → Policy flow
+- `src/config.rs`: WASI config integration
 
-To use this component with the HTTP transport, enable the `auth` feature:
+## Quick Start Example
 
-```toml
-[dependencies.mcp-transport-http]
-features = ["auth", "tools", "resources"]
-```
-
-The transport will automatically:
-1. Handle OAuth discovery endpoints (`/.well-known/*`)
-2. Validate bearer tokens on incoming requests
-3. Apply configured policies
-4. Return proper OAuth error responses
-
-## Building
-
-Build the component:
+Using the weather-rs example with authentication:
 
 ```bash
-cd components/authorization
-cargo component build --release
+# Clone and navigate to example
+git clone <repo>
+cd examples/weather-rs
+
+# Build with auth (downloads components from registry)
+make build-auth
+
+# Configure and run
+export JWT_ISSUER="https://your-domain.authkit.app"
+export JWT_AUDIENCE="client_YOUR_CLIENT_ID"
+export JWT_JWKS_URI="https://your-domain.authkit.app/oauth2/jwks"
+make serve-auth
+
+# The server now:
+# - Provides OAuth discovery at /.well-known/oauth-*
+# - Validates JWT tokens on all /mcp requests
+# - Applies OPA policies for fine-grained access control
 ```
 
-The resulting WebAssembly component will be at `target/wasm32-wasip1/release/mcp_authorization.wasm`.
+## Testing the Flow
 
-## Testing
+1. **Test without token** (401):
+   ```bash
+   curl -X POST http://localhost:8080/mcp \
+        -H "Content-Type: application/json" \
+        -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+   ```
 
-Run the test suite:
+2. **Test OAuth discovery**:
+   ```bash
+   curl http://localhost:8080/.well-known/oauth-protected-resource
+   curl http://localhost:8080/.well-known/oauth-authorization-server
+   ```
 
-```bash
-cargo test
-```
+3. **Test with valid token** (200):
+   ```bash
+   curl -X POST http://localhost:8080/mcp \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+   ```
 
-Test policies:
+## Component Sizes
 
-```bash
-# Test with the OPA CLI
-opa test policies/*.rego -v
-```
-
-## Security Considerations
-
-1. **Token Validation**: Always validates JWT signatures, expiration, issuer, and audience
-2. **No Token Passthrough**: Authorization context is passed between components, never raw tokens
-3. **Policy Isolation**: Each policy evaluation runs in isolation with controlled input
-4. **Secure Defaults**: Defaults to deny unless explicitly allowed by policy
-5. **Audit Logging**: Policies can generate audit logs for compliance
-
-## OAuth 2.0 Compliance
-
-This component implements:
-- RFC 6749: OAuth 2.0 Authorization Framework
-- RFC 8414: OAuth 2.0 Authorization Server Metadata
-- RFC 9728: OAuth 2.0 Protected Resource Metadata
-- RFC 8707: Resource Indicators for OAuth 2.0
-- OAuth 2.1 Draft: Enhanced security requirements
-
-## Performance
-
-- **JWT Caching**: JWKS are cached for 1 hour to reduce network calls
-- **Policy Compilation**: Rego policies are compiled once and reused
-- **Zero Network Overhead**: Authorization happens in-process via component calls
-- **Minimal Allocations**: Efficient memory usage with minimal copying
-
-## License
-
-Apache-2.0
+- **Authorization**: ~1.8MB (includes Regorus policy engine)
+- **Transport (no auth)**: ~550KB
+- **Transport (with auth)**: ~550KB  
+- **Weather-rs provider**: ~350KB
+- **Final composed server**: ~2.7MB (all components combined)

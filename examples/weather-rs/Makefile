@@ -4,12 +4,11 @@
 PROVIDER_WASM = target/wasm32-wasip1/release/weather_rs.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 MCP_AUTH_SERVER_WASM = mcp-http-auth-server.wasm
-AUTH_WASM = ../../components/authorization/target/wasm32-wasip1/release/mcp_authorization.wasm
-TRANSPORT_WASM = ../../components/http-transport/target/wasm32-wasip1/release/mcp_transport_http.wasm
 
-# Transport packages from registry (fallback if local not available)
-TRANSPORT_PKG = fastertools:mcp-http-tools-server@0.1.0
-TRANSPORT_AUTH_PKG = fastertools:mcp-http-tools-auth-server@0.1.0
+# Registry packages
+TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.1.0
+TRANSPORT_AUTH_PKG = fastertools:mcp-transport-http-tools-auth@0.1.0
+AUTH_PKG = fastertools:mcp-authorization@0.1.0
 
 # Provider package for publishing
 PROVIDER_PKG = fastertools:weather-rs-provider@0.1.0
@@ -27,25 +26,27 @@ setup: ## Check and install required tools
 build: ## Build and compose everything into mcp-http-server.wasm (no auth)
 	@echo "Building provider component..."
 	@cargo component build --release --target wasm32-wasip1
-	@echo "Building transport component (no auth)..."
-	@cd ../../components/http-transport && cargo component build --release --no-default-features --features tools
+	@echo "Downloading transport from registry..."
+	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
 	@echo "Plugging provider into transport..."
-	@wac plug --plug $(PROVIDER_WASM) $(TRANSPORT_WASM) -o $(MCP_SERVER_WASM)
+	@wac plug --plug $(PROVIDER_WASM) .transport-tmp.wasm -o $(MCP_SERVER_WASM)
+	@rm -f .transport-tmp.wasm
 	@echo "✅ Created mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
 
 build-auth: ## Build and compose with OAuth authorization enabled
 	@echo "Building provider component..."
 	@cargo component build --release --target wasm32-wasip1
-	@echo "Building authorization component..."
-	@cd ../../components/authorization && cargo component build --release --target wasm32-wasip1
-	@echo "Building auth-enabled transport..."
-	@cd ../../components/http-transport && cargo component build --release --features "tools auth"
+	@echo "Downloading components from registry..."
+	@echo "  Fetching authorization component..."
+	@wkg get $(AUTH_PKG) -o .auth-tmp.wasm
+	@echo "  Fetching auth-enabled transport..."
+	@wkg get $(TRANSPORT_AUTH_PKG) -o .transport-auth-tmp.wasm
 	@echo "Composing with authorization..."
 	@echo "  Step 1: Plugging authorization into transport..."
-	@wac plug --plug $(AUTH_WASM) $(TRANSPORT_WASM) -o .transport-with-auth.wasm
+	@wac plug --plug .auth-tmp.wasm .transport-auth-tmp.wasm -o .transport-with-auth.wasm
 	@echo "  Step 2: Plugging provider into auth-enabled transport..."
 	@wac plug --plug $(PROVIDER_WASM) .transport-with-auth.wasm -o $(MCP_AUTH_SERVER_WASM)
-	@rm -f .transport-with-auth.wasm
+	@rm -f .auth-tmp.wasm .transport-auth-tmp.wasm .transport-with-auth.wasm
 	@echo "✅ Created mcp-http-auth-server.wasm ($$( ls -lh $(MCP_AUTH_SERVER_WASM) | awk '{print $$5}' ))"
 	@echo ""
 	@echo "To run with auth:"
@@ -165,3 +166,19 @@ publish: build ## Build and publish provider component to registry
 	@echo "Publishing weather Rust provider to registry..."
 	wkg publish --package '$(PROVIDER_PKG)' $(PROVIDER_WASM)
 	@echo "✅ Published $(PROVIDER_PKG)"
+
+# Publish required dependencies to registry (run once from repo owner)
+publish-deps: ## Instructions for publishing required dependencies
+	@echo "To make this example work from any machine, the following components"
+	@echo "must be published to the registry (typically done by repo maintainers):"
+	@echo ""
+	@echo "1. Authorization component:"
+	@echo "   cd ../../components/authorization && make publish"
+	@echo ""
+	@echo "2. Transport components:"
+	@echo "   cd ../../components/http-transport && make publish-all"
+	@echo ""
+	@echo "Required packages:"
+	@echo "  - $(AUTH_PKG)"
+	@echo "  - $(TRANSPORT_PKG)"
+	@echo "  - $(TRANSPORT_AUTH_PKG)"
