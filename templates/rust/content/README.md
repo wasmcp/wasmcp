@@ -6,8 +6,14 @@
 
 ```bash
 make setup  # Install dependencies and verify environment
-make build  # Build the MCP server
+make build  # Build the MCP server (no auth)
 make serve  # Run the server (default: wasmtime on port 8080)
+```
+
+With OAuth 2.0 authentication:
+```bash
+make build-auth  # Build with OAuth/JWT authorization
+make serve-auth  # Run with auth (configure JWT env vars)
 ```
 
 Test the server:
@@ -20,8 +26,11 @@ make test-all  # Run all tests
 This MCP server runs as a WebAssembly component, combining:
 - **Provider**: Your Rust implementation of MCP tools (this code)
 - **Transport**: Pre-built HTTP server component from the registry
+- **Authorization** (optional): OAuth 2.0/JWT validation component
 
-The composition happens at build time, producing a single `mcp-http-server.wasm` that can run on any runtime that supports the Wasm component model.
+The composition happens at build time, producing either:
+- `mcp-http-server.wasm` - Basic server without authentication
+- `mcp-http-auth-server.wasm` - Server with OAuth 2.0 authorization
 
 ## Development
 
@@ -209,9 +218,47 @@ make inspect  # Show component structure and exports
 The server can run on component model runtimes:
 
 ```bash
-# Wasmtime (default)
+# Wasmtime (default, no auth)
 wasmtime serve -Scli ./mcp-http-server.wasm
 
-# Spin
+# Wasmtime with OAuth authentication
+export JWT_ISSUER="https://your-domain.authkit.app"
+export JWT_AUDIENCE="client_YOUR_CLIENT_ID"
+export JWT_JWKS_URI="https://your-domain.authkit.app/oauth2/jwks"
+make serve-auth
+
+# Spin (no auth only)
 spin up
+```
+
+## OAuth 2.0 Authentication
+
+The template includes optional OAuth 2.0/JWT authentication support:
+
+```bash
+# Build with auth
+make build-auth
+
+# Configure JWT validation (example with AuthKit)
+export JWT_ISSUER="https://your-domain.authkit.app"
+export JWT_AUDIENCE="client_YOUR_CLIENT_ID"
+export JWT_JWKS_URI="https://your-domain.authkit.app/oauth2/jwks"
+
+# Run with auth
+make serve-auth
+```
+
+The auth-enabled server provides:
+- JWT token validation with JWKS support
+- OAuth 2.0 discovery endpoints (`/.well-known/oauth-*`)
+- Configurable OPA/Rego policies for fine-grained access control
+- Integration with enterprise auth providers (AuthKit, Auth0, etc.)
+
+Test auth enforcement:
+```bash
+# Without token (returns 401)
+make test-auth-no-token
+
+# Check OAuth discovery
+make test-auth-discovery
 ```
