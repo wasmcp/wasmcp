@@ -27,7 +27,7 @@ derives = ["Clone"]
 
 [package.metadata.component.target]
 package = "fastertools:mcp"
-version = "0.1.17"
+version = "0.1.19"
 world = "tools-provider"
 
 [profile.release]

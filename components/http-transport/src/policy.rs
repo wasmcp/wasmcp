@@ -1,6 +1,6 @@
 use regorus::{Engine, Value};
 
-use crate::bindings::exports::fastertools::mcp::policy_engine::{
+use crate::auth_types::{
     PolicyRequest, PolicyResult,
 };
 

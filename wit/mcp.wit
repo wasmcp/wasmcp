@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.17;
+package fastertools:mcp@0.1.19;
 
 /// World definitions for MCP transports and capabilities
 /// 
@@ -17,8 +17,10 @@ world tools-transport {
     import session;
     import notifications;
     
-    // Core capabilities for session management
+    // Core capabilities for session management (includes optional auth config)
     import core-capabilities;
+    
+    // Tool-specific types and capabilities
     import tools;
     import tools-capabilities;
 }
@@ -37,7 +39,7 @@ world tools-resources-transport {
     import session;
     import notifications;
     
-    // Core capabilities for session management
+    // Core capabilities for session management (includes optional auth config)
     import core-capabilities;
     
     // Feature-specific types and capabilities
@@ -61,7 +63,7 @@ world tools-resources-prompts-transport {
     import session;
     import notifications;
     
-    // Core capabilities for session management
+    // Core capabilities for session management (includes optional auth config)
     import core-capabilities;
     
     // Feature-specific types and capabilities
@@ -89,7 +91,7 @@ world full-transport {
     import session;
     import notifications;
     
-    // Core capabilities for session management
+    // Core capabilities for session management (includes optional auth config)
     import core-capabilities;
     
     // All feature-specific types
@@ -154,79 +156,4 @@ world authorization-provider {
     export policy-engine;
     export oauth-discovery;
     export mcp-authorization;
-}
-
-/// Transport with authorization and tools
-world tools-auth-transport {
-    // Core types always needed
-    import types;
-    import session;
-    import notifications;
-    
-    // Core capabilities for session management
-    import core-capabilities;
-    
-    // Authorization
-    import authorization;
-    import oauth-discovery;
-    import auth-config;  // Query provider for auth requirements
-    
-    // Tool-specific types and capabilities
-    import tools;
-    import tools-capabilities;
-}
-
-/// Transport with authorization, tools and resources
-world tools-resources-auth-transport {
-    // Core types always needed
-    import types;
-    import session;
-    import notifications;
-    
-    // Core capabilities for session management
-    import core-capabilities;
-    
-    // Authorization
-    import authorization;
-    import oauth-discovery;
-    import auth-config;
-    
-    // Feature-specific types and capabilities
-    import tools;
-    import tools-capabilities;
-    import resources;
-    import resources-capabilities;
-}
-
-/// Full transport with authorization
-world full-auth-transport {
-    // Core types always needed
-    import types;
-    import session;
-    import notifications;
-    
-    // Authorization
-    import authorization;
-    import oauth-discovery;
-    import jwt-validator;
-    import policy-engine;
-    import mcp-authorization;
-    
-    // All feature-specific types
-    import tools;
-    import resources;
-    import prompts;
-    import sampling;
-    import elicitation;
-    import roots;
-    import completion;
-    
-    // Import all capabilities
-    import tools-capabilities;
-    import resources-capabilities;
-    import prompts-capabilities;
-    import sampling-capabilities;
-    import elicitation-capabilities;
-    import roots-capabilities;
-    import completion-capabilities;
 }

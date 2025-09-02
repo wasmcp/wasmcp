@@ -7,7 +7,7 @@ use base64::{Engine as _, engine::general_purpose};
 use spin_sdk::http::{send, Method, Request};
 use once_cell::sync::Lazy;
 
-use crate::bindings::exports::fastertools::mcp::jwt_validator::{
+use crate::auth_types::{
     JwtClaims, JwtError, JwtRequest, JwtResult,
 };
 

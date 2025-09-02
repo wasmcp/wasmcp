@@ -1,8 +1,7 @@
 /// Authorization and authentication interfaces for MCP servers
 /// Provides JWT validation, OAuth discovery, and policy-based authorization
 
-/// Auth configuration that providers can export
-interface auth-config {
+interface authorization {
     /// Provider declares its authentication requirements
     record provider-auth-config {
         /// Expected JWT issuer (REQUIRED for auth)
@@ -17,11 +16,6 @@ interface auth-config {
         policy-data: option<string>,
     }
     
-    /// Provider returns its auth configuration
-    get-auth-config: func() -> provider-auth-config;
-}
-
-interface authorization {
     use types.{mcp-error, json-value, meta-fields};
     
     /// Authorization context passed between components after successful authentication
