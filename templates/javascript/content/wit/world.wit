@@ -2,5 +2,5 @@ package {{project-name | kebab_case}}:provider;
 
 /// MCP tools for {{project-description}}
 world {{project-name | kebab_case}} {
-    export fastertools:mcp/tools-capabilities@0.1.10;
+    export fastertools:mcp/tools-capabilities@0.1.12;
 }

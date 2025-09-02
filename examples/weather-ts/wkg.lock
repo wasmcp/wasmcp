@@ -7,6 +7,6 @@ name = "fastertools:mcp"
 registry = "ghcr.io"
 
 [[packages.versions]]
-requirement = "=0.1.10"
-version = "0.1.10"
-digest = "sha256:4f74d9bf8a5642a5f8bf5be71080b0b18d9c3b1a0e4172d9a41d055e513c8a41"
+requirement = "=0.1.12"
+version = "0.1.12"
+digest = "sha256:462b3de9180b0232817271dfc51a435ba781c91b740797f9b0d683860e271eed"
