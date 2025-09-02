@@ -26,10 +26,6 @@ build: ## Build and compose everything into mcp-http-server.wasm
 	@wac plug --plug $(PROVIDER_WASM) .transport-tmp.wasm -o $(MCP_SERVER_WASM)
 	@rm -f .transport-tmp.wasm
 	@echo "✅ Created mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
-	@echo ""
-	@echo "🔐 OAuth 2.0 authentication is ENABLED for this provider."
-	@echo "   Issuer: https://divine-lion-50-staging.authkit.app"
-	@echo "   Audience: client_01JZM53FW3WYV08AFC4QWQ3BNB"
 
 test: ## Run tests
 	cargo test

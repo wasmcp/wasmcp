@@ -155,6 +155,9 @@ macro_rules! register_tools {
             }
             
             fn get_auth_config() -> Option<$crate::bindings::fastertools::mcp::authorization::ProviderAuthConfig> {
+                // Toggle authentication by commenting/uncommenting the line below:
+                // return None;  // <- Uncomment this line to disable auth
+                
                 // Enable OAuth 2.0 authentication
                 Some($crate::bindings::fastertools::mcp::authorization::ProviderAuthConfig {
                     expected_issuer: "https://divine-lion-50-staging.authkit.app".to_string(),
