@@ -97,6 +97,7 @@ serve-auth: ## Serve already built mcp-http-auth-server.wasm with OAuth
 				-Sconfig-var="jwt.expected_issuer=$$JWT_ISSUER" \
 				-Sconfig-var="jwt.expected_audience=$$JWT_AUDIENCE" \
 				-Sconfig-var="jwt.jwks_uri=$$JWT_JWKS_URI" \
+				-Sconfig-var="oauth.resource_url=http://0.0.0.0:8080/mcp" \
 				mcp-http-auth-server.wasm; \
 		else \
 			echo "Using default test configuration. Set these environment variables to override:"; \
@@ -107,6 +108,7 @@ serve-auth: ## Serve already built mcp-http-auth-server.wasm with OAuth
 			wasmtime serve -Scli -Sconfig \
 				-Sconfig-var="jwt.expected_issuer=https://test.example.com/" \
 				-Sconfig-var="jwt.expected_audience=https://mcp.example.com" \
+				-Sconfig-var="oauth.resource_url=http://0.0.0.0:8080/mcp" \
 				mcp-http-auth-server.wasm; \
 		fi \
 	else \
@@ -166,19 +168,3 @@ publish: build ## Build and publish provider component to registry
 	@echo "Publishing {{project-name}} provider to registry..."
 	wkg publish --package '$(PROVIDER_PKG)' $(PROVIDER_WASM)
 	@echo "✅ Published $(PROVIDER_PKG)"
-
-# Publish required dependencies to registry (run once from repo owner)
-publish-deps: ## Instructions for publishing required dependencies
-	@echo "To make this example work from any machine, the following components"
-	@echo "must be published to the registry (typically done by repo maintainers):"
-	@echo ""
-	@echo "1. Authorization component:"
-	@echo "   cd ../../components/authorization && make publish"
-	@echo ""
-	@echo "2. Transport components:"
-	@echo "   cd ../../components/http-transport && make publish-all"
-	@echo ""
-	@echo "Required packages:"
-	@echo "  - $(AUTH_PKG)"
-	@echo "  - $(TRANSPORT_PKG)"
-	@echo "  - $(TRANSPORT_AUTH_PKG)"

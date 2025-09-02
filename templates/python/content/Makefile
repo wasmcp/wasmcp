@@ -138,6 +138,7 @@ serve-auth: ## Serve already built mcp-http-auth-server.wasm with OAuth
 				-Sconfig-var="jwt.expected_issuer=$$JWT_ISSUER" \
 				-Sconfig-var="jwt.expected_audience=$$JWT_AUDIENCE" \
 				-Sconfig-var="jwt.jwks_uri=$$JWT_JWKS_URI" \
+				-Sconfig-var="oauth.resource_url=http://0.0.0.0:8080/mcp" \
 				mcp-http-auth-server.wasm; \
 		else \
 			echo "Using default test configuration. Set these environment variables to override:"; \
@@ -148,6 +149,7 @@ serve-auth: ## Serve already built mcp-http-auth-server.wasm with OAuth
 			wasmtime serve -Scli -Sconfig \
 				-Sconfig-var="jwt.expected_issuer=https://test.example.com/" \
 				-Sconfig-var="jwt.expected_audience=https://mcp.example.com" \
+				-Sconfig-var="oauth.resource_url=http://0.0.0.0:8080/mcp" \
 				mcp-http-auth-server.wasm; \
 		fi \
 	else \

@@ -12,5 +12,5 @@ world weather-go {
     import wasi:io/streams@0.2.3;
     
     /// Export MCP tools capabilities
-    export fastertools:mcp/tools-capabilities@0.1.10;
+    export fastertools:mcp/tools-capabilities@0.1.12;
 }
