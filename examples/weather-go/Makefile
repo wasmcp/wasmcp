@@ -7,6 +7,9 @@ MCP_SERVER_WASM = mcp-http-server.wasm
 # Transport package from registry (tools-only server)
 TRANSPORT_PKG = fastertools:mcp-http-tools-server@0.1.0
 
+# Provider package for publishing
+PROVIDER_PKG = fastertools:weather-go-provider@0.1.0
+
 # Go/TinyGo configuration
 TINYGO = tinygo
 WASM_TOOLS = wasm-tools
@@ -163,6 +166,11 @@ test-multi: ## Test multi_weather tool
 		-d @- | python3 -m json.tool
 
 test-all: test-init test-tools test-echo test-weather test-multi ## Run all tests
+
+publish: build-provider ## Build and publish provider component to registry
+	@echo "Publishing weather Go provider to registry..."
+	wkg publish --package '$(PROVIDER_PKG)' $(PROVIDER_WASM)
+	@echo "✅ Published $(PROVIDER_PKG)"
 
 # Component introspection
 inspect: ## Inspect the built component

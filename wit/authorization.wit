@@ -103,7 +103,7 @@ interface oauth-discovery {
     /// OAuth 2.0 Protected Resource Metadata per RFC 9728
     record resource-metadata {
         /// Resource identifier (canonical URI of the MCP server)
-        resource: string,
+        resource-url: string,
         /// List of authorization server URLs that can issue tokens for this resource
         authorization-servers: list<string>,
         /// Scopes supported by this resource
@@ -271,10 +271,10 @@ interface mcp-authorization {
     
     /// Resource operation types
     enum resource-operation {
-        list,
-        read,
-        subscribe,
-        unsubscribe,
+        list-op,
+        read-op,
+        subscribe-op,
+        unsubscribe-op,
     }
     
     /// Authorize an MCP method call

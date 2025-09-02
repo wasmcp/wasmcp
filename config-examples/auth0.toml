@@ -1,0 +1,21 @@
+# Auth0 Configuration Example
+# Replace YOUR_DOMAIN with your Auth0 domain (e.g., dev-abc123.auth0.com)
+# Replace YOUR_API_IDENTIFIER with your Auth0 API identifier
+
+[[wasi.config]]
+# JWT Configuration for Auth0
+"jwt.expected_issuer" = "https://YOUR_DOMAIN.auth0.com/"
+"jwt.expected_audience" = "YOUR_API_IDENTIFIER"  # Your Auth0 API identifier
+"jwt.jwks_uri" = "https://YOUR_DOMAIN.auth0.com/.well-known/jwks.json"
+"jwt.validation_leeway" = "60"
+
+# OAuth Discovery Configuration
+"oauth.resource_url" = "https://your-mcp-server.com"
+"oauth.auth_server" = "https://YOUR_DOMAIN.auth0.com"
+"oauth.auth_issuer" = "https://YOUR_DOMAIN.auth0.com/"
+"oauth.auth_endpoint" = "https://YOUR_DOMAIN.auth0.com/authorize"
+"oauth.token_endpoint" = "https://YOUR_DOMAIN.auth0.com/oauth/token"
+"oauth.registration_endpoint" = "https://YOUR_DOMAIN.auth0.com/oauth/register"
+
+# Policy Configuration
+"policy.mode" = "rbac"  # Use RBAC mode for Auth0 roles/permissions

@@ -7,6 +7,9 @@ MCP_SERVER_WASM = mcp-http-server.wasm
 # Transport package from registry (tools-only server)
 TRANSPORT_PKG = fastertools:mcp-http-tools-server@0.1.0
 
+# Provider package for publishing
+PROVIDER_PKG = fastertools:weather-rs-provider@0.1.0
+
 help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
@@ -83,3 +86,8 @@ test-multi: ## Test multi_weather tool
 		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"multi_weather","arguments":{"cities":["Tokyo","London","New York"]}},"id":5}' | python3 -m json.tool
 
 test-all: test-init test-tools test-echo test-weather test-multi ## Run all tests
+
+publish: build ## Build and publish provider component to registry
+	@echo "Publishing weather Rust provider to registry..."
+	wkg publish --package '$(PROVIDER_PKG)' $(PROVIDER_WASM)
+	@echo "✅ Published $(PROVIDER_PKG)"

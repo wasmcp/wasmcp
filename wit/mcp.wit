@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.10;
+package fastertools:mcp@0.1.12;
 
 /// World definitions for MCP transports and capabilities
 /// 
@@ -128,6 +128,19 @@ world mcp-client {
 }
 
 // === AUTHORIZATION WORLDS ===
+
+/// Authorization provider world
+world authorization-provider {
+    // Import types needed for authorization
+    import types;
+    
+    // Export all authorization interfaces
+    export authorization;
+    export jwt-validator;
+    export policy-engine;
+    export oauth-discovery;
+    export mcp-authorization;
+}
 
 /// Transport with authorization and tools
 world tools-auth-transport {

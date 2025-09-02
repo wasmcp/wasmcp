@@ -1,0 +1,34 @@
+// Test composition with authorization
+// Compose HTTP transport + authorization + weather provider
+
+// Import the components
+let transport = new fastertools:mcp/full-auth-transport@0.1.11 {
+  http-transport: "./components/http-transport/target/wasm32-wasip1/debug/mcp_transport_http.wasm",
+};
+
+let auth = new fastertools:mcp/authorization-provider@0.1.11 {
+  authorization: "./components/authorization/target/wasm32-wasip1/debug/mcp_authorization.wasm",
+};
+
+let provider = new fastertools:mcp/tools-resources-prompts-provider@0.1.11 {
+  mcp-provider: "./examples/weather-rs/target/wasm32-wasip1/debug/weather_rs.wasm",
+};
+
+// Wire the authorization component to the transport
+let transport_with_auth = transport with {
+  authorization: auth.authorization,
+  jwt-validator: auth.jwt-validator,
+  policy-engine: auth.policy-engine,
+  oauth-discovery: auth.oauth-discovery,
+  mcp-authorization: auth.mcp-authorization,
+};
+
+// Wire the provider to the transport
+let server = transport_with_auth with {
+  tools-capabilities: provider.tools-capabilities,
+  resources-capabilities: provider.resources-capabilities,
+  prompts-capabilities: provider.prompts-capabilities,
+};
+
+// Export as a Spin app
+export server;

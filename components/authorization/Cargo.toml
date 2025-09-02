@@ -20,7 +20,7 @@ sha2 = "0.10"
 hmac = "0.12"
 
 # HTTP client for JWKS fetching (wasi-compatible)
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+spin-sdk = "4.0"
 
 # Time handling
 chrono = { version = "0.4", default-features = false, features = ["serde", "std", "clock"] }
@@ -32,12 +32,16 @@ wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
 regorus = { version = "0.3", default-features = false, features = ["std"] }
 
 [package.metadata.component]
-package = "fastertools:mcp-authorization"
+package = "fastertools:mcp"
 
 [package.metadata.component.bindings]
 derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 path = "wit"
+world = "authorization-component"
+
+[package.metadata.component.target.dependencies]
+"wasi:config" = { path = "wit/deps/config" }
 
 [workspace]

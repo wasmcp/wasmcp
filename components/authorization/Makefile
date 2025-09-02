@@ -2,7 +2,10 @@
 
 # Component name and output
 COMPONENT_NAME = mcp-authorization
-WASM_FILE = target/wasm32-wasip1/release/$(COMPONENT_NAME).wasm
+WASM_FILE = target/wasm32-wasip1/release/mcp_authorization.wasm
+
+# Package version for registry
+AUTH_PKG = fastertools:mcp-authorization@0.1.0
 
 # Default target
 all: build
@@ -59,6 +62,12 @@ dev:
 pre-commit: fmt check test
 	@echo "✅ All pre-commit checks passed"
 
+# Publish to registry
+publish: build
+	@echo "Publishing authorization component to registry..."
+	wkg publish --package '$(AUTH_PKG)' $(WASM_FILE)
+	@echo "✅ Published $(AUTH_PKG)"
+
 # Help target
 help:
 	@echo "Available targets:"
@@ -71,4 +80,5 @@ help:
 	@echo "  metadata     - Show component metadata"
 	@echo "  dev          - Build debug version"
 	@echo "  pre-commit   - Run all checks before commit"
+	@echo "  publish      - Publish component to registry"
 	@echo "  help         - Show this help message"

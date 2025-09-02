@@ -89,15 +89,28 @@ impl McpServer {
 
 #[spin_sdk::http_component]
 async fn handle_request(req: Request) -> Result<impl IntoResponse> {
-    let path = req.uri();
+    let uri = req.uri();
+    // Extract just the path from the URI
+    let path = if uri.contains("://") {
+        uri.split_once("://")
+            .and_then(|(_, rest)| rest.split_once('/'))
+            .map(|(_, path)| format!("/{}", path))
+            .unwrap_or_else(|| "/".to_string())
+    } else {
+        uri.to_string()
+    };
+    eprintln!("DEBUG: Received request for path: {} (from URI: {})", path, uri);
     
     // Handle OAuth discovery endpoints when auth is enabled
     #[cfg(feature = "auth")]
     {
+        eprintln!("DEBUG: Auth feature is enabled, checking discovery endpoints");
         if path == "/.well-known/oauth-protected-resource" {
+            eprintln!("DEBUG: Handling resource metadata endpoint");
             return handle_resource_metadata();
         }
         if path == "/.well-known/oauth-authorization-server" {
+            eprintln!("DEBUG: Handling server metadata endpoint");
             return handle_server_metadata();
         }
     }
@@ -441,10 +454,10 @@ async fn authorize_request(req: &Request) -> Result<(), McpError> {
 }
 
 #[cfg(feature = "auth")]
-fn handle_resource_metadata() -> Result<impl IntoResponse> {
+fn handle_resource_metadata() -> Result<Response> {
     let metadata = oauth_discovery::get_resource_metadata();
     let json = serde_json::json!({
-        "resource": metadata.resource,
+        "resource": metadata.resource_url,
         "authorization_servers": metadata.authorization_servers,
         "scopes_supported": metadata.scopes_supported,
         "bearer_methods_supported": metadata.bearer_methods_supported,
@@ -460,7 +473,7 @@ fn handle_resource_metadata() -> Result<impl IntoResponse> {
 }
 
 #[cfg(feature = "auth")]
-fn handle_server_metadata() -> Result<impl IntoResponse> {
+fn handle_server_metadata() -> Result<Response> {
     let metadata = oauth_discovery::get_server_metadata();
     let json = serde_json::json!({
         "issuer": metadata.issuer,
@@ -496,7 +509,8 @@ fn create_auth_error_response(error: McpError) -> Response {
         }
     });
     
-    let mut builder = Response::builder()
+    let mut response = Response::builder();
+    let mut builder = response
         .status(status as u16)
         .header("content-type", "application/json")
         .header("access-control-allow-origin", "*");

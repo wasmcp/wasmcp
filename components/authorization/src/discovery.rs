@@ -1,19 +1,22 @@
 use crate::bindings::exports::fastertools::mcp::oauth_discovery::{
     ResourceMetadata, ServerMetadata,
 };
+use crate::config::{get_config, ConfigKeys};
 
 /// Get OAuth 2.0 Protected Resource Metadata
 /// This should be customized based on deployment configuration
 pub fn get_resource_metadata() -> ResourceMetadata {
-    // These values would typically come from environment variables or configuration
-    let resource_url = std::env::var("MCP_RESOURCE_URL")
-        .unwrap_or_else(|_| "https://mcp.example.com".to_string());
+    // Get values from WASI config runtime
+    let resource_url = get_config(ConfigKeys::RESOURCE_URL)
+        .unwrap_or_else(|| "https://mcp.example.com".to_string());
     
-    let auth_server = std::env::var("MCP_AUTH_SERVER")
-        .unwrap_or_else(|_| "https://auth.example.com".to_string());
+    // Use JWT issuer as the authorization server (AuthKit domain)
+    let auth_server = get_config(ConfigKeys::EXPECTED_ISSUER)
+        .or_else(|| get_config(ConfigKeys::AUTH_SERVER))
+        .unwrap_or_else(|| "https://auth.example.com".to_string());
     
     ResourceMetadata {
-        resource: resource_url,
+        resource_url,
         authorization_servers: vec![auth_server],
         scopes_supported: Some(vec![
             "mcp:tools:read".to_string(),
@@ -30,22 +33,25 @@ pub fn get_resource_metadata() -> ResourceMetadata {
 /// Get OAuth 2.0 Authorization Server Metadata
 /// This provides discovery information about the authorization server
 pub fn get_server_metadata() -> ServerMetadata {
-    // These values would typically come from environment variables or configuration
-    let issuer = std::env::var("MCP_AUTH_ISSUER")
-        .unwrap_or_else(|_| "https://auth.example.com".to_string());
+    // Use JWT issuer as the base for OAuth endpoints (AuthKit domain)
+    // This allows using a single config value for both JWT validation and OAuth discovery
+    let issuer = get_config(ConfigKeys::EXPECTED_ISSUER)
+        .or_else(|| get_config(ConfigKeys::AUTH_ISSUER))
+        .unwrap_or_else(|| "https://auth.example.com".to_string());
     
-    let auth_endpoint = std::env::var("MCP_AUTH_ENDPOINT")
-        .unwrap_or_else(|_| format!("{}/authorize", issuer));
+    // AuthKit uses standard OAuth 2.0 endpoints
+    let auth_endpoint = get_config(ConfigKeys::AUTH_ENDPOINT)
+        .unwrap_or_else(|| format!("{}/oauth2/authorize", issuer));
     
-    let token_endpoint = std::env::var("MCP_TOKEN_ENDPOINT")
-        .unwrap_or_else(|_| format!("{}/token", issuer));
+    let token_endpoint = get_config(ConfigKeys::TOKEN_ENDPOINT)
+        .unwrap_or_else(|| format!("{}/oauth2/token", issuer));
     
-    let jwks_uri = std::env::var("MCP_JWKS_URI")
-        .unwrap_or_else(|_| format!("{}/.well-known/jwks.json", issuer));
+    // Use the configured JWKS URI or construct from issuer
+    let jwks_uri = get_config(ConfigKeys::JWKS_URI)
+        .unwrap_or_else(|| format!("{}/oauth2/jwks", issuer));
     
-    let registration_endpoint = std::env::var("MCP_REGISTRATION_ENDPOINT")
-        .ok()
-        .or_else(|| Some(format!("{}/register", issuer)));
+    let registration_endpoint = get_config(ConfigKeys::REGISTRATION_ENDPOINT)
+        .or_else(|| Some(format!("{}/oauth2/register", issuer)));
     
     ServerMetadata {
         issuer,

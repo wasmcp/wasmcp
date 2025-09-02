@@ -1,15 +1,16 @@
-package fastertools:mcp-authorization@0.1.0;
+package fastertools:mcp@0.1.12;
 
-/// Authorization component world
-/// Provides JWT validation, policy evaluation, and OAuth discovery
-world authorization {
-    // Import the types we need
-    import fastertools:mcp/types@0.1.10;
+world authorization-component {
+    // Import types needed
+    import types;
     
-    // Export all authorization interfaces
-    export fastertools:mcp/authorization@0.1.10;
-    export fastertools:mcp/jwt-validator@0.1.10;
-    export fastertools:mcp/policy-engine@0.1.10;
-    export fastertools:mcp/oauth-discovery@0.1.10;
-    export fastertools:mcp/mcp-authorization@0.1.10;
+    // Include WASI config imports world (just like wasmtime does)
+    include wasi:config/imports@0.2.0-draft;
+    
+    // Export authorization interfaces
+    export authorization;
+    export jwt-validator;
+    export policy-engine;
+    export oauth-discovery;
+    export mcp-authorization;
 }

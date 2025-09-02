@@ -137,10 +137,10 @@ fn authorize_tool_internal(
 pub fn authorize_resource(request: ResourceAuthRequest) -> Result<(), AuthError> {
     // Determine required scope based on operation
     let required_scope = match request.operation {
-        ResourceOperation::List => "mcp:resources:read",
-        ResourceOperation::Read => "mcp:resources:read",
-        ResourceOperation::Subscribe => "mcp:resources:read",
-        ResourceOperation::Unsubscribe => "mcp:resources:read",
+        ResourceOperation::ListOp => "mcp:resources:read",
+        ResourceOperation::ReadOp => "mcp:resources:read",
+        ResourceOperation::SubscribeOp => "mcp:resources:read",
+        ResourceOperation::UnsubscribeOp => "mcp:resources:read",
     };
     
     // Check base permission
@@ -268,7 +268,7 @@ mod tests {
         let request = ResourceAuthRequest {
             context: create_test_context(vec!["mcp:resources:read"]),
             uri: "user://user123/profile".to_string(),
-            operation: ResourceOperation::Read,
+            operation: ResourceOperation::ReadOp,
         };
         
         // User can access their own resource
@@ -277,7 +277,7 @@ mod tests {
         let request_other = ResourceAuthRequest {
             context: create_test_context(vec!["mcp:resources:read"]),
             uri: "user://user456/profile".to_string(),
-            operation: ResourceOperation::Read,
+            operation: ResourceOperation::ReadOp,
         };
         
         // User cannot access other user's resource without admin

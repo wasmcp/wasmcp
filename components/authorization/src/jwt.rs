@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::time::{SystemTime, UNIX_EPOCH};
 use base64::{Engine as _, engine::general_purpose};
+use spin_sdk::http::{send, Method, Request};
 
 use crate::bindings::exports::fastertools::mcp::jwt_validator::{
     JwtClaims, JwtError, JwtRequest, JwtResult,
@@ -232,7 +233,7 @@ fn fetch_and_cache_jwks(uri: &str) -> Result<Jwks, JwtError> {
     }
     
     // Fetch JWKS (in WASI, this would use a different HTTP client)
-    let jwks_json = fetch_jwks(uri)?;
+    let jwks_json = fetch_jwks(uri).map_err(|_| JwtError::JwksError)?;
     let jwks: Jwks = serde_json::from_str(&jwks_json)
         .map_err(|_| JwtError::JwksError)?;
     
@@ -247,14 +248,31 @@ fn fetch_and_cache_jwks(uri: &str) -> Result<Jwks, JwtError> {
 }
 
 pub fn fetch_jwks(uri: &str) -> Result<String, String> {
-    // In a WASI environment, we would use a different HTTP client
-    // For now, this is a placeholder that would need to be implemented
-    // with wasi-http or similar
+    // Use spin-sdk for WASI-compatible HTTP requests
+    eprintln!("Fetching JWKS from: {}", uri);
     
-    // This would typically use reqwest or similar in a real implementation
-    // For component model, we might need to use WASI HTTP imports
-    
-    Err("JWKS fetching not yet implemented for WASI".to_string())
+    // Use spin's executor to run async HTTP request
+    spin_sdk::http::run(async move {
+        let request = Request::builder()
+            .method(Method::Get)
+            .uri(uri)
+            .build();
+        
+        let response: spin_sdk::http::Response = send(request)
+            .await
+            .map_err(|e| format!("Failed to fetch JWKS: {:?}", e))?;
+        
+        if response.status() != &200 {
+            return Err(format!("JWKS fetch failed with status: {:?}", response.status()));
+        }
+        
+        let body = response.into_body();
+        let text = String::from_utf8(body)
+            .map_err(|e| format!("Failed to parse JWKS response: {}", e))?;
+        
+        eprintln!("Successfully fetched JWKS");
+        Ok(text)
+    })
 }
 
 fn map_jwt_error(err: jsonwebtoken::errors::Error) -> JwtError {

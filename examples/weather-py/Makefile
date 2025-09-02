@@ -7,6 +7,9 @@ MCP_SERVER_WASM = mcp-http-server.wasm
 # Transport package from registry (tools-only server)
 TRANSPORT_PKG = fastertools:mcp-http-tools-server@0.1.0
 
+# Provider package for publishing
+PROVIDER_PKG = fastertools:weather-py-provider@0.1.0
+
 # Python virtual environment
 VENV = venv
 PYTHON = $(VENV)/bin/python3
@@ -123,3 +126,10 @@ test-multi: ## Test multi_weather tool
 	@curl -s -X POST http://localhost:8080/mcp \
 		-H "Content-Type: application/json" \
 		-d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"multi_weather","arguments":{"cities":["London","Paris","Berlin"]}},"id":5}' | python3 -m json.tool
+
+publish: build ## Build and publish provider component to registry
+	@echo "Publishing weather Python provider to registry..."
+	wkg publish --package '$(PROVIDER_PKG)' $(PROVIDER_WASM)
+	@echo "✅ Published $(PROVIDER_PKG)"
+
+test-all: test-init test-tools test-echo test-weather test-multi ## Run all tests
