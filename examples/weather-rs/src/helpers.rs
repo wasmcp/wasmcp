@@ -55,9 +55,10 @@ pub trait Tool: Sized {
 #[macro_export]
 macro_rules! register_tools {
     ($($tool:ty),* $(,)?) => {
-        use $crate::bindings::exports::fastertools::mcp::tools_capabilities::Guest;
+        use $crate::bindings::exports::fastertools::mcp::tools_capabilities::Guest as ToolsGuest;
+        use $crate::bindings::exports::fastertools::mcp::core_capabilities::Guest as CoreGuest;
         
-        impl Guest for $crate::Component {
+        impl ToolsGuest for $crate::Component {
             #[allow(clippy::needless_pass_by_value)]
             fn handle_list_tools(
                 _request: $crate::bindings::fastertools::mcp::tools::ListToolsRequest,
@@ -109,6 +110,48 @@ macro_rules! register_tools {
                         data: None,
                     })
                 }
+            }
+        }
+        
+        impl CoreGuest for $crate::Component {
+            fn handle_initialize(
+                _request: $crate::bindings::fastertools::mcp::session::InitializeRequest,
+            ) -> Result<
+                $crate::bindings::fastertools::mcp::session::InitializeResponse,
+                $crate::helpers::McpError,
+            > {
+                Ok($crate::bindings::fastertools::mcp::session::InitializeResponse {
+                    protocol_version: $crate::bindings::fastertools::mcp::session::ProtocolVersion::V20250618,
+                    capabilities: $crate::bindings::fastertools::mcp::session::ServerCapabilities {
+                        experimental: None,
+                        logging: None,
+                        completions: None,
+                        prompts: None,
+                        resources: None,
+                        tools: Some($crate::bindings::fastertools::mcp::session::ToolsCapability {
+                            list_changed: None,
+                        }),
+                    },
+                    server_info: $crate::bindings::fastertools::mcp::session::ImplementationInfo {
+                        name: "weather-rs".to_string(),
+                        version: "0.1.0".to_string(),
+                        title: Some("Weather MCP Server".to_string()),
+                    },
+                    instructions: None,
+                    meta: None,
+                })
+            }
+
+            fn handle_initialized() -> Result<(), $crate::helpers::McpError> {
+                Ok(())
+            }
+
+            fn handle_ping() -> Result<(), $crate::helpers::McpError> {
+                Ok(())
+            }
+
+            fn handle_shutdown() -> Result<(), $crate::helpers::McpError> {
+                Ok(())
             }
         }
         

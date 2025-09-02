@@ -6,14 +6,10 @@ interface session {
     /// Protocol versions supported by MCP
     /// These correspond to official MCP specification versions
     enum protocol-version {
-        /// MCP 2024-11-05 specification
-        mcp-v20241105,
         /// MCP 2025-03-26 specification
-        mcp-v20250326,
-        /// MCP 2025-06-18 specification  
-        mcp-v20250618,
-        /// Latest draft specification (DRAFT-2025-v3)
-        draft-v2025-v3,
+        v20250326,
+        /// MCP 2025-06-18 specification (latest)
+        v20250618,
     }
 
     /// Information about an MCP implementation

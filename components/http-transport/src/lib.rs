@@ -164,7 +164,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                 // Convert to WIT types - would need proper conversion here
                 // For now, create a minimal request
                 bindings::fastertools::mcp::session::InitializeRequest {
-                    protocol_version: bindings::fastertools::mcp::session::ProtocolVersion::McpV20250618,
+                    protocol_version: bindings::fastertools::mcp::session::ProtocolVersion::V20250618,
                     capabilities: bindings::fastertools::mcp::session::ClientCapabilities {
                         experimental: None,
                         roots: None,
@@ -181,7 +181,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
             } else {
                 // Default request
                 bindings::fastertools::mcp::session::InitializeRequest {
-                    protocol_version: bindings::fastertools::mcp::session::ProtocolVersion::McpV20250618,
+                    protocol_version: bindings::fastertools::mcp::session::ProtocolVersion::V20250618,
                     capabilities: bindings::fastertools::mcp::session::ClientCapabilities {
                         experimental: None,
                         roots: None,
