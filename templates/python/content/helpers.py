@@ -23,8 +23,13 @@ except ImportError:
     Stream = None
 
 # Import MCP types from generated bindings
-from wit_world.exports import ToolsCapabilities
-from wit_world.imports import tools, fastertools_mcp_types as mcp_types
+from wit_world.exports import ToolsCapabilities, CoreCapabilities
+from wit_world.imports import (
+    tools, 
+    session_types,
+    authorization_types,
+    fastertools_mcp_types as mcp_types
+)
 from wit_world.imports.types import (
     OutgoingRequest,
     Fields,
@@ -53,8 +58,11 @@ class MCPServer:
     Provides a decorator-based interface for defining tools.
     """
     name: str = "MCP Server"
+    version: str = "0.1.0"
     instructions: Optional[str] = None
     tools: Dict[str, Tool] = field(default_factory=dict)
+    auth_config: Optional[authorization_types.ProviderAuthConfig] = None
+    protocol_version: session_types.ProtocolVersion = session_types.ProtocolVersion.V20250618
     
     def tool(
         self,
@@ -186,30 +194,86 @@ class MCPServer:
     
     def get_capabilities_class(self):
         """
-        Get the ToolsCapabilities class for the WebAssembly component.
+        Get the combined capabilities class for the WebAssembly component.
         componentize-py expects a class, not an instance.
         
         Returns:
-            A ToolsCapabilities class that implements the WIT interface
+            A capabilities class that implements both ToolsCapabilities and CoreCapabilities
         """
         # Create a class that captures the server instance
         server = self
         
-        class BoundMCPCapabilities(ToolsCapabilities):
+        class BoundMCPCapabilities(ToolsCapabilities, CoreCapabilities):
+            # Tools capabilities
             def handle_list_tools(self, request):
                 return MCPCapabilities(server).handle_list_tools(request)
             
             def handle_call_tool(self, request):
                 return MCPCapabilities(server).handle_call_tool(request)
+            
+            # Core capabilities
+            def handle_initialize(self, request):
+                return MCPCapabilities(server).handle_initialize(request)
+            
+            def handle_initialized(self):
+                return None
+            
+            def handle_ping(self):
+                return None
+            
+            def handle_shutdown(self):
+                return None
+            
+            def get_auth_config(self):
+                return server.auth_config
         
         return BoundMCPCapabilities
 
 
-class MCPCapabilities(ToolsCapabilities):
-    """MCP Tools Capabilities implementation for WebAssembly components."""
+class MCPCapabilities(ToolsCapabilities, CoreCapabilities):
+    """MCP Capabilities implementation for WebAssembly components."""
     
     def __init__(self, server: MCPServer):
         self.server = server
+    
+    def handle_initialize(self, request: session_types.InitializeRequest) -> session_types.InitializeResponse:
+        """Handle MCP initialization."""
+        return session_types.InitializeResponse(
+            protocol_version=self.server.protocol_version,
+            capabilities=session_types.ServerCapabilities(
+                experimental=None,
+                logging=None,
+                completions=None,
+                prompts=None,
+                resources=None,
+                tools=session_types.ToolsCapability(
+                    list_changed=None
+                )
+            ),
+            server_info=session_types.ImplementationInfo(
+                name=self.server.name,
+                version=self.server.version,
+                title=self.server.instructions
+            ),
+            instructions=self.server.instructions,
+            meta=None
+        )
+    
+    def handle_initialized(self) -> None:
+        """Handle post-initialization."""
+        return None
+    
+    def handle_ping(self) -> None:
+        """Handle ping request."""
+        return None
+    
+    def handle_shutdown(self) -> None:
+        """Handle shutdown request."""
+        return None
+    
+    def get_auth_config(self):
+        """Get auth configuration from server."""
+        return self.server.auth_config
     
     def handle_list_tools(self, request: tools.ListToolsRequest) -> tools.ListToolsResponse:
         """List available tools."""

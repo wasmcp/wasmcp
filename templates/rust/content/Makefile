@@ -1,11 +1,11 @@
-.PHONY: build test clean run help
+.PHONY: build test clean run help setup
 
 # Component paths
 PROVIDER_WASM = target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport
-TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.1.7
+TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.1.11
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -27,15 +27,9 @@ build: ## Build and compose everything into mcp-http-server.wasm
 	@rm -f .transport-tmp.wasm
 	@echo "✅ Created mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
 
-test: ## Run tests
-	cargo test
-
 clean: ## Clean build artifacts
 	cargo clean
 	rm -f $(MCP_SERVER_WASM) .transport-tmp.wasm
-
-run: build ## Build and run the server
-	@$(MAKE) serve
 
 serve: ## Serve already built mcp-http-server.wasm
 	@if command -v wasmtime >/dev/null 2>&1; then \

@@ -11,7 +11,7 @@ mod bindings;
 #[macro_use]
 mod helpers;
 
-use bindings::fastertools::mcp::authorization::ProviderAuthConfig;
+use bindings::fastertools::mcp::authorization_types::ProviderAuthConfig;
 
 use futures::future::join_all;
 use helpers::{parse_args, text_result, IntoToolResult, McpError, Tool, ToolResult};
@@ -71,8 +71,8 @@ pub fn server_info() -> (String, String, String) {
 /// Available versions:
 /// - V20250326: Earlier protocol version
 /// - V20250618: Current protocol version (recommended)
-pub fn protocol_version() -> bindings::fastertools::mcp::session::ProtocolVersion {
-    bindings::fastertools::mcp::session::ProtocolVersion::V20250618
+pub fn protocol_version() -> bindings::fastertools::mcp::session_types::ProtocolVersion {
+    bindings::fastertools::mcp::session_types::ProtocolVersion::V20250618
 }
 
 /// Arguments for the echo tool.

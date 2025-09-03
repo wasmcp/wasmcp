@@ -24,7 +24,7 @@ from wit_world.imports.authorization_types import ProviderAuthConfig
 mcp = MCPServer(
     name="weather-py",
     version="0.1.0",
-    instructions="Weather Python MCP Server",
+    instructions="An MCP server written in Python",
     auth_config=None,
     # auth_config=ProviderAuthConfig(
     #     expected_issuer="https://xxxxx.authkit.app",

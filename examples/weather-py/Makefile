@@ -1,7 +1,7 @@
 .PHONY: build test clean run help setup
 
 # Component paths
-PROVIDER_WASM = weather_py-provider.wasm
+PROVIDER_WASM = weather_py_provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport

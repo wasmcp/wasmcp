@@ -1,6 +1,6 @@
 package weather-py:provider;
 
-/// MCP tools provider for Python weather server
+/// MCP tools for An MCP server written in Python
 world weather-py {
     import wasi:http/outgoing-handler@0.2.3;
     export fastertools:mcp/core-capabilities@0.1.23;

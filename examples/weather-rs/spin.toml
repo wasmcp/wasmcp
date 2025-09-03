@@ -23,8 +23,7 @@ component = "mcp-server"
 source = "mcp-http-server.wasm"
 allowed_outbound_hosts = [
     "https://geocoding-api.open-meteo.com",
-    "https://api.open-meteo.com",
-    "https://divine-lion-50-staging.authkit.app"
+    "https://api.open-meteo.com"
 ]
 key_value_stores = ["default"]
 
