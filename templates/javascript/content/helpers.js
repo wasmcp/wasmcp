@@ -110,6 +110,12 @@ export function errorResult(message) {
  */
 export function createHandler(config) {
     const tools = config.tools || [];
+    const serverInfo = config.serverInfo || {
+        name: 'mcp-server',
+        version: '0.1.0',
+        instructions: 'MCP Server'
+    };
+    const authConfig = config.authConfig || null;
     
     // Build a map of tools by name for quick lookup
     const toolMap = new Map();
@@ -123,7 +129,65 @@ export function createHandler(config) {
         }
     }
     
-    return {
+    // Core capabilities handlers
+    const coreCapabilities = {
+        /**
+         * Handle initialize request
+         */
+        handleInitialize(request) {
+            return {
+                protocolVersion: 'v20250618',
+                capabilities: {
+                    experimental: null,
+                    logging: null,
+                    completions: null,
+                    prompts: null,
+                    resources: null,
+                    tools: {
+                        listChanged: null
+                    }
+                },
+                serverInfo: {
+                    name: serverInfo.name,
+                    version: serverInfo.version,
+                    title: serverInfo.instructions
+                },
+                instructions: serverInfo.instructions,
+                meta: null
+            };
+        },
+        
+        /**
+         * Handle initialized notification
+         */
+        handleInitialized() {
+            // No-op for initialized
+        },
+        
+        /**
+         * Handle ping request
+         */
+        handlePing() {
+            // No-op for ping
+        },
+        
+        /**
+         * Handle shutdown request
+         */
+        handleShutdown() {
+            // No-op for shutdown
+        },
+        
+        /**
+         * Get auth configuration
+         */
+        getAuthConfig() {
+            return authConfig;
+        }
+    };
+    
+    // Tools capabilities handlers
+    const toolsCapabilities = {
         /**
          * Handle list-tools request
          */
@@ -164,17 +228,11 @@ export function createHandler(config) {
             }
         }
     };
-}
-
-/**
- * Helper function to register multiple tools at once
- * Returns the handler export expected by jco
- */
-export function registerTools(...tools) {
-    const handler = createHandler({ tools });
     
-    // Export as the name expected by the WIT interface
+    // Return both capability handlers
     return {
-        toolHandler: handler
+        coreCapabilities,
+        toolsCapabilities
     };
 }
+
