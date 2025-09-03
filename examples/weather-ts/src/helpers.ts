@@ -118,8 +118,7 @@ class InternalTool<TArgs = any> implements ToolDefinition<TArgs> {
    */
   async run(args: any): Promise<ToolResult> {
     try {
-      // Ensure we await the result properly
-      const result = await Promise.resolve(this.execute(args));
+      const result = await this.execute(args);
       return textResult(result);
     } catch (error) {
       return errorResult(error instanceof Error ? error.message : String(error));
@@ -303,7 +302,7 @@ export function createHandler(config: HandlerConfig): Handler {
       const tool = toolMap.get(request.name);
       
       if (!tool) {
-        return Promise.resolve(errorResult(`Unknown tool: ${request.name}`));
+        return errorResult(`Unknown tool: ${request.name}`);
       }
       
       try {
@@ -314,11 +313,10 @@ export function createHandler(config: HandlerConfig): Handler {
             : request.arguments)
           : {};
         
-        // Execute the tool and ensure proper promise handling
-        const result = await tool.run(args);
-        return Promise.resolve(result);
+        // Execute the tool
+        return await tool.run(args);
       } catch (error) {
-        return Promise.resolve(errorResult(`Error executing ${request.name}: ${error instanceof Error ? error.message : String(error)}`));
+        return errorResult(`Error executing ${request.name}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   };
