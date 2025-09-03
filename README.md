@@ -109,7 +109,7 @@ A provider with I/O, directly for outbound HTTP or indirectly via composition wi
 
 The [`components/`](./components/) directory contains published components that are useful for composing MCP servers.
 
-The HTTP transport component (tools-only) is published and publicly available at https://github.com/orgs/fastertools/packages/container/package/mcp-http-tools-server via `fastertools:mcp-http-tools-server@0.1.0`
+The HTTP transport component (tools-only) is published and publicly available at https://github.com/orgs/fastertools/packages/container/package/mcp-http-tools-server via `fastertools:mcp-transport-http-tools@0.1.11`+
 
 ## Why components?
 
