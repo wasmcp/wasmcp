@@ -9,6 +9,9 @@ import (
 	"net/url"
 	"strings"
 
+	"go.bytecodealliance.org/cm"
+	authorizationtypes "weather_go/internal/fastertools/mcp/authorization-types"
+	corecapabilities "weather_go/internal/fastertools/mcp/core-capabilities"
 	"weather_go/wasihttp"
 )
 
@@ -27,7 +30,36 @@ type MultiWeatherArgs struct {
 	Cities []string `json:"cities"`
 }
 
+// ==============================================================================
+// OAuth 2.0 authentication configuration.
+//
+// To enable authentication:
+// 1. Uncomment the authConfig() function below
+// 2. Replace the placeholder values with your actual OAuth provider details
+// 3. Run `make build` to rebuild with authentication enabled
+//
+// To disable authentication:
+// - Comment out the authConfig() function or have it return None
+// ==============================================================================
+
+// authConfig returns the OAuth 2.0 configuration for this provider
+func authConfig() cm.Option[authorizationtypes.ProviderAuthConfig] {
+	// Uncomment and configure the lines below to enable OAuth 2.0 authentication:
+	/*
+	return cm.Some(authorizationtypes.ProviderAuthConfig{
+		ExpectedIssuer: "https://your-auth-domain.example.com",
+		ExpectedAudiences: cm.NewList([]string{"your-client-id"}),
+		JwksURI: "https://your-auth-domain.example.com/oauth2/jwks",
+		Policy: cm.None[string](),     // Optional: Add Rego policy as a string for additional authorization rules
+		PolicyData: cm.None[string](), // Optional: Add policy data as JSON string
+	})
+	*/
+	return cm.None[authorizationtypes.ProviderAuthConfig]()
+}
+
 func init() {
+	// Set up the auth configuration export
+	corecapabilities.Exports.GetAuthConfig = authConfig
 	// Configure WASI HTTP transport
 	http.DefaultTransport = &wasihttp.Transport{}
 

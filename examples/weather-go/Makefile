@@ -1,14 +1,11 @@
-.PHONY: build build-auth test clean run run-auth help setup deps-check
+.PHONY: build test clean serve help setup deps-check
 
 # Component paths
 PROVIDER_WASM = weather_go-provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
-MCP_AUTH_SERVER_WASM = mcp-http-auth-server.wasm
 
 # Registry packages
-TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.1.0
-TRANSPORT_AUTH_PKG = fastertools:mcp-transport-http-tools-auth@0.1.0
-AUTH_PKG = fastertools:mcp-authorization@0.1.0
+TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.1.11
 
 # Go/TinyGo configuration
 TINYGO = tinygo
@@ -70,40 +67,16 @@ build-provider: bindgen ## Build the provider component
 		.
 	@echo "✅ Provider component built"
 
-build: ## Build and compose everything into mcp-http-server.wasm (no auth)
+build: ## Build and compose everything into mcp-http-server.wasm
 	@$(MAKE) deps
 	@$(MAKE) build-provider
 	@echo "Downloading transport from registry..."
 	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
-	@echo "Plugging provider into transport..."
+	@echo "Composing components..."
 	@wac plug --plug $(PROVIDER_WASM) .transport-tmp.wasm -o $(MCP_SERVER_WASM)
 	@rm -f .transport-tmp.wasm
 	@echo "✅ Created mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
 
-build-auth: ## Build and compose with OAuth authorization enabled
-	@$(MAKE) deps
-	@$(MAKE) build-provider
-	@echo "Downloading components from registry..."
-	@echo "  Fetching authorization component..."
-	@wkg get $(AUTH_PKG) -o .auth-tmp.wasm
-	@echo "  Fetching auth-enabled transport..."
-	@wkg get $(TRANSPORT_AUTH_PKG) -o .transport-auth-tmp.wasm
-	@echo "Composing with authorization..."
-	@echo "  Step 1: Plugging authorization into transport..."
-	@wac plug --plug .auth-tmp.wasm .transport-auth-tmp.wasm -o .transport-with-auth.wasm
-	@echo "  Step 2: Plugging provider into auth-enabled transport..."
-	@wac plug --plug $(PROVIDER_WASM) .transport-with-auth.wasm -o $(MCP_AUTH_SERVER_WASM)
-	@rm -f .auth-tmp.wasm .transport-auth-tmp.wasm .transport-with-auth.wasm
-	@echo "✅ Created mcp-http-auth-server.wasm ($$( ls -lh $(MCP_AUTH_SERVER_WASM) | awk '{print $$5}' ))"
-	@echo ""
-	@echo "To run with auth:"
-	@echo "  make run-auth"
-	@echo ""
-	@echo "Or with your JWT configuration:"
-	@echo "  export JWT_ISSUER=https://your-domain.authkit.app"
-	@echo "  export JWT_AUDIENCE=client_YOUR_CLIENT_ID"
-	@echo "  export JWT_JWKS_URI=https://your-domain.authkit.app/oauth2/jwks"
-	@echo "  make serve-auth"
 
 build-optimized: ## Build optimized version without debug info
 	@$(MAKE) deps
@@ -122,7 +95,7 @@ build-optimized: ## Build optimized version without debug info
 	@echo "✅ Created optimized mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
 
 clean: ## Clean build artifacts
-	@rm -f $(PROVIDER_WASM) $(MCP_SERVER_WASM) $(MCP_AUTH_SERVER_WASM) .transport-tmp.wasm .transport-auth-tmp.wasm .transport-with-auth.wasm .auth-tmp.wasm
+	@rm -f $(PROVIDER_WASM) $(MCP_SERVER_WASM) .transport-tmp.wasm
 	@rm -rf internal
 	@rm -f *.wasm
 	@echo "✅ Build artifacts cleaned"
@@ -132,18 +105,12 @@ clean-all: clean ## Clean everything including Go cache
 	@go clean -modcache
 	@echo "✅ Everything cleaned"
 
-run: build ## Build and run without auth
-	@$(MAKE) serve
-
-run-auth: build-auth ## Build and run with OAuth authorization
-	@$(MAKE) serve-auth
-
-serve: ## Serve already built mcp-http-server.wasm (no auth)
+serve: ## Serve already built mcp-http-server.wasm
 	@if command -v wasmtime >/dev/null 2>&1; then \
-		echo "Starting server with wasmtime (no auth)..."; \
+		echo "Starting server with wasmtime..."; \
 		wasmtime serve -Scli $(MCP_SERVER_WASM); \
 	elif command -v spin >/dev/null 2>&1; then \
-		echo "Starting server with spin (no auth)..."; \
+		echo "Starting server with spin..."; \
 		spin up --from $(MCP_SERVER_WASM); \
 	else \
 		echo "Error: No compatible runtime found. Please install wasmtime or spin."; \
@@ -152,37 +119,6 @@ serve: ## Serve already built mcp-http-server.wasm (no auth)
 		exit 1; \
 	fi
 
-serve-auth: ## Serve already built mcp-http-auth-server.wasm with OAuth
-	@if command -v wasmtime >/dev/null 2>&1; then \
-		echo "Starting server with wasmtime (OAuth enabled)..."; \
-		if [ -n "$$JWT_ISSUER" ] && [ -n "$$JWT_AUDIENCE" ] && [ -n "$$JWT_JWKS_URI" ]; then \
-			echo "Using environment variables for JWT configuration:"; \
-			echo "  Issuer: $$JWT_ISSUER"; \
-			echo "  Audience: $$JWT_AUDIENCE"; \
-			echo "  JWKS URI: $$JWT_JWKS_URI"; \
-			wasmtime serve -Scli -Sconfig \
-				-Sconfig-var="jwt.expected_issuer=$$JWT_ISSUER" \
-				-Sconfig-var="jwt.expected_audience=$$JWT_AUDIENCE" \
-				-Sconfig-var="jwt.jwks_uri=$$JWT_JWKS_URI" \
-				-Sconfig-var="oauth.resource_url=http://0.0.0.0:8080/mcp" \
-				$(MCP_AUTH_SERVER_WASM); \
-		else \
-			echo "Using default test configuration. Set these environment variables to override:"; \
-			echo "  JWT_ISSUER    - OAuth issuer URL (e.g., https://your-domain.authkit.app)"; \
-			echo "  JWT_AUDIENCE  - Expected audience (e.g., client_YOUR_CLIENT_ID)"; \
-			echo "  JWT_JWKS_URI  - JWKS endpoint (e.g., https://your-domain.authkit.app/oauth2/jwks)"; \
-			echo ""; \
-			wasmtime serve -Scli -Sconfig \
-				-Sconfig-var="jwt.expected_issuer=https://test.example.com/" \
-				-Sconfig-var="jwt.expected_audience=https://mcp.example.com" \
-				-Sconfig-var="oauth.resource_url=http://0.0.0.0:8080/mcp" \
-				$(MCP_AUTH_SERVER_WASM); \
-		fi \
-	else \
-		echo "Error: wasmtime is required for auth mode (WASI config support)."; \
-		echo "  Install wasmtime: curl https://wasmtime.dev/install.sh -sSf | bash"; \
-		exit 1; \
-	fi
 
 # Testing the composed component
 test-init: ## Test initialize endpoint

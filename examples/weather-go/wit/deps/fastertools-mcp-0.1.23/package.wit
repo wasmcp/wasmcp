@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.12;
+package fastertools:mcp@0.1.23;
 
 /// OAuth 2.0 discovery endpoints per RFC 8414 and RFC 9728
 interface oauth-discovery {
@@ -264,10 +264,24 @@ interface types {
   }
 }
 
-/// Authorization and authentication interfaces for MCP servers
-/// Provides JWT validation, OAuth discovery, and policy-based authorization
-interface authorization {
-  use types.{mcp-error, json-value, meta-fields};
+/// Type definitions for authorization and authentication
+/// This interface contains only types, no functions
+interface authorization-types {
+  use types.{meta-fields};
+
+  /// Provider declares its authentication requirements
+  record provider-auth-config {
+    /// Expected JWT issuer (REQUIRED for auth)
+    expected-issuer: string,
+    /// Expected JWT audiences (REQUIRED for auth - must have at least one)
+    expected-audiences: list<string>,
+    /// JWKS URI for key discovery (REQUIRED for auth)
+    jwks-uri: string,
+    /// Optional Rego policy for authorization
+    policy: option<string>,
+    /// Optional data for policy evaluation
+    policy-data: option<string>,
+  }
 
   /// Authorization context passed between components after successful authentication
   record auth-context {
@@ -302,14 +316,18 @@ interface authorization {
     /// Request body for policy evaluation (e.g., MCP JSON-RPC payload)
     body: option<list<u8>>,
     /// Expected issuer for validation
-    expected-issuer: option<string>,
-    /// Expected audience for validation
-    expected-audience: option<string>,
+    expected-issuer: string,
+    /// Expected audiences for validation (token must match at least one)
+    expected-audiences: list<string>,
     /// JWKS URI for key discovery
-    jwks-uri: option<string>,
+    jwks-uri: string,
+    /// Optional Rego policy to evaluate (if not provided, allows all authenticated requests)
+    policy: option<string>,
+    /// Optional data for policy evaluation (JSON string)
+    policy-data: option<string>,
   }
 
-  /// Authorization error details for proper OAuth 2.0 error responses
+  /// Authorization error details
   record auth-error {
     /// HTTP status code (401, 403, etc.)
     status: u16,
@@ -321,13 +339,20 @@ interface authorization {
     www-authenticate: option<string>,
   }
 
-  /// Authorization response - either authorized with context or unauthorized with error
+  /// Authorization response
   variant auth-response {
-    /// Request is authorized, includes auth context for downstream use
+    /// Request is authorized with context
     authorized(auth-context),
-    /// Request is unauthorized, includes error details for response
+    /// Request is unauthorized with error details
     unauthorized(auth-error),
   }
+}
+
+/// Authorization and authentication interfaces for MCP servers
+/// Provides JWT validation, OAuth discovery, and policy-based authorization
+interface authorization {
+  use types.{mcp-error, json-value};
+  use authorization-types.{provider-auth-config, auth-context, auth-request, auth-response, auth-error};
 
   /// Main authorization function - validates token and applies policies
   authorize: func(request: auth-request) -> auth-response;
@@ -371,12 +396,12 @@ interface jwt-validator {
   record jwt-request {
     /// JWT token to validate
     token: string,
-    /// Expected issuer (if not specified, any issuer is accepted)
-    expected-issuer: option<string>,
-    /// Expected audience (if not specified, audience is not validated)
-    expected-audience: option<string>,
+    /// Expected issuer
+    expected-issuer: string,
+    /// Expected audiences (token must match at least one)
+    expected-audiences: list<string>,
     /// JWKS URI for fetching public keys
-    jwks-uri: option<string>,
+    jwks-uri: string,
     /// Optional JWKS JSON for offline validation
     jwks-json: option<string>,
     /// Validate token expiration (default: true)
@@ -1039,21 +1064,20 @@ interface sampling-capabilities {
   handle-create-message: func(request: create-message-request) -> result<create-message-result, mcp-error>;
 }
 
-/// Session management and capability negotiation for MCP
-interface session {
-  use types.{mcp-error, meta-fields};
+/// Type definitions for MCP session management
+/// This interface contains only types, no functions, to allow
+/// clean imports by providers that need these types without
+/// importing the session functions.
+interface session-types {
+  use types.{meta-fields};
 
   /// Protocol versions supported by MCP
   /// These correspond to official MCP specification versions
   enum protocol-version {
-    /// MCP 2024-11-05 specification
-    mcp-v20241105,
     /// MCP 2025-03-26 specification
-    mcp-v20250326,
-    /// MCP 2025-06-18 specification
-    mcp-v20250618,
-    /// Latest draft specification (DRAFT-2025-v3)
-    draft-v2025-v3,
+    v20250326,
+    /// MCP 2025-06-18 specification (latest)
+    v20250618,
   }
 
   /// Information about an MCP implementation
@@ -1070,18 +1094,6 @@ interface session {
   record roots-capability {
     /// Server will notify when roots list changes
     list-changed: option<bool>,
-  }
-
-  /// Capabilities that a client supports
-  record client-capabilities {
-    /// Experimental/custom capabilities
-    experimental: option<meta-fields>,
-    /// Support for roots (directory access)
-    roots: option<roots-capability>,
-    /// Support for LLM sampling
-    sampling: option<bool>,
-    /// Support for user elicitation
-    elicitation: option<bool>,
   }
 
   /// Prompts capability details
@@ -1102,6 +1114,18 @@ interface session {
   record tools-capability {
     /// Server will notify when tools list changes
     list-changed: option<bool>,
+  }
+
+  /// Capabilities that a client supports
+  record client-capabilities {
+    /// Experimental/custom capabilities
+    experimental: option<meta-fields>,
+    /// Support for roots (directory access)
+    roots: option<roots-capability>,
+    /// Support for LLM sampling
+    sampling: option<bool>,
+    /// Support for user elicitation
+    elicitation: option<bool>,
   }
 
   /// Capabilities that a server provides
@@ -1145,26 +1169,14 @@ interface session {
     /// Optional metadata
     meta: option<meta-fields>,
   }
-
-  /// Session lifecycle operations
-  /// Initialize the MCP session
-  initialize: func(request: initialize-request) -> result<initialize-response, mcp-error>;
-
-  /// Notify server that initialization is complete
-  initialized: func() -> result<_, mcp-error>;
-
-  /// Ping to check if connection is alive
-  ping: func() -> result<_, mcp-error>;
-
-  /// Shutdown the session gracefully
-  shutdown: func() -> result<_, mcp-error>;
 }
 
 /// Core capabilities interface that all MCP implementations must provide
 /// This contains only the essential session management functions
 interface core-capabilities {
   use types.{mcp-error};
-  use session.{initialize-request, initialize-response};
+  use session-types.{initialize-request, initialize-response};
+  use authorization-types.{provider-auth-config};
 
   /// Handle session initialization
   /// Implementations should declare their capabilities here
@@ -1178,6 +1190,31 @@ interface core-capabilities {
 
   /// Handle shutdown request
   handle-shutdown: func() -> result<_, mcp-error>;
+
+  /// Get provider's auth configuration (optional - return none for no auth)
+  /// If auth configuration is provided, the transport will enforce authentication
+  get-auth-config: func() -> option<provider-auth-config>;
+}
+
+/// Session management functions for MCP
+/// This interface contains the session lifecycle functions.
+/// Types are defined in the session-types interface.
+interface session {
+  use types.{mcp-error};
+  use session-types.{initialize-request, initialize-response};
+
+  /// Session lifecycle operations
+  /// Initialize the MCP session
+  initialize: func(request: initialize-request) -> result<initialize-response, mcp-error>;
+
+  /// Notify server that initialization is complete
+  initialized: func() -> result<_, mcp-error>;
+
+  /// Ping to check if connection is alive
+  ping: func() -> result<_, mcp-error>;
+
+  /// Shutdown the session gracefully
+  shutdown: func() -> result<_, mcp-error>;
 }
 
 /// Tool discovery and execution for MCP
@@ -1283,23 +1320,30 @@ interface tools-capabilities {
 /// Minimal transport with just tools
 world tools-transport {
   import types;
-  import session;
+  import session-types;
   import notifications;
+  import authorization-types;
+  import core-capabilities;
   import tools;
   import tools-capabilities;
 }
 world tools-provider {
   import types;
+  import session-types;
+  import authorization-types;
   import tools;
 
+  export core-capabilities;
   export tools-capabilities;
 }
 /// === TOOLS + RESOURCES ===
 /// Transport with tools and resources
 world tools-resources-transport {
   import types;
-  import session;
+  import session-types;
   import notifications;
+  import authorization-types;
+  import core-capabilities;
   import tools;
   import tools-capabilities;
   import resources;
@@ -1307,17 +1351,22 @@ world tools-resources-transport {
 }
 world tools-resources-provider {
   import types;
+  import session-types;
+  import authorization-types;
   import tools;
   import resources;
 
+  export core-capabilities;
   export tools-capabilities;
   export resources-capabilities;
 }
 /// === TOOLS + RESOURCES + PROMPTS ===
 world tools-resources-prompts-transport {
   import types;
-  import session;
+  import session-types;
   import notifications;
+  import authorization-types;
+  import core-capabilities;
   import tools;
   import tools-capabilities;
   import resources;
@@ -1327,10 +1376,13 @@ world tools-resources-prompts-transport {
 }
 world tools-resources-prompts-provider {
   import types;
+  import session-types;
+  import authorization-types;
   import tools;
   import resources;
   import prompts;
 
+  export core-capabilities;
   export tools-capabilities;
   export resources-capabilities;
   export prompts-capabilities;
@@ -1339,8 +1391,10 @@ world tools-resources-prompts-provider {
 /// Full transport with all capabilities
 world full-transport {
   import types;
-  import session;
+  import session-types;
   import notifications;
+  import authorization-types;
+  import core-capabilities;
   import tools;
   import resources;
   import prompts;
@@ -1358,6 +1412,8 @@ world full-transport {
 }
 world full-provider {
   import types;
+  import session-types;
+  import authorization-types;
   import tools;
   import resources;
   import prompts;
@@ -1366,6 +1422,7 @@ world full-provider {
   import roots;
   import completion;
 
+  export core-capabilities;
   export tools-capabilities;
   export resources-capabilities;
   export prompts-capabilities;
@@ -1392,57 +1449,11 @@ world mcp-client {
 /// Authorization provider world
 world authorization-provider {
   import types;
+  import authorization-types;
 
   export authorization;
   export jwt-validator;
   export policy-engine;
   export oauth-discovery;
   export mcp-authorization;
-}
-/// Transport with authorization and tools
-world tools-auth-transport {
-  import types;
-  import session;
-  import notifications;
-  import authorization;
-  import oauth-discovery;
-  import tools;
-  import tools-capabilities;
-}
-/// Transport with authorization, tools and resources
-world tools-resources-auth-transport {
-  import types;
-  import session;
-  import notifications;
-  import authorization;
-  import oauth-discovery;
-  import tools;
-  import tools-capabilities;
-  import resources;
-  import resources-capabilities;
-}
-/// Full transport with authorization
-world full-auth-transport {
-  import types;
-  import session;
-  import notifications;
-  import authorization;
-  import oauth-discovery;
-  import jwt-validator;
-  import policy-engine;
-  import mcp-authorization;
-  import tools;
-  import resources;
-  import prompts;
-  import sampling;
-  import elicitation;
-  import roots;
-  import completion;
-  import tools-capabilities;
-  import resources-capabilities;
-  import prompts-capabilities;
-  import sampling-capabilities;
-  import elicitation-capabilities;
-  import roots-capabilities;
-  import completion-capabilities;
 }

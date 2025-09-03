@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	corecapabilities "weather_go/internal/fastertools/mcp/core-capabilities"
+	sessiontypes "weather_go/internal/fastertools/mcp/session-types"
 	"weather_go/internal/fastertools/mcp/tools"
 	toolscapabilities "weather_go/internal/fastertools/mcp/tools-capabilities"
 	"weather_go/internal/fastertools/mcp/types"
@@ -127,7 +129,14 @@ func AddTool[T any](s *Server, tool *Tool, handler func(context.Context, T) (*Ca
 
 // Run initializes the Wasm exports and starts the server
 func (s *Server) Run(ctx context.Context, transport interface{}) {
-	// Wire up the exports to the generated bindings
+	// Wire up the core capability exports
+	corecapabilities.Exports.HandleInitialize = s.handleInitialize
+	corecapabilities.Exports.HandleInitialized = s.handleInitialized
+	corecapabilities.Exports.HandlePing = s.handlePing
+	corecapabilities.Exports.HandleShutdown = s.handleShutdown
+	// Note: GetAuthConfig is set in main.go
+	
+	// Wire up the tools capability exports
 	toolscapabilities.Exports.HandleListTools = s.handleListTools
 	toolscapabilities.Exports.HandleCallTool = s.handleCallTool
 }
@@ -262,4 +271,45 @@ func mcpErrorResult(code ErrorCode, message string) cm.Result[toolscapabilities.
 		Message: message,
 		Data:    cm.None[string](),
 	})
+}
+
+// Core capability handlers
+
+// handleInitialize handles the initialize request
+func (s *Server) handleInitialize(request sessiontypes.InitializeRequest) cm.Result[corecapabilities.InitializeResponseShape, sessiontypes.InitializeResponse, types.McpError] {
+	response := sessiontypes.InitializeResponse{
+		ProtocolVersion: sessiontypes.ProtocolVersionV20250618,
+		Capabilities: sessiontypes.ServerCapabilities{
+			Experimental: cm.None[types.MetaFields](),
+			Logging:      cm.None[bool](),
+			Completions:  cm.None[bool](),
+			Prompts:      cm.None[sessiontypes.PromptsCapability](),
+			Resources:    cm.None[sessiontypes.ResourcesCapability](),
+			Tools:        cm.Some(sessiontypes.ToolsCapability{}),
+		},
+		ServerInfo: sessiontypes.ImplementationInfo{
+			Name:    s.implementation.Name,
+			Version: s.implementation.Version,
+			Title:   cm.None[string](),
+		},
+		Instructions: cm.None[string](),
+		Meta:         cm.None[types.MetaFields](),
+	}
+	
+	return cm.OK[cm.Result[corecapabilities.InitializeResponseShape, sessiontypes.InitializeResponse, types.McpError]](response)
+}
+
+// handleInitialized handles the initialized notification
+func (s *Server) handleInitialized() cm.Result[types.McpError, struct{}, types.McpError] {
+	return cm.OK[cm.Result[types.McpError, struct{}, types.McpError]](struct{}{})
+}
+
+// handlePing handles the ping request
+func (s *Server) handlePing() cm.Result[types.McpError, struct{}, types.McpError] {
+	return cm.OK[cm.Result[types.McpError, struct{}, types.McpError]](struct{}{})
+}
+
+// handleShutdown handles the shutdown request
+func (s *Server) handleShutdown() cm.Result[types.McpError, struct{}, types.McpError] {
+	return cm.OK[cm.Result[types.McpError, struct{}, types.McpError]](struct{}{})
 }
