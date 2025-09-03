@@ -48,7 +48,7 @@ func authConfig() cm.Option[authorizationtypes.ProviderAuthConfig] {
 	/*
 	return cm.Some(authorizationtypes.ProviderAuthConfig{
 		ExpectedIssuer: "https://your-auth-domain.example.com",
-		ExpectedAudiences: cm.NewList([]string{"your-client-id"}),
+		ExpectedAudiences: cm.ToList([]string{"your-client-id"}),
 		JwksURI: "https://your-auth-domain.example.com/oauth2/jwks",
 		Policy: cm.None[string](),     // Optional: Add Rego policy as a string for additional authorization rules
 		PolicyData: cm.None[string](), // Optional: Add policy data as JSON string
