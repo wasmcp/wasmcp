@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.12;
+package fastertools:mcp@0.1.23;
 
 /// World definitions for MCP transports and capabilities
 /// 
@@ -14,8 +14,11 @@ package fastertools:mcp@0.1.12;
 world tools-transport {
     // Core types always needed
     import types;
-    import session;
+    import session-types;
     import notifications;
+    
+    // Core capabilities for session management (includes optional auth config)
+    import core-capabilities;
     
     // Tool-specific types and capabilities
     import tools;
@@ -23,6 +26,7 @@ world tools-transport {
 }
 
 world tools-provider {
+    export core-capabilities;
     export tools-capabilities;
 }
 
@@ -32,8 +36,11 @@ world tools-provider {
 world tools-resources-transport {
     // Core types always needed
     import types;
-    import session;
+    import session-types;
     import notifications;
+    
+    // Core capabilities for session management (includes optional auth config)
+    import core-capabilities;
     
     // Feature-specific types and capabilities
     import tools;
@@ -43,6 +50,7 @@ world tools-resources-transport {
 }
 
 world tools-resources-provider {
+    export core-capabilities;
     export tools-capabilities;
     export resources-capabilities;
 }
@@ -52,8 +60,11 @@ world tools-resources-provider {
 world tools-resources-prompts-transport {
     // Core types always needed
     import types;
-    import session;
+    import session-types;
     import notifications;
+    
+    // Core capabilities for session management (includes optional auth config)
+    import core-capabilities;
     
     // Feature-specific types and capabilities
     import tools;
@@ -65,6 +76,7 @@ world tools-resources-prompts-transport {
 }
 
 world tools-resources-prompts-provider {
+    export core-capabilities;
     export tools-capabilities;
     export resources-capabilities;
     export prompts-capabilities;
@@ -76,8 +88,11 @@ world tools-resources-prompts-provider {
 world full-transport {
     // Core types always needed
     import types;
-    import session;
+    import session-types;
     import notifications;
+    
+    // Core capabilities for session management (includes optional auth config)
+    import core-capabilities;
     
     // All feature-specific types
     import tools;
@@ -99,6 +114,7 @@ world full-transport {
 }
 
 world full-provider {
+    export core-capabilities;
     export tools-capabilities;
     export resources-capabilities;
     export prompts-capabilities;
@@ -140,71 +156,4 @@ world authorization-provider {
     export policy-engine;
     export oauth-discovery;
     export mcp-authorization;
-}
-
-/// Transport with authorization and tools
-world tools-auth-transport {
-    // Core types always needed
-    import types;
-    import session;
-    import notifications;
-    
-    // Authorization
-    import authorization;
-    import oauth-discovery;
-    
-    // Tool-specific types and capabilities
-    import tools;
-    import tools-capabilities;
-}
-
-/// Transport with authorization, tools and resources
-world tools-resources-auth-transport {
-    // Core types always needed
-    import types;
-    import session;
-    import notifications;
-    
-    // Authorization
-    import authorization;
-    import oauth-discovery;
-    
-    // Feature-specific types and capabilities
-    import tools;
-    import tools-capabilities;
-    import resources;
-    import resources-capabilities;
-}
-
-/// Full transport with authorization
-world full-auth-transport {
-    // Core types always needed
-    import types;
-    import session;
-    import notifications;
-    
-    // Authorization
-    import authorization;
-    import oauth-discovery;
-    import jwt-validator;
-    import policy-engine;
-    import mcp-authorization;
-    
-    // All feature-specific types
-    import tools;
-    import resources;
-    import prompts;
-    import sampling;
-    import elicitation;
-    import roots;
-    import completion;
-    
-    // Import all capabilities
-    import tools-capabilities;
-    import resources-capabilities;
-    import prompts-capabilities;
-    import sampling-capabilities;
-    import elicitation-capabilities;
-    import roots-capabilities;
-    import completion-capabilities;
 }

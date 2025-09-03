@@ -1,5 +1,5 @@
 /**
- * {{project-name}} MCP Provider
+ * {{project-name | kebab_case}} MCP Provider
  *
  * {{project-description}}
  *
@@ -9,16 +9,48 @@
  * - multi_weather: Get weather for multiple locations concurrently
  */
 
-import { createTool, createHandler } from './helpers.js';
-import type {
-  ToolDefinition,
-  GeocodingResult,
-  WeatherApiResponse,
-  CityWeatherResult,
-  EchoArgs,
-  WeatherArgs,
-  MultiWeatherArgs,
-} from './types.js';
+import {
+  createTool,
+  createHandler,
+  type ToolDefinition,
+  type GeocodingResult,
+  type WeatherApiResponse,
+  type EchoArgs,
+  type WeatherArgs,
+  type MultiWeatherArgs,
+} from './helpers.js';
+
+// ==============================================================================
+// AUTHENTICATION CONFIGURATION
+// ==============================================================================
+
+/**
+ * OAuth 2.0 authentication configuration.
+ * 
+ * To enable authentication:
+ * 1. Uncomment the authConfig object below
+ * 2. Replace the placeholder values with your actual OAuth provider details
+ * 3. Run `make build` to rebuild with authentication enabled
+ * 
+ * To disable authentication:
+ * - Leave authConfig as null (default)
+ */
+const authConfig = null;
+
+// Uncomment and configure the lines below to enable OAuth 2.0 authentication:
+/*
+const authConfig = {
+    expectedIssuer: 'https://your-auth-domain.example.com',
+    expectedAudiences: ['your-client-id'],
+    jwksUri: 'https://your-auth-domain.example.com/oauth2/jwks',
+    policy: null,      // Optional: Add Rego policy as a string for additional authorization rules
+    policyData: null   // Optional: Add policy data as JSON string
+};
+*/
+
+// ==============================================================================
+// MCP TOOLS IMPLEMENTATION
+// ==============================================================================
 
 // Define the echo tool
 export const echoTool: ToolDefinition<EchoArgs> = createTool<EchoArgs>({
@@ -84,7 +116,7 @@ export const multiWeatherTool: ToolDefinition<MultiWeatherArgs> = createTool<Mul
 
     // Execute concurrent weather fetches with proper typing
     const results = await Promise.all(
-      cities.map(async (city): Promise<CityWeatherResult> => {
+      cities.map(async (city) => {
         try {
           const weather = await getWeatherForCity(city);
           return { city, success: true, data: weather };
@@ -184,11 +216,25 @@ function getWeatherCondition(code: number): string {
   return conditions[code] ?? 'Unknown';
 }
 
-// Create and export the capabilities
-export const toolsCapabilities = createHandler({
+// ==============================================================================
+// MCP SERVER CONFIGURATION
+// ==============================================================================
+
+// Create the handler with both core and tools capabilities
+const handler = createHandler({
   tools: [
     echoTool as ToolDefinition,
     weatherTool as ToolDefinition,
     multiWeatherTool as ToolDefinition,
   ],
+  serverInfo: {
+    name: '{{project-name | kebab_case}}',
+    version: '0.1.0',
+    instructions: '{{project-description}}'
+  },
+  authConfig: authConfig  // Uses the auth configuration defined at the top
 });
+
+// Export both capabilities as expected by the WIT interface
+export const coreCapabilities = handler.coreCapabilities;
+export const toolsCapabilities = handler.toolsCapabilities;

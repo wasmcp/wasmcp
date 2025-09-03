@@ -11,4 +11,4 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
-package-lock.json
+package-lock.jsonsrc/generated/

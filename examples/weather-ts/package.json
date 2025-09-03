@@ -10,7 +10,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write 'src/**/*.ts'",
     "format:check": "prettier --check 'src/**/*.ts'",
-    "bundle": "esbuild src/index.ts --bundle --format=esm --platform=neutral --outfile=bundled.js",
+    "bundle": "webpack",
     "build": "npm run typecheck && npm run lint && npm run bundle",
     "clean": "rm -rf dist *.wasm wit_world bundled.js",
     "test": "npm run typecheck && npm run lint && npm run bundle && node --test"
@@ -23,8 +23,11 @@
     "eslint": "9.18.0",
     "eslint-config-prettier": "10.1.8",
     "prettier": "3.4.2",
+    "ts-loader": "^9.5.4",
     "typescript": "5.7.2",
-    "typescript-eslint": "8.20.0"
+    "typescript-eslint": "8.20.0",
+    "webpack": "^5.101.3",
+    "webpack-cli": "^6.0.1"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -552,6 +552,433 @@ pub mod fastertools {
                 }
             }
         }
+        /// Type definitions for MCP session management
+        /// This interface contains only types, no functions, to allow
+        /// clean imports by providers that need these types without
+        /// importing the session functions.
+        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
+        pub mod session_types {
+            #[used]
+            #[doc(hidden)]
+            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
+            use super::super::super::_rt;
+            pub type MetaFields = super::super::super::fastertools::mcp::types::MetaFields;
+            /// Protocol versions supported by MCP
+            /// These correspond to official MCP specification versions
+            #[repr(u8)]
+            #[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+            pub enum ProtocolVersion {
+                /// MCP 2025-03-26 specification
+                V20250326,
+                /// MCP 2025-06-18 specification (latest)
+                V20250618,
+            }
+            impl ::core::fmt::Debug for ProtocolVersion {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    match self {
+                        ProtocolVersion::V20250326 => {
+                            f.debug_tuple("ProtocolVersion::V20250326").finish()
+                        }
+                        ProtocolVersion::V20250618 => {
+                            f.debug_tuple("ProtocolVersion::V20250618").finish()
+                        }
+                    }
+                }
+            }
+            impl ProtocolVersion {
+                #[doc(hidden)]
+                pub unsafe fn _lift(val: u8) -> ProtocolVersion {
+                    if !cfg!(debug_assertions) {
+                        return ::core::mem::transmute(val);
+                    }
+                    match val {
+                        0 => ProtocolVersion::V20250326,
+                        1 => ProtocolVersion::V20250618,
+                        _ => panic!("invalid enum discriminant"),
+                    }
+                }
+            }
+            /// Information about an MCP implementation
+            #[derive(Clone)]
+            pub struct ImplementationInfo {
+                /// Implementation name (e.g., "weather-server")
+                pub name: _rt::String,
+                /// Implementation version (e.g., "1.0.0")
+                pub version: _rt::String,
+                /// Optional human-readable title
+                pub title: Option<_rt::String>,
+            }
+            impl ::core::fmt::Debug for ImplementationInfo {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("ImplementationInfo")
+                        .field("name", &self.name)
+                        .field("version", &self.version)
+                        .field("title", &self.title)
+                        .finish()
+                }
+            }
+            /// Root listing capability details
+            #[repr(C)]
+            #[derive(Clone, Copy)]
+            pub struct RootsCapability {
+                /// Server will notify when roots list changes
+                pub list_changed: Option<bool>,
+            }
+            impl ::core::fmt::Debug for RootsCapability {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("RootsCapability")
+                        .field("list-changed", &self.list_changed)
+                        .finish()
+                }
+            }
+            /// Prompts capability details
+            #[repr(C)]
+            #[derive(Clone, Copy)]
+            pub struct PromptsCapability {
+                /// Server will notify when prompts list changes
+                pub list_changed: Option<bool>,
+            }
+            impl ::core::fmt::Debug for PromptsCapability {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("PromptsCapability")
+                        .field("list-changed", &self.list_changed)
+                        .finish()
+                }
+            }
+            /// Resources capability details
+            #[repr(C)]
+            #[derive(Clone, Copy)]
+            pub struct ResourcesCapability {
+                /// Server supports resource subscriptions
+                pub subscribe: Option<bool>,
+                /// Server will notify when resource list changes
+                pub list_changed: Option<bool>,
+            }
+            impl ::core::fmt::Debug for ResourcesCapability {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("ResourcesCapability")
+                        .field("subscribe", &self.subscribe)
+                        .field("list-changed", &self.list_changed)
+                        .finish()
+                }
+            }
+            /// Tools capability details
+            #[repr(C)]
+            #[derive(Clone, Copy)]
+            pub struct ToolsCapability {
+                /// Server will notify when tools list changes
+                pub list_changed: Option<bool>,
+            }
+            impl ::core::fmt::Debug for ToolsCapability {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("ToolsCapability")
+                        .field("list-changed", &self.list_changed)
+                        .finish()
+                }
+            }
+            /// Capabilities that a client supports
+            #[derive(Clone)]
+            pub struct ClientCapabilities {
+                /// Experimental/custom capabilities
+                pub experimental: Option<MetaFields>,
+                /// Support for roots (directory access)
+                pub roots: Option<RootsCapability>,
+                /// Support for LLM sampling
+                pub sampling: Option<bool>,
+                /// Support for user elicitation
+                pub elicitation: Option<bool>,
+            }
+            impl ::core::fmt::Debug for ClientCapabilities {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("ClientCapabilities")
+                        .field("experimental", &self.experimental)
+                        .field("roots", &self.roots)
+                        .field("sampling", &self.sampling)
+                        .field("elicitation", &self.elicitation)
+                        .finish()
+                }
+            }
+            /// Capabilities that a server provides
+            #[derive(Clone)]
+            pub struct ServerCapabilities {
+                /// Experimental/custom capabilities
+                pub experimental: Option<MetaFields>,
+                /// Server can send log messages
+                pub logging: Option<bool>,
+                /// Server supports argument autocompletion
+                pub completions: Option<bool>,
+                /// Server offers prompts
+                pub prompts: Option<PromptsCapability>,
+                /// Server offers resources
+                pub resources: Option<ResourcesCapability>,
+                /// Server offers tools
+                pub tools: Option<ToolsCapability>,
+            }
+            impl ::core::fmt::Debug for ServerCapabilities {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("ServerCapabilities")
+                        .field("experimental", &self.experimental)
+                        .field("logging", &self.logging)
+                        .field("completions", &self.completions)
+                        .field("prompts", &self.prompts)
+                        .field("resources", &self.resources)
+                        .field("tools", &self.tools)
+                        .finish()
+                }
+            }
+            /// Initialize request sent by client on connection
+            #[derive(Clone)]
+            pub struct InitializeRequest {
+                /// Protocol version the client supports
+                pub protocol_version: ProtocolVersion,
+                /// Client's capabilities
+                pub capabilities: ClientCapabilities,
+                /// Client implementation details
+                pub client_info: ImplementationInfo,
+                /// Optional metadata
+                pub meta: Option<MetaFields>,
+            }
+            impl ::core::fmt::Debug for InitializeRequest {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("InitializeRequest")
+                        .field("protocol-version", &self.protocol_version)
+                        .field("capabilities", &self.capabilities)
+                        .field("client-info", &self.client_info)
+                        .field("meta", &self.meta)
+                        .finish()
+                }
+            }
+            /// Initialize response from server
+            #[derive(Clone)]
+            pub struct InitializeResponse {
+                /// Protocol version the server will use
+                pub protocol_version: ProtocolVersion,
+                /// Server's capabilities
+                pub capabilities: ServerCapabilities,
+                /// Server implementation details
+                pub server_info: ImplementationInfo,
+                /// Optional instructions for using the server
+                pub instructions: Option<_rt::String>,
+                /// Optional metadata
+                pub meta: Option<MetaFields>,
+            }
+            impl ::core::fmt::Debug for InitializeResponse {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("InitializeResponse")
+                        .field("protocol-version", &self.protocol_version)
+                        .field("capabilities", &self.capabilities)
+                        .field("server-info", &self.server_info)
+                        .field("instructions", &self.instructions)
+                        .field("meta", &self.meta)
+                        .finish()
+                }
+            }
+        }
+        /// Type definitions for authorization and authentication
+        /// This interface contains only types, no functions
+        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
+        pub mod authorization_types {
+            #[used]
+            #[doc(hidden)]
+            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
+            use super::super::super::_rt;
+            pub type MetaFields = super::super::super::fastertools::mcp::types::MetaFields;
+            /// Provider declares its authentication requirements
+            #[derive(Clone)]
+            pub struct ProviderAuthConfig {
+                /// Expected JWT issuer (REQUIRED for auth)
+                pub expected_issuer: _rt::String,
+                /// Expected JWT audiences (REQUIRED for auth - must have at least one)
+                pub expected_audiences: _rt::Vec<_rt::String>,
+                /// JWKS URI for key discovery (REQUIRED for auth)
+                pub jwks_uri: _rt::String,
+                /// Optional Rego policy for authorization
+                pub policy: Option<_rt::String>,
+                /// Optional data for policy evaluation
+                pub policy_data: Option<_rt::String>,
+            }
+            impl ::core::fmt::Debug for ProviderAuthConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("ProviderAuthConfig")
+                        .field("expected-issuer", &self.expected_issuer)
+                        .field("expected-audiences", &self.expected_audiences)
+                        .field("jwks-uri", &self.jwks_uri)
+                        .field("policy", &self.policy)
+                        .field("policy-data", &self.policy_data)
+                        .finish()
+                }
+            }
+            /// Authorization context passed between components after successful authentication
+            #[derive(Clone)]
+            pub struct AuthContext {
+                /// OAuth client ID that made the request
+                pub client_id: Option<_rt::String>,
+                /// Subject (user ID) from the token
+                pub user_id: Option<_rt::String>,
+                /// OAuth scopes granted to this token
+                pub scopes: _rt::Vec<_rt::String>,
+                /// Token issuer URL
+                pub issuer: Option<_rt::String>,
+                /// Audience claim from token
+                pub audience: Option<_rt::String>,
+                /// Additional claims from token as key-value pairs
+                pub claims: MetaFields,
+                /// Expiration timestamp (Unix seconds)
+                pub exp: Option<u64>,
+                /// Issued at timestamp (Unix seconds)
+                pub iat: Option<u64>,
+            }
+            impl ::core::fmt::Debug for AuthContext {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("AuthContext")
+                        .field("client-id", &self.client_id)
+                        .field("user-id", &self.user_id)
+                        .field("scopes", &self.scopes)
+                        .field("issuer", &self.issuer)
+                        .field("audience", &self.audience)
+                        .field("claims", &self.claims)
+                        .field("exp", &self.exp)
+                        .field("iat", &self.iat)
+                        .finish()
+                }
+            }
+            /// Authorization request containing all context needed for authorization decisions
+            #[derive(Clone)]
+            pub struct AuthRequest {
+                /// Bearer token extracted from Authorization header
+                pub token: _rt::String,
+                /// HTTP method (GET, POST, etc.)
+                pub method: _rt::String,
+                /// Request path
+                pub path: _rt::String,
+                /// Request headers as key-value pairs
+                pub headers: _rt::Vec<(_rt::String, _rt::String)>,
+                /// Request body for policy evaluation (e.g., MCP JSON-RPC payload)
+                pub body: Option<_rt::Vec<u8>>,
+                /// Expected issuer for validation
+                pub expected_issuer: _rt::String,
+                /// Expected audiences for validation (token must match at least one)
+                pub expected_audiences: _rt::Vec<_rt::String>,
+                /// JWKS URI for key discovery
+                pub jwks_uri: _rt::String,
+                /// Optional Rego policy to evaluate (if not provided, allows all authenticated requests)
+                pub policy: Option<_rt::String>,
+                /// Optional data for policy evaluation (JSON string)
+                pub policy_data: Option<_rt::String>,
+            }
+            impl ::core::fmt::Debug for AuthRequest {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("AuthRequest")
+                        .field("token", &self.token)
+                        .field("method", &self.method)
+                        .field("path", &self.path)
+                        .field("headers", &self.headers)
+                        .field("body", &self.body)
+                        .field("expected-issuer", &self.expected_issuer)
+                        .field("expected-audiences", &self.expected_audiences)
+                        .field("jwks-uri", &self.jwks_uri)
+                        .field("policy", &self.policy)
+                        .field("policy-data", &self.policy_data)
+                        .finish()
+                }
+            }
+            /// Authorization error details
+            #[derive(Clone)]
+            pub struct AuthError {
+                /// HTTP status code (401, 403, etc.)
+                pub status: u16,
+                /// OAuth error code (invalid_token, insufficient_scope, etc.)
+                pub error_code: _rt::String,
+                /// Human-readable error description
+                pub description: _rt::String,
+                /// WWW-Authenticate header value for 401 responses
+                pub www_authenticate: Option<_rt::String>,
+            }
+            impl ::core::fmt::Debug for AuthError {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("AuthError")
+                        .field("status", &self.status)
+                        .field("error-code", &self.error_code)
+                        .field("description", &self.description)
+                        .field("www-authenticate", &self.www_authenticate)
+                        .finish()
+                }
+            }
+            impl ::core::fmt::Display for AuthError {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    write!(f, "{:?}", self)
+                }
+            }
+            impl std::error::Error for AuthError {}
+            /// Authorization response
+            #[derive(Clone)]
+            pub enum AuthResponse {
+                /// Request is authorized with context
+                Authorized(AuthContext),
+                /// Request is unauthorized with error details
+                Unauthorized(AuthError),
+            }
+            impl ::core::fmt::Debug for AuthResponse {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    match self {
+                        AuthResponse::Authorized(e) => {
+                            f.debug_tuple("AuthResponse::Authorized").field(e).finish()
+                        }
+                        AuthResponse::Unauthorized(e) => {
+                            f.debug_tuple("AuthResponse::Unauthorized").field(e).finish()
+                        }
+                    }
+                }
+            }
+        }
         /// Tool discovery and execution for MCP
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
         pub mod tools {
@@ -728,6 +1155,1675 @@ pub mod fastertools {
 pub mod exports {
     pub mod fastertools {
         pub mod mcp {
+            /// Core capabilities interface that all MCP implementations must provide
+            /// This contains only the essential session management functions
+            #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
+            pub mod core_capabilities {
+                #[used]
+                #[doc(hidden)]
+                static __FORCE_SECTION_REF: fn() = super::super::super::super::__link_custom_section_describing_imports;
+                use super::super::super::super::_rt;
+                pub type McpError = super::super::super::super::fastertools::mcp::types::McpError;
+                pub type InitializeRequest = super::super::super::super::fastertools::mcp::session_types::InitializeRequest;
+                pub type InitializeResponse = super::super::super::super::fastertools::mcp::session_types::InitializeResponse;
+                pub type ProviderAuthConfig = super::super::super::super::fastertools::mcp::authorization_types::ProviderAuthConfig;
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn _export_handle_initialize_cabi<T: Guest>(
+                    arg0: *mut u8,
+                ) -> *mut u8 {
+                    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+                    let l0 = i32::from(*arg0.add(0).cast::<u8>());
+                    let l1 = i32::from(
+                        *arg0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
+                    );
+                    let l11 = i32::from(
+                        *arg0.add(4 * ::core::mem::size_of::<*const u8>()).cast::<u8>(),
+                    );
+                    let l14 = i32::from(
+                        *arg0
+                            .add(3 + 4 * ::core::mem::size_of::<*const u8>())
+                            .cast::<u8>(),
+                    );
+                    let l16 = i32::from(
+                        *arg0
+                            .add(5 + 4 * ::core::mem::size_of::<*const u8>())
+                            .cast::<u8>(),
+                    );
+                    let l18 = *arg0
+                        .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                        .cast::<*mut u8>();
+                    let l19 = *arg0
+                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                        .cast::<usize>();
+                    let len20 = l19;
+                    let bytes20 = _rt::Vec::from_raw_parts(l18.cast(), len20, len20);
+                    let l21 = *arg0
+                        .add(8 + 6 * ::core::mem::size_of::<*const u8>())
+                        .cast::<*mut u8>();
+                    let l22 = *arg0
+                        .add(8 + 7 * ::core::mem::size_of::<*const u8>())
+                        .cast::<usize>();
+                    let len23 = l22;
+                    let bytes23 = _rt::Vec::from_raw_parts(l21.cast(), len23, len23);
+                    let l24 = i32::from(
+                        *arg0
+                            .add(8 + 8 * ::core::mem::size_of::<*const u8>())
+                            .cast::<u8>(),
+                    );
+                    let l28 = i32::from(
+                        *arg0
+                            .add(8 + 11 * ::core::mem::size_of::<*const u8>())
+                            .cast::<u8>(),
+                    );
+                    let result38 = T::handle_initialize(super::super::super::super::fastertools::mcp::session_types::InitializeRequest {
+                        protocol_version: super::super::super::super::fastertools::mcp::session_types::ProtocolVersion::_lift(
+                            l0 as u8,
+                        ),
+                        capabilities: super::super::super::super::fastertools::mcp::session_types::ClientCapabilities {
+                            experimental: match l1 {
+                                0 => None,
+                                1 => {
+                                    let e = {
+                                        let l2 = *arg0
+                                            .add(2 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<*mut u8>();
+                                        let l3 = *arg0
+                                            .add(3 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let base10 = l2;
+                                        let len10 = l3;
+                                        let mut result10 = _rt::Vec::with_capacity(len10);
+                                        for i in 0..len10 {
+                                            let base = base10
+                                                .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                            let e10 = {
+                                                let l4 = *base.add(0).cast::<*mut u8>();
+                                                let l5 = *base
+                                                    .add(::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let len6 = l5;
+                                                let bytes6 = _rt::Vec::from_raw_parts(
+                                                    l4.cast(),
+                                                    len6,
+                                                    len6,
+                                                );
+                                                let l7 = *base
+                                                    .add(2 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<*mut u8>();
+                                                let l8 = *base
+                                                    .add(3 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let len9 = l8;
+                                                let bytes9 = _rt::Vec::from_raw_parts(
+                                                    l7.cast(),
+                                                    len9,
+                                                    len9,
+                                                );
+                                                (_rt::string_lift(bytes6), _rt::string_lift(bytes9))
+                                            };
+                                            result10.push(e10);
+                                        }
+                                        _rt::cabi_dealloc(
+                                            base10,
+                                            len10 * (4 * ::core::mem::size_of::<*const u8>()),
+                                            ::core::mem::size_of::<*const u8>(),
+                                        );
+                                        result10
+                                    };
+                                    Some(e)
+                                }
+                                _ => _rt::invalid_enum_discriminant(),
+                            },
+                            roots: match l11 {
+                                0 => None,
+                                1 => {
+                                    let e = {
+                                        let l12 = i32::from(
+                                            *arg0
+                                                .add(1 + 4 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>(),
+                                        );
+                                        super::super::super::super::fastertools::mcp::session_types::RootsCapability {
+                                            list_changed: match l12 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l13 = i32::from(
+                                                            *arg0
+                                                                .add(2 + 4 * ::core::mem::size_of::<*const u8>())
+                                                                .cast::<u8>(),
+                                                        );
+                                                        _rt::bool_lift(l13 as u8)
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            },
+                                        }
+                                    };
+                                    Some(e)
+                                }
+                                _ => _rt::invalid_enum_discriminant(),
+                            },
+                            sampling: match l14 {
+                                0 => None,
+                                1 => {
+                                    let e = {
+                                        let l15 = i32::from(
+                                            *arg0
+                                                .add(4 + 4 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>(),
+                                        );
+                                        _rt::bool_lift(l15 as u8)
+                                    };
+                                    Some(e)
+                                }
+                                _ => _rt::invalid_enum_discriminant(),
+                            },
+                            elicitation: match l16 {
+                                0 => None,
+                                1 => {
+                                    let e = {
+                                        let l17 = i32::from(
+                                            *arg0
+                                                .add(6 + 4 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>(),
+                                        );
+                                        _rt::bool_lift(l17 as u8)
+                                    };
+                                    Some(e)
+                                }
+                                _ => _rt::invalid_enum_discriminant(),
+                            },
+                        },
+                        client_info: super::super::super::super::fastertools::mcp::session_types::ImplementationInfo {
+                            name: _rt::string_lift(bytes20),
+                            version: _rt::string_lift(bytes23),
+                            title: match l24 {
+                                0 => None,
+                                1 => {
+                                    let e = {
+                                        let l25 = *arg0
+                                            .add(8 + 9 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<*mut u8>();
+                                        let l26 = *arg0
+                                            .add(8 + 10 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len27 = l26;
+                                        let bytes27 = _rt::Vec::from_raw_parts(
+                                            l25.cast(),
+                                            len27,
+                                            len27,
+                                        );
+                                        _rt::string_lift(bytes27)
+                                    };
+                                    Some(e)
+                                }
+                                _ => _rt::invalid_enum_discriminant(),
+                            },
+                        },
+                        meta: match l28 {
+                            0 => None,
+                            1 => {
+                                let e = {
+                                    let l29 = *arg0
+                                        .add(8 + 12 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l30 = *arg0
+                                        .add(8 + 13 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    let base37 = l29;
+                                    let len37 = l30;
+                                    let mut result37 = _rt::Vec::with_capacity(len37);
+                                    for i in 0..len37 {
+                                        let base = base37
+                                            .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                        let e37 = {
+                                            let l31 = *base.add(0).cast::<*mut u8>();
+                                            let l32 = *base
+                                                .add(::core::mem::size_of::<*const u8>())
+                                                .cast::<usize>();
+                                            let len33 = l32;
+                                            let bytes33 = _rt::Vec::from_raw_parts(
+                                                l31.cast(),
+                                                len33,
+                                                len33,
+                                            );
+                                            let l34 = *base
+                                                .add(2 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<*mut u8>();
+                                            let l35 = *base
+                                                .add(3 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<usize>();
+                                            let len36 = l35;
+                                            let bytes36 = _rt::Vec::from_raw_parts(
+                                                l34.cast(),
+                                                len36,
+                                                len36,
+                                            );
+                                            (_rt::string_lift(bytes33), _rt::string_lift(bytes36))
+                                        };
+                                        result37.push(e37);
+                                    }
+                                    _rt::cabi_dealloc(
+                                        base37,
+                                        len37 * (4 * ::core::mem::size_of::<*const u8>()),
+                                        ::core::mem::size_of::<*const u8>(),
+                                    );
+                                    result37
+                                };
+                                Some(e)
+                            }
+                            _ => _rt::invalid_enum_discriminant(),
+                        },
+                    });
+                    _rt::cabi_dealloc(
+                        arg0,
+                        8 + 14 * ::core::mem::size_of::<*const u8>(),
+                        ::core::mem::size_of::<*const u8>(),
+                    );
+                    let ptr39 = (&raw mut _RET_AREA.0).cast::<u8>();
+                    match result38 {
+                        Ok(e) => {
+                            *ptr39.add(0).cast::<u8>() = (0i32) as u8;
+                            let super::super::super::super::fastertools::mcp::session_types::InitializeResponse {
+                                protocol_version: protocol_version40,
+                                capabilities: capabilities40,
+                                server_info: server_info40,
+                                instructions: instructions40,
+                                meta: meta40,
+                            } = e;
+                            *ptr39
+                                .add(::core::mem::size_of::<*const u8>())
+                                .cast::<u8>() = (protocol_version40.clone() as i32) as u8;
+                            let super::super::super::super::fastertools::mcp::session_types::ServerCapabilities {
+                                experimental: experimental41,
+                                logging: logging41,
+                                completions: completions41,
+                                prompts: prompts41,
+                                resources: resources41,
+                                tools: tools41,
+                            } = capabilities40;
+                            match experimental41 {
+                                Some(e) => {
+                                    *ptr39
+                                        .add(2 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let vec45 = e;
+                                    let len45 = vec45.len();
+                                    let layout45 = _rt::alloc::Layout::from_size_align_unchecked(
+                                        vec45.len() * (4 * ::core::mem::size_of::<*const u8>()),
+                                        ::core::mem::size_of::<*const u8>(),
+                                    );
+                                    let result45 = if layout45.size() != 0 {
+                                        let ptr = _rt::alloc::alloc(layout45).cast::<u8>();
+                                        if ptr.is_null() {
+                                            _rt::alloc::handle_alloc_error(layout45);
+                                        }
+                                        ptr
+                                    } else {
+                                        ::core::ptr::null_mut()
+                                    };
+                                    for (i, e) in vec45.into_iter().enumerate() {
+                                        let base = result45
+                                            .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                        {
+                                            let (t42_0, t42_1) = e;
+                                            let vec43 = (t42_0.into_bytes()).into_boxed_slice();
+                                            let ptr43 = vec43.as_ptr().cast::<u8>();
+                                            let len43 = vec43.len();
+                                            ::core::mem::forget(vec43);
+                                            *base
+                                                .add(::core::mem::size_of::<*const u8>())
+                                                .cast::<usize>() = len43;
+                                            *base.add(0).cast::<*mut u8>() = ptr43.cast_mut();
+                                            let vec44 = (t42_1.into_bytes()).into_boxed_slice();
+                                            let ptr44 = vec44.as_ptr().cast::<u8>();
+                                            let len44 = vec44.len();
+                                            ::core::mem::forget(vec44);
+                                            *base
+                                                .add(3 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<usize>() = len44;
+                                            *base
+                                                .add(2 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<*mut u8>() = ptr44.cast_mut();
+                                        }
+                                    }
+                                    *ptr39
+                                        .add(4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len45;
+                                    *ptr39
+                                        .add(3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = result45;
+                                }
+                                None => {
+                                    *ptr39
+                                        .add(2 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                            match logging41 {
+                                Some(e) => {
+                                    *ptr39
+                                        .add(5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    *ptr39
+                                        .add(1 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (match e {
+                                        true => 1,
+                                        false => 0,
+                                    }) as u8;
+                                }
+                                None => {
+                                    *ptr39
+                                        .add(5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                            match completions41 {
+                                Some(e) => {
+                                    *ptr39
+                                        .add(2 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    *ptr39
+                                        .add(3 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (match e {
+                                        true => 1,
+                                        false => 0,
+                                    }) as u8;
+                                }
+                                None => {
+                                    *ptr39
+                                        .add(2 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                            match prompts41 {
+                                Some(e) => {
+                                    *ptr39
+                                        .add(4 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let super::super::super::super::fastertools::mcp::session_types::PromptsCapability {
+                                        list_changed: list_changed46,
+                                    } = e;
+                                    match list_changed46 {
+                                        Some(e) => {
+                                            *ptr39
+                                                .add(5 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (1i32) as u8;
+                                            *ptr39
+                                                .add(6 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (match e {
+                                                true => 1,
+                                                false => 0,
+                                            }) as u8;
+                                        }
+                                        None => {
+                                            *ptr39
+                                                .add(5 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (0i32) as u8;
+                                        }
+                                    };
+                                }
+                                None => {
+                                    *ptr39
+                                        .add(4 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                            match resources41 {
+                                Some(e) => {
+                                    *ptr39
+                                        .add(7 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let super::super::super::super::fastertools::mcp::session_types::ResourcesCapability {
+                                        subscribe: subscribe47,
+                                        list_changed: list_changed47,
+                                    } = e;
+                                    match subscribe47 {
+                                        Some(e) => {
+                                            *ptr39
+                                                .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (1i32) as u8;
+                                            *ptr39
+                                                .add(9 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (match e {
+                                                true => 1,
+                                                false => 0,
+                                            }) as u8;
+                                        }
+                                        None => {
+                                            *ptr39
+                                                .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (0i32) as u8;
+                                        }
+                                    };
+                                    match list_changed47 {
+                                        Some(e) => {
+                                            *ptr39
+                                                .add(10 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (1i32) as u8;
+                                            *ptr39
+                                                .add(11 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (match e {
+                                                true => 1,
+                                                false => 0,
+                                            }) as u8;
+                                        }
+                                        None => {
+                                            *ptr39
+                                                .add(10 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (0i32) as u8;
+                                        }
+                                    };
+                                }
+                                None => {
+                                    *ptr39
+                                        .add(7 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                            match tools41 {
+                                Some(e) => {
+                                    *ptr39
+                                        .add(12 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let super::super::super::super::fastertools::mcp::session_types::ToolsCapability {
+                                        list_changed: list_changed48,
+                                    } = e;
+                                    match list_changed48 {
+                                        Some(e) => {
+                                            *ptr39
+                                                .add(13 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (1i32) as u8;
+                                            *ptr39
+                                                .add(14 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (match e {
+                                                true => 1,
+                                                false => 0,
+                                            }) as u8;
+                                        }
+                                        None => {
+                                            *ptr39
+                                                .add(13 + 5 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<u8>() = (0i32) as u8;
+                                        }
+                                    };
+                                }
+                                None => {
+                                    *ptr39
+                                        .add(12 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                            let super::super::super::super::fastertools::mcp::session_types::ImplementationInfo {
+                                name: name49,
+                                version: version49,
+                                title: title49,
+                            } = server_info40;
+                            let vec50 = (name49.into_bytes()).into_boxed_slice();
+                            let ptr50 = vec50.as_ptr().cast::<u8>();
+                            let len50 = vec50.len();
+                            ::core::mem::forget(vec50);
+                            *ptr39
+                                .add(16 + 6 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>() = len50;
+                            *ptr39
+                                .add(16 + 5 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>() = ptr50.cast_mut();
+                            let vec51 = (version49.into_bytes()).into_boxed_slice();
+                            let ptr51 = vec51.as_ptr().cast::<u8>();
+                            let len51 = vec51.len();
+                            ::core::mem::forget(vec51);
+                            *ptr39
+                                .add(16 + 8 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>() = len51;
+                            *ptr39
+                                .add(16 + 7 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>() = ptr51.cast_mut();
+                            match title49 {
+                                Some(e) => {
+                                    *ptr39
+                                        .add(16 + 9 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let vec52 = (e.into_bytes()).into_boxed_slice();
+                                    let ptr52 = vec52.as_ptr().cast::<u8>();
+                                    let len52 = vec52.len();
+                                    ::core::mem::forget(vec52);
+                                    *ptr39
+                                        .add(16 + 11 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len52;
+                                    *ptr39
+                                        .add(16 + 10 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = ptr52.cast_mut();
+                                }
+                                None => {
+                                    *ptr39
+                                        .add(16 + 9 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                            match instructions40 {
+                                Some(e) => {
+                                    *ptr39
+                                        .add(16 + 12 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let vec53 = (e.into_bytes()).into_boxed_slice();
+                                    let ptr53 = vec53.as_ptr().cast::<u8>();
+                                    let len53 = vec53.len();
+                                    ::core::mem::forget(vec53);
+                                    *ptr39
+                                        .add(16 + 14 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len53;
+                                    *ptr39
+                                        .add(16 + 13 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = ptr53.cast_mut();
+                                }
+                                None => {
+                                    *ptr39
+                                        .add(16 + 12 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                            match meta40 {
+                                Some(e) => {
+                                    *ptr39
+                                        .add(16 + 15 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let vec57 = e;
+                                    let len57 = vec57.len();
+                                    let layout57 = _rt::alloc::Layout::from_size_align_unchecked(
+                                        vec57.len() * (4 * ::core::mem::size_of::<*const u8>()),
+                                        ::core::mem::size_of::<*const u8>(),
+                                    );
+                                    let result57 = if layout57.size() != 0 {
+                                        let ptr = _rt::alloc::alloc(layout57).cast::<u8>();
+                                        if ptr.is_null() {
+                                            _rt::alloc::handle_alloc_error(layout57);
+                                        }
+                                        ptr
+                                    } else {
+                                        ::core::ptr::null_mut()
+                                    };
+                                    for (i, e) in vec57.into_iter().enumerate() {
+                                        let base = result57
+                                            .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                        {
+                                            let (t54_0, t54_1) = e;
+                                            let vec55 = (t54_0.into_bytes()).into_boxed_slice();
+                                            let ptr55 = vec55.as_ptr().cast::<u8>();
+                                            let len55 = vec55.len();
+                                            ::core::mem::forget(vec55);
+                                            *base
+                                                .add(::core::mem::size_of::<*const u8>())
+                                                .cast::<usize>() = len55;
+                                            *base.add(0).cast::<*mut u8>() = ptr55.cast_mut();
+                                            let vec56 = (t54_1.into_bytes()).into_boxed_slice();
+                                            let ptr56 = vec56.as_ptr().cast::<u8>();
+                                            let len56 = vec56.len();
+                                            ::core::mem::forget(vec56);
+                                            *base
+                                                .add(3 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<usize>() = len56;
+                                            *base
+                                                .add(2 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<*mut u8>() = ptr56.cast_mut();
+                                        }
+                                    }
+                                    *ptr39
+                                        .add(16 + 17 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len57;
+                                    *ptr39
+                                        .add(16 + 16 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = result57;
+                                }
+                                None => {
+                                    *ptr39
+                                        .add(16 + 15 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                        }
+                        Err(e) => {
+                            *ptr39.add(0).cast::<u8>() = (1i32) as u8;
+                            let super::super::super::super::fastertools::mcp::types::McpError {
+                                code: code58,
+                                message: message58,
+                                data: data58,
+                            } = e;
+                            use super::super::super::super::fastertools::mcp::types::ErrorCode as V59;
+                            match code58 {
+                                V59::ParseError => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                                V59::InvalidRequest => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                }
+                                V59::MethodNotFound => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (2i32) as u8;
+                                }
+                                V59::InvalidParams => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (3i32) as u8;
+                                }
+                                V59::InternalError => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (4i32) as u8;
+                                }
+                                V59::ResourceNotFound => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (5i32) as u8;
+                                }
+                                V59::ToolNotFound => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (6i32) as u8;
+                                }
+                                V59::PromptNotFound => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (7i32) as u8;
+                                }
+                                V59::Unauthorized => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (8i32) as u8;
+                                }
+                                V59::RateLimited => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (9i32) as u8;
+                                }
+                                V59::Timeout => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (10i32) as u8;
+                                }
+                                V59::Cancelled => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (11i32) as u8;
+                                }
+                                V59::CustomCode(e) => {
+                                    *ptr39
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (12i32) as u8;
+                                    *ptr39
+                                        .add(4 + 1 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<i32>() = _rt::as_i32(e);
+                                }
+                            }
+                            let vec60 = (message58.into_bytes()).into_boxed_slice();
+                            let ptr60 = vec60.as_ptr().cast::<u8>();
+                            let len60 = vec60.len();
+                            ::core::mem::forget(vec60);
+                            *ptr39
+                                .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>() = len60;
+                            *ptr39
+                                .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>() = ptr60.cast_mut();
+                            match data58 {
+                                Some(e) => {
+                                    *ptr39
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let vec61 = (e.into_bytes()).into_boxed_slice();
+                                    let ptr61 = vec61.as_ptr().cast::<u8>();
+                                    let len61 = vec61.len();
+                                    ::core::mem::forget(vec61);
+                                    *ptr39
+                                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len61;
+                                    *ptr39
+                                        .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = ptr61.cast_mut();
+                                }
+                                None => {
+                                    *ptr39
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                        }
+                    };
+                    ptr39
+                }
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn __post_return_handle_initialize<T: Guest>(arg0: *mut u8) {
+                    let l0 = i32::from(*arg0.add(0).cast::<u8>());
+                    match l0 {
+                        0 => {
+                            let l1 = i32::from(
+                                *arg0
+                                    .add(2 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<u8>(),
+                            );
+                            match l1 {
+                                0 => {}
+                                _ => {
+                                    let l2 = *arg0
+                                        .add(3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l3 = *arg0
+                                        .add(4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    let base8 = l2;
+                                    let len8 = l3;
+                                    for i in 0..len8 {
+                                        let base = base8
+                                            .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                        {
+                                            let l4 = *base.add(0).cast::<*mut u8>();
+                                            let l5 = *base
+                                                .add(::core::mem::size_of::<*const u8>())
+                                                .cast::<usize>();
+                                            _rt::cabi_dealloc(l4, l5, 1);
+                                            let l6 = *base
+                                                .add(2 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<*mut u8>();
+                                            let l7 = *base
+                                                .add(3 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<usize>();
+                                            _rt::cabi_dealloc(l6, l7, 1);
+                                        }
+                                    }
+                                    _rt::cabi_dealloc(
+                                        base8,
+                                        len8 * (4 * ::core::mem::size_of::<*const u8>()),
+                                        ::core::mem::size_of::<*const u8>(),
+                                    );
+                                }
+                            }
+                            let l9 = *arg0
+                                .add(16 + 5 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>();
+                            let l10 = *arg0
+                                .add(16 + 6 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>();
+                            _rt::cabi_dealloc(l9, l10, 1);
+                            let l11 = *arg0
+                                .add(16 + 7 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>();
+                            let l12 = *arg0
+                                .add(16 + 8 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>();
+                            _rt::cabi_dealloc(l11, l12, 1);
+                            let l13 = i32::from(
+                                *arg0
+                                    .add(16 + 9 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<u8>(),
+                            );
+                            match l13 {
+                                0 => {}
+                                _ => {
+                                    let l14 = *arg0
+                                        .add(16 + 10 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l15 = *arg0
+                                        .add(16 + 11 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    _rt::cabi_dealloc(l14, l15, 1);
+                                }
+                            }
+                            let l16 = i32::from(
+                                *arg0
+                                    .add(16 + 12 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<u8>(),
+                            );
+                            match l16 {
+                                0 => {}
+                                _ => {
+                                    let l17 = *arg0
+                                        .add(16 + 13 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l18 = *arg0
+                                        .add(16 + 14 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    _rt::cabi_dealloc(l17, l18, 1);
+                                }
+                            }
+                            let l19 = i32::from(
+                                *arg0
+                                    .add(16 + 15 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<u8>(),
+                            );
+                            match l19 {
+                                0 => {}
+                                _ => {
+                                    let l20 = *arg0
+                                        .add(16 + 16 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l21 = *arg0
+                                        .add(16 + 17 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    let base26 = l20;
+                                    let len26 = l21;
+                                    for i in 0..len26 {
+                                        let base = base26
+                                            .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                        {
+                                            let l22 = *base.add(0).cast::<*mut u8>();
+                                            let l23 = *base
+                                                .add(::core::mem::size_of::<*const u8>())
+                                                .cast::<usize>();
+                                            _rt::cabi_dealloc(l22, l23, 1);
+                                            let l24 = *base
+                                                .add(2 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<*mut u8>();
+                                            let l25 = *base
+                                                .add(3 * ::core::mem::size_of::<*const u8>())
+                                                .cast::<usize>();
+                                            _rt::cabi_dealloc(l24, l25, 1);
+                                        }
+                                    }
+                                    _rt::cabi_dealloc(
+                                        base26,
+                                        len26 * (4 * ::core::mem::size_of::<*const u8>()),
+                                        ::core::mem::size_of::<*const u8>(),
+                                    );
+                                }
+                            }
+                        }
+                        _ => {
+                            let l27 = *arg0
+                                .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>();
+                            let l28 = *arg0
+                                .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>();
+                            _rt::cabi_dealloc(l27, l28, 1);
+                            let l29 = i32::from(
+                                *arg0
+                                    .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<u8>(),
+                            );
+                            match l29 {
+                                0 => {}
+                                _ => {
+                                    let l30 = *arg0
+                                        .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l31 = *arg0
+                                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    _rt::cabi_dealloc(l30, l31, 1);
+                                }
+                            }
+                        }
+                    }
+                }
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn _export_handle_initialized_cabi<T: Guest>() -> *mut u8 {
+                    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+                    let result0 = T::handle_initialized();
+                    let ptr1 = (&raw mut _RET_AREA.0).cast::<u8>();
+                    match result0 {
+                        Ok(_) => {
+                            *ptr1.add(0).cast::<u8>() = (0i32) as u8;
+                        }
+                        Err(e) => {
+                            *ptr1.add(0).cast::<u8>() = (1i32) as u8;
+                            let super::super::super::super::fastertools::mcp::types::McpError {
+                                code: code2,
+                                message: message2,
+                                data: data2,
+                            } = e;
+                            use super::super::super::super::fastertools::mcp::types::ErrorCode as V3;
+                            match code2 {
+                                V3::ParseError => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                                V3::InvalidRequest => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                }
+                                V3::MethodNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (2i32) as u8;
+                                }
+                                V3::InvalidParams => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (3i32) as u8;
+                                }
+                                V3::InternalError => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (4i32) as u8;
+                                }
+                                V3::ResourceNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (5i32) as u8;
+                                }
+                                V3::ToolNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (6i32) as u8;
+                                }
+                                V3::PromptNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (7i32) as u8;
+                                }
+                                V3::Unauthorized => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (8i32) as u8;
+                                }
+                                V3::RateLimited => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (9i32) as u8;
+                                }
+                                V3::Timeout => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (10i32) as u8;
+                                }
+                                V3::Cancelled => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (11i32) as u8;
+                                }
+                                V3::CustomCode(e) => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (12i32) as u8;
+                                    *ptr1
+                                        .add(4 + 1 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<i32>() = _rt::as_i32(e);
+                                }
+                            }
+                            let vec4 = (message2.into_bytes()).into_boxed_slice();
+                            let ptr4 = vec4.as_ptr().cast::<u8>();
+                            let len4 = vec4.len();
+                            ::core::mem::forget(vec4);
+                            *ptr1
+                                .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>() = len4;
+                            *ptr1
+                                .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>() = ptr4.cast_mut();
+                            match data2 {
+                                Some(e) => {
+                                    *ptr1
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let vec5 = (e.into_bytes()).into_boxed_slice();
+                                    let ptr5 = vec5.as_ptr().cast::<u8>();
+                                    let len5 = vec5.len();
+                                    ::core::mem::forget(vec5);
+                                    *ptr1
+                                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len5;
+                                    *ptr1
+                                        .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = ptr5.cast_mut();
+                                }
+                                None => {
+                                    *ptr1
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                        }
+                    };
+                    ptr1
+                }
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn __post_return_handle_initialized<T: Guest>(arg0: *mut u8) {
+                    let l0 = i32::from(*arg0.add(0).cast::<u8>());
+                    match l0 {
+                        0 => {}
+                        _ => {
+                            let l1 = *arg0
+                                .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>();
+                            let l2 = *arg0
+                                .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>();
+                            _rt::cabi_dealloc(l1, l2, 1);
+                            let l3 = i32::from(
+                                *arg0
+                                    .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<u8>(),
+                            );
+                            match l3 {
+                                0 => {}
+                                _ => {
+                                    let l4 = *arg0
+                                        .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l5 = *arg0
+                                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    _rt::cabi_dealloc(l4, l5, 1);
+                                }
+                            }
+                        }
+                    }
+                }
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn _export_handle_ping_cabi<T: Guest>() -> *mut u8 {
+                    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+                    let result0 = T::handle_ping();
+                    let ptr1 = (&raw mut _RET_AREA.0).cast::<u8>();
+                    match result0 {
+                        Ok(_) => {
+                            *ptr1.add(0).cast::<u8>() = (0i32) as u8;
+                        }
+                        Err(e) => {
+                            *ptr1.add(0).cast::<u8>() = (1i32) as u8;
+                            let super::super::super::super::fastertools::mcp::types::McpError {
+                                code: code2,
+                                message: message2,
+                                data: data2,
+                            } = e;
+                            use super::super::super::super::fastertools::mcp::types::ErrorCode as V3;
+                            match code2 {
+                                V3::ParseError => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                                V3::InvalidRequest => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                }
+                                V3::MethodNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (2i32) as u8;
+                                }
+                                V3::InvalidParams => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (3i32) as u8;
+                                }
+                                V3::InternalError => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (4i32) as u8;
+                                }
+                                V3::ResourceNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (5i32) as u8;
+                                }
+                                V3::ToolNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (6i32) as u8;
+                                }
+                                V3::PromptNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (7i32) as u8;
+                                }
+                                V3::Unauthorized => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (8i32) as u8;
+                                }
+                                V3::RateLimited => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (9i32) as u8;
+                                }
+                                V3::Timeout => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (10i32) as u8;
+                                }
+                                V3::Cancelled => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (11i32) as u8;
+                                }
+                                V3::CustomCode(e) => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (12i32) as u8;
+                                    *ptr1
+                                        .add(4 + 1 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<i32>() = _rt::as_i32(e);
+                                }
+                            }
+                            let vec4 = (message2.into_bytes()).into_boxed_slice();
+                            let ptr4 = vec4.as_ptr().cast::<u8>();
+                            let len4 = vec4.len();
+                            ::core::mem::forget(vec4);
+                            *ptr1
+                                .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>() = len4;
+                            *ptr1
+                                .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>() = ptr4.cast_mut();
+                            match data2 {
+                                Some(e) => {
+                                    *ptr1
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let vec5 = (e.into_bytes()).into_boxed_slice();
+                                    let ptr5 = vec5.as_ptr().cast::<u8>();
+                                    let len5 = vec5.len();
+                                    ::core::mem::forget(vec5);
+                                    *ptr1
+                                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len5;
+                                    *ptr1
+                                        .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = ptr5.cast_mut();
+                                }
+                                None => {
+                                    *ptr1
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                        }
+                    };
+                    ptr1
+                }
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn __post_return_handle_ping<T: Guest>(arg0: *mut u8) {
+                    let l0 = i32::from(*arg0.add(0).cast::<u8>());
+                    match l0 {
+                        0 => {}
+                        _ => {
+                            let l1 = *arg0
+                                .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>();
+                            let l2 = *arg0
+                                .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>();
+                            _rt::cabi_dealloc(l1, l2, 1);
+                            let l3 = i32::from(
+                                *arg0
+                                    .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<u8>(),
+                            );
+                            match l3 {
+                                0 => {}
+                                _ => {
+                                    let l4 = *arg0
+                                        .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l5 = *arg0
+                                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    _rt::cabi_dealloc(l4, l5, 1);
+                                }
+                            }
+                        }
+                    }
+                }
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn _export_handle_shutdown_cabi<T: Guest>() -> *mut u8 {
+                    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+                    let result0 = T::handle_shutdown();
+                    let ptr1 = (&raw mut _RET_AREA.0).cast::<u8>();
+                    match result0 {
+                        Ok(_) => {
+                            *ptr1.add(0).cast::<u8>() = (0i32) as u8;
+                        }
+                        Err(e) => {
+                            *ptr1.add(0).cast::<u8>() = (1i32) as u8;
+                            let super::super::super::super::fastertools::mcp::types::McpError {
+                                code: code2,
+                                message: message2,
+                                data: data2,
+                            } = e;
+                            use super::super::super::super::fastertools::mcp::types::ErrorCode as V3;
+                            match code2 {
+                                V3::ParseError => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                                V3::InvalidRequest => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                }
+                                V3::MethodNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (2i32) as u8;
+                                }
+                                V3::InvalidParams => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (3i32) as u8;
+                                }
+                                V3::InternalError => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (4i32) as u8;
+                                }
+                                V3::ResourceNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (5i32) as u8;
+                                }
+                                V3::ToolNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (6i32) as u8;
+                                }
+                                V3::PromptNotFound => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (7i32) as u8;
+                                }
+                                V3::Unauthorized => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (8i32) as u8;
+                                }
+                                V3::RateLimited => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (9i32) as u8;
+                                }
+                                V3::Timeout => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (10i32) as u8;
+                                }
+                                V3::Cancelled => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (11i32) as u8;
+                                }
+                                V3::CustomCode(e) => {
+                                    *ptr1
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (12i32) as u8;
+                                    *ptr1
+                                        .add(4 + 1 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<i32>() = _rt::as_i32(e);
+                                }
+                            }
+                            let vec4 = (message2.into_bytes()).into_boxed_slice();
+                            let ptr4 = vec4.as_ptr().cast::<u8>();
+                            let len4 = vec4.len();
+                            ::core::mem::forget(vec4);
+                            *ptr1
+                                .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>() = len4;
+                            *ptr1
+                                .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>() = ptr4.cast_mut();
+                            match data2 {
+                                Some(e) => {
+                                    *ptr1
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let vec5 = (e.into_bytes()).into_boxed_slice();
+                                    let ptr5 = vec5.as_ptr().cast::<u8>();
+                                    let len5 = vec5.len();
+                                    ::core::mem::forget(vec5);
+                                    *ptr1
+                                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len5;
+                                    *ptr1
+                                        .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = ptr5.cast_mut();
+                                }
+                                None => {
+                                    *ptr1
+                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                        }
+                    };
+                    ptr1
+                }
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn __post_return_handle_shutdown<T: Guest>(arg0: *mut u8) {
+                    let l0 = i32::from(*arg0.add(0).cast::<u8>());
+                    match l0 {
+                        0 => {}
+                        _ => {
+                            let l1 = *arg0
+                                .add(8 + 1 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>();
+                            let l2 = *arg0
+                                .add(8 + 2 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>();
+                            _rt::cabi_dealloc(l1, l2, 1);
+                            let l3 = i32::from(
+                                *arg0
+                                    .add(8 + 3 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<u8>(),
+                            );
+                            match l3 {
+                                0 => {}
+                                _ => {
+                                    let l4 = *arg0
+                                        .add(8 + 4 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l5 = *arg0
+                                        .add(8 + 5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    _rt::cabi_dealloc(l4, l5, 1);
+                                }
+                            }
+                        }
+                    }
+                }
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn _export_get_auth_config_cabi<T: Guest>() -> *mut u8 {
+                    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+                    let result0 = T::get_auth_config();
+                    let ptr1 = (&raw mut _RET_AREA.0).cast::<u8>();
+                    match result0 {
+                        Some(e) => {
+                            *ptr1.add(0).cast::<u8>() = (1i32) as u8;
+                            let super::super::super::super::fastertools::mcp::authorization_types::ProviderAuthConfig {
+                                expected_issuer: expected_issuer2,
+                                expected_audiences: expected_audiences2,
+                                jwks_uri: jwks_uri2,
+                                policy: policy2,
+                                policy_data: policy_data2,
+                            } = e;
+                            let vec3 = (expected_issuer2.into_bytes())
+                                .into_boxed_slice();
+                            let ptr3 = vec3.as_ptr().cast::<u8>();
+                            let len3 = vec3.len();
+                            ::core::mem::forget(vec3);
+                            *ptr1
+                                .add(2 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>() = len3;
+                            *ptr1
+                                .add(::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>() = ptr3.cast_mut();
+                            let vec5 = expected_audiences2;
+                            let len5 = vec5.len();
+                            let layout5 = _rt::alloc::Layout::from_size_align_unchecked(
+                                vec5.len() * (2 * ::core::mem::size_of::<*const u8>()),
+                                ::core::mem::size_of::<*const u8>(),
+                            );
+                            let result5 = if layout5.size() != 0 {
+                                let ptr = _rt::alloc::alloc(layout5).cast::<u8>();
+                                if ptr.is_null() {
+                                    _rt::alloc::handle_alloc_error(layout5);
+                                }
+                                ptr
+                            } else {
+                                ::core::ptr::null_mut()
+                            };
+                            for (i, e) in vec5.into_iter().enumerate() {
+                                let base = result5
+                                    .add(i * (2 * ::core::mem::size_of::<*const u8>()));
+                                {
+                                    let vec4 = (e.into_bytes()).into_boxed_slice();
+                                    let ptr4 = vec4.as_ptr().cast::<u8>();
+                                    let len4 = vec4.len();
+                                    ::core::mem::forget(vec4);
+                                    *base
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len4;
+                                    *base.add(0).cast::<*mut u8>() = ptr4.cast_mut();
+                                }
+                            }
+                            *ptr1
+                                .add(4 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>() = len5;
+                            *ptr1
+                                .add(3 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>() = result5;
+                            let vec6 = (jwks_uri2.into_bytes()).into_boxed_slice();
+                            let ptr6 = vec6.as_ptr().cast::<u8>();
+                            let len6 = vec6.len();
+                            ::core::mem::forget(vec6);
+                            *ptr1
+                                .add(6 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>() = len6;
+                            *ptr1
+                                .add(5 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>() = ptr6.cast_mut();
+                            match policy2 {
+                                Some(e) => {
+                                    *ptr1
+                                        .add(7 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let vec7 = (e.into_bytes()).into_boxed_slice();
+                                    let ptr7 = vec7.as_ptr().cast::<u8>();
+                                    let len7 = vec7.len();
+                                    ::core::mem::forget(vec7);
+                                    *ptr1
+                                        .add(9 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len7;
+                                    *ptr1
+                                        .add(8 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = ptr7.cast_mut();
+                                }
+                                None => {
+                                    *ptr1
+                                        .add(7 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                            match policy_data2 {
+                                Some(e) => {
+                                    *ptr1
+                                        .add(10 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (1i32) as u8;
+                                    let vec8 = (e.into_bytes()).into_boxed_slice();
+                                    let ptr8 = vec8.as_ptr().cast::<u8>();
+                                    let len8 = vec8.len();
+                                    ::core::mem::forget(vec8);
+                                    *ptr1
+                                        .add(12 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>() = len8;
+                                    *ptr1
+                                        .add(11 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>() = ptr8.cast_mut();
+                                }
+                                None => {
+                                    *ptr1
+                                        .add(10 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                        }
+                        None => {
+                            *ptr1.add(0).cast::<u8>() = (0i32) as u8;
+                        }
+                    };
+                    ptr1
+                }
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn __post_return_get_auth_config<T: Guest>(arg0: *mut u8) {
+                    let l0 = i32::from(*arg0.add(0).cast::<u8>());
+                    match l0 {
+                        0 => {}
+                        _ => {
+                            let l1 = *arg0
+                                .add(::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>();
+                            let l2 = *arg0
+                                .add(2 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>();
+                            _rt::cabi_dealloc(l1, l2, 1);
+                            let l3 = *arg0
+                                .add(3 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>();
+                            let l4 = *arg0
+                                .add(4 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>();
+                            let base7 = l3;
+                            let len7 = l4;
+                            for i in 0..len7 {
+                                let base = base7
+                                    .add(i * (2 * ::core::mem::size_of::<*const u8>()));
+                                {
+                                    let l5 = *base.add(0).cast::<*mut u8>();
+                                    let l6 = *base
+                                        .add(::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    _rt::cabi_dealloc(l5, l6, 1);
+                                }
+                            }
+                            _rt::cabi_dealloc(
+                                base7,
+                                len7 * (2 * ::core::mem::size_of::<*const u8>()),
+                                ::core::mem::size_of::<*const u8>(),
+                            );
+                            let l8 = *arg0
+                                .add(5 * ::core::mem::size_of::<*const u8>())
+                                .cast::<*mut u8>();
+                            let l9 = *arg0
+                                .add(6 * ::core::mem::size_of::<*const u8>())
+                                .cast::<usize>();
+                            _rt::cabi_dealloc(l8, l9, 1);
+                            let l10 = i32::from(
+                                *arg0
+                                    .add(7 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<u8>(),
+                            );
+                            match l10 {
+                                0 => {}
+                                _ => {
+                                    let l11 = *arg0
+                                        .add(8 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l12 = *arg0
+                                        .add(9 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    _rt::cabi_dealloc(l11, l12, 1);
+                                }
+                            }
+                            let l13 = i32::from(
+                                *arg0
+                                    .add(10 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<u8>(),
+                            );
+                            match l13 {
+                                0 => {}
+                                _ => {
+                                    let l14 = *arg0
+                                        .add(11 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<*mut u8>();
+                                    let l15 = *arg0
+                                        .add(12 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<usize>();
+                                    _rt::cabi_dealloc(l14, l15, 1);
+                                }
+                            }
+                        }
+                    }
+                }
+                pub trait Guest {
+                    /// Handle session initialization
+                    /// Implementations should declare their capabilities here
+                    fn handle_initialize(
+                        request: InitializeRequest,
+                    ) -> Result<InitializeResponse, McpError>;
+                    /// Handle initialization complete notification
+                    fn handle_initialized() -> Result<(), McpError>;
+                    /// Handle ping request for keepalive
+                    fn handle_ping() -> Result<(), McpError>;
+                    /// Handle shutdown request
+                    fn handle_shutdown() -> Result<(), McpError>;
+                    /// Get provider's auth configuration (optional - return none for no auth)
+                    /// If auth configuration is provided, the transport will enforce authentication
+                    fn get_auth_config() -> Option<ProviderAuthConfig>;
+                }
+                #[doc(hidden)]
+                macro_rules! __export_fastertools_mcp_core_capabilities_0_1_23_cabi {
+                    ($ty:ident with_types_in $($path_to_types:tt)*) => {
+                        const _ : () = { #[unsafe (export_name =
+                        "fastertools:mcp/core-capabilities@0.1.23#handle-initialize")]
+                        unsafe extern "C" fn export_handle_initialize(arg0 : * mut u8,)
+                        -> * mut u8 { unsafe { $($path_to_types)*::
+                        _export_handle_initialize_cabi::<$ty > (arg0) } } #[unsafe
+                        (export_name =
+                        "cabi_post_fastertools:mcp/core-capabilities@0.1.23#handle-initialize")]
+                        unsafe extern "C" fn _post_return_handle_initialize(arg0 : * mut
+                        u8,) { unsafe { $($path_to_types)*::
+                        __post_return_handle_initialize::<$ty > (arg0) } } #[unsafe
+                        (export_name =
+                        "fastertools:mcp/core-capabilities@0.1.23#handle-initialized")]
+                        unsafe extern "C" fn export_handle_initialized() -> * mut u8 {
+                        unsafe { $($path_to_types)*::
+                        _export_handle_initialized_cabi::<$ty > () } } #[unsafe
+                        (export_name =
+                        "cabi_post_fastertools:mcp/core-capabilities@0.1.23#handle-initialized")]
+                        unsafe extern "C" fn _post_return_handle_initialized(arg0 : * mut
+                        u8,) { unsafe { $($path_to_types)*::
+                        __post_return_handle_initialized::<$ty > (arg0) } } #[unsafe
+                        (export_name =
+                        "fastertools:mcp/core-capabilities@0.1.23#handle-ping")] unsafe
+                        extern "C" fn export_handle_ping() -> * mut u8 { unsafe {
+                        $($path_to_types)*:: _export_handle_ping_cabi::<$ty > () } }
+                        #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/core-capabilities@0.1.23#handle-ping")]
+                        unsafe extern "C" fn _post_return_handle_ping(arg0 : * mut u8,) {
+                        unsafe { $($path_to_types)*:: __post_return_handle_ping::<$ty >
+                        (arg0) } } #[unsafe (export_name =
+                        "fastertools:mcp/core-capabilities@0.1.23#handle-shutdown")]
+                        unsafe extern "C" fn export_handle_shutdown() -> * mut u8 {
+                        unsafe { $($path_to_types)*:: _export_handle_shutdown_cabi::<$ty
+                        > () } } #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/core-capabilities@0.1.23#handle-shutdown")]
+                        unsafe extern "C" fn _post_return_handle_shutdown(arg0 : * mut
+                        u8,) { unsafe { $($path_to_types)*::
+                        __post_return_handle_shutdown::<$ty > (arg0) } } #[unsafe
+                        (export_name =
+                        "fastertools:mcp/core-capabilities@0.1.23#get-auth-config")]
+                        unsafe extern "C" fn export_get_auth_config() -> * mut u8 {
+                        unsafe { $($path_to_types)*:: _export_get_auth_config_cabi::<$ty
+                        > () } } #[unsafe (export_name =
+                        "cabi_post_fastertools:mcp/core-capabilities@0.1.23#get-auth-config")]
+                        unsafe extern "C" fn _post_return_get_auth_config(arg0 : * mut
+                        u8,) { unsafe { $($path_to_types)*::
+                        __post_return_get_auth_config::<$ty > (arg0) } } };
+                    };
+                }
+                #[doc(hidden)]
+                pub(crate) use __export_fastertools_mcp_core_capabilities_0_1_23_cabi;
+                #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+                #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
+                struct _RetArea(
+                    [::core::mem::MaybeUninit<
+                        u8,
+                    >; 16 + 18 * ::core::mem::size_of::<*const u8>()],
+                );
+                static mut _RET_AREA: _RetArea = _RetArea(
+                    [::core::mem::MaybeUninit::uninit(); 16
+                        + 18 * ::core::mem::size_of::<*const u8>()],
+                );
+            }
             /// Tool capabilities - implement this to provide tools
             #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
             pub mod tools_capabilities {
@@ -3920,22 +6016,22 @@ pub mod exports {
                     ) -> Result<ToolResult, McpError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_fastertools_mcp_tools_capabilities_0_1_12_cabi {
+                macro_rules! __export_fastertools_mcp_tools_capabilities_0_1_23_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "fastertools:mcp/tools-capabilities@0.1.12#handle-list-tools")]
+                        "fastertools:mcp/tools-capabilities@0.1.23#handle-list-tools")]
                         unsafe extern "C" fn export_handle_list_tools(arg0 : i32, arg1 :
                         * mut u8, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5 :
                         usize, arg6 : i32, arg7 : * mut u8, arg8 : usize,) -> * mut u8 {
                         unsafe { $($path_to_types)*::
                         _export_handle_list_tools_cabi::<$ty > (arg0, arg1, arg2, arg3,
                         arg4, arg5, arg6, arg7, arg8) } } #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/tools-capabilities@0.1.12#handle-list-tools")]
+                        "cabi_post_fastertools:mcp/tools-capabilities@0.1.23#handle-list-tools")]
                         unsafe extern "C" fn _post_return_handle_list_tools(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_list_tools::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "fastertools:mcp/tools-capabilities@0.1.12#handle-call-tool")]
+                        "fastertools:mcp/tools-capabilities@0.1.23#handle-call-tool")]
                         unsafe extern "C" fn export_handle_call_tool(arg0 : * mut u8,
                         arg1 : usize, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 :
                         i32, arg6 : * mut u8, arg7 : usize, arg8 : i32, arg9 : * mut u8,
@@ -3943,14 +6039,14 @@ pub mod exports {
                         _export_handle_call_tool_cabi::<$ty > (arg0, arg1, arg2, arg3,
                         arg4, arg5, arg6, arg7, arg8, arg9, arg10) } } #[unsafe
                         (export_name =
-                        "cabi_post_fastertools:mcp/tools-capabilities@0.1.12#handle-call-tool")]
+                        "cabi_post_fastertools:mcp/tools-capabilities@0.1.23#handle-call-tool")]
                         unsafe extern "C" fn _post_return_handle_call_tool(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_call_tool::<$ty > (arg0) } } };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_fastertools_mcp_tools_capabilities_0_1_12_cabi;
+                pub(crate) use __export_fastertools_mcp_tools_capabilities_0_1_23_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -3982,6 +6078,13 @@ mod _rt {
             String::from_utf8_unchecked(bytes)
         }
     }
+    pub unsafe fn cabi_dealloc(ptr: *mut u8, size: usize, align: usize) {
+        if size == 0 {
+            return;
+        }
+        let layout = alloc::Layout::from_size_align_unchecked(size, align);
+        alloc::dealloc(ptr, layout);
+    }
     pub unsafe fn invalid_enum_discriminant<T>() -> T {
         if cfg!(debug_assertions) {
             panic!("invalid enum discriminant")
@@ -3989,12 +6092,16 @@ mod _rt {
             unsafe { core::hint::unreachable_unchecked() }
         }
     }
-    pub unsafe fn cabi_dealloc(ptr: *mut u8, size: usize, align: usize) {
-        if size == 0 {
-            return;
+    pub unsafe fn bool_lift(val: u8) -> bool {
+        if cfg!(debug_assertions) {
+            match val {
+                0 => false,
+                1 => true,
+                _ => panic!("invalid bool discriminant"),
+            }
+        } else {
+            val != 0
         }
-        let layout = alloc::Layout::from_size_align_unchecked(size, align);
-        alloc::dealloc(ptr, layout);
     }
     pub use alloc_crate::alloc;
     pub fn as_i32<T: AsI32>(t: T) -> i32 {
@@ -4122,7 +6229,10 @@ macro_rules! __export_tools_provider_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::fastertools::mcp::tools_capabilities::__export_fastertools_mcp_tools_capabilities_0_1_12_cabi!($ty
+        exports::fastertools::mcp::core_capabilities::__export_fastertools_mcp_core_capabilities_0_1_23_cabi!($ty
+        with_types_in $($path_to_types_root)*::
+        exports::fastertools::mcp::core_capabilities); $($path_to_types_root)*::
+        exports::fastertools::mcp::tools_capabilities::__export_fastertools_mcp_tools_capabilities_0_1_23_cabi!($ty
         with_types_in $($path_to_types_root)*::
         exports::fastertools::mcp::tools_capabilities);
     };
@@ -4131,13 +6241,13 @@ macro_rules! __export_tools_provider_impl {
 pub(crate) use __export_tools_provider_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.1.12:tools-provider:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.1.23:tools-provider:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2675] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xee\x13\x01A\x02\x01\
-A\x12\x01B;\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajs\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4257] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x9c\x20\x01A\x02\x01\
+A\x1b\x01B;\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajs\
 on-value\x03\0\x02\x01o\x02ss\x01p\x04\x04\0\x0bmeta-fields\x03\0\x05\x01p\x01\x01\
 k\x07\x01ku\x01ks\x01r\x03\x08audience\x08\x08priority\x09\x0dlast-modified\x0a\x04\
 \0\x0bannotations\x03\0\x0b\x01r\x02\x04names\x05title\x0a\x04\0\x0dbase-metadat\
@@ -4164,35 +6274,68 @@ m\x03\x04user\x09assistant\x06system\x04\0\x0cmessage-role\x03\01\x01r\x01\x04na
 me\x0a\x04\0\x0amodel-hint\x03\03\x01p4\x01k5\x01r\x04\x05hints6\x0dcost-priorit\
 y\x09\x0espeed-priority\x09\x15intelligence-priority\x09\x04\0\x11model-preferen\
 ces\x03\07\x01r\x04\x0curi-templates\x04names\x0bdescription\x0a\x09mime-type\x0a\
-\x04\0\x11resource-template\x03\09\x03\0\x1cfastertools:mcp/types@0.1.12\x05\0\x02\
-\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\x03\0\0\x0bjson-schema\x02\
-\x03\0\0\x09mcp-error\x02\x03\0\0\x0dbase-metadata\x02\x03\0\0\x0bmeta-fields\x02\
-\x03\0\0\x06cursor\x02\x03\0\0\x0eprogress-token\x01B&\x02\x03\x02\x01\x01\x04\0\
-\x0dcontent-block\x03\0\0\x02\x03\x02\x01\x02\x04\0\x0ajson-value\x03\0\x02\x02\x03\
-\x02\x01\x03\x04\0\x0bjson-schema\x03\0\x04\x02\x03\x02\x01\x04\x04\0\x09mcp-err\
-or\x03\0\x06\x02\x03\x02\x01\x05\x04\0\x0dbase-metadata\x03\0\x08\x02\x03\x02\x01\
-\x06\x04\0\x0bmeta-fields\x03\0\x0a\x02\x03\x02\x01\x07\x04\0\x06cursor\x03\0\x0c\
-\x02\x03\x02\x01\x08\x04\0\x0eprogress-token\x03\0\x0e\x01ks\x01k\x7f\x01r\x05\x05\
-title\x10\x0eread-only-hint\x11\x10destructive-hint\x11\x0fidempotent-hint\x11\x0f\
-open-world-hint\x11\x04\0\x10tool-annotations\x03\0\x12\x01k\x05\x01k\x13\x01k\x0b\
-\x01r\x06\x04base\x09\x0bdescription\x10\x0cinput-schema\x05\x0doutput-schema\x14\
-\x0bannotations\x15\x04meta\x16\x04\0\x04tool\x03\0\x17\x01p\x01\x01k\x03\x01r\x04\
-\x07content\x19\x12structured-content\x1a\x08is-error\x11\x04meta\x16\x04\0\x0bt\
-ool-result\x03\0\x1b\x01k\x0d\x01k\x0f\x01r\x03\x06cursor\x1d\x0eprogress-token\x1e\
-\x04meta\x16\x04\0\x12list-tools-request\x03\0\x1f\x01p\x18\x01r\x03\x05tools!\x0b\
-next-cursor\x1d\x04meta\x16\x04\0\x13list-tools-response\x03\0\"\x01r\x04\x04nam\
-es\x09arguments\x1a\x0eprogress-token\x1e\x04meta\x16\x04\0\x11call-tool-request\
-\x03\0$\x03\0\x1cfastertools:mcp/tools@0.1.12\x05\x09\x02\x03\0\x01\x12list-tool\
-s-request\x02\x03\0\x01\x13list-tools-response\x02\x03\0\x01\x11call-tool-reques\
-t\x02\x03\0\x01\x0btool-result\x01B\x10\x02\x03\x02\x01\x04\x04\0\x09mcp-error\x03\
-\0\0\x02\x03\x02\x01\x0a\x04\0\x12list-tools-request\x03\0\x02\x02\x03\x02\x01\x0b\
-\x04\0\x13list-tools-response\x03\0\x04\x02\x03\x02\x01\x0c\x04\0\x11call-tool-r\
-equest\x03\0\x06\x02\x03\x02\x01\x0d\x04\0\x0btool-result\x03\0\x08\x01j\x01\x05\
-\x01\x01\x01@\x01\x07request\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\x01j\x01\
-\x09\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x10handle-call-tool\x01\x0d\x04\
-\0)fastertools:mcp/tools-capabilities@0.1.12\x05\x0e\x04\0%fastertools:mcp/tools\
--provider@0.1.12\x04\0\x0b\x14\x01\0\x0etools-provider\x03\0\0\0G\x09producers\x01\
-\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+\x04\0\x11resource-template\x03\09\x03\0\x1cfastertools:mcp/types@0.1.23\x05\0\x02\
+\x03\0\0\x0bmeta-fields\x01B\x1d\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\
+\x01m\x02\x09v20250326\x09v20250618\x04\0\x10protocol-version\x03\0\x02\x01ks\x01\
+r\x03\x04names\x07versions\x05title\x04\x04\0\x13implementation-info\x03\0\x05\x01\
+k\x7f\x01r\x01\x0clist-changed\x07\x04\0\x10roots-capability\x03\0\x08\x01r\x01\x0c\
+list-changed\x07\x04\0\x12prompts-capability\x03\0\x0a\x01r\x02\x09subscribe\x07\
+\x0clist-changed\x07\x04\0\x14resources-capability\x03\0\x0c\x01r\x01\x0clist-ch\
+anged\x07\x04\0\x10tools-capability\x03\0\x0e\x01k\x01\x01k\x09\x01r\x04\x0cexpe\
+rimental\x10\x05roots\x11\x08sampling\x07\x0belicitation\x07\x04\0\x13client-cap\
+abilities\x03\0\x12\x01k\x0b\x01k\x0d\x01k\x0f\x01r\x06\x0cexperimental\x10\x07l\
+ogging\x07\x0bcompletions\x07\x07prompts\x14\x09resources\x15\x05tools\x16\x04\0\
+\x13server-capabilities\x03\0\x17\x01r\x04\x10protocol-version\x03\x0ccapabiliti\
+es\x13\x0bclient-info\x06\x04meta\x10\x04\0\x12initialize-request\x03\0\x19\x01r\
+\x05\x10protocol-version\x03\x0ccapabilities\x18\x0bserver-info\x06\x0cinstructi\
+ons\x04\x04meta\x10\x04\0\x13initialize-response\x03\0\x1b\x03\0$fastertools:mcp\
+/session-types@0.1.23\x05\x02\x01B\x13\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\
+\0\0\x01ps\x01ks\x01r\x05\x0fexpected-issuers\x12expected-audiences\x02\x08jwks-\
+uris\x06policy\x03\x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01\
+kw\x01r\x08\x09client-id\x03\x07user-id\x03\x06scopes\x02\x06issuer\x03\x08audie\
+nce\x03\x06claims\x01\x03exp\x06\x03iat\x06\x04\0\x0cauth-context\x03\0\x07\x01o\
+\x02ss\x01p\x09\x01p}\x01k\x0b\x01r\x0a\x05tokens\x06methods\x04paths\x07headers\
+\x0a\x04body\x0c\x0fexpected-issuers\x12expected-audiences\x02\x08jwks-uris\x06p\
+olicy\x03\x0bpolicy-data\x03\x04\0\x0cauth-request\x03\0\x0d\x01r\x04\x06status{\
+\x0aerror-codes\x0bdescriptions\x10www-authenticate\x03\x04\0\x0aauth-error\x03\0\
+\x0f\x01q\x02\x0aauthorized\x01\x08\0\x0cunauthorized\x01\x10\0\x04\0\x0dauth-re\
+sponse\x03\0\x11\x03\0*fastertools:mcp/authorization-types@0.1.23\x05\x03\x02\x03\
+\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\x03\0\0\x0bjson-schema\x02\x03\
+\0\0\x09mcp-error\x02\x03\0\0\x0dbase-metadata\x02\x03\0\0\x06cursor\x02\x03\0\0\
+\x0eprogress-token\x01B&\x02\x03\x02\x01\x04\x04\0\x0dcontent-block\x03\0\0\x02\x03\
+\x02\x01\x05\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x06\x04\0\x0bjson-sch\
+ema\x03\0\x04\x02\x03\x02\x01\x07\x04\0\x09mcp-error\x03\0\x06\x02\x03\x02\x01\x08\
+\x04\0\x0dbase-metadata\x03\0\x08\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\
+\x0a\x02\x03\x02\x01\x09\x04\0\x06cursor\x03\0\x0c\x02\x03\x02\x01\x0a\x04\0\x0e\
+progress-token\x03\0\x0e\x01ks\x01k\x7f\x01r\x05\x05title\x10\x0eread-only-hint\x11\
+\x10destructive-hint\x11\x0fidempotent-hint\x11\x0fopen-world-hint\x11\x04\0\x10\
+tool-annotations\x03\0\x12\x01k\x05\x01k\x13\x01k\x0b\x01r\x06\x04base\x09\x0bde\
+scription\x10\x0cinput-schema\x05\x0doutput-schema\x14\x0bannotations\x15\x04met\
+a\x16\x04\0\x04tool\x03\0\x17\x01p\x01\x01k\x03\x01r\x04\x07content\x19\x12struc\
+tured-content\x1a\x08is-error\x11\x04meta\x16\x04\0\x0btool-result\x03\0\x1b\x01\
+k\x0d\x01k\x0f\x01r\x03\x06cursor\x1d\x0eprogress-token\x1e\x04meta\x16\x04\0\x12\
+list-tools-request\x03\0\x1f\x01p\x18\x01r\x03\x05tools!\x0bnext-cursor\x1d\x04m\
+eta\x16\x04\0\x13list-tools-response\x03\0\"\x01r\x04\x04names\x09arguments\x1a\x0e\
+progress-token\x1e\x04meta\x16\x04\0\x11call-tool-request\x03\0$\x03\0\x1cfaster\
+tools:mcp/tools@0.1.23\x05\x0b\x02\x03\0\x01\x12initialize-request\x02\x03\0\x01\
+\x13initialize-response\x02\x03\0\x02\x14provider-auth-config\x01B\x13\x02\x03\x02\
+\x01\x07\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x0c\x04\0\x12initialize-requ\
+est\x03\0\x02\x02\x03\x02\x01\x0d\x04\0\x13initialize-response\x03\0\x04\x02\x03\
+\x02\x01\x0e\x04\0\x14provider-auth-config\x03\0\x06\x01j\x01\x05\x01\x01\x01@\x01\
+\x07request\x03\0\x08\x04\0\x11handle-initialize\x01\x09\x01j\0\x01\x01\x01@\0\0\
+\x0a\x04\0\x12handle-initialized\x01\x0b\x04\0\x0bhandle-ping\x01\x0b\x04\0\x0fh\
+andle-shutdown\x01\x0b\x01k\x07\x01@\0\0\x0c\x04\0\x0fget-auth-config\x01\x0d\x04\
+\0(fastertools:mcp/core-capabilities@0.1.23\x05\x0f\x02\x03\0\x03\x12list-tools-\
+request\x02\x03\0\x03\x13list-tools-response\x02\x03\0\x03\x11call-tool-request\x02\
+\x03\0\x03\x0btool-result\x01B\x10\x02\x03\x02\x01\x07\x04\0\x09mcp-error\x03\0\0\
+\x02\x03\x02\x01\x10\x04\0\x12list-tools-request\x03\0\x02\x02\x03\x02\x01\x11\x04\
+\0\x13list-tools-response\x03\0\x04\x02\x03\x02\x01\x12\x04\0\x11call-tool-reque\
+st\x03\0\x06\x02\x03\x02\x01\x13\x04\0\x0btool-result\x03\0\x08\x01j\x01\x05\x01\
+\x01\x01@\x01\x07request\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\x01j\x01\x09\
+\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x10handle-call-tool\x01\x0d\x04\0)f\
+astertools:mcp/tools-capabilities@0.1.23\x05\x14\x04\0%fastertools:mcp/tools-pro\
+vider@0.1.23\x04\0\x0b\x14\x01\0\x0etools-provider\x03\0\0\0G\x09producers\x01\x0c\
+processed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

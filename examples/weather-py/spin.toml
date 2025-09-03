@@ -3,11 +3,19 @@ spin_manifest_version = 2
 [application]
 name = "weather-py"
 version = "0.1.0"
-authors = ["bowlofarugula <bowlofarugula@gmail.com>"]
+authors = ["Ian McDonald <bowlofarugula@gmail.com>"]
 description = "An MCP server written in Python"
 
 [[trigger.http]]
 route = "/mcp"
+component = "mcp-server"
+
+[[trigger.http]]
+route = "/.well-known/oauth-protected-resource"
+component = "mcp-server"
+
+[[trigger.http]]
+route = "/.well-known/oauth-authorization-server"
 component = "mcp-server"
 
 [component.mcp-server]

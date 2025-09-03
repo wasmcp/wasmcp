@@ -1,0 +1,1459 @@
+package fastertools:mcp@0.1.23;
+
+/// OAuth 2.0 discovery endpoints per RFC 8414 and RFC 9728
+interface oauth-discovery {
+  /// OAuth 2.0 Protected Resource Metadata per RFC 9728
+  record resource-metadata {
+    /// Resource identifier (canonical URI of the MCP server)
+    resource-url: string,
+    /// List of authorization server URLs that can issue tokens for this resource
+    authorization-servers: list<string>,
+    /// Scopes supported by this resource
+    scopes-supported: option<list<string>>,
+    /// Bearer token types supported
+    bearer-methods-supported: option<list<string>>,
+    /// Resource-specific metadata
+    resource-documentation: option<string>,
+  }
+
+  /// OAuth 2.0 Authorization Server Metadata per RFC 8414
+  record server-metadata {
+    /// Authorization server identifier
+    issuer: string,
+    /// Authorization endpoint URL
+    authorization-endpoint: string,
+    /// Token endpoint URL
+    token-endpoint: string,
+    /// JWKS URI for key discovery
+    jwks-uri: string,
+    /// Supported response types
+    response-types-supported: list<string>,
+    /// Supported grant types
+    grant-types-supported: list<string>,
+    /// Supported code challenge methods for PKCE
+    code-challenge-methods-supported: list<string>,
+    /// Supported scopes
+    scopes-supported: option<list<string>>,
+    /// Token endpoint auth methods supported
+    token-endpoint-auth-methods-supported: option<list<string>>,
+    /// Service documentation URL
+    service-documentation: option<string>,
+    /// Registration endpoint for dynamic client registration
+    registration-endpoint: option<string>,
+  }
+
+  /// Get OAuth 2.0 Protected Resource Metadata
+  get-resource-metadata: func() -> resource-metadata;
+
+  /// Get OAuth 2.0 Authorization Server Metadata
+  get-server-metadata: func() -> server-metadata;
+}
+
+/// Core type definitions for the Model Context Protocol
+/// These types are used across all MCP interfaces
+interface types {
+  /// Role in a conversation
+  enum role {
+    user,
+    assistant,
+  }
+
+  /// JSON value as a string
+  /// This is a JSON-encoded value that should be parsed/validated by implementations
+  type json-value = string;
+
+  /// Metadata fields for extensibility
+  /// Key-value pairs where values are JSON-encoded strings
+  type meta-fields = list<tuple<string, string>>;
+
+  /// Annotations provide hints to clients about how to handle data
+  record annotations {
+    /// Who this data is intended for
+    audience: option<list<role>>,
+    /// Priority from 0.0 (least) to 1.0 (most important)
+    /// Implementations SHOULD validate this is within [0.0, 1.0] range
+    priority: option<f64>,
+    /// ISO 8601 timestamp of last modification
+    /// Format: YYYY-MM-DDTHH:mm:ss[.sss]Z or ±HH:MM offset
+    last-modified: option<string>,
+  }
+
+  /// Base metadata pattern used throughout the protocol
+  record base-metadata {
+    /// Programmatic identifier
+    name: string,
+    /// Human-readable display name
+    title: option<string>,
+  }
+
+  /// Text content with optional annotations
+  record text-content {
+    text: string,
+    annotations: option<annotations>,
+    meta: option<meta-fields>,
+  }
+
+  /// Image content as binary data
+  record image-content {
+    /// Base64-encoded image data
+    data: list<u8>,
+    /// MIME type (e.g., "image/png", "image/jpeg")
+    mime-type: string,
+    annotations: option<annotations>,
+    meta: option<meta-fields>,
+  }
+
+  /// Audio content as binary data
+  record audio-content {
+    /// Base64-encoded audio data
+    data: list<u8>,
+    /// MIME type (e.g., "audio/wav", "audio/mp3")
+    mime-type: string,
+    annotations: option<annotations>,
+    meta: option<meta-fields>,
+  }
+
+  /// Reference to a resource that the server can read
+  /// Resource links included in prompts or tool results may not appear in resources/list
+  record resource-link {
+    /// URI of the resource
+    uri: string,
+    /// Programmatic identifier for the resource
+    name: string,
+    /// Human-readable display title (preferred for UI display)
+    title: option<string>,
+    /// Description of what this resource represents
+    description: option<string>,
+    /// MIME type of the resource, if known
+    mime-type: option<string>,
+    /// Size in bytes (before encoding), if known
+    size: option<u64>,
+    /// Client hints for handling
+    annotations: option<annotations>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  record text-resource-contents {
+    uri: string,
+    mime-type: option<string>,
+    text: string,
+    meta: option<meta-fields>,
+  }
+
+  record blob-resource-contents {
+    uri: string,
+    mime-type: option<string>,
+    /// Binary data
+    blob: list<u8>,
+    meta: option<meta-fields>,
+  }
+
+  /// Resource contents can be either text or binary
+  variant resource-contents {
+    text(text-resource-contents),
+    blob(blob-resource-contents),
+  }
+
+  /// Embedded resource content
+  /// The contents of a resource, embedded into a prompt or tool call result
+  record embedded-resource {
+    /// The actual resource contents (text or binary)
+    contents: resource-contents,
+    /// Client hints for handling
+    annotations: option<annotations>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Content block types that can be included in messages
+  variant content-block {
+    text(text-content),
+    image(image-content),
+    audio(audio-content),
+    resource-link(resource-link),
+    embedded-resource(embedded-resource),
+  }
+
+  /// JSON Schema representation
+  /// Kept as a string since JSON Schema is complex
+  /// and typically validated by specialized libraries
+  type json-schema = string;
+
+  /// Standard JSON-RPC and MCP error codes
+  variant error-code {
+    /// JSON-RPC standard errors
+    parse-error,
+    /// -32700
+    invalid-request,
+    /// -32600
+    method-not-found,
+    /// -32601
+    invalid-params,
+    /// -32602
+    internal-error,
+    /// -32603
+    /// MCP-specific errors
+    resource-not-found,
+    tool-not-found,
+    prompt-not-found,
+    unauthorized,
+    rate-limited,
+    timeout,
+    cancelled,
+    /// Custom error with specific code
+    custom-code(s32),
+  }
+
+  /// Standard error structure
+  record mcp-error {
+    code: error-code,
+    message: string,
+    /// Additional error context (JSON-encoded)
+    data: option<string>,
+  }
+
+  /// Pagination cursor for list operations
+  type cursor = string;
+
+  /// Progress token for tracking long-running operations
+  type progress-token = string;
+
+  /// JSON-RPC request ID
+  /// Can be either a string or number in JSON-RPC
+  variant request-id {
+    str(string),
+    num(s64),
+  }
+
+  /// Message role for LLM interactions
+  enum message-role {
+    user,
+    assistant,
+    system,
+  }
+
+  /// Hint for model selection
+  record model-hint {
+    /// Name pattern to match (e.g., "claude", "gpt-4")
+    name: option<string>,
+  }
+
+  /// Model selection preferences for LLM sampling
+  record model-preferences {
+    /// Hints for model selection
+    hints: option<list<model-hint>>,
+    /// Priority for cost optimization (0.0-1.0)
+    cost-priority: option<f64>,
+    /// Priority for speed (0.0-1.0)
+    speed-priority: option<f64>,
+    /// Priority for intelligence/capability (0.0-1.0)
+    intelligence-priority: option<f64>,
+  }
+
+  /// Resource template with URI template support (RFC 6570)
+  record resource-template {
+    /// URI template that can be expanded with variables
+    uri-template: string,
+    /// Identifier for the template
+    name: string,
+    /// Human-readable description
+    description: option<string>,
+    /// Expected MIME type of resources
+    mime-type: option<string>,
+  }
+}
+
+/// Type definitions for authorization and authentication
+/// This interface contains only types, no functions
+interface authorization-types {
+  use types.{meta-fields};
+
+  /// Provider declares its authentication requirements
+  record provider-auth-config {
+    /// Expected JWT issuer (REQUIRED for auth)
+    expected-issuer: string,
+    /// Expected JWT audiences (REQUIRED for auth - must have at least one)
+    expected-audiences: list<string>,
+    /// JWKS URI for key discovery (REQUIRED for auth)
+    jwks-uri: string,
+    /// Optional Rego policy for authorization
+    policy: option<string>,
+    /// Optional data for policy evaluation
+    policy-data: option<string>,
+  }
+
+  /// Authorization context passed between components after successful authentication
+  record auth-context {
+    /// OAuth client ID that made the request
+    client-id: option<string>,
+    /// Subject (user ID) from the token
+    user-id: option<string>,
+    /// OAuth scopes granted to this token
+    scopes: list<string>,
+    /// Token issuer URL
+    issuer: option<string>,
+    /// Audience claim from token
+    audience: option<string>,
+    /// Additional claims from token as key-value pairs
+    claims: meta-fields,
+    /// Expiration timestamp (Unix seconds)
+    exp: option<u64>,
+    /// Issued at timestamp (Unix seconds)
+    iat: option<u64>,
+  }
+
+  /// Authorization request containing all context needed for authorization decisions
+  record auth-request {
+    /// Bearer token extracted from Authorization header
+    token: string,
+    /// HTTP method (GET, POST, etc.)
+    method: string,
+    /// Request path
+    path: string,
+    /// Request headers as key-value pairs
+    headers: list<tuple<string, string>>,
+    /// Request body for policy evaluation (e.g., MCP JSON-RPC payload)
+    body: option<list<u8>>,
+    /// Expected issuer for validation
+    expected-issuer: string,
+    /// Expected audiences for validation (token must match at least one)
+    expected-audiences: list<string>,
+    /// JWKS URI for key discovery
+    jwks-uri: string,
+    /// Optional Rego policy to evaluate (if not provided, allows all authenticated requests)
+    policy: option<string>,
+    /// Optional data for policy evaluation (JSON string)
+    policy-data: option<string>,
+  }
+
+  /// Authorization error details
+  record auth-error {
+    /// HTTP status code (401, 403, etc.)
+    status: u16,
+    /// OAuth error code (invalid_token, insufficient_scope, etc.)
+    error-code: string,
+    /// Human-readable error description
+    description: string,
+    /// WWW-Authenticate header value for 401 responses
+    www-authenticate: option<string>,
+  }
+
+  /// Authorization response
+  variant auth-response {
+    /// Request is authorized with context
+    authorized(auth-context),
+    /// Request is unauthorized with error details
+    unauthorized(auth-error),
+  }
+}
+
+/// Authorization and authentication interfaces for MCP servers
+/// Provides JWT validation, OAuth discovery, and policy-based authorization
+interface authorization {
+  use types.{mcp-error, json-value};
+  use authorization-types.{provider-auth-config, auth-context, auth-request, auth-response, auth-error};
+
+  /// Main authorization function - validates token and applies policies
+  authorize: func(request: auth-request) -> auth-response;
+}
+
+/// Policy evaluation interface for OPA/Rego policies
+interface policy-engine {
+  use types.{json-value};
+
+  /// Policy evaluation request
+  record policy-request {
+    /// Rego policy source code
+    policy: string,
+    /// Optional external data for policy evaluation
+    data: option<json-value>,
+    /// Input data for policy evaluation (token claims, request context, etc.)
+    input: json-value,
+    /// Query to evaluate (default: data.mcp.authorization.allow)
+    query: option<string>,
+  }
+
+  /// Policy evaluation result
+  variant policy-result {
+    /// Policy allowed the request
+    allow,
+    /// Policy denied the request with reason
+    deny(string),
+    /// Policy evaluation error
+    error(string),
+  }
+
+  /// Evaluate a Rego policy with input and optional data
+  evaluate: func(request: policy-request) -> policy-result;
+}
+
+/// JWT token validation interface
+interface jwt-validator {
+  use types.{json-value};
+
+  /// JWT validation request
+  record jwt-request {
+    /// JWT token to validate
+    token: string,
+    /// Expected issuer
+    expected-issuer: string,
+    /// Expected audiences (token must match at least one)
+    expected-audiences: list<string>,
+    /// JWKS URI for fetching public keys
+    jwks-uri: string,
+    /// Optional JWKS JSON for offline validation
+    jwks-json: option<string>,
+    /// Validate token expiration (default: true)
+    validate-exp: option<bool>,
+    /// Validate not-before claim (default: true)
+    validate-nbf: option<bool>,
+    /// Clock skew tolerance in seconds (default: 60)
+    clock-skew: option<u64>,
+  }
+
+  /// JWT validation error types
+  enum jwt-error {
+    /// Token format is invalid
+    malformed,
+    /// Token signature verification failed
+    invalid-signature,
+    /// Token has expired
+    expired,
+    /// Token not yet valid (nbf claim)
+    not-yet-valid,
+    /// Issuer doesn't match expected
+    invalid-issuer,
+    /// Audience doesn't match expected
+    invalid-audience,
+    /// Required claim is missing
+    missing-claim,
+    /// JWKS fetch or parse error
+    jwks-error,
+    /// Unknown key ID
+    unknown-kid,
+    /// Other validation error
+    other,
+  }
+
+  /// Validated JWT claims
+  record jwt-claims {
+    /// Subject (user ID)
+    sub: string,
+    /// Issuer
+    iss: string,
+    /// Audience
+    aud: option<list<string>>,
+    /// Expiration time (Unix timestamp)
+    exp: option<u64>,
+    /// Issued at (Unix timestamp)
+    iat: option<u64>,
+    /// Not before (Unix timestamp)
+    nbf: option<u64>,
+    /// JWT ID
+    jti: option<string>,
+    /// OAuth scopes (from scope claim)
+    scopes: list<string>,
+    /// OAuth client ID (from azp or client_id claim)
+    client-id: option<string>,
+    /// Additional claims as JSON key-value pairs
+    additional-claims: list<tuple<string, json-value>>,
+  }
+
+  /// JWT validation result
+  variant jwt-result {
+    /// Token is valid with extracted claims
+    valid(jwt-claims),
+    /// Token is invalid with error reason
+    invalid(jwt-error),
+  }
+
+  /// Validate a JWT token
+  validate: func(request: jwt-request) -> jwt-result;
+
+  /// Fetch and cache JWKS from a URI
+  fetch-jwks: func(uri: string) -> result<string, string>;
+}
+
+/// MCP-specific authorization helpers
+interface mcp-authorization {
+  use authorization.{auth-context, auth-error};
+  use types.{json-value};
+
+  /// MCP method authorization request
+  record mcp-auth-request {
+    /// Authorization context from token validation
+    context: auth-context,
+    /// MCP method being called (e.g., "tools/call", "resources/list")
+    method: string,
+    /// Parameters from the JSON-RPC request
+    params: option<json-value>,
+  }
+
+  /// MCP tool call authorization
+  record tool-auth-request {
+    /// Authorization context
+    context: auth-context,
+    /// Tool name being called
+    tool-name: string,
+    /// Tool arguments
+    arguments: option<json-value>,
+  }
+
+  /// Resource operation types
+  enum resource-operation {
+    list-op,
+    read-op,
+    subscribe-op,
+    unsubscribe-op,
+  }
+
+  /// MCP resource authorization
+  record resource-auth-request {
+    /// Authorization context
+    context: auth-context,
+    /// Resource URI being accessed
+    uri: string,
+    /// Operation type (read, list, subscribe)
+    operation: resource-operation,
+  }
+
+  /// Authorize an MCP method call
+  authorize-method: func(request: mcp-auth-request) -> result<_, auth-error>;
+
+  /// Authorize a specific tool call
+  authorize-tool: func(request: tool-auth-request) -> result<_, auth-error>;
+
+  /// Authorize resource access
+  authorize-resource: func(request: resource-auth-request) -> result<_, auth-error>;
+}
+
+/// Argument completion support for enhanced UX
+/// Provides context-aware suggestions for tool arguments and prompts
+interface completion {
+  use types.{mcp-error, meta-fields};
+
+  /// Reference to what we're completing
+  variant completion-reference {
+    /// Completing for a prompt
+    prompt(string),
+    /// Completing for a resource template
+    resource-template(string),
+  }
+
+  /// Additional context for generating completions
+  record completion-context {
+    /// Previously resolved arguments
+    arguments: option<list<tuple<string, string>>>,
+  }
+
+  /// Request for completion suggestions
+  record complete-request {
+    /// What we're completing for (prompt or resource)
+    ref: completion-reference,
+    /// Name of the argument being completed
+    argument-name: string,
+    /// Current partial value of the argument
+    argument-value: string,
+    /// Additional context for completion
+    context: option<completion-context>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Completion suggestions
+  record complete-result {
+    /// Suggested completion values
+    values: list<string>,
+    /// Total number of possible completions (may exceed returned values)
+    total: option<s64>,
+    /// Whether more completions are available
+    has-more: option<bool>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Get completion suggestions for arguments
+  /// Used to provide autocomplete and hints in user interfaces
+  complete: func(request: complete-request) -> result<complete-result, mcp-error>;
+}
+
+/// Completion capabilities - implement this to provide autocompletion
+interface completion-capabilities {
+  use types.{mcp-error};
+  use completion.{complete-request, complete-result};
+
+  /// Handle request for completion suggestions
+  handle-complete: func(request: complete-request) -> result<complete-result, mcp-error>;
+}
+
+/// Interactive elicitation - request structured input from users
+/// Enables servers to collect configuration, preferences, or other data interactively
+interface elicitation {
+  use types.{mcp-error, json-schema, json-value, meta-fields};
+
+  /// Request for structured user input
+  record elicit-request {
+    /// Message to display to the user
+    message: string,
+    /// JSON Schema defining the expected data structure
+    /// Properties should use primitive types only (no nesting)
+    schema: json-schema,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Possible user actions in response to elicitation
+  enum elicit-action {
+    /// User submitted the form with data
+    accept,
+    /// User explicitly declined to provide data
+    decline,
+    /// User cancelled without making a choice
+    cancel,
+  }
+
+  /// User's response to an elicitation request
+  record elicit-result {
+    /// Action the user took
+    action: elicit-action,
+    /// Data provided by the user (if action was accept)
+    data: option<json-value>,
+    /// Optional message from the user
+    message: option<string>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Request structured input from the user
+  /// The client should present an appropriate UI for data collection
+  elicit: func(request: elicit-request) -> result<elicit-result, mcp-error>;
+}
+
+/// Elicitation capabilities - implement this to handle user input requests
+interface elicitation-capabilities {
+  use types.{mcp-error};
+  use elicitation.{elicit-request, elicit-result};
+
+  /// Handle request for structured user input
+  handle-elicit: func(request: elicit-request) -> result<elicit-result, mcp-error>;
+}
+
+/// Notification system for MCP events and updates
+interface notifications {
+  use types.{mcp-error, meta-fields, progress-token, request-id};
+
+  /// Notification types that can be sent
+  /// Notification that a long-running operation has progress
+  record progress-notification {
+    /// Token identifying the operation
+    progress-token: progress-token,
+    /// Current progress value (can be fractional)
+    progress: f64,
+    /// Total expected progress (if known, can be fractional)
+    total: option<f64>,
+    /// Optional progress message
+    message: option<string>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Notification that an operation was cancelled
+  record cancelled-notification {
+    /// ID of the cancelled request
+    request-id: request-id,
+    /// Optional cancellation reason
+    reason: option<string>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Notification that the tools list has changed
+  record tools-list-changed {
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Notification that the resources list has changed
+  record resources-list-changed {
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Notification that the prompts list has changed
+  record prompts-list-changed {
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Notification that a subscribed resource has been updated
+  record resource-updated {
+    /// URI of the updated resource
+    uri: string,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Notification that the roots list has changed
+  record roots-list-changed {
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Log levels for logging notifications
+  enum log-level {
+    debug,
+    info,
+    notice,
+    warning,
+    error,
+    critical,
+    alert,
+    emergency,
+  }
+
+  /// Log message notification
+  record log-message {
+    /// Severity level
+    level: log-level,
+    /// Optional logger name
+    logger: option<string>,
+    /// Log message or data
+    message: string,
+    /// Additional structured data
+    data: option<list<tuple<string, string>>>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// All possible notification types
+  variant notification {
+    /// Progress update for long-running operation
+    progress(progress-notification),
+    /// Operation was cancelled
+    cancelled(cancelled-notification),
+    /// Tools list changed
+    tools-list-changed(tools-list-changed),
+    /// Resources list changed
+    resources-list-changed(resources-list-changed),
+    /// Prompts list changed
+    prompts-list-changed(prompts-list-changed),
+    /// Subscribed resource was updated
+    resource-updated(resource-updated),
+    /// Roots list changed
+    roots-list-changed(roots-list-changed),
+    /// Log message from server
+    log-message(log-message),
+  }
+
+  /// Notification operations
+  /// Send a notification to the client
+  send-notification: func(notification: notification) -> result<_, mcp-error>;
+
+  /// Set the minimum log level for log notifications
+  set-log-level: func(level: log-level) -> result<_, mcp-error>;
+}
+
+/// Prompt template discovery and rendering for MCP
+interface prompts {
+  use types.{message-role, content-block, mcp-error, base-metadata, meta-fields, cursor, progress-token};
+
+  /// Argument definition for a prompt template
+  record prompt-argument {
+    /// Base metadata (name and optional title)
+    base: base-metadata,
+    /// Human-readable description
+    description: option<string>,
+    /// Whether this argument is required
+    required: option<bool>,
+  }
+
+  /// Prompt template definition
+  record prompt {
+    /// Base metadata (name and optional title)
+    base: base-metadata,
+    /// Description of what this prompt does
+    description: option<string>,
+    /// Arguments that can be passed to the prompt
+    arguments: option<list<prompt-argument>>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Message in a prompt conversation
+  record prompt-message {
+    /// Who is speaking (user, assistant, or system)
+    role: message-role,
+    /// Message content
+    content: content-block,
+  }
+
+  /// Request to list available prompts
+  record list-prompts-request {
+    /// Pagination cursor
+    cursor: option<cursor>,
+    /// Progress tracking token
+    progress-token: option<progress-token>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Response with list of prompts
+  record list-prompts-response {
+    /// Available prompts
+    prompts: list<prompt>,
+    /// Cursor for next page
+    next-cursor: option<cursor>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Request to get a specific prompt
+  record get-prompt-request {
+    /// Name of the prompt to retrieve
+    name: string,
+    /// Arguments for template substitution
+    arguments: option<list<tuple<string, string>>>,
+    /// Progress tracking token
+    progress-token: option<progress-token>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Response with rendered prompt messages
+  record get-prompt-response {
+    /// Optional description of the rendered prompt
+    description: option<string>,
+    /// Messages that make up the prompt
+    messages: list<prompt-message>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+}
+
+/// Prompt capabilities - implement this to provide prompts
+interface prompts-capabilities {
+  use types.{mcp-error};
+  use prompts.{list-prompts-request, list-prompts-response, get-prompt-request, get-prompt-response};
+
+  /// List available prompts
+  handle-list-prompts: func(request: list-prompts-request) -> result<list-prompts-response, mcp-error>;
+
+  /// Get a specific prompt
+  handle-get-prompt: func(request: get-prompt-request) -> result<get-prompt-response, mcp-error>;
+}
+
+/// Resource discovery, reading, and subscription for MCP
+interface resources {
+  use types.{mcp-error, base-metadata, annotations, meta-fields, cursor, resource-contents, progress-token, resource-template};
+
+  /// A resource that can be read by the client
+  record mcp-resource {
+    /// Base metadata (name and optional title)
+    base: base-metadata,
+    /// URI identifying the resource
+    uri: string,
+    /// Human-readable description
+    description: option<string>,
+    /// MIME type if known
+    mime-type: option<string>,
+    /// Size in bytes (before encoding)
+    size: option<u64>,
+    /// Client hints
+    annotations: option<annotations>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Request to list available resources
+  record list-resources-request {
+    /// Pagination cursor
+    cursor: option<cursor>,
+    /// Progress tracking token
+    progress-token: option<progress-token>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Response with list of resources
+  record list-resources-response {
+    /// Available resources
+    resources: list<mcp-resource>,
+    /// Cursor for next page
+    next-cursor: option<cursor>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Request to list resource templates
+  record list-templates-request {
+    /// Pagination cursor
+    cursor: option<cursor>,
+    /// Progress tracking token
+    progress-token: option<progress-token>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Response with list of resource templates
+  record list-templates-response {
+    /// Available templates
+    templates: list<resource-template>,
+    /// Cursor for next page
+    next-cursor: option<cursor>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Request to read a specific resource
+  record read-resource-request {
+    /// URI of the resource to read
+    uri: string,
+    /// Progress tracking token
+    progress-token: option<progress-token>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Response with resource contents
+  record read-resource-response {
+    /// Resource contents (may be multiple for sub-resources)
+    contents: list<resource-contents>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Request to subscribe to resource updates
+  record subscribe-request {
+    /// URI of the resource to monitor
+    uri: string,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Request to unsubscribe from resource updates
+  record unsubscribe-request {
+    /// URI of the resource to stop monitoring
+    uri: string,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+}
+
+/// Resource capabilities - implement this to provide resources
+interface resources-capabilities {
+  use types.{mcp-error};
+  use resources.{list-resources-request, list-resources-response, list-templates-request, list-templates-response, read-resource-request, read-resource-response, subscribe-request, unsubscribe-request};
+
+  /// List available resources
+  handle-list-resources: func(request: list-resources-request) -> result<list-resources-response, mcp-error>;
+
+  /// List resource templates
+  handle-list-resource-templates: func(request: list-templates-request) -> result<list-templates-response, mcp-error>;
+
+  /// Read a specific resource
+  handle-read-resource: func(request: read-resource-request) -> result<read-resource-response, mcp-error>;
+
+  /// Subscribe to resource changes
+  handle-subscribe-resource: func(request: subscribe-request) -> result<_, mcp-error>;
+
+  /// Unsubscribe from resource changes
+  handle-unsubscribe-resource: func(request: unsubscribe-request) -> result<_, mcp-error>;
+}
+
+/// File system roots - expose directories to servers
+/// Allows servers to understand and operate on client file systems with permission
+interface roots {
+  use types.{mcp-error, meta-fields};
+
+  /// A root directory or file that the server can operate on
+  record root {
+    /// URI of the root (e.g., "file:///home/user/project")
+    uri: string,
+    /// Optional friendly name for the root
+    name: option<string>,
+  }
+
+  /// Request to list available roots
+  record list-roots-request {
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Response with available roots
+  record list-roots-result {
+    /// Available file system roots
+    roots: list<root>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// List available file system roots
+  /// Servers use this to understand what parts of the file system they can access
+  list-roots: func(request: list-roots-request) -> result<list-roots-result, mcp-error>;
+}
+
+/// Roots capabilities - implement this to expose file system roots
+interface roots-capabilities {
+  use types.{mcp-error};
+  use roots.{list-roots-request, list-roots-result};
+
+  /// Handle request to list file system roots
+  handle-list-roots: func(request: list-roots-request) -> result<list-roots-result, mcp-error>;
+}
+
+/// LLM sampling interface - allows servers to request AI assistance from clients
+/// This enables powerful agent workflows where servers can leverage client LLM access
+interface sampling {
+  use types.{mcp-error, content-block, message-role, model-preferences, meta-fields};
+
+  /// Message in a conversation with the LLM
+  record sampling-message {
+    /// Role of the message sender
+    role: message-role,
+    /// Content of the message
+    content: content-block,
+  }
+
+  /// Request to create/sample a message from an LLM
+  record create-message-request {
+    /// Conversation messages to send to the LLM
+    messages: list<sampling-message>,
+    /// Optional model selection preferences
+    model-preferences: option<model-preferences>,
+    /// System prompt to guide the LLM
+    system-prompt: option<string>,
+    /// Request to include MCP context from servers
+    include-context: option<string>,
+    /// Sampling temperature (0.0-2.0, higher = more creative)
+    temperature: option<f64>,
+    /// Maximum tokens to generate
+    max-tokens: s32,
+    /// Sequences that stop generation
+    stop-sequences: option<list<string>>,
+    /// Provider-specific metadata
+    metadata: option<meta-fields>,
+  }
+
+  /// Response from LLM sampling
+  record create-message-result {
+    /// Role of the generated message (usually assistant)
+    role: message-role,
+    /// Generated content
+    content: content-block,
+    /// Model that was used
+    model: string,
+    /// Reason generation stopped (e.g., "stop", "max_tokens")
+    stop-reason: option<string>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Request LLM sampling from the client
+  /// The client has full discretion over model selection and may
+  /// inform the user before sampling (human in the loop)
+  create-message: func(request: create-message-request) -> result<create-message-result, mcp-error>;
+}
+
+/// Sampling capabilities - implement this to handle LLM requests
+interface sampling-capabilities {
+  use types.{mcp-error};
+  use sampling.{create-message-request, create-message-result};
+
+  /// Handle request for LLM sampling
+  handle-create-message: func(request: create-message-request) -> result<create-message-result, mcp-error>;
+}
+
+/// Type definitions for MCP session management
+/// This interface contains only types, no functions, to allow
+/// clean imports by providers that need these types without
+/// importing the session functions.
+interface session-types {
+  use types.{meta-fields};
+
+  /// Protocol versions supported by MCP
+  /// These correspond to official MCP specification versions
+  enum protocol-version {
+    /// MCP 2025-03-26 specification
+    v20250326,
+    /// MCP 2025-06-18 specification (latest)
+    v20250618,
+  }
+
+  /// Information about an MCP implementation
+  record implementation-info {
+    /// Implementation name (e.g., "weather-server")
+    name: string,
+    /// Implementation version (e.g., "1.0.0")
+    version: string,
+    /// Optional human-readable title
+    title: option<string>,
+  }
+
+  /// Root listing capability details
+  record roots-capability {
+    /// Server will notify when roots list changes
+    list-changed: option<bool>,
+  }
+
+  /// Prompts capability details
+  record prompts-capability {
+    /// Server will notify when prompts list changes
+    list-changed: option<bool>,
+  }
+
+  /// Resources capability details
+  record resources-capability {
+    /// Server supports resource subscriptions
+    subscribe: option<bool>,
+    /// Server will notify when resource list changes
+    list-changed: option<bool>,
+  }
+
+  /// Tools capability details
+  record tools-capability {
+    /// Server will notify when tools list changes
+    list-changed: option<bool>,
+  }
+
+  /// Capabilities that a client supports
+  record client-capabilities {
+    /// Experimental/custom capabilities
+    experimental: option<meta-fields>,
+    /// Support for roots (directory access)
+    roots: option<roots-capability>,
+    /// Support for LLM sampling
+    sampling: option<bool>,
+    /// Support for user elicitation
+    elicitation: option<bool>,
+  }
+
+  /// Capabilities that a server provides
+  record server-capabilities {
+    /// Experimental/custom capabilities
+    experimental: option<meta-fields>,
+    /// Server can send log messages
+    logging: option<bool>,
+    /// Server supports argument autocompletion
+    completions: option<bool>,
+    /// Server offers prompts
+    prompts: option<prompts-capability>,
+    /// Server offers resources
+    resources: option<resources-capability>,
+    /// Server offers tools
+    tools: option<tools-capability>,
+  }
+
+  /// Initialize request sent by client on connection
+  record initialize-request {
+    /// Protocol version the client supports
+    protocol-version: protocol-version,
+    /// Client's capabilities
+    capabilities: client-capabilities,
+    /// Client implementation details
+    client-info: implementation-info,
+    /// Optional metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Initialize response from server
+  record initialize-response {
+    /// Protocol version the server will use
+    protocol-version: protocol-version,
+    /// Server's capabilities
+    capabilities: server-capabilities,
+    /// Server implementation details
+    server-info: implementation-info,
+    /// Optional instructions for using the server
+    instructions: option<string>,
+    /// Optional metadata
+    meta: option<meta-fields>,
+  }
+}
+
+/// Core capabilities interface that all MCP implementations must provide
+/// This contains only the essential session management functions
+interface core-capabilities {
+  use types.{mcp-error};
+  use session-types.{initialize-request, initialize-response};
+  use authorization-types.{provider-auth-config};
+
+  /// Handle session initialization
+  /// Implementations should declare their capabilities here
+  handle-initialize: func(request: initialize-request) -> result<initialize-response, mcp-error>;
+
+  /// Handle initialization complete notification
+  handle-initialized: func() -> result<_, mcp-error>;
+
+  /// Handle ping request for keepalive
+  handle-ping: func() -> result<_, mcp-error>;
+
+  /// Handle shutdown request
+  handle-shutdown: func() -> result<_, mcp-error>;
+
+  /// Get provider's auth configuration (optional - return none for no auth)
+  /// If auth configuration is provided, the transport will enforce authentication
+  get-auth-config: func() -> option<provider-auth-config>;
+}
+
+/// Session management functions for MCP
+/// This interface contains the session lifecycle functions.
+/// Types are defined in the session-types interface.
+interface session {
+  use types.{mcp-error};
+  use session-types.{initialize-request, initialize-response};
+
+  /// Session lifecycle operations
+  /// Initialize the MCP session
+  initialize: func(request: initialize-request) -> result<initialize-response, mcp-error>;
+
+  /// Notify server that initialization is complete
+  initialized: func() -> result<_, mcp-error>;
+
+  /// Ping to check if connection is alive
+  ping: func() -> result<_, mcp-error>;
+
+  /// Shutdown the session gracefully
+  shutdown: func() -> result<_, mcp-error>;
+}
+
+/// Tool discovery and execution for MCP
+interface tools {
+  use types.{content-block, json-value, json-schema, mcp-error, base-metadata, meta-fields, cursor, progress-token};
+
+  /// Behavioral hints about tool operations
+  record tool-annotations {
+    /// Human-readable title for display
+    title: option<string>,
+    /// Tool does not modify environment
+    read-only-hint: option<bool>,
+    /// Tool may perform destructive updates (meaningful when not read-only)
+    destructive-hint: option<bool>,
+    /// Repeated calls with same args have no additional effect
+    idempotent-hint: option<bool>,
+    /// Tool interacts with external entities
+    open-world-hint: option<bool>,
+  }
+
+  /// Tool definition with metadata and schema
+  record tool {
+    /// Base metadata (name and optional title)
+    base: base-metadata,
+    /// Human-readable description of what the tool does
+    description: option<string>,
+    /// JSON Schema for input parameters
+    input-schema: json-schema,
+    /// Optional schema for structured output
+    output-schema: option<json-schema>,
+    /// Behavioral hints for clients
+    annotations: option<tool-annotations>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Result from executing a tool
+  record tool-result {
+    /// Unstructured content blocks (text, images, etc.)
+    content: list<content-block>,
+    /// Optional structured JSON output
+    structured-content: option<json-value>,
+    /// Whether the tool execution resulted in an error
+    /// If true, content should contain error details
+    is-error: option<bool>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Request to list available tools
+  record list-tools-request {
+    /// Pagination cursor from previous response
+    cursor: option<cursor>,
+    /// Optional progress tracking token
+    progress-token: option<progress-token>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Response with list of available tools
+  record list-tools-response {
+    /// Available tools
+    tools: list<tool>,
+    /// Cursor for next page if more tools exist
+    next-cursor: option<cursor>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+
+  /// Request to execute a tool
+  record call-tool-request {
+    /// Name of the tool to execute
+    name: string,
+    /// Arguments as JSON object
+    arguments: option<json-value>,
+    /// Optional progress tracking token
+    progress-token: option<progress-token>,
+    /// Extension metadata
+    meta: option<meta-fields>,
+  }
+}
+
+/// Tool capabilities - implement this to provide tools
+interface tools-capabilities {
+  use types.{mcp-error};
+  use tools.{list-tools-request, list-tools-response, call-tool-request, tool-result};
+
+  /// List available tools
+  handle-list-tools: func(request: list-tools-request) -> result<list-tools-response, mcp-error>;
+
+  /// Execute a tool
+  handle-call-tool: func(request: call-tool-request) -> result<tool-result, mcp-error>;
+}
+
+/// World definitions for MCP transports and capabilities
+///
+/// This file defines paired worlds for different capability combinations:
+/// - Each transport world has a corresponding provider world
+/// - Transports import the capabilities they support
+/// - Providers export the capabilities they implement
+/// - This allows providers to only implement what they need
+/// === TOOLS ONLY ===
+/// Minimal transport with just tools
+world tools-transport {
+  import types;
+  import session-types;
+  import notifications;
+  import authorization-types;
+  import core-capabilities;
+  import tools;
+  import tools-capabilities;
+}
+world tools-provider {
+  import types;
+  import session-types;
+  import authorization-types;
+  import tools;
+
+  export core-capabilities;
+  export tools-capabilities;
+}
+/// === TOOLS + RESOURCES ===
+/// Transport with tools and resources
+world tools-resources-transport {
+  import types;
+  import session-types;
+  import notifications;
+  import authorization-types;
+  import core-capabilities;
+  import tools;
+  import tools-capabilities;
+  import resources;
+  import resources-capabilities;
+}
+world tools-resources-provider {
+  import types;
+  import session-types;
+  import authorization-types;
+  import tools;
+  import resources;
+
+  export core-capabilities;
+  export tools-capabilities;
+  export resources-capabilities;
+}
+/// === TOOLS + RESOURCES + PROMPTS ===
+world tools-resources-prompts-transport {
+  import types;
+  import session-types;
+  import notifications;
+  import authorization-types;
+  import core-capabilities;
+  import tools;
+  import tools-capabilities;
+  import resources;
+  import resources-capabilities;
+  import prompts;
+  import prompts-capabilities;
+}
+world tools-resources-prompts-provider {
+  import types;
+  import session-types;
+  import authorization-types;
+  import tools;
+  import resources;
+  import prompts;
+
+  export core-capabilities;
+  export tools-capabilities;
+  export resources-capabilities;
+  export prompts-capabilities;
+}
+/// === FULL CAPABILITIES ===
+/// Full transport with all capabilities
+world full-transport {
+  import types;
+  import session-types;
+  import notifications;
+  import authorization-types;
+  import core-capabilities;
+  import tools;
+  import resources;
+  import prompts;
+  import sampling;
+  import elicitation;
+  import roots;
+  import completion;
+  import tools-capabilities;
+  import resources-capabilities;
+  import prompts-capabilities;
+  import sampling-capabilities;
+  import elicitation-capabilities;
+  import roots-capabilities;
+  import completion-capabilities;
+}
+world full-provider {
+  import types;
+  import session-types;
+  import authorization-types;
+  import tools;
+  import resources;
+  import prompts;
+  import sampling;
+  import elicitation;
+  import roots;
+  import completion;
+
+  export core-capabilities;
+  export tools-capabilities;
+  export resources-capabilities;
+  export prompts-capabilities;
+  export sampling-capabilities;
+  export elicitation-capabilities;
+  export roots-capabilities;
+  export completion-capabilities;
+}
+/// === CLIENT WORLD ===
+/// World for MCP clients that consume transport capabilities
+world mcp-client {
+  import types;
+  import tools;
+  import resources;
+  import prompts;
+
+  export sampling;
+  export elicitation;
+  export roots;
+  export completion;
+  export notifications;
+}
+/// === AUTHORIZATION WORLDS ===
+/// Authorization provider world
+world authorization-provider {
+  import types;
+  import authorization-types;
+
+  export authorization;
+  export jwt-validator;
+  export policy-engine;
+  export oauth-discovery;
+  export mcp-authorization;
+}

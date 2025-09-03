@@ -31,6 +31,56 @@ impl WitMcpAdapter {
     pub fn new() -> Self {
         Self
     }
+    
+    /// Convert WIT protocol version enum to actual protocol version string
+    fn convert_protocol_version(&self, version: crate::bindings::fastertools::mcp::session_types::ProtocolVersion) -> rmcp::model::ProtocolVersion {
+        use crate::bindings::fastertools::mcp::session_types::ProtocolVersion as WitVersion;
+        use rmcp::model::ProtocolVersion;
+        
+        match version {
+            WitVersion::V20250326 => ProtocolVersion::V_2025_03_26,
+            WitVersion::V20250618 => ProtocolVersion::V_2025_06_18,
+        }
+    }
+    
+    /// Convert WIT InitializeResponse to rmcp ServerInfo
+    pub fn convert_initialize_to_rmcp(&self, response: crate::bindings::fastertools::mcp::session_types::InitializeResponse) -> Result<rmcp::model::ServerInfo> {
+        use rmcp::model::{ServerInfo, ServerCapabilities, Implementation};
+        
+        Ok(ServerInfo {
+            protocol_version: self.convert_protocol_version(response.protocol_version),
+            capabilities: ServerCapabilities {
+                #[cfg(feature = "tools")]
+                tools: response.capabilities.tools.map(|_| rmcp::model::ToolsCapability {
+                    list_changed: Some(false),
+                }),
+                #[cfg(not(feature = "tools"))]
+                tools: None,
+                
+                #[cfg(feature = "resources")]
+                resources: response.capabilities.resources.map(|_| rmcp::model::ResourcesCapability {
+                    subscribe: None,
+                    list_changed: Some(false),
+                }),
+                #[cfg(not(feature = "resources"))]
+                resources: None,
+                
+                #[cfg(feature = "prompts")]
+                prompts: response.capabilities.prompts.map(|_| rmcp::model::PromptsCapability {
+                    list_changed: Some(false),
+                }),
+                #[cfg(not(feature = "prompts"))]
+                prompts: None,
+                
+                ..Default::default()
+            },
+            server_info: Implementation {
+                name: response.server_info.name,
+                version: response.server_info.version,
+            },
+            instructions: response.instructions,
+        })
+    }
 }
 
 // Tools feature methods
@@ -65,7 +115,7 @@ impl WitMcpAdapter {
             .collect::<Vec<_>>();
         
         Ok(CallToolResult {
-            content: if content.is_empty() { None } else { Some(content) },
+            content,
             structured_content: None,
             is_error: response.is_error,
         })

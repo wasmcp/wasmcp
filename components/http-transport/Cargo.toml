@@ -1,6 +1,6 @@
 [package]
 name = "mcp_transport_http"
-version = "0.1.0"
+version = "0.1.11"
 edition = "2021"
 
 [lib]
@@ -13,10 +13,23 @@ serde_json = "1.0"
 anyhow = "1.0"
 base64 = "0.22"
 wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
-rmcp = { version = "0.5", default-features = false, features = ["server", "macros", "base64"] }
+rmcp = { version = "0.6.1", default-features = false, features = ["server", "macros", "base64"] }
+once_cell = "1.21"
+thiserror = "2.0"
+
+# JWT validation
+jsonwebtoken = { version = "9.3", default-features = false, features = ["use_pem"] }
+sha2 = "0.10"
+hmac = "0.12"
+
+# Time handling
+chrono = { version = "0.4", default-features = false, features = ["serde", "std", "clock"] }
+
+# Policy engine
+regorus = { version = "0.3", default-features = false, features = ["std"] }
 
 [features]
-default = ["tools", "auth"]
+default = ["tools"]
 
 # Capabilities - choose which capabilities this transport will support
 tools = []
@@ -32,11 +45,10 @@ basic = ["tools", "resources"]
 standard = ["tools", "resources", "prompts"]
 full = ["tools", "resources", "prompts", "sampling", "elicitation", "roots", "completion"]
 
-# Transport features
-sse = []  # Server-Sent Events for subscriptions and notifications
-auth = []  # OAuth 2.0 authorization support
+# Note: auth is now always available - providers control it via get-auth-config()
 
-# State management (future)
+# Future features:
+# sse = []  # Server-Sent Events for subscriptions and notifications
 # sessions = ["dep:wasi-keyvalue"]  # Stateful session support
 
 [package.metadata.component]
@@ -47,12 +59,8 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "fastertools:mcp"
-version = "0.1.12"
-# Note: Choose world based on features when building:
-# - tools only: tools-transport
-# - tools + auth: tools-auth-transport
-# - tools + resources + auth: tools-resources-auth-transport
-# - all features + auth: full-auth-transport
-world = "tools-auth-transport" # Use tools transport with auth 
+version = "0.1.23"
+# All transports now support optional auth - providers control it via get-auth-config()
+world = "tools-transport" 
 
 [workspace]

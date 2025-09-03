@@ -1,7 +1,7 @@
-package {{project-name | kebab_case}}:provider;
+package weather-go:provider;
 
-/// MCP tools for {{project-description}}
-world {{project-name | kebab_case}} {
+/// MCP tools for An MCP server written in Go
+world weather-go {
     /// TinyGo requires WASI CLI imports for wasip2 target
     include wasi:cli/imports@0.2.3;
     
@@ -11,6 +11,9 @@ world {{project-name | kebab_case}} {
     import wasi:io/poll@0.2.3;
     import wasi:io/streams@0.2.3;
     
+    /// Export MCP core capabilities for auth configuration
+    export fastertools:mcp/core-capabilities@0.1.23;
+    
     /// Export MCP tools capabilities
-    export fastertools:mcp/tools-capabilities@0.1.12;
+    export fastertools:mcp/tools-capabilities@0.1.23;
 }

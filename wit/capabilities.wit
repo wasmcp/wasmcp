@@ -2,7 +2,8 @@
 /// This contains only the essential session management functions
 interface core-capabilities {
     use types.{mcp-error};
-    use session.{initialize-request, initialize-response};
+    use session-types.{initialize-request, initialize-response};
+    use authorization-types.{provider-auth-config};
     
     /// Handle session initialization
     /// Implementations should declare their capabilities here
@@ -16,6 +17,10 @@ interface core-capabilities {
     
     /// Handle shutdown request
     handle-shutdown: func() -> result<_, mcp-error>;
+    
+    /// Get provider's auth configuration (optional - return none for no auth)
+    /// If auth configuration is provided, the transport will enforce authentication
+    get-auth-config: func() -> option<provider-auth-config>;
 }
 
 /// Tool capabilities - implement this to provide tools
