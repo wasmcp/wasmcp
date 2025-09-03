@@ -83,7 +83,29 @@ View application:   https://weather-py-xxxxxxxx.fermyon.app/
 
 ## Examples
 
-See [`examples/`](./examples/) for complete working servers.
+See [`examples/`](./examples/) for complete working servers implementing tools capabilities.
+
+```python
+mcp = MCPServer(
+    name="weather-py",
+    version="0.1.0",
+    instructions="An MCP server written in Python",
+    auth_config=None,
+    # auth_config=ProviderAuthConfig(
+    #     expected_issuer="https://xxxxx.authkit.app",
+    #     expected_audiences=["client_xxxxx"],
+    #     jwks_uri="https://xxxxx.authkit.app/oauth2/jwks",
+    #     policy=None,  # Optional: Add Rego policy for additional authorization
+    #     policy_data=None,  # Optional: Add policy data as JSON string
+    # )
+)
+
+
+@mcp.tool
+def echo(message: str) -> str:
+    """Echo a message back to the user."""
+    return f"Echo: {message}"
+```
 
 ## WIT
 
