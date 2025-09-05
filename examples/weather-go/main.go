@@ -115,7 +115,7 @@ func handleInitialize(request coretypes.InitializeRequest) cm.Result[corecapabil
 		ServerInfo: coretypes.ImplementationInfo{
 			Name:    "weather-go",
 			Version: "0.1.0",
-			Title:   cm.Some("Go Weather Server"),
+			Title:   cm.Some("weather-go Server"),
 		},
 		Instructions: cm.Some("A Go MCP server providing weather tools"),
 		Meta:         cm.None[mcptypes.MetaFields](),
@@ -287,7 +287,7 @@ func handleMultiWeather(args json.RawMessage) (string, error) {
 
 	for i, resp := range geoResponses {
 		city := params.Cities[i]
-		
+
 		if resp.Error != nil {
 			errors = append(errors, fmt.Sprintf("Error fetching location for %s: %v", city, resp.Error))
 			continue
@@ -315,7 +315,7 @@ func handleMultiWeather(args json.RawMessage) (string, error) {
 		location := results[0].(map[string]interface{})
 		lat := location["latitude"].(float64)
 		lon := location["longitude"].(float64)
-		
+
 		// Extract location name and country
 		name, _ := location["name"].(string)
 		country, _ := location["country"].(string)
@@ -341,7 +341,7 @@ func handleMultiWeather(args json.RawMessage) (string, error) {
 
 		for i, resp := range weatherResponses {
 			loc := locations[i]
-			
+
 			if resp.Error != nil {
 				fmt.Fprintf(&output, "Error fetching weather for %s: %v\n\n", loc.city, resp.Error)
 				continue
@@ -371,7 +371,7 @@ func handleMultiWeather(args json.RawMessage) (string, error) {
 				"wind_speed":           current["wind_speed_10m"],
 				"weather_code":         current["weather_code"],
 			}
-			
+
 			output.WriteString(formatWeather(formattedData))
 			output.WriteString("\n\n")
 		}
@@ -394,7 +394,7 @@ func handleMultiWeather(args json.RawMessage) (string, error) {
 func fetchWeather(city string) (map[string]interface{}, error) {
 	// Geocode the location
 	geoURL := fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", url.QueryEscape(city))
-	
+
 	geoResp, err := http.Get(geoURL)
 	if err != nil {
 		return nil, fmt.Errorf("geocoding request failed: %v", err)
@@ -495,7 +495,7 @@ func weatherCondition(code int) string {
 		96: "Thunderstorm with slight hail",
 		99: "Thunderstorm with heavy hail",
 	}
-	
+
 	if condition, ok := conditions[code]; ok {
 		return condition
 	}
