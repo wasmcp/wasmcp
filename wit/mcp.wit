@@ -119,18 +119,3 @@ world full-provider {
     export prompts-capabilities;
     export completion-capabilities;
 }
-
-// === AUTHORIZATION WORLDS ===
-
-/// Authorization provider world
-world authorization-provider {
-    // Import types needed for authorization
-    import types;
-    
-    // Export all authorization interfaces
-    export authorization;
-    export jwt-validator;
-    export policy-engine;
-    export oauth-discovery;
-    export mcp-authorization;
-}

@@ -128,4 +128,15 @@ interface core-capabilities {
     /// Get provider's auth configuration (optional - return none for no auth)
     /// If auth configuration is provided, the transport will enforce authentication
     get-auth-config: func() -> option<provider-auth-config>;
+    
+    /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
+    /// Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms
+    /// The transport will call this before fetching from jwks-uri to check for cached keys
+    jwks-cache-get: func(jwks-uri: string) -> option<string>;
+    
+    /// Cache JWKS for a given URI (optional - no-op if caching not implemented)
+    /// The transport calls this after successfully fetching JWKS from jwks-uri
+    /// Providers can implement caching via WASI-KV or other persistence mechanisms
+    /// The jwks parameter contains the raw JWKS JSON string to cache
+    jwks-cache-set: func(jwks-uri: string, jwks: string);
 }
