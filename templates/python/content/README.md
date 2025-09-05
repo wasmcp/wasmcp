@@ -10,13 +10,13 @@ make build  # Build server (no auth)
 make serve  # Run on port 8080
 ```
 
-With OAuth authentication:
-```bash
-make build-auth
-make serve-auth  # Configure JWT env vars first
-```
+Authentication is configured in code, not at build time.
+See the OAuth Authentication section below.
 
 ## Architecture
+
+This template uses a transparent implementation that works directly with WIT bindings,
+prioritizing clarity and understanding over abstraction.
 
 WebAssembly components composed at build time:
 - Provider component (this code)
@@ -36,38 +36,57 @@ WebAssembly components composed at build time:
 ### Project Structure
 
 ```
-app.py       # Tool implementations
-helpers.py   # MCP SDK decorators
+app.py       # Direct MCP implementation using WIT bindings
 wit/         # Interface definitions
+wit_world/   # Generated Python bindings (created by build)
 ```
 
 ### Adding Tools
 
-Use the decorator API:
+Add tools by updating the `TOOLS` dictionary and implementing handler methods:
 
 ```python
-@mcp.tool
-def my_tool(param: str) -> str:
-    """Tool description."""
-    return f"Result: {param}"
-
-# Or with explicit configuration
-@mcp.tool(name="custom_name", description="Custom description")
-async def async_tool(data: dict) -> str:
-    """Process data asynchronously."""
-    result = await process_data(data)
-    return json.dumps(result)
+class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
+    TOOLS = {
+        "my_tool": {
+            "description": "Tool description",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "param": {"type": "string", "description": "Parameter"}
+                },
+                "required": ["param"]
+            }
+        }
+    }
+    
+    def handle_call_tool(self, request: tool_types.CallToolRequest) -> tool_types.ToolResult:
+        # Route to your tool implementation
+        if request.name == "my_tool":
+            arguments = json.loads(request.arguments)
+            result = f"Result: {arguments['param']}"
+            return self._text_result(result)
 ```
 
 ## Concurrency
 
-Use asyncio for concurrent operations:
+Use PollLoop and asyncio for concurrent operations:
 
 ```python
-@mcp.tool
-async def multi_fetch(urls: List[str]) -> str:
-    tasks = [fetch_url(url) for url in urls]
-    results = await asyncio.gather(*tasks)
+def _execute_multi_fetch_sync(self, arguments: dict) -> str:
+    urls = arguments.get("urls", [])
+    
+    # Run async code in PollLoop
+    loop = PollLoop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(self._fetch_multi(urls))
+    finally:
+        loop.close()
+
+async def _fetch_multi(self, urls: List[str]) -> str:
+    tasks = [self._fetch_json(url) for url in urls]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
     return json.dumps(results)
 ```
 
@@ -80,13 +99,18 @@ make test-echo   # Test echo tool
 
 ## OAuth Authentication
 
-Optional OAuth 2.0/JWT support:
+Optional OAuth 2.0/JWT support. Configure in `app.py`:
 
-```bash
-export JWT_ISSUER="https://auth.example.com"
-export JWT_AUDIENCE="client_123"
-export JWT_JWKS_URI="https://auth.example.com/.well-known/jwks.json"
-make serve-auth
+```python
+def get_auth_config(self) -> Optional:
+    from wit_world.imports.authorization_types import ProviderAuthConfig
+    return ProviderAuthConfig(
+        expected_issuer="https://xxxxx.authkit.app",
+        expected_audiences=["client_xxxxx"],
+        jwks_uri="https://xxxxx.authkit.app/oauth2/jwks",
+        policy=None,  # Optional: Add Rego policy
+        policy_data=None,  # Optional: Add policy data
+    )
 ```
 
 Features:
