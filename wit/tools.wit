@@ -1,7 +1,8 @@
-/// Tool discovery and execution for MCP
+/// Tool types and capabilities for MCP
 
-interface tools {
-    use types.{content-block, json-value, json-schema, mcp-error, base-metadata, meta-fields, cursor, progress-token};
+/// Type definitions for tools
+interface tool-types {
+    use types.{content-block, json-value, json-schema, base-metadata, meta-fields, cursor, progress-token};
 
     /// Behavioral hints about tool operations
     record tool-annotations {
@@ -77,7 +78,16 @@ interface tools {
         /// Extension metadata
         meta: option<meta-fields>,
     }
+}
 
-    // Note: Tool operations are defined in the tool-handler interface
-    // This interface only provides type definitions
+/// Tool capabilities - implement this to provide tools
+interface tools-capabilities {
+    use types.{mcp-error};
+    use tool-types.{list-tools-request, list-tools-response, call-tool-request, tool-result};
+    
+    /// List available tools
+    handle-list-tools: func(request: list-tools-request) -> result<list-tools-response, mcp-error>;
+    
+    /// Execute a tool
+    handle-call-tool: func(request: call-tool-request) -> result<tool-result, mcp-error>;
 }

@@ -1,9 +1,8 @@
-/// Type definitions for MCP session management
-/// This interface contains only types, no functions, to allow
-/// clean imports by providers that need these types without
-/// importing the session functions.
+/// Core types and capabilities for MCP
+/// Every MCP implementation requires these fundamental types and functions
 
-interface session-types {
+/// Type definitions for core MCP protocol operations
+interface core-types {
     use types.{meta-fields};
 
     /// Protocol versions supported by MCP
@@ -104,4 +103,29 @@ interface session-types {
         /// Optional metadata
         meta: option<meta-fields>,
     }
+}
+
+/// Core capabilities that all MCP implementations must provide
+/// These are the essential protocol functions every server needs
+interface core-capabilities {
+    use types.{mcp-error};
+    use core-types.{initialize-request, initialize-response};
+    use authorization-types.{provider-auth-config};
+    
+    /// Handle session initialization
+    /// Implementations should declare their capabilities here
+    handle-initialize: func(request: initialize-request) -> result<initialize-response, mcp-error>;
+    
+    /// Handle initialization complete notification
+    handle-initialized: func() -> result<_, mcp-error>;
+    
+    /// Handle ping request for keepalive
+    handle-ping: func() -> result<_, mcp-error>;
+    
+    /// Handle shutdown request
+    handle-shutdown: func() -> result<_, mcp-error>;
+    
+    /// Get provider's auth configuration (optional - return none for no auth)
+    /// If auth configuration is provided, the transport will enforce authentication
+    get-auth-config: func() -> option<provider-auth-config>;
 }

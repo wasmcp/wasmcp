@@ -1,8 +1,17 @@
-/// Interactive elicitation - request structured input from users
-/// Enables servers to collect configuration, preferences, or other data interactively
+/// Interactive elicitation types for MCP (CLIENT CAPABILITY)
+/// 
+/// NOTE: This is a CLIENT capability - servers request user input, clients provide it.
+/// Only type definitions are provided here, no function interfaces, as:
+/// 1. No real MCP client implementations exist yet
+/// 2. Client capability interfaces are likely to change in future MCP spec versions
+/// 3. The exact client-side implementation patterns are still being established
+///
+/// These types enable protocol-compliant marshaling while avoiding premature
+/// interface definitions for capabilities that don't have reference implementations.
 
-interface elicitation {
-    use types.{mcp-error, json-schema, json-value, meta-fields};
+/// Type definitions for elicitation
+interface elicitation-types {
+    use types.{json-schema, json-value, meta-fields};
 
     /// Request for structured user input
     record elicit-request {
@@ -36,8 +45,4 @@ interface elicitation {
         /// User cancelled without making a choice
         cancel,
     }
-
-    /// Request structured input from the user
-    /// The client should present an appropriate UI for data collection
-    elicit: func(request: elicit-request) -> result<elicit-result, mcp-error>;
 }

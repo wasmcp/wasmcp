@@ -1,8 +1,17 @@
-/// File system roots - expose directories to servers
-/// Allows servers to understand and operate on client file systems with permission
+/// File system roots types for MCP (CLIENT CAPABILITY)
+/// 
+/// NOTE: This is a CLIENT capability - servers request roots, clients provide them.
+/// Only type definitions are provided here, no function interfaces, as:
+/// 1. No real MCP client implementations exist yet
+/// 2. Client capability interfaces are likely to change in future MCP spec versions
+/// 3. The exact client-side implementation patterns are still being established
+///
+/// These types enable protocol-compliant marshaling while avoiding premature
+/// interface definitions for capabilities that don't have reference implementations.
 
-interface roots {
-    use types.{mcp-error, meta-fields};
+/// Type definitions for roots
+interface roots-types {
+    use types.{meta-fields};
 
     /// A root directory or file that the server can operate on
     record root {
@@ -25,8 +34,4 @@ interface roots {
         /// Extension metadata
         meta: option<meta-fields>,
     }
-
-    /// List available file system roots
-    /// Servers use this to understand what parts of the file system they can access
-    list-roots: func(request: list-roots-request) -> result<list-roots-result, mcp-error>;
 }

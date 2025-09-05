@@ -1,9 +1,17 @@
-/// LLM sampling interface - allows servers to request AI assistance from clients
-/// This enables powerful agent workflows where servers can leverage client LLM access
+/// LLM sampling types for MCP (CLIENT CAPABILITY)
+/// 
+/// NOTE: This is a CLIENT capability - servers request sampling, clients provide it.
+/// Only type definitions are provided here, no function interfaces, as:
+/// 1. No real MCP client implementations exist yet
+/// 2. Client capability interfaces are likely to change in future MCP spec versions
+/// 3. The exact client-side implementation patterns are still being established
+///
+/// These types enable protocol-compliant marshaling while avoiding premature
+/// interface definitions for capabilities that don't have reference implementations.
 
-interface sampling {
+/// Type definitions for sampling
+interface sampling-types {
     use types.{
-        mcp-error,
         content-block,
         message-role,
         model-preferences,
@@ -51,9 +59,4 @@ interface sampling {
         /// Extension metadata
         meta: option<meta-fields>,
     }
-
-    /// Request LLM sampling from the client
-    /// The client has full discretion over model selection and may
-    /// inform the user before sampling (human in the loop)
-    create-message: func(request: create-message-request) -> result<create-message-result, mcp-error>;
 }

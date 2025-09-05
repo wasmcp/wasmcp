@@ -1,6 +1,7 @@
-/// Notification system for MCP events and updates
+/// Notification types for MCP events and updates
 
-interface notifications {
+/// Type definitions for notifications
+interface notification-types {
     use types.{mcp-error, meta-fields, progress-token, request-id};
 
     /// Notification types that can be sent
