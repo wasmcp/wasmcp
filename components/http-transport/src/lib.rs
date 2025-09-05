@@ -18,10 +18,11 @@ use rmcp::model::PaginatedRequestParam;
 #[allow(warnings)]
 mod bindings;
 
-// Always import types and session for core functionality
+// Always import types and core for functionality
 use bindings::fastertools::mcp::{
     types::{McpError, ErrorCode},
     authorization_types::ProviderAuthConfig,
+    core_capabilities,
 };
 
 mod adapter;
@@ -43,14 +44,14 @@ static AUTH_CONFIG: OnceLock<Option<ProviderAuthConfig>> = OnceLock::new();
 fn is_auth_enabled() -> bool {
     AUTH_CONFIG.get_or_init(|| {
         // Get auth config from provider - returns None if no auth needed
-        bindings::fastertools::mcp::core_capabilities::get_auth_config()
+        core_capabilities::get_auth_config()
     }).is_some()
 }
 
 /// Get the cached auth configuration
 fn get_auth_config() -> Option<&'static ProviderAuthConfig> {
     AUTH_CONFIG.get_or_init(|| {
-        bindings::fastertools::mcp::core_capabilities::get_auth_config()
+        core_capabilities::get_auth_config()
     }).as_ref()
 }
 
@@ -181,15 +182,15 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                 
                 // Convert to WIT types - would need proper conversion here
                 // For now, create a minimal request
-                bindings::fastertools::mcp::session_types::InitializeRequest {
-                    protocol_version: bindings::fastertools::mcp::session_types::ProtocolVersion::V20250618,
-                    capabilities: bindings::fastertools::mcp::session_types::ClientCapabilities {
+                bindings::fastertools::mcp::core_types::InitializeRequest {
+                    protocol_version: bindings::fastertools::mcp::core_types::ProtocolVersion::V20250618,
+                    capabilities: bindings::fastertools::mcp::core_types::ClientCapabilities {
                         experimental: None,
                         roots: None,
                         sampling: None,
                         elicitation: None,
                     },
-                    client_info: bindings::fastertools::mcp::session_types::ImplementationInfo {
+                    client_info: bindings::fastertools::mcp::core_types::ImplementationInfo {
                         name: params.client_info.name,
                         version: params.client_info.version,
                         title: None,
@@ -198,15 +199,15 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                 }
             } else {
                 // Default request
-                bindings::fastertools::mcp::session_types::InitializeRequest {
-                    protocol_version: bindings::fastertools::mcp::session_types::ProtocolVersion::V20250618,
-                    capabilities: bindings::fastertools::mcp::session_types::ClientCapabilities {
+                bindings::fastertools::mcp::core_types::InitializeRequest {
+                    protocol_version: bindings::fastertools::mcp::core_types::ProtocolVersion::V20250618,
+                    capabilities: bindings::fastertools::mcp::core_types::ClientCapabilities {
                         experimental: None,
                         roots: None,
                         sampling: None,
                         elicitation: None,
                     },
-                    client_info: bindings::fastertools::mcp::session_types::ImplementationInfo {
+                    client_info: bindings::fastertools::mcp::core_types::ImplementationInfo {
                         name: "unknown".to_string(),
                         version: "0.0.0".to_string(),
                         title: None,
@@ -252,7 +253,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                         data: None,
                     })?;
                 
-                let request = bindings::fastertools::mcp::tools::ListToolsRequest {
+                let request = bindings::fastertools::mcp::tool_types::ListToolsRequest {
                     cursor: None,
                     progress_token: None,
                     meta: None,
@@ -305,7 +306,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                         data: None,
                     })?;
                 
-                let request = bindings::fastertools::mcp::resources::ListResourcesRequest {
+                let request = bindings::fastertools::mcp::resource_types::ListResourcesRequest {
                     cursor: None,
                     progress_token: None,
                     meta: None,
@@ -334,7 +335,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                     data: None,
                 })?;
                 
-                let request = bindings::fastertools::mcp::resources::ReadResourceRequest {
+                let request = bindings::fastertools::mcp::resource_types::ReadResourceRequest {
                     uri: uri.to_string(),
                     progress_token: None,
                     meta: None,
@@ -361,7 +362,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                         data: None,
                     })?;
                 
-                let request = bindings::fastertools::mcp::prompts::ListPromptsRequest {
+                let request = bindings::fastertools::mcp::prompt_types::ListPromptsRequest {
                     cursor: None,
                     progress_token: None,
                     meta: None,
@@ -394,7 +395,7 @@ async fn route_method(server: &McpServer, method: &str, params: Option<Value>) -
                     obj.iter().map(|(k, v)| (k.clone(), v.to_string())).collect()
                 });
                 
-                let request = bindings::fastertools::mcp::prompts::GetPromptRequest {
+                let request = bindings::fastertools::mcp::prompt_types::GetPromptRequest {
                     name: name.to_string(),
                     arguments,
                     progress_token: None,
