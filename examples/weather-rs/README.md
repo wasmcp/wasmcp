@@ -40,7 +40,7 @@ This server implements three demonstration tools:
 
 ```
 src/lib.rs       # MCP capabilities implementation
-wit/             # WIT interface definitions (fastertools:mcp@0.4.1)
+wit/             # WIT interface definitions (wasmcp:mcp@0.1.0)
 Cargo.toml       # Dependencies and component metadata
 Makefile         # Build automation
 ```

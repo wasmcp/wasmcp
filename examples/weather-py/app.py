@@ -21,7 +21,7 @@ from poll_loop import PollLoop, Stream
 
 # Import the generated WIT bindings directly - these are our SDK
 from wit_world.exports import ToolsCapabilities, CoreCapabilities
-from wit_world.imports import core_types, tool_types, fastertools_mcp_types as mcp_types
+from wit_world.imports import core_types, tool_types, wasmcp_mcp_types as mcp_types
 from wit_world.imports.types import (
     OutgoingRequest,
     Fields,

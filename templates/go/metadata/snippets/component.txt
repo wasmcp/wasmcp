@@ -4,7 +4,7 @@ component = "wasmcp-server-{{project-name | kebab_case}}"
 
 [component.wasmcp-server-{{project-name | kebab_case}}]
 # Using the published gateway component
-source = { registry = "ghcr.io", package = "fastertools:wasmcp-server", version = "0.1.0" }
+source = { registry = "ghcr.io", package = "wasmcp:wasmcp-server", version = "0.1.0" }
 
 [component.wasmcp-server-{{project-name | kebab_case}}.build]
 command = "cd {{project-name | kebab_case}} && make build"

@@ -175,7 +175,7 @@ if [ "$MISSING_TOOLS" = true ]; then
     exit 1
 fi
 
-# Configure wkg for fastertools namespace if needed
+# Configure wkg for wasmcp namespace if needed
 echo ""
 echo "Checking wkg configuration..."
 WKG_CONFIG="$HOME/.config/wasm-pkg/config.toml"
@@ -188,13 +188,13 @@ if [ ! -f "$WKG_CONFIG" ]; then
     echo -e "${YELLOW}No wkg config found. Creating new config file...${NC}"
     cat > "$WKG_CONFIG" << 'EOF'
 [namespace_registries]
-fastertools = "ghcr.io"
+wasmcp = "ghcr.io"
 EOF
-    echo -e "${GREEN}✓ Created wkg config with fastertools namespace${NC}"
+    echo -e "${GREEN}✓ Created wkg config with wasmcp namespace${NC}"
 else
-    # Check if fastertools is already configured
-    if ! grep -q '^fastertools\s*=' "$WKG_CONFIG" 2>/dev/null; then
-        echo -e "${YELLOW}The 'fastertools' namespace is not configured in wkg.${NC}"
+    # Check if wasmcp is already configured
+    if ! grep -q '^wasmcp\s*=' "$WKG_CONFIG" 2>/dev/null; then
+        echo -e "${YELLOW}The 'wasmcp' namespace is not configured in wkg.${NC}"
         echo ""
         echo "Would you like to add it automatically? [Y/n]"
         read -r RESPONSE
@@ -206,22 +206,22 @@ else
                 # Add the entire section
                 echo "" >> "$WKG_CONFIG"
                 echo "[namespace_registries]" >> "$WKG_CONFIG"
-                echo 'fastertools = "ghcr.io"' >> "$WKG_CONFIG"
+                echo 'wasmcp = "ghcr.io"' >> "$WKG_CONFIG"
             else
-                # Add just the fastertools line after [namespace_registries]
-                sed -i '/^\[namespace_registries\]/a fastertools = "ghcr.io"' "$WKG_CONFIG"
+                # Add just the wasmcp line after [namespace_registries]
+                sed -i '/^\[namespace_registries\]/a wasmcp = "ghcr.io"' "$WKG_CONFIG"
             fi
-            echo -e "${GREEN}✓ Added fastertools namespace to wkg config${NC}"
+            echo -e "${GREEN}✓ Added wasmcp namespace to wkg config${NC}"
         else
-            echo "Please configure the fastertools namespace manually by editing:"
+            echo "Please configure the wasmcp namespace manually by editing:"
             echo "  $WKG_CONFIG"
             echo ""
             echo "Add this line under [namespace_registries]:"
-            echo '  fastertools = "ghcr.io"'
+            echo '  wasmcp = "ghcr.io"'
             exit 1
         fi
     else
-        echo -e "${GREEN}✓ fastertools namespace already configured${NC}"
+        echo -e "${GREEN}✓ wasmcp namespace already configured${NC}"
     fi
 fi
 

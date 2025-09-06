@@ -1,5 +1,5 @@
-/** @module Interface fastertools:mcp/authorization-types@0.4.1 **/
-export type MetaFields = import('./fastertools-mcp-types.js').MetaFields;
+/** @module Interface wasmcp:mcp/authorization-types@0.1.0 **/
+export type MetaFields = import('./wasmcp-mcp-types.js').MetaFields;
 /**
  * Provider declares its authorization requirements
  * This is returned by core-capabilities::get-auth-config()

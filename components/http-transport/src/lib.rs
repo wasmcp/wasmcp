@@ -15,9 +15,9 @@ use spin_sdk::http::{IntoResponse, Request, Response};
 mod bindings;
 
 // Always import types and core for functionality
-use bindings::fastertools::mcp::authorization_types::ProviderAuthConfig;
-use bindings::fastertools::mcp::core_capabilities;
-use bindings::fastertools::mcp::types::{ErrorCode, McpError};
+use bindings::wasmcp::mcp::authorization_types::ProviderAuthConfig;
+use bindings::wasmcp::mcp::core_capabilities;
+use bindings::wasmcp::mcp::types::{ErrorCode, McpError};
 
 mod adapter;
 use adapter::WitMcpAdapter;
@@ -182,16 +182,15 @@ async fn route_method(
 
                 // Convert to WIT types - would need proper conversion here
                 // For now, create a minimal request
-                bindings::fastertools::mcp::core_types::InitializeRequest {
-                    protocol_version:
-                        bindings::fastertools::mcp::core_types::ProtocolVersion::V20250618,
-                    capabilities: bindings::fastertools::mcp::core_types::ClientCapabilities {
+                bindings::wasmcp::mcp::core_types::InitializeRequest {
+                    protocol_version: bindings::wasmcp::mcp::core_types::ProtocolVersion::V20250618,
+                    capabilities: bindings::wasmcp::mcp::core_types::ClientCapabilities {
                         experimental: None,
                         roots: None,
                         sampling: None,
                         elicitation: None,
                     },
-                    client_info: bindings::fastertools::mcp::core_types::ImplementationInfo {
+                    client_info: bindings::wasmcp::mcp::core_types::ImplementationInfo {
                         name: params.client_info.name,
                         version: params.client_info.version,
                         title: None,
@@ -200,16 +199,15 @@ async fn route_method(
                 }
             } else {
                 // Default request
-                bindings::fastertools::mcp::core_types::InitializeRequest {
-                    protocol_version:
-                        bindings::fastertools::mcp::core_types::ProtocolVersion::V20250618,
-                    capabilities: bindings::fastertools::mcp::core_types::ClientCapabilities {
+                bindings::wasmcp::mcp::core_types::InitializeRequest {
+                    protocol_version: bindings::wasmcp::mcp::core_types::ProtocolVersion::V20250618,
+                    capabilities: bindings::wasmcp::mcp::core_types::ClientCapabilities {
                         experimental: None,
                         roots: None,
                         sampling: None,
                         elicitation: None,
                     },
-                    client_info: bindings::fastertools::mcp::core_types::ImplementationInfo {
+                    client_info: bindings::wasmcp::mcp::core_types::ImplementationInfo {
                         name: "unknown".to_string(),
                         version: "0.0.0".to_string(),
                         title: None,
@@ -220,7 +218,7 @@ async fn route_method(
 
             // Call the provider's core-capabilities
             let response =
-                bindings::fastertools::mcp::core_capabilities::handle_initialize(&wit_request)?;
+                bindings::wasmcp::mcp::core_capabilities::handle_initialize(&wit_request)?;
 
             // Convert WIT response back to rmcp/JSON format
             let result = server
@@ -235,15 +233,15 @@ async fn route_method(
         }
 
         "initialized" | "notifications/initialized" => {
-            bindings::fastertools::mcp::core_capabilities::handle_initialized()?;
+            bindings::wasmcp::mcp::core_capabilities::handle_initialized()?;
             Ok(Value::Null)
         }
         "ping" => {
-            bindings::fastertools::mcp::core_capabilities::handle_ping()?;
+            bindings::wasmcp::mcp::core_capabilities::handle_ping()?;
             Ok(json!({}))
         }
         "shutdown" => {
-            bindings::fastertools::mcp::core_capabilities::handle_shutdown()?;
+            bindings::wasmcp::mcp::core_capabilities::handle_shutdown()?;
             Ok(json!({}))
         }
 
@@ -259,14 +257,13 @@ async fn route_method(
                     data: None,
                 })?;
 
-            let request = bindings::fastertools::mcp::tool_types::ListToolsRequest {
+            let request = bindings::wasmcp::mcp::tool_types::ListToolsRequest {
                 cursor: None,
                 progress_token: None,
                 meta: None,
             };
 
-            let response =
-                bindings::fastertools::mcp::tools_capabilities::handle_list_tools(&request)?;
+            let response = bindings::wasmcp::mcp::tools_capabilities::handle_list_tools(&request)?;
             let result = server
                 .adapter
                 .convert_list_tools_to_rmcp(response)
@@ -319,16 +316,14 @@ async fn route_method(
                     data: None,
                 })?;
 
-            let request = bindings::fastertools::mcp::resource_types::ListResourcesRequest {
+            let request = bindings::wasmcp::mcp::resource_types::ListResourcesRequest {
                 cursor: None,
                 progress_token: None,
                 meta: None,
             };
 
             let response =
-                bindings::fastertools::mcp::resources_capabilities::handle_list_resources(
-                    &request,
-                )?;
+                bindings::wasmcp::mcp::resources_capabilities::handle_list_resources(&request)?;
             let result = server
                 .adapter
                 .convert_list_resources_to_rmcp(response)
@@ -354,14 +349,14 @@ async fn route_method(
                 data: None,
             })?;
 
-            let request = bindings::fastertools::mcp::resource_types::ReadResourceRequest {
+            let request = bindings::wasmcp::mcp::resource_types::ReadResourceRequest {
                 uri: uri.to_string(),
                 progress_token: None,
                 meta: None,
             };
 
             let response =
-                bindings::fastertools::mcp::resources_capabilities::handle_read_resource(&request)?;
+                bindings::wasmcp::mcp::resources_capabilities::handle_read_resource(&request)?;
             let result = server
                 .adapter
                 .convert_read_resource_to_rmcp(response)
@@ -385,14 +380,14 @@ async fn route_method(
                     data: None,
                 })?;
 
-            let request = bindings::fastertools::mcp::prompt_types::ListPromptsRequest {
+            let request = bindings::wasmcp::mcp::prompt_types::ListPromptsRequest {
                 cursor: None,
                 progress_token: None,
                 meta: None,
             };
 
             let response =
-                bindings::fastertools::mcp::prompts_capabilities::handle_list_prompts(&request)?;
+                bindings::wasmcp::mcp::prompts_capabilities::handle_list_prompts(&request)?;
             let result = server
                 .adapter
                 .convert_list_prompts_to_rmcp(response)
@@ -427,7 +422,7 @@ async fn route_method(
                         .collect()
                 });
 
-            let request = bindings::fastertools::mcp::prompt_types::GetPromptRequest {
+            let request = bindings::wasmcp::mcp::prompt_types::GetPromptRequest {
                 name: name.to_string(),
                 arguments,
                 progress_token: None,
@@ -435,7 +430,7 @@ async fn route_method(
             };
 
             let response =
-                bindings::fastertools::mcp::prompts_capabilities::handle_get_prompt(&request)?;
+                bindings::wasmcp::mcp::prompts_capabilities::handle_get_prompt(&request)?;
             let result = server
                 .adapter
                 .convert_get_prompt_to_rmcp(response)

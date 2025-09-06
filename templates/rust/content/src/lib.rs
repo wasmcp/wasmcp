@@ -6,9 +6,9 @@
 #[allow(warnings)]
 mod bindings;
 
-use bindings::exports::fastertools::mcp::core_capabilities::Guest as CoreGuest;
-use bindings::exports::fastertools::mcp::tools_capabilities::Guest as ToolsGuest;
-use bindings::fastertools::mcp::{
+use bindings::exports::wasmcp::mcp::core_capabilities::Guest as CoreGuest;
+use bindings::exports::wasmcp::mcp::tools_capabilities::Guest as ToolsGuest;
+use bindings::wasmcp::mcp::{
     authorization_types::ProviderAuthConfig,
     core_types::{
         ImplementationInfo,

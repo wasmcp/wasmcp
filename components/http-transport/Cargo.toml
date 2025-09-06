@@ -1,6 +1,6 @@
 [package]
 name = "mcp_transport_http"
-version = "0.4.3"
+version = "0.1.0"
 edition = "2024"
 rust-version = "1.89"
 
@@ -59,7 +59,7 @@ package = "mcp:transport-http"
 derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
-package = "fastertools:mcp"
-version = "0.4.1"
+package = "wasmcp:mcp"
+version = "0.1.0"
 # All transports now support optional auth - providers control it via get-auth-config()
 world = "tools-transport"

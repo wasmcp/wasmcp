@@ -222,7 +222,7 @@ fn fetch_and_cache_jwks(uri: &str) -> Result<Jwks, JwtError> {
 
     // First, try to get from provider's cache (if implemented)
     if let Some(cached_jwks_json) =
-        crate::bindings::fastertools::mcp::core_capabilities::jwks_cache_get(uri)
+        crate::bindings::wasmcp::mcp::core_capabilities::jwks_cache_get(uri)
     {
         eprintln!("Retrieved JWKS from provider cache for: {uri}");
         if let Ok(jwks) = serde_json::from_str::<Jwks>(&cached_jwks_json) {
@@ -250,7 +250,7 @@ fn fetch_and_cache_jwks(uri: &str) -> Result<Jwks, JwtError> {
     let jwks: Jwks = serde_json::from_str(&jwks_json).map_err(|_| JwtError::JwksError)?;
 
     // Store in provider's cache (fire-and-forget, as it's optional)
-    crate::bindings::fastertools::mcp::core_capabilities::jwks_cache_set(uri, &jwks_json);
+    crate::bindings::wasmcp::mcp::core_capabilities::jwks_cache_set(uri, &jwks_json);
     eprintln!("Stored JWKS in provider cache for: {uri}");
 
     // Update internal cache

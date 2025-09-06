@@ -1,4 +1,4 @@
-/** @module Interface fastertools:mcp/core-capabilities@0.4.1 **/
+/** @module Interface wasmcp:mcp/core-capabilities@0.1.0 **/
 /**
  * Handle session initialization
  * Implementations should declare their capabilities here
@@ -34,7 +34,7 @@ export function jwksCacheGet(jwksUri: string): string | undefined;
  * The jwks parameter contains the raw JWKS JSON string to cache
  */
 export function jwksCacheSet(jwksUri: string, jwks: string): void;
-export type McpError = import('./fastertools-mcp-types.js').McpError;
-export type InitializeRequest = import('./fastertools-mcp-core-types.js').InitializeRequest;
-export type InitializeResponse = import('./fastertools-mcp-core-types.js').InitializeResponse;
-export type ProviderAuthConfig = import('./fastertools-mcp-authorization-types.js').ProviderAuthConfig;
+export type McpError = import('./wasmcp-mcp-types.js').McpError;
+export type InitializeRequest = import('./wasmcp-mcp-core-types.js').InitializeRequest;
+export type InitializeResponse = import('./wasmcp-mcp-core-types.js').InitializeResponse;
+export type ProviderAuthConfig = import('./wasmcp-mcp-authorization-types.js').ProviderAuthConfig;

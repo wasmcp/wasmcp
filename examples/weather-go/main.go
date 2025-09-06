@@ -11,12 +11,12 @@ import (
 	"go.bytecodealliance.org/cm"
 
 	// Import the generated WIT bindings directly - these are our SDK
-	authorizationtypes "weather_go/internal/fastertools/mcp/authorization-types"
-	corecapabilities "weather_go/internal/fastertools/mcp/core-capabilities"
-	coretypes "weather_go/internal/fastertools/mcp/core-types"
-	tooltypes "weather_go/internal/fastertools/mcp/tool-types"
-	toolscapabilities "weather_go/internal/fastertools/mcp/tools-capabilities"
-	mcptypes "weather_go/internal/fastertools/mcp/types"
+	authorizationtypes "weather_go/internal/wasmcp/mcp/authorization-types"
+	corecapabilities "weather_go/internal/wasmcp/mcp/core-capabilities"
+	coretypes "weather_go/internal/wasmcp/mcp/core-types"
+	tooltypes "weather_go/internal/wasmcp/mcp/tool-types"
+	toolscapabilities "weather_go/internal/wasmcp/mcp/tools-capabilities"
+	mcptypes "weather_go/internal/wasmcp/mcp/types"
 	"weather_go/wasihttp"
 )
 
