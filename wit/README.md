@@ -1,18 +1,48 @@
 ## WIT
 
-The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/design/wit.html)) package in [`wit/`](./wit/) aims to capture a complete representation of the MCP specification. It currently reflects the 2025-06-18 version of the spec, with some additional elements from the latest draft.
+The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/design/wit.html)) package in this directory provides a complete representation of the MCP specification. It reflects the 2025-06-18 version of the spec, with additional elements from the latest draft.
 
 The WIT package is published as Wasm at https://github.com/orgs/fastertools/packages/container/package/mcp. It can be fetched with `wkg wit fetch` when included as a dependency in a component's world:
 
-```
-/// world.wit
+```wit
+// world.wit
 package weather-js:provider;
 
-/// MCP tools for an MCP provider written in JavaScript
+// MCP provider component written in JavaScript
 world weather-js {
-    export fastertools:mcp/tools-capabilities@0.1.10;
+    // Import WASI HTTP for outbound requests (optional)
+    import wasi:http/outgoing-handler@0.2.3;
+    
+    // Export MCP capabilities
+    export fastertools:mcp/core-capabilities@0.4.0;
+    export fastertools:mcp/tools-capabilities@0.4.0;
 }
 ```
+
+## Capabilities
+
+The WIT package defines the following MCP capabilities:
+
+- **`core-capabilities`**: Session management (initialize, ping, shutdown) and optional authentication configuration
+- **`tools-capabilities`**: Tool listing and execution
+- **`prompts-capabilities`**: Prompt templates (future)
+- **`resources-capabilities`**: Resource access and subscriptions (future)
+- **`completions-capabilities`**: Completion suggestions (future)
+- **`logging-capabilities`**: Structured logging (future)
+
+## Authentication
+
+The `core-capabilities` interface includes optional OAuth 2.0 authentication support:
+
+```wit
+get-auth-config: func() -> option<provider-auth-config>
+jwks-cache-get: func(jwks-uri: string) -> option<string>
+jwks-cache-set: func(jwks-uri: string, jwks: string)
+```
+
+Providers can return authentication configuration to enable OAuth 2.0 protection with JWT validation, JWKS caching, and optional Rego policy enforcement.
+
+## Component Architecture
 
 A capability provider component does not necessarily depend on I/O. An MCP provider can be a pure computational component that can run in browsers, embedded systems, or any WebAssembly host - it just exports functions that transform MCP requests to responses.
 

@@ -1,75 +1,74 @@
 # {{project-name}}
 
-MCP server example in Rust.
+{{project-description}}
 
 ## Quick Start
 
 ```bash
-make setup  # Install dependencies
-make build  # Build server (no auth)
-make serve  # Run on port 8080
-```
-
-With OAuth authentication:
-```bash
-make build-auth
-make serve-auth  # Configure JWT env vars first
+make setup  # Install dependencies and configure tools
+make build  # Build and compose WASM components
+make serve  # Run server on port 8080
 ```
 
 ## Architecture
 
-WebAssembly components composed at build time:
-- Provider component (this code)
-- HTTP transport component (from registry)
-- Authorization component (optional)
+This implementation uses WIT bindings directly as the SDK, providing transparent access to the MCP protocol. The approach eliminates abstraction layers, making the protocol implementation explicit and debuggable.
 
-## Tools
+Components composed at build time:
+- Provider component (this code) - exports MCP capabilities
+- HTTP transport v0.4.1 (from registry) - handles JSON-RPC over HTTP
+- Optional OAuth 2.0 authentication
 
-- `echo` - Echo a message
-- `get_weather` - Get weather for a location
-- `multi_weather` - Get weather for multiple cities concurrently
+## Example Tools
+
+This server implements three demonstration tools:
+
+- **`echo`** - Simple message echo for testing
+- **`get_weather`** - Fetch weather for a single location
+- **`multi_weather`** - Concurrent weather fetching for multiple cities (demonstrates async with futures)
 
 ## Development
 
 ### Prerequisites
 
-- Rust 1.89+ (for async traits)
+- Rust 1.89+
 - cargo-component
-- wasm-tools
-- wac (for composition)
-- wkg (for registry packages)
+- wac
+- wkg
 
-### Adding Tools
+### Project Structure
 
-Implement the `Tool` trait:
-
-```rust
-struct MyTool;
-
-impl Tool for MyTool {
-    const NAME: &'static str = "my_tool";
-    const DESCRIPTION: &'static str = "Description";
-    
-    fn input_schema() -> String {
-        json!({
-            "type": "object",
-            "properties": {
-                "param": {"type": "string"}
-            },
-            "required": ["param"]
-        }).to_string()
-    }
-    
-    async fn execute(args: Option<String>) -> Result<ToolResult, McpError> {
-        let args: MyToolArgs = parse_args(&args)?;
-        Ok(format!("Result: {}", args.param).into_result())
-    }
-}
+```
+src/lib.rs       # MCP capabilities implementation
+wit/             # WIT interface definitions (fastertools:mcp@0.4.0)
+Cargo.toml       # Dependencies and component metadata
+Makefile         # Build automation
 ```
 
-Register with:
+### Implementing Tools
+
+Tools are handled directly in the `handle_call_tool` function:
+
 ```rust
-register_tools!(EchoTool, WeatherTool, MyTool);
+fn handle_call_tool(request: CallToolRequest) -> Result<ToolResult, McpError> {
+    match request.name.as_str() {
+        "echo" => spin_sdk::http::run(async move { 
+            handle_echo(request.arguments).await 
+        }),
+        "get_weather" => spin_sdk::http::run(async move { 
+            handle_get_weather(request.arguments).await 
+        }),
+        _ => Err(McpError::ToolNotFound),
+    }
+}
+
+async fn handle_get_weather(args: Option<String>) -> Result<ToolResult, McpError> {
+    let params: WeatherParams = serde_json::from_str(&args.unwrap_or_default())?;
+    
+    // Fetch weather data
+    let weather = fetch_weather(&params.location).await?;
+    Ok(text_result(&weather))
+}
 ```
 
 ## Testing
@@ -80,20 +79,61 @@ make test-weather    # Test weather tool
 make test-multi      # Test concurrent fetching
 ```
 
-## OAuth Support
+## Concurrency
 
-Configure JWT validation:
-```bash
-export JWT_ISSUER="https://your-domain.authkit.app"
-export JWT_AUDIENCE="client_YOUR_CLIENT_ID"
-export JWT_JWKS_URI="https://your-domain.authkit.app/oauth2/jwks"
-make serve-auth
+Rust's WASM environment uses `spin_sdk::http::run()` for async operations. Example from the multi-weather implementation:
+
+```rust
+async fn handle_multi_weather(args: Option<String>) -> Result<ToolResult, McpError> {
+    let params: MultiWeatherParams = serde_json::from_str(&args.unwrap_or_default())?;
+    
+    // Concurrent HTTP requests using futures
+    let futures = params.cities.iter().map(|city| fetch_weather(city));
+    let results = futures::future::join_all(futures).await;
+    
+    // Format results
+    let output = format_weather_results(results);
+    Ok(text_result(&output))
+}
 ```
 
-Test auth:
+## Authentication
+
+OAuth 2.0 authentication is optional and configured in the `get_auth_config` function:
+
+```rust
+fn get_auth_config() -> Option<ProviderAuthConfig> {
+    // Return None to disable authentication
+    None
+    
+    // Or enable OAuth 2.0 protection:
+    // Some(ProviderAuthConfig {
+    //     expected_issuer: "https://your-domain.authkit.app".to_string(),
+    //     expected_audiences: vec!["client_id".to_string()],
+    //     jwks_uri: "https://your-domain.authkit.app/oauth2/jwks".to_string(),
+    //     policy: None,      // Optional Rego policy string
+    //     policy_data: None, // Optional policy data JSON
+    // })
+}
+```
+
+The transport component handles:
+- JWT validation
+- JWKS fetching and caching
+- OAuth discovery endpoints
+- Rego policy evaluation (if configured)
+
+## Deployment
+
 ```bash
-make test-auth-no-token    # Should return 401
-make test-auth-discovery   # OAuth discovery endpoints
+# Local development with Wasmtime
+wasmtime serve -Scli mcp-http-server.wasm
+
+# Spin framework
+spin up --from mcp-http-server.wasm
+
+# Deploy to Fermyon Cloud
+spin cloud deploy
 ```
 
 ## License
