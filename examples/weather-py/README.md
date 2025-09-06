@@ -1,6 +1,6 @@
 # weather-py
 
-MCP server implementation in Python demonstrating weather tools with concurrent HTTP capabilities.
+An MCP server written in Python
 
 ## Quick Start
 

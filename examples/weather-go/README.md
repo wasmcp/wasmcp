@@ -1,6 +1,6 @@
 # weather-go
 
-MCP server implementation in Go demonstrating weather tools with concurrent HTTP capabilities.
+An MCP server written in Go
 
 ## Quick Start
 

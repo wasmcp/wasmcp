@@ -6158,7 +6158,9 @@ macro_rules! __export_tools_provider_impl {
 #[doc(inline)]
 pub(crate) use __export_tools_provider_impl as export;
 #[cfg(target_arch = "wasm32")]
-#[unsafe(link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.4.1:tools-provider:encoded world")]
+#[unsafe(
+    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.4.1:tools-provider:encoded world"
+)]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
 pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4309] = *b"\

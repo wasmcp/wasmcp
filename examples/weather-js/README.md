@@ -1,6 +1,6 @@
 # weather-js
 
-MCP server implementation in JavaScript demonstrating weather tools with concurrent HTTP capabilities.
+An MCP server written in JavaScript
 
 ## Quick Start
 
