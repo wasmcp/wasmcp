@@ -1,7 +1,9 @@
 # Clippy configuration for wasmcp project
+# This file is shared by all Rust projects in the repository
+# and is automatically inherited by subdirectories
 
 # Set the MSRV (Minimum Supported Rust Version)
-msrv = "1.70.0"
+msrv = "1.89.0"
 
 # Deny dangerous lints
 avoid-breaking-exported-api = false

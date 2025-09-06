@@ -105,7 +105,6 @@ pub enum PolicyResult {
     Error(String),
 }
 
-
 // OAuth discovery types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceMetadata {

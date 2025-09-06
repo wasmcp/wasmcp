@@ -3,9 +3,6 @@
 //! This implementation uses WIT bindings directly as the SDK, without
 //! abstraction layers.
 
-#![warn(missing_docs)]
-#![allow(unsafe_code)]
-
 #[allow(warnings)]
 mod bindings;
 
@@ -192,7 +189,7 @@ impl ToolsGuest for Component {
 
     fn handle_call_tool(request: CallToolRequest) -> Result<ToolResult, McpError> {
         match request.name.as_str() {
-            "echo" => spin_sdk::http::run(async move { handle_echo(request.arguments).await }),
+            "echo" => spin_sdk::http::run(async move { handle_echo(request.arguments.as_ref()) }),
             "get_weather" => {
                 spin_sdk::http::run(async move { handle_get_weather(request.arguments).await })
             },
@@ -217,8 +214,8 @@ struct EchoArgs {
     message: String,
 }
 
-async fn handle_echo(args: Option<String>) -> Result<ToolResult, McpError> {
-    let args: EchoArgs = parse_args(&args)?;
+fn handle_echo(args: Option<&String>) -> Result<ToolResult, McpError> {
+    let args: EchoArgs = parse_args(args)?;
     Ok(text_result(format!("Echo: {}", args.message)))
 }
 
@@ -228,7 +225,7 @@ struct WeatherArgs {
 }
 
 async fn handle_get_weather(args: Option<String>) -> Result<ToolResult, McpError> {
-    let args: WeatherArgs = parse_args(&args)?;
+    let args: WeatherArgs = parse_args(args.as_ref())?;
 
     match get_weather_for_city(&args.location).await {
         Ok(weather) => Ok(text_result(weather)),
@@ -242,7 +239,7 @@ struct MultiWeatherArgs {
 }
 
 async fn handle_multi_weather(args: Option<String>) -> Result<ToolResult, McpError> {
-    let args: MultiWeatherArgs = parse_args(&args)?;
+    let args: MultiWeatherArgs = parse_args(args.as_ref())?;
 
     if args.cities.is_empty() {
         return Ok(error_result("No cities provided".to_string()));
@@ -411,8 +408,8 @@ fn weather_condition(code: i32) -> &'static str {
 // Helper Functions
 // -------------------------------------------------------------------------
 
-fn parse_args<T: for<'a> Deserialize<'a>>(args: &Option<String>) -> Result<T, McpError> {
-    let args_str = args.as_deref().unwrap_or("{}");
+fn parse_args<T: for<'a> Deserialize<'a>>(args: Option<&String>) -> Result<T, McpError> {
+    let args_str = args.map_or("{}", String::as_str);
     serde_json::from_str(args_str).map_err(|e| McpError {
         code: ErrorCode::InvalidParams,
         message: format!("Failed to parse arguments: {e}"),
