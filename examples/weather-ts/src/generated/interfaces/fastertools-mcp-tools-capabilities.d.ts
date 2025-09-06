@@ -1,4 +1,4 @@
-/** @module Interface fastertools:mcp/tools-capabilities@0.4.0 **/
+/** @module Interface fastertools:mcp/tools-capabilities@0.4.1 **/
 /**
  * List available tools
  */

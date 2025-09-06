@@ -12,8 +12,8 @@ world weather-go {
     import wasi:io/streams@0.2.3;
     
     /// Export MCP core capabilities for auth configuration
-    export fastertools:mcp/core-capabilities@0.4.0;
+    export fastertools:mcp/core-capabilities@0.4.1;
     
     /// Export MCP tools capabilities
-    export fastertools:mcp/tools-capabilities@0.4.0;
+    export fastertools:mcp/tools-capabilities@0.4.1;
 }

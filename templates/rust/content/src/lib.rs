@@ -84,7 +84,7 @@ impl CoreGuest for Component {
     }
 
     fn get_auth_config() -> Option<ProviderAuthConfig> {
-        // Uncomment and configure to enable OAuth authentication:
+        // Uncomment and configure to enable OAuth authorization:
         // Some(ProviderAuthConfig {
         // expected_issuer: "https://your-auth-domain.example.com".to_string(),
         // expected_audiences: vec!["your-client-id".to_string()],

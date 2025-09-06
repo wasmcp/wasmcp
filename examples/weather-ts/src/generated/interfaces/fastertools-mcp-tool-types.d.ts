@@ -1,4 +1,4 @@
-/** @module Interface fastertools:mcp/tool-types@0.4.0 **/
+/** @module Interface fastertools:mcp/tool-types@0.4.1 **/
 export type ContentBlock = import('./fastertools-mcp-types.js').ContentBlock;
 export type JsonValue = import('./fastertools-mcp-types.js').JsonValue;
 export type JsonSchema = import('./fastertools-mcp-types.js').JsonSchema;

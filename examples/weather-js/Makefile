@@ -5,7 +5,7 @@ PROVIDER_WASM = weather-js_provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport
-TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.4.2
+TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.4.3
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'

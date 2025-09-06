@@ -81,7 +81,7 @@ export const coreCapabilities = {
   },
 
   getAuthConfig(): ProviderAuthConfig | undefined {
-    // Uncomment and configure to enable OAuth authentication:
+    // Uncomment and configure to enable OAuth authorization:
     // return {
     //   expectedIssuer: 'https://your-auth-domain.example.com',
     //   expectedAudiences: ['your-client-id'],

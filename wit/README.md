@@ -14,8 +14,8 @@ world weather-js {
     import wasi:http/outgoing-handler@0.2.3;
     
     // Export MCP capabilities
-    export fastertools:mcp/core-capabilities@0.4.0;
-    export fastertools:mcp/tools-capabilities@0.4.0;
+    export fastertools:mcp/core-capabilities@0.4.1;
+    export fastertools:mcp/tools-capabilities@0.4.1;
 }
 ```
 
@@ -23,16 +23,16 @@ world weather-js {
 
 The WIT package defines the following MCP capabilities:
 
-- **`core-capabilities`**: Session management (initialize, ping, shutdown) and optional authentication configuration
+- **`core-capabilities`**: Session management (initialize, ping, shutdown) and optional authorization configuration
 - **`tools-capabilities`**: Tool listing and execution
 - **`prompts-capabilities`**: Prompt templates (future)
 - **`resources-capabilities`**: Resource access and subscriptions (future)
 - **`completions-capabilities`**: Completion suggestions (future)
 - **`logging-capabilities`**: Structured logging (future)
 
-## Authentication
+## Authorization
 
-The `core-capabilities` interface includes optional OAuth 2.0 authentication support:
+The `core-capabilities` interface includes optional OAuth 2.0 authorization support:
 
 ```wit
 get-auth-config: func() -> option<provider-auth-config>
@@ -40,7 +40,7 @@ jwks-cache-get: func(jwks-uri: string) -> option<string>
 jwks-cache-set: func(jwks-uri: string, jwks: string)
 ```
 
-Providers can return authentication configuration to enable OAuth 2.0 protection with JWT validation, JWKS caching, and optional Rego policy enforcement.
+Providers can return authorization configuration to enable OAuth 2.0 protection with JWT validation, JWKS caching, and optional Rego policy enforcement.
 
 ## Component Architecture
 

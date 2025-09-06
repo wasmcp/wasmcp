@@ -17,7 +17,7 @@ This implementation uses WIT bindings directly as the SDK, providing transparent
 Components composed at build time:
 - Provider component (this code) - exports MCP capabilities
 - HTTP transport v0.4.1 (from registry) - handles JSON-RPC over HTTP
-- Optional OAuth 2.0 authentication
+- Optional OAuth 2.0 authorization
 
 ## Example Tools
 
@@ -42,7 +42,7 @@ This server implements three demonstration tools:
 src/
   index.ts       # MCP capabilities implementation
   generated/     # Generated TypeScript bindings (auto-generated)
-wit/             # WIT interface definitions (fastertools:mcp@0.4.0)
+wit/             # WIT interface definitions (fastertools:mcp@0.4.1)
 package.json     # Dependencies and scripts
 Makefile         # Build automation
 ```
@@ -118,13 +118,13 @@ make test-weather    # Test weather tool
 make test-multi      # Test concurrent fetching
 ```
 
-## Authentication
+## Authorization
 
-OAuth 2.0 authentication is optional and configured in the `getAuthConfig` method:
+OAuth 2.0 authorization is optional and configured in the `getAuthConfig` method:
 
 ```typescript
 getAuthConfig(): ProviderAuthConfig | undefined {
-  // Return undefined to disable authentication
+  // Return undefined to disable authorization
   return undefined;
   
   // Or enable OAuth 2.0 protection:

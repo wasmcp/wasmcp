@@ -1,4 +1,4 @@
-/** @module Interface fastertools:mcp/core-capabilities@0.4.0 **/
+/** @module Interface fastertools:mcp/core-capabilities@0.4.1 **/
 /**
  * Handle session initialization
  * Implementations should declare their capabilities here
@@ -18,7 +18,7 @@ export function handlePing(): void;
 export function handleShutdown(): void;
 /**
  * Get provider's auth configuration (optional - return none for no auth)
- * If auth configuration is provided, the transport will enforce authentication
+ * If auth configuration is provided, the transport will enforce authorization
  */
 export function getAuthConfig(): ProviderAuthConfig | undefined;
 /**

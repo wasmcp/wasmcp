@@ -17,7 +17,7 @@ This implementation uses WIT bindings directly as the SDK, providing transparent
 Components composed at build time:
 - Provider component (this code) - exports MCP capabilities
 - HTTP transport v0.4.1 (from registry) - handles JSON-RPC over HTTP
-- Optional OAuth 2.0 authentication
+- Optional OAuth 2.0 authorization
 
 ## Example Tools
 
@@ -40,7 +40,7 @@ This server implements three demonstration tools:
 
 ```
 src/lib.rs       # MCP capabilities implementation
-wit/             # WIT interface definitions (fastertools:mcp@0.4.0)
+wit/             # WIT interface definitions (fastertools:mcp@0.4.1)
 Cargo.toml       # Dependencies and component metadata
 Makefile         # Build automation
 ```
@@ -97,13 +97,13 @@ async fn handle_multi_weather(args: Option<String>) -> Result<ToolResult, McpErr
 }
 ```
 
-## Authentication
+## Authorization
 
-OAuth 2.0 authentication is optional and configured in the `get_auth_config` function:
+OAuth 2.0 authorization is optional and configured in the `get_auth_config` function:
 
 ```rust
 fn get_auth_config() -> Option<ProviderAuthConfig> {
-    // Return None to disable authentication
+    // Return None to disable authorization
     None
     
     // Or enable OAuth 2.0 protection:

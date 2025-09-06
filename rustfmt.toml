@@ -10,8 +10,8 @@ tab_spaces = 4
 newline_style = "Unix"
 
 # Import settings
-imports_granularity = "Module"
-group_imports = "StdExternalCrate"
+# imports_granularity = "Module"  # nightly only
+# group_imports = "StdExternalCrate"  # nightly only
 reorder_imports = true
 reorder_modules = true
 
@@ -20,6 +20,6 @@ use_field_init_shorthand = true
 use_try_shorthand = true
 
 # Comments
-wrap_comments = true
-comment_width = 100
-normalize_comments = true
+# wrap_comments = true  # nightly only
+# comment_width = 100  # nightly only
+# normalize_comments = true  # nightly only

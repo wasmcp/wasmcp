@@ -17,7 +17,7 @@ This implementation uses WIT bindings directly as the SDK, providing transparent
 Components composed at build time:
 - Provider component (this code) - exports MCP capabilities
 - HTTP transport v0.4.1 (from registry) - handles JSON-RPC over HTTP
-- Optional OAuth 2.0 authentication
+- Optional OAuth 2.0 authorization
 
 ## Example Tools
 
@@ -40,7 +40,7 @@ This server implements three demonstration tools:
 
 ```
 app.py           # MCP capabilities implementation
-wit/             # WIT interface definitions (fastertools:mcp@0.4.0)
+wit/             # WIT interface definitions (fastertools:mcp@0.4.1)
 wit_world/       # Generated Python bindings (auto-generated)
 requirements.txt # Python dependencies
 Makefile        # Build automation
@@ -108,13 +108,13 @@ make test-all    # Run all tests
 make test-echo   # Test echo tool
 ```
 
-## Authentication
+## Authorization
 
-OAuth 2.0 authentication is optional and configured in the `get_auth_config` method:
+OAuth 2.0 authorization is optional and configured in the `get_auth_config` method:
 
 ```python
 def get_auth_config(self) -> Optional[ProviderAuthConfig]:
-    # Return None to disable authentication
+    # Return None to disable authorization
     return None
     
     # Or enable OAuth 2.0 protection:

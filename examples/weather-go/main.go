@@ -146,7 +146,7 @@ func handleShutdown() cm.Result[mcptypes.McpError, struct{}, mcptypes.McpError] 
 }
 
 func getAuthConfig() cm.Option[authorizationtypes.ProviderAuthConfig] {
-	// Uncomment and configure to enable OAuth authentication:
+	// Uncomment and configure to enable OAuth authorization:
 	// return cm.Some(authorizationtypes.ProviderAuthConfig{
 	//     ExpectedIssuer: "https://your-auth-domain.example.com",
 	//     ExpectedAudiences: cm.ToList([]string{"your-client-id"}),
