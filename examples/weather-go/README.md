@@ -1,147 +1,158 @@
 # weather-go
 
-An MCP server written in Go
+MCP server implementation in Go demonstrating weather tools with concurrent HTTP capabilities.
 
 ## Quick Start
 
 ```bash
-make setup  # Install dependencies and verify environment
-make build  # Build the MCP server
-make serve  # Run the server (default: wasmtime on port 8080)
-```
-
-Test the server:
-```bash
-make test-all  # Run all tests
+make setup  # Install dependencies and configure tools
+make build  # Build and compose WASM components
+make serve  # Run server on port 8080
 ```
 
 ## Architecture
 
-This MCP server runs as a WebAssembly component, combining:
-- **Provider**: Your Go implementation of MCP tools (this code)
-- **Transport**: Pre-built HTTP server component from the registry
+This implementation uses WIT bindings directly as the SDK, providing transparent access to the MCP protocol. The approach eliminates abstraction layers, making the protocol implementation explicit and debuggable.
 
-The composition happens at build time, producing a single `mcp-http-server.wasm` that can run on any runtime that supports the Wasm component model.
+Components composed at build time:
+- Provider component (this code) - exports MCP capabilities
+- HTTP transport v0.4.1 (from registry) - handles JSON-RPC over HTTP
+- Optional OAuth 2.0 authentication
+
+## Example Tools
+
+This server implements three demonstration tools:
+
+- **`echo`** - Simple message echo for testing
+- **`get_weather`** - Fetch weather for a single location
+- **`multi_weather`** - Concurrent weather fetching for multiple cities (demonstrates wasihttp.GetConcurrently)
 
 ## Development
 
 ### Prerequisites
 
-- **Go 1.23+** and **TinyGo 0.34+** - Required for Wasm compilation
-- **wasm-tools** - Component model toolchain
-- **wit-bindgen-go** - Generate Go bindings from WIT interfaces
-
-Quick setup:
-```bash
-make setup  # Checks and installs all dependencies
-```
+- Go 1.23+
+- TinyGo 0.34+
+- wit-bindgen-go
+- wac
+- wkg
 
 ### Project Structure
 
 ```
-├── main.go          # Tool implementations
-├── helpers.go       # MCP SDK-like helper functions
-├── wasihttp/        # WASI HTTP client with concurrent support
-├── wit/             # WebAssembly Interface Types
-├── internal/        # Generated bindings (don't edit)
-└── Makefile         # Build automation
+main.go          # MCP capabilities implementation
+wit/             # WIT interface definitions (fastertools:mcp@0.4.0)
+internal/        # Generated Go bindings (auto-generated)
+Makefile         # Build automation
 ```
 
-### Build Pipeline
+### Implementing Tools
 
-The build process has three stages:
-
-```bash
-make bindgen         # Generate Go bindings from WIT
-make build-provider  # Compile Go to Wasm component
-make build          # Compose with transport
-```
-
-Or simply: `make build` (runs all steps)
-
-### Adding New Tools
-
-To add a new tool, register it in the `init()` function:
+Tools are handled directly in the `HandleCallTool` function:
 
 ```go
-AddTool(server, &Tool{
-    Name:        "my_tool",
-    Description: "Tool description",
-    InputSchema: Schema(`{"type": "object", ...}`),
-}, handleMyTool)
-```
+func (m *MCPProvider) HandleCallTool(request cm.CallToolRequest) cm.Result[cm.ToolResult, cm.McpError, cm.McpError] {
+    switch request.Name {
+    case "echo":
+        return handleEcho(request.Arguments)
+    case "get_weather":
+        return handleGetWeather(request.Arguments)
+    case "multi_weather":
+        return handleMultiWeather(request.Arguments)
+    default:
+        return cm.Err[cm.ToolResult, cm.McpError](cm.McpError{
+            Code:    "tool_not_found",
+            Message: fmt.Sprintf("Unknown tool: %s", request.Name),
+        })
+    }
+}
 
-Then implement the handler function:
-
-```go
-func handleMyTool(ctx context.Context, args MyToolArgs) (*CallToolResult, error) {
-    // Implementation
-    return TextResult("result"), nil
+func handleGetWeather(args cm.Option[string]) cm.Result[cm.ToolResult, cm.McpError, cm.McpError] {
+    var params WeatherParams
+    if argStr := args.Some(); argStr != nil {
+        json.Unmarshal([]byte(*argStr), &params)
+    }
+    
+    // Fetch weather data
+    weather := getWeatherForCity(params.Location)
+    return textResult(weather)
 }
 ```
 
-## Concurrency in TinyGo/Wasm
+## Concurrency
 
-TinyGo runs with `GOMAXPROCS=1` and uses cooperative scheduling, meaning goroutines execute sequentially on a single thread. Traditional Go concurrency patterns won't provide parallel execution.
+Go's WASM environment uses `wasihttp.GetConcurrently()` for concurrent HTTP operations. Example from the multi-weather implementation:
 
-For concurrent HTTP requests, this template includes `wasihttp.GetConcurrently()` which leverages WASI's native polling mechanism. Instead of blocking on each request sequentially, it:
-
-1. Starts all HTTP requests without waiting for responses
-2. Uses WASI's `poll.Poll()` to efficiently wait for any request to complete
-3. Processes responses as they arrive from the host
-
-This achieves true concurrent I/O by delegating to the WASI host's async capabilities, bypassing TinyGo's single-threaded limitation. See the `multi_weather` tool for an example.
+```go
+func handleMultiWeather(args cm.Option[string]) cm.Result[cm.ToolResult, cm.McpError, cm.McpError] {
+    var params MultiWeatherParams
+    if argStr := args.Some(); argStr != nil {
+        json.Unmarshal([]byte(*argStr), &params)
+    }
+    
+    // Build URLs for concurrent requests
+    urls := make([]string, len(params.Cities))
+    for i, city := range params.Cities {
+        urls[i] = buildGeocodingURL(city)
+    }
+    
+    // Concurrent HTTP requests
+    responses := wasihttp.GetConcurrently(urls)
+    
+    // Process responses
+    results := processWeatherResponses(responses)
+    return textResult(formatResults(results))
+}
+```
 
 ## Testing
-
-The Makefile includes comprehensive test targets:
 
 ```bash
 make test-all        # Run all tests
 make test-echo       # Test echo tool
-make test-weather    # Test weather tool  
-make test-multi      # Test concurrent weather fetching
+make test-weather    # Test weather tool
+make test-multi      # Test concurrent fetching
 ```
 
-Tests use `curl` to send JSON-RPC requests to the running server. Example:
+## Authentication
+
+OAuth 2.0 authentication is optional and configured in the `GetAuthConfig` method:
+
+```go
+func (m *MCPProvider) GetAuthConfig() cm.Option[cm.ProviderAuthConfig] {
+    // Return None to disable authentication
+    return cm.None[cm.ProviderAuthConfig]()
+    
+    // Or enable OAuth 2.0 protection:
+    // return cm.Some(cm.ProviderAuthConfig{
+    //     ExpectedIssuer: "https://your-domain.authkit.app",
+    //     ExpectedAudiences: []string{"client_id"},
+    //     JwksUri: "https://your-domain.authkit.app/oauth2/jwks",
+    //     Policy: cm.None[string](),      // Optional Rego policy
+    //     PolicyData: cm.None[string](),  // Optional policy data
+    // })
+}
+```
+
+The transport component handles:
+- JWT validation
+- JWKS fetching and caching
+- OAuth discovery endpoints
+- Rego policy evaluation (if configured)
+
+## Deployment
 
 ```bash
-# Manual test
-curl -X POST http://localhost:8080/rpc \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello"}},"id":1}'
+# Local development with Wasmtime
+wasmtime serve -Scli mcp-http-server.wasm
+
+# Spin framework
+spin up --from mcp-http-server.wasm
+
+# Deploy to Fermyon Cloud
+spin cloud deploy
 ```
 
-## Debugging
+## License
 
-### Common Issues
-
-**Build fails with "undefined: cm.LiftOption"**
-- TinyGo doesn't support all Go reflection features. Use `.Some()` to access Option values.
-
-**HTTP requests timeout or fail**
-- Ensure `http.DefaultTransport = &wasihttp.Transport{}` is set in `init()`
-- Check that URLs are accessible from your environment
-
-**Server doesn't start**
-- Verify port 8080 is available: `lsof -i :8080`
-- Check wasmtime is installed: `which wasmtime`
-
-### Inspecting the Component
-
-```bash
-make inspect  # Show component structure and exports
-```
-
-## Runtime Options
-
-The server can run on any WASI-compliant runtime:
-
-```bash
-# Wasmtime (default)
-wasmtime serve -Scli ./mcp-http-server.wasm
-
-# Spin
-spin up
-```
-
+Apache-2.0

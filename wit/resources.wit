@@ -1,7 +1,8 @@
-/// Resource discovery, reading, and subscription for MCP
+/// Resource types and capabilities for MCP
 
-interface resources {
-    use types.{mcp-error, base-metadata, annotations, meta-fields, cursor, resource-contents, progress-token, resource-template};
+/// Type definitions for resources
+interface resource-types {
+    use types.{base-metadata, annotations, meta-fields, cursor, resource-contents, progress-token, resource-template};
 
     /// A resource that can be read by the client
     record mcp-resource {
@@ -94,7 +95,27 @@ interface resources {
         /// Extension metadata
         meta: option<meta-fields>,
     }
+}
 
-    // Note: Resource operations are defined in the resource-handler interface
-    // This interface only provides type definitions
+/// Resource capabilities - implement this to provide resources
+interface resources-capabilities {
+    use types.{mcp-error};
+    use resource-types.{list-resources-request, list-resources-response, list-templates-request, 
+                        list-templates-response, read-resource-request, read-resource-response,
+                        subscribe-request, unsubscribe-request};
+    
+    /// List available resources
+    handle-list-resources: func(request: list-resources-request) -> result<list-resources-response, mcp-error>;
+    
+    /// List resource templates
+    handle-list-resource-templates: func(request: list-templates-request) -> result<list-templates-response, mcp-error>;
+    
+    /// Read a specific resource
+    handle-read-resource: func(request: read-resource-request) -> result<read-resource-response, mcp-error>;
+    
+    /// Subscribe to resource changes
+    handle-subscribe-resource: func(request: subscribe-request) -> result<_, mcp-error>;
+    
+    /// Unsubscribe from resource changes
+    handle-unsubscribe-resource: func(request: unsubscribe-request) -> result<_, mcp-error>;
 }

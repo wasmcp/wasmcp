@@ -1,7 +1,8 @@
-/// Prompt template discovery and rendering for MCP
+/// Prompt types and capabilities for MCP
 
-interface prompts {
-    use types.{message-role, content-block, mcp-error, base-metadata, meta-fields, cursor, progress-token};
+/// Type definitions for prompts
+interface prompt-types {
+    use types.{message-role, content-block, base-metadata, meta-fields, cursor, progress-token};
 
     /// Argument definition for a prompt template
     record prompt-argument {
@@ -75,6 +76,16 @@ interface prompts {
         meta: option<meta-fields>,
     }
 
-    // Note: Prompt operations are defined in the prompt-handler interface
-    // This interface only provides type definitions
+}
+
+/// Prompt capabilities - implement this to provide prompts
+interface prompts-capabilities {
+    use types.{mcp-error};
+    use prompt-types.{list-prompts-request, list-prompts-response, get-prompt-request, get-prompt-response};
+    
+    /// List available prompts
+    handle-list-prompts: func(request: list-prompts-request) -> result<list-prompts-response, mcp-error>;
+    
+    /// Get a specific prompt
+    handle-get-prompt: func(request: get-prompt-request) -> result<get-prompt-response, mcp-error>;
 }

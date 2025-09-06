@@ -1,8 +1,9 @@
-/// Argument completion support for enhanced UX
+/// Argument completion types and capabilities for MCP
 /// Provides context-aware suggestions for tool arguments and prompts
 
-interface completion {
-    use types.{mcp-error, meta-fields};
+/// Type definitions for completion
+interface completion-types {
+    use types.{meta-fields};
 
     /// Request for completion suggestions
     record complete-request {
@@ -43,8 +44,13 @@ interface completion {
         /// Extension metadata
         meta: option<meta-fields>,
     }
+}
 
-    /// Get completion suggestions for arguments
-    /// Used to provide autocomplete and hints in user interfaces
-    complete: func(request: complete-request) -> result<complete-result, mcp-error>;
+/// Completion capabilities - implement this to provide autocompletion
+interface completion-capabilities {
+    use types.{mcp-error};
+    use completion-types.{complete-request, complete-result};
+    
+    /// Handle request for completion suggestions
+    handle-complete: func(request: complete-request) -> result<complete-result, mcp-error>;
 }

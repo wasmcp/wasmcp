@@ -1,11 +1,11 @@
 .PHONY: build build-auth test clean run run-auth help
 
 # Component paths
-PROVIDER_WASM = {{project-name | snake_case}}_provider.wasm
+PROVIDER_WASM = {{project-name}}_provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport
-TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.1.11
+TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.4.1
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -23,7 +23,7 @@ build: ## Build and compose everything into mcp-http-server.wasm (no auth)
 	@echo "Bundling JavaScript modules..."
 	@npm run bundle
 	@echo "Building provider component..."
-	@npx jco componentize bundled.js --wit wit --world-name {{project-name | kebab_case}} --out $(PROVIDER_WASM)
+	@npx jco componentize bundled.js --wit wit --world-name {{project-name}} --out $(PROVIDER_WASM)
 	@echo "Downloading transport from registry..."
 	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
 	@echo "Plugging provider into transport..."

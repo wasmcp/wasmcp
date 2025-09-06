@@ -33,8 +33,8 @@ impl WitMcpAdapter {
     }
     
     /// Convert WIT protocol version enum to actual protocol version string
-    fn convert_protocol_version(&self, version: crate::bindings::fastertools::mcp::session_types::ProtocolVersion) -> rmcp::model::ProtocolVersion {
-        use crate::bindings::fastertools::mcp::session_types::ProtocolVersion as WitVersion;
+    fn convert_protocol_version(&self, version: crate::bindings::fastertools::mcp::core_types::ProtocolVersion) -> rmcp::model::ProtocolVersion {
+        use crate::bindings::fastertools::mcp::core_types::ProtocolVersion as WitVersion;
         use rmcp::model::ProtocolVersion;
         
         match version {
@@ -44,7 +44,7 @@ impl WitMcpAdapter {
     }
     
     /// Convert WIT InitializeResponse to rmcp ServerInfo
-    pub fn convert_initialize_to_rmcp(&self, response: crate::bindings::fastertools::mcp::session_types::InitializeResponse) -> Result<rmcp::model::ServerInfo> {
+    pub fn convert_initialize_to_rmcp(&self, response: crate::bindings::fastertools::mcp::core_types::InitializeResponse) -> Result<rmcp::model::ServerInfo> {
         use rmcp::model::{ServerInfo, ServerCapabilities, Implementation};
         
         Ok(ServerInfo {
@@ -91,7 +91,7 @@ impl WitMcpAdapter {
         // Convert arguments Map directly to JSON string for WIT interface
         let args_str = arguments.map(|args| serde_json::to_string(&args).unwrap());
         
-        let request = crate::bindings::fastertools::mcp::tools::CallToolRequest {
+        let request = crate::bindings::fastertools::mcp::tool_types::CallToolRequest {
             name: name.to_string(),
             arguments: args_str,
             progress_token: None,
@@ -122,7 +122,7 @@ impl WitMcpAdapter {
     }
     
     /// Convert WIT ListToolsResponse to rmcp ListToolsResult
-    pub fn convert_list_tools_to_rmcp(&self, response: crate::bindings::fastertools::mcp::tools::ListToolsResponse) -> Result<ListToolsResult> {
+    pub fn convert_list_tools_to_rmcp(&self, response: crate::bindings::fastertools::mcp::tool_types::ListToolsResponse) -> Result<ListToolsResult> {
         let tools = response.tools
             .into_iter()
             .map(|t| {
@@ -156,7 +156,7 @@ impl WitMcpAdapter {
 #[cfg(feature = "resources")]
 impl WitMcpAdapter {
     /// Convert WIT ListResourcesResponse to rmcp ListResourcesResult
-    pub fn convert_list_resources_to_rmcp(&self, response: crate::bindings::fastertools::mcp::resources::ListResourcesResponse) -> Result<ListResourcesResult> {
+    pub fn convert_list_resources_to_rmcp(&self, response: crate::bindings::fastertools::mcp::resource_types::ListResourcesResponse) -> Result<ListResourcesResult> {
         let resources = response.resources
             .into_iter()
             .map(|r| {
@@ -177,7 +177,7 @@ impl WitMcpAdapter {
     }
     
     /// Convert WIT ReadResourceResponse to rmcp ReadResourceResult
-    pub fn convert_read_resource_to_rmcp(&self, response: crate::bindings::fastertools::mcp::resources::ReadResourceResponse) -> Result<ReadResourceResult> {
+    pub fn convert_read_resource_to_rmcp(&self, response: crate::bindings::fastertools::mcp::resource_types::ReadResourceResponse) -> Result<ReadResourceResult> {
         use crate::bindings::fastertools::mcp::types::ResourceContents as WitResourceContents;
         
         let contents = response.contents
@@ -210,7 +210,7 @@ impl WitMcpAdapter {
 #[cfg(feature = "prompts")]
 impl WitMcpAdapter {
     /// Convert WIT ListPromptsResponse to rmcp ListPromptsResult
-    pub fn convert_list_prompts_to_rmcp(&self, response: crate::bindings::fastertools::mcp::prompts::ListPromptsResponse) -> Result<ListPromptsResult> {
+    pub fn convert_list_prompts_to_rmcp(&self, response: crate::bindings::fastertools::mcp::prompt_types::ListPromptsResponse) -> Result<ListPromptsResult> {
         let prompts = response.prompts
             .into_iter()
             .map(|p| {
@@ -239,7 +239,7 @@ impl WitMcpAdapter {
     }
     
     /// Convert WIT GetPromptResponse to rmcp GetPromptResult
-    pub fn convert_get_prompt_to_rmcp(&self, response: crate::bindings::fastertools::mcp::prompts::GetPromptResponse) -> Result<GetPromptResult> {
+    pub fn convert_get_prompt_to_rmcp(&self, response: crate::bindings::fastertools::mcp::prompt_types::GetPromptResponse) -> Result<GetPromptResult> {
         use crate::bindings::fastertools::mcp::types::{MessageRole, ContentBlock};
         
         let messages = response.messages

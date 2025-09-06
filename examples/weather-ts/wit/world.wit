@@ -1,8 +1,8 @@
 package weather-ts:provider;
 
-/// MCP tools for An MCP server written in TypeScript
+/// MCP tools for weather-ts
 world weather-ts {
     import wasi:http/outgoing-handler@0.2.3;
-    export fastertools:mcp/core-capabilities@0.1.23;
-    export fastertools:mcp/tools-capabilities@0.1.23;
+    export fastertools:mcp/core-capabilities@0.4.0;
+    export fastertools:mcp/tools-capabilities@0.4.0;
 }

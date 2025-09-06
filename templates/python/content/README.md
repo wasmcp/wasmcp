@@ -5,23 +5,27 @@
 ## Quick Start
 
 ```bash
-make setup  # Install dependencies
-make build  # Build server (no auth)
-make serve  # Run on port 8080
-```
-
-With OAuth authentication:
-```bash
-make build-auth
-make serve-auth  # Configure JWT env vars first
+make setup  # Install dependencies and configure tools
+make build  # Build and compose WASM components
+make serve  # Run server on port 8080
 ```
 
 ## Architecture
 
-WebAssembly components composed at build time:
-- Provider component (this code)
-- HTTP transport (from registry)
-- Authorization (optional)
+This implementation uses WIT bindings directly as the SDK, providing transparent access to the MCP protocol. The approach eliminates abstraction layers, making the protocol implementation explicit and debuggable.
+
+Components composed at build time:
+- Provider component (this code) - exports MCP capabilities
+- HTTP transport v0.4.1 (from registry) - handles JSON-RPC over HTTP
+- Optional OAuth 2.0 authentication
+
+## Example Tools
+
+This server implements three demonstration tools:
+
+- **`echo`** - Simple message echo for testing
+- **`get_weather`** - Fetch weather for a single location
+- **`multi_weather`** - Concurrent weather fetching for multiple cities (demonstrates PollLoop async)
 
 ## Development
 
@@ -29,46 +33,72 @@ WebAssembly components composed at build time:
 
 - Python 3.10+
 - componentize-py
-- wasm-tools
 - wac
 - wkg
 
 ### Project Structure
 
 ```
-app.py       # Tool implementations
-helpers.py   # MCP SDK decorators
-wit/         # Interface definitions
+app.py           # MCP capabilities implementation
+wit/             # WIT interface definitions (fastertools:mcp@0.4.0)
+wit_world/       # Generated Python bindings (auto-generated)
+requirements.txt # Python dependencies
+Makefile        # Build automation
 ```
 
-### Adding Tools
+### Implementing Tools
 
-Use the decorator API:
+Tools are defined in the `TOOLS` dictionary and handled in `handle_call_tool`:
 
 ```python
-@mcp.tool
-def my_tool(param: str) -> str:
-    """Tool description."""
-    return f"Result: {param}"
-
-# Or with explicit configuration
-@mcp.tool(name="custom_name", description="Custom description")
-async def async_tool(data: dict) -> str:
-    """Process data asynchronously."""
-    result = await process_data(data)
-    return json.dumps(result)
+class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
+    TOOLS = {
+        "get_weather": {
+            "description": "Get current weather for a location",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City name to get weather for"
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    }
+    
+    def handle_call_tool(self, request: CallToolRequest) -> ToolResult:
+        if request.name == "get_weather":
+            arguments = json.loads(request.arguments or "{}")
+            location = arguments.get("location", "")
+            
+            # Fetch weather data
+            result = self._get_weather_for_city(location)
+            return self._text_result(result)
 ```
 
 ## Concurrency
 
-Use asyncio for concurrent operations:
+Python's WASM environment uses PollLoop for async operations. Example from the multi-weather implementation:
 
 ```python
-@mcp.tool
-async def multi_fetch(urls: List[str]) -> str:
-    tasks = [fetch_url(url) for url in urls]
-    results = await asyncio.gather(*tasks)
-    return json.dumps(results)
+def _handle_multi_weather(self, arguments: dict) -> str:
+    cities = arguments.get("cities", [])
+    
+    # PollLoop enables async operations in WASM
+    loop = PollLoop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(self._fetch_weather_concurrent(cities))
+    finally:
+        loop.close()
+
+async def _fetch_weather_concurrent(self, cities: List[str]) -> str:
+    # Concurrent HTTP requests
+    tasks = [self._fetch_weather_async(city) for city in cities]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    return self._format_results(results)
 ```
 
 ## Testing
@@ -78,31 +108,42 @@ make test-all    # Run all tests
 make test-echo   # Test echo tool
 ```
 
-## OAuth Authentication
+## Authentication
 
-Optional OAuth 2.0/JWT support:
+OAuth 2.0 authentication is optional and configured in the `get_auth_config` method:
 
-```bash
-export JWT_ISSUER="https://auth.example.com"
-export JWT_AUDIENCE="client_123"
-export JWT_JWKS_URI="https://auth.example.com/.well-known/jwks.json"
-make serve-auth
+```python
+def get_auth_config(self) -> Optional[ProviderAuthConfig]:
+    # Return None to disable authentication
+    return None
+    
+    # Or enable OAuth 2.0 protection:
+    # return ProviderAuthConfig(
+    #     expected_issuer="https://your-domain.authkit.app",
+    #     expected_audiences=["client_id"],
+    #     jwks_uri="https://your-domain.authkit.app/oauth2/jwks",
+    #     policy=None,      # Optional Rego policy string
+    #     policy_data=None  # Optional policy data JSON
+    # )
 ```
 
-Features:
-- JWT validation with JWKS
+The transport component handles:
+- JWT validation
+- JWKS fetching and caching
 - OAuth discovery endpoints
-- OPA/Rego policies
-- Works with AuthKit, Auth0, etc.
+- Rego policy evaluation (if configured)
 
-## Runtime Options
+## Deployment
 
 ```bash
-# Wasmtime
+# Local development with Wasmtime
 wasmtime serve -Scli mcp-http-server.wasm
 
-# Spin (no auth only)
-spin up
+# Spin framework
+spin up --from mcp-http-server.wasm
+
+# Deploy to Fermyon Cloud
+spin cloud deploy
 ```
 
 ## License

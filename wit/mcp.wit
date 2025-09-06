@@ -1,4 +1,4 @@
-package fastertools:mcp@0.1.23;
+package fastertools:mcp@0.4.0;
 
 /// World definitions for MCP transports and capabilities
 /// 
@@ -14,14 +14,14 @@ package fastertools:mcp@0.1.23;
 world tools-transport {
     // Core types always needed
     import types;
-    import session-types;
-    import notifications;
+    import core-types;
+    import notification-types;
     
     // Core capabilities for session management (includes optional auth config)
     import core-capabilities;
     
     // Tool-specific types and capabilities
-    import tools;
+    import tool-types;
     import tools-capabilities;
 }
 
@@ -36,16 +36,16 @@ world tools-provider {
 world tools-resources-transport {
     // Core types always needed
     import types;
-    import session-types;
-    import notifications;
+    import core-types;
+    import notification-types;
     
     // Core capabilities for session management (includes optional auth config)
     import core-capabilities;
     
     // Feature-specific types and capabilities
-    import tools;
+    import tool-types;
     import tools-capabilities;
-    import resources;
+    import resource-types;
     import resources-capabilities;
 }
 
@@ -60,18 +60,18 @@ world tools-resources-provider {
 world tools-resources-prompts-transport {
     // Core types always needed
     import types;
-    import session-types;
-    import notifications;
+    import core-types;
+    import notification-types;
     
     // Core capabilities for session management (includes optional auth config)
     import core-capabilities;
     
     // Feature-specific types and capabilities
-    import tools;
+    import tool-types;
     import tools-capabilities;
-    import resources;
+    import resource-types;
     import resources-capabilities;
-    import prompts;
+    import prompt-types;
     import prompts-capabilities;
 }
 
@@ -84,32 +84,31 @@ world tools-resources-prompts-provider {
 
 // === FULL CAPABILITIES ===
 
-/// Full transport with all capabilities
+/// Full transport with all server capabilities
 world full-transport {
     // Core types always needed
     import types;
-    import session-types;
-    import notifications;
+    import core-types;
+    import notification-types;
     
     // Core capabilities for session management (includes optional auth config)
     import core-capabilities;
     
-    // All feature-specific types
-    import tools;
-    import resources;
-    import prompts;
-    import sampling;
-    import elicitation;
-    import roots;
-    import completion;
+    // Server capability types
+    import tool-types;
+    import resource-types;
+    import prompt-types;
+    import completion-types;
     
-    // Import all capabilities
+    // Client capability types (for protocol marshaling only)
+    import sampling-types;
+    import elicitation-types;
+    import roots-types;
+    
+    // Import server capabilities
     import tools-capabilities;
     import resources-capabilities;
     import prompts-capabilities;
-    import sampling-capabilities;
-    import elicitation-capabilities;
-    import roots-capabilities;
     import completion-capabilities;
 }
 
@@ -118,42 +117,5 @@ world full-provider {
     export tools-capabilities;
     export resources-capabilities;
     export prompts-capabilities;
-    export sampling-capabilities;
-    export elicitation-capabilities;
-    export roots-capabilities;
     export completion-capabilities;
-}
-
-// === CLIENT WORLD ===
-
-/// World for MCP clients that consume transport capabilities
-world mcp-client {
-    /// Client exports these capabilities for transports to use
-    export sampling;
-    export elicitation;
-    export roots;
-    export completion;
-    
-    /// Client imports transport capabilities
-    import tools;
-    import resources;
-    import prompts;
-    
-    /// Client handles notifications
-    export notifications;
-}
-
-// === AUTHORIZATION WORLDS ===
-
-/// Authorization provider world
-world authorization-provider {
-    // Import types needed for authorization
-    import types;
-    
-    // Export all authorization interfaces
-    export authorization;
-    export jwt-validator;
-    export policy-engine;
-    export oauth-discovery;
-    export mcp-authorization;
 }

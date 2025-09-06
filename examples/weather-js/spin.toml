@@ -3,7 +3,7 @@ spin_manifest_version = 2
 [application]
 name = "weather-js"
 version = "0.1.0"
-authors = ["Ian McDonald <bowlofarugula@gmail.com>"]
+authors = ["bowlofarugula <bowlofarugula@gmail.com>"]
 description = "An MCP server written in JavaScript"
 
 [[trigger.http]]
@@ -24,8 +24,7 @@ source = "mcp-http-server.wasm"
 # Weather API hosts for example tools (remove if not needed)
 allowed_outbound_hosts = [
     "https://geocoding-api.open-meteo.com",
-    "https://api.open-meteo.com",
-    "https://divine-lion-50-staging.authkit.app"
+    "https://api.open-meteo.com"
 ]
 key_value_stores = ["default"]
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,70 +9,26 @@ import (
 	"strings"
 
 	"go.bytecodealliance.org/cm"
+
+	// Import the generated WIT bindings directly - these are our SDK
 	authorizationtypes "weather_go/internal/fastertools/mcp/authorization-types"
 	corecapabilities "weather_go/internal/fastertools/mcp/core-capabilities"
+	coretypes "weather_go/internal/fastertools/mcp/core-types"
+	tooltypes "weather_go/internal/fastertools/mcp/tool-types"
+	toolscapabilities "weather_go/internal/fastertools/mcp/tools-capabilities"
+	mcptypes "weather_go/internal/fastertools/mcp/types"
 	"weather_go/wasihttp"
 )
 
-// EchoArgs contains arguments for the echo tool
-type EchoArgs struct {
-	Message string `json:"message"`
-}
-
-// WeatherArgs contains arguments for the weather tool
-type WeatherArgs struct {
-	Location string `json:"location"`
-}
-
-// MultiWeatherArgs contains arguments for the multi-weather tool
-type MultiWeatherArgs struct {
-	Cities []string `json:"cities"`
-}
-
-// ==============================================================================
-// OAuth 2.0 authentication configuration.
-//
-// To enable authentication:
-// 1. Uncomment the authConfig() function below
-// 2. Replace the placeholder values with your actual OAuth provider details
-// 3. Run `make build` to rebuild with authentication enabled
-//
-// To disable authentication:
-// - Comment out the authConfig() function or have it return None
-// ==============================================================================
-
-// authConfig returns the OAuth 2.0 configuration for this provider
-func authConfig() cm.Option[authorizationtypes.ProviderAuthConfig] {
-	// Uncomment and configure the lines below to enable OAuth 2.0 authentication:
-	/*
-	return cm.Some(authorizationtypes.ProviderAuthConfig{
-		ExpectedIssuer: "https://your-auth-domain.example.com",
-		ExpectedAudiences: cm.ToList([]string{"your-client-id"}),
-		JwksURI: "https://your-auth-domain.example.com/oauth2/jwks",
-		Policy: cm.None[string](),     // Optional: Add Rego policy as a string for additional authorization rules
-		PolicyData: cm.None[string](), // Optional: Add policy data as JSON string
-	})
-	*/
-	return cm.None[authorizationtypes.ProviderAuthConfig]()
-}
-
-func init() {
-	// Set up the auth configuration export
-	corecapabilities.Exports.GetAuthConfig = authConfig
-	// Configure WASI HTTP transport
-	http.DefaultTransport = &wasihttp.Transport{}
-
-	// Create the server
-	server := NewServer(
-		&Implementation{Name: "weather_go", Version: "v1.0.0"},
-		nil,
-	)
-
-	// Register echo tool
-	AddTool(server, &Tool{
-		Name:        "echo",
-		Description: "Echo a message back to the user",
-		InputSchema: Schema(`{
+// Tool definitions as a simple map
+var tools = map[string]struct {
+	description string
+	schema      string
+	handler     func(json.RawMessage) (string, error)
+}{
+	"echo": {
+		description: "Echo a message back to the user",
+		schema: `{
 			"type": "object",
 			"properties": {
 				"message": {
@@ -82,14 +37,12 @@ func init() {
 				}
 			},
 			"required": ["message"]
-		}`),
-	}, handleEcho)
-
-	// Register weather tool
-	AddTool(server, &Tool{
-		Name:        "get_weather",
-		Description: "Get current weather for a location",
-		InputSchema: Schema(`{
+		}`,
+		handler: handleEcho,
+	},
+	"get_weather": {
+		description: "Get current weather for a location",
+		schema: `{
 			"type": "object",
 			"properties": {
 				"location": {
@@ -98,285 +51,425 @@ func init() {
 				}
 			},
 			"required": ["location"]
-		}`),
-	}, handleWeather)
-
-	// Register multi-weather tool
-	AddTool(server, &Tool{
-		Name:        "multi_weather",
-		Description: "Get weather for multiple cities concurrently",
-		InputSchema: Schema(`{
+		}`,
+		handler: handleGetWeather,
+	},
+	"multi_weather": {
+		description: "Get weather for multiple cities concurrently",
+		schema: `{
 			"type": "object",
 			"properties": {
 				"cities": {
 					"type": "array",
-					"description": "List of cities to get weather for",
-					"items": {
-						"type": "string"
-					},
-					"minItems": 1,
-					"maxItems": 5
+					"items": {"type": "string"},
+					"description": "List of city names (max 5)"
 				}
 			},
 			"required": ["cities"]
-		}`),
-	}, handleMultiWeather)
-
-	// Run the server
-	server.Run(context.Background(), nil)
+		}`,
+		handler: handleMultiWeather,
+	},
 }
 
-// Tool handlers as package-level functions
-func handleEcho(ctx context.Context, args EchoArgs) (*CallToolResult, error) {
-	return TextResult(fmt.Sprintf("Echo: %s", args.Message)), nil
+func init() {
+	// Configure WASI HTTP transport
+	http.DefaultTransport = &wasihttp.Transport{}
+
+	// -------------------------------------------------------------------------
+	// Core Capabilities (session management)
+	// -------------------------------------------------------------------------
+
+	corecapabilities.Exports.HandleInitialize = handleInitialize
+	corecapabilities.Exports.HandleInitialized = handleInitialized
+	corecapabilities.Exports.HandlePing = handlePing
+	corecapabilities.Exports.HandleShutdown = handleShutdown
+	corecapabilities.Exports.GetAuthConfig = getAuthConfig
+	corecapabilities.Exports.JwksCacheGet = jwksCacheGet
+	corecapabilities.Exports.JwksCacheSet = jwksCacheSet
+
+	// -------------------------------------------------------------------------
+	// Tools Capabilities
+	// -------------------------------------------------------------------------
+
+	toolscapabilities.Exports.HandleListTools = handleListTools
+	toolscapabilities.Exports.HandleCallTool = handleCallTool
 }
 
-func handleWeather(ctx context.Context, args WeatherArgs) (*CallToolResult, error) {
-	result, err := getWeatherForCity(args.Location)
+// -------------------------------------------------------------------------
+// Core Capabilities Implementation
+// -------------------------------------------------------------------------
+
+func handleInitialize(request coretypes.InitializeRequest) cm.Result[corecapabilities.InitializeResponseShape, corecapabilities.InitializeResponse, mcptypes.McpError] {
+	response := coretypes.InitializeResponse{
+		ProtocolVersion: coretypes.ProtocolVersionV20250618,
+		Capabilities: coretypes.ServerCapabilities{
+			Tools: cm.Some(coretypes.ToolsCapability{
+				ListChanged: cm.None[bool](),
+			}),
+			Experimental: cm.None[coretypes.MetaFields](),
+			Logging:      cm.None[bool](),
+			Completions:  cm.None[bool](),
+			Prompts:      cm.None[coretypes.PromptsCapability](),
+			Resources:    cm.None[coretypes.ResourcesCapability](),
+		},
+		ServerInfo: coretypes.ImplementationInfo{
+			Name:    "weather-go",
+			Version: "0.1.0",
+			Title:   cm.Some("weather-go Server"),
+		},
+		Instructions: cm.Some("A Go MCP server providing weather tools"),
+		Meta:         cm.None[mcptypes.MetaFields](),
+	}
+
+	// Create a result with the response
+	var result cm.Result[corecapabilities.InitializeResponseShape, corecapabilities.InitializeResponse, mcptypes.McpError]
+	result.SetOK(response)
+	return result
+}
+
+func handleInitialized() cm.Result[mcptypes.McpError, struct{}, mcptypes.McpError] {
+	var result cm.Result[mcptypes.McpError, struct{}, mcptypes.McpError]
+	result.SetOK(struct{}{})
+	return result
+}
+
+func handlePing() cm.Result[mcptypes.McpError, struct{}, mcptypes.McpError] {
+	var result cm.Result[mcptypes.McpError, struct{}, mcptypes.McpError]
+	result.SetOK(struct{}{})
+	return result
+}
+
+func handleShutdown() cm.Result[mcptypes.McpError, struct{}, mcptypes.McpError] {
+	var result cm.Result[mcptypes.McpError, struct{}, mcptypes.McpError]
+	result.SetOK(struct{}{})
+	return result
+}
+
+func getAuthConfig() cm.Option[authorizationtypes.ProviderAuthConfig] {
+	// Uncomment and configure to enable OAuth authentication:
+	// return cm.Some(authorizationtypes.ProviderAuthConfig{
+	//     ExpectedIssuer: "https://your-auth-domain.example.com",
+	//     ExpectedAudiences: cm.ToList([]string{"your-client-id"}),
+	//     JwksURI: "https://your-auth-domain.example.com/oauth2/jwks",
+	//     Policy: cm.None[string](),
+	//     PolicyData: cm.None[string](),
+	// })
+	return cm.None[authorizationtypes.ProviderAuthConfig]()
+}
+
+func jwksCacheGet(jwksURI string) cm.Option[string] {
+	// Optional: Implement JWKS caching
+	return cm.None[string]()
+}
+
+func jwksCacheSet(jwksURI string, jwks string) {
+	// Optional: Implement JWKS caching
+}
+
+// -------------------------------------------------------------------------
+// Tools Capabilities Implementation
+// -------------------------------------------------------------------------
+
+func handleListTools(request tooltypes.ListToolsRequest) cm.Result[toolscapabilities.ListToolsResponseShape, toolscapabilities.ListToolsResponse, mcptypes.McpError] {
+	var toolsList []tooltypes.Tool
+
+	for name, def := range tools {
+		tool := tooltypes.Tool{
+			Base: mcptypes.BaseMetadata{
+				Name:  name,
+				Title: cm.Some(name),
+			},
+			Description:  cm.Some(def.description),
+			InputSchema:  mcptypes.JSONSchema(def.schema),
+			OutputSchema: cm.None[mcptypes.JSONSchema](),
+			Annotations:  cm.None[tooltypes.ToolAnnotations](),
+			Meta:         cm.None[mcptypes.MetaFields](),
+		}
+		toolsList = append(toolsList, tool)
+	}
+
+	response := tooltypes.ListToolsResponse{
+		Tools:      cm.ToList(toolsList),
+		NextCursor: cm.None[mcptypes.Cursor](),
+		Meta:       cm.None[mcptypes.MetaFields](),
+	}
+
+	var result cm.Result[toolscapabilities.ListToolsResponseShape, toolscapabilities.ListToolsResponse, mcptypes.McpError]
+	result.SetOK(response)
+	return result
+}
+
+func handleCallTool(request tooltypes.CallToolRequest) cm.Result[toolscapabilities.ToolResultShape, toolscapabilities.ToolResult, mcptypes.McpError] {
+	tool, exists := tools[request.Name]
+	if !exists {
+		return errorResult(fmt.Sprintf("Unknown tool: %s", request.Name))
+	}
+
+	// Parse arguments
+	var args json.RawMessage
+	if !request.Arguments.None() {
+		argStr := *request.Arguments.Some()
+		args = json.RawMessage(argStr)
+	}
+
+	// Execute tool
+	result, err := tool.handler(args)
 	if err != nil {
-		return ErrorResult(fmt.Sprintf("Failed to get weather: %v", err)), nil
+		return errorResult(fmt.Sprintf("Tool execution failed: %v", err))
 	}
-	return TextResult(result), nil
+
+	return textResult(result)
 }
 
-func handleMultiWeather(ctx context.Context, args MultiWeatherArgs) (*CallToolResult, error) {
-	if len(args.Cities) == 0 {
-		return ErrorResult("No cities provided"), nil
+// -------------------------------------------------------------------------
+// Tool Implementations
+// -------------------------------------------------------------------------
+
+func handleEcho(args json.RawMessage) (string, error) {
+	var params struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return "", fmt.Errorf("invalid arguments: %v", err)
+	}
+	return fmt.Sprintf("Echo: %s", params.Message), nil
+}
+
+func handleGetWeather(args json.RawMessage) (string, error) {
+	var params struct {
+		Location string `json:"location"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return "", fmt.Errorf("invalid arguments: %v", err)
 	}
 
-	if len(args.Cities) > 5 {
-		return ErrorResult("Maximum 5 cities allowed"), nil
+	weatherData, err := fetchWeather(params.Location)
+	if err != nil {
+		return "", err
 	}
 
-	// Fetch weather data concurrently using WASI polling
-	results := fetchMultiWeatherConcurrent(args.Cities)
+	return formatWeather(weatherData), nil
+}
 
-	// Format results
+func handleMultiWeather(args json.RawMessage) (string, error) {
+	var params struct {
+		Cities []string `json:"cities"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return "", fmt.Errorf("invalid arguments: %v", err)
+	}
+
+	if len(params.Cities) == 0 {
+		return "No cities provided", nil
+	}
+	if len(params.Cities) > 5 {
+		return "Maximum 5 cities allowed", nil
+	}
+
+	// Build URLs for geocoding requests
+	geoURLs := make([]string, len(params.Cities))
+	for i, city := range params.Cities {
+		geoURLs[i] = fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", url.QueryEscape(city))
+	}
+
+	// Fetch geocoding data concurrently using wasihttp
+	geoResponses := wasihttp.GetConcurrently(geoURLs)
+
+	// Process geocoding results and build weather URLs
+	weatherURLs := make([]string, 0, len(params.Cities))
+	type locationInfo struct {
+		city    string
+		name    string
+		country string
+	}
+	locations := make([]locationInfo, 0, len(params.Cities))
+	var errors []string
+
+	for i, resp := range geoResponses {
+		city := params.Cities[i]
+
+		if resp.Error != nil {
+			errors = append(errors, fmt.Sprintf("Error fetching location for %s: %v", city, resp.Error))
+			continue
+		}
+
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Error reading response for %s: %v", city, err))
+			continue
+		}
+
+		var geoData map[string]interface{}
+		if err := json.Unmarshal(body, &geoData); err != nil {
+			errors = append(errors, fmt.Sprintf("Error parsing geocoding for %s: %v", city, err))
+			continue
+		}
+
+		results, ok := geoData["results"].([]interface{})
+		if !ok || len(results) == 0 {
+			errors = append(errors, fmt.Sprintf("Location '%s' not found", city))
+			continue
+		}
+
+		location := results[0].(map[string]interface{})
+		lat := location["latitude"].(float64)
+		lon := location["longitude"].(float64)
+
+		// Extract location name and country
+		name, _ := location["name"].(string)
+		country, _ := location["country"].(string)
+
+		weatherURL := fmt.Sprintf(
+			"https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
+			lat, lon,
+		)
+		weatherURLs = append(weatherURLs, weatherURL)
+		locations = append(locations, locationInfo{
+			city:    city,
+			name:    name,
+			country: country,
+		})
+	}
+
+	// Fetch weather data concurrently
 	var output strings.Builder
-	output.WriteString("=== Concurrent Weather Results ===\n\n")
+	output.WriteString("=== Weather Results ===\n\n")
 
-	for _, result := range results {
-		if result.err != nil {
-			output.WriteString(fmt.Sprintf("Error fetching weather for %s: %v\n\n", result.city, result.err))
-		} else {
-			output.WriteString(result.weather)
+	if len(weatherURLs) > 0 {
+		weatherResponses := wasihttp.GetConcurrently(weatherURLs)
+
+		for i, resp := range weatherResponses {
+			loc := locations[i]
+
+			if resp.Error != nil {
+				fmt.Fprintf(&output, "Error fetching weather for %s: %v\n\n", loc.city, resp.Error)
+				continue
+			}
+
+			defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				fmt.Fprintf(&output, "Error reading weather for %s: %v\n\n", loc.city, err)
+				continue
+			}
+
+			var weatherData map[string]interface{}
+			if err := json.Unmarshal(body, &weatherData); err != nil {
+				fmt.Fprintf(&output, "Error parsing weather for %s: %v\n\n", loc.city, err)
+				continue
+			}
+
+			// Add location info and current weather data for formatting
+			current, _ := weatherData["current"].(map[string]interface{})
+			formattedData := map[string]interface{}{
+				"name":                 loc.name,
+				"country":              loc.country,
+				"temperature":          current["temperature_2m"],
+				"apparent_temperature": current["apparent_temperature"],
+				"humidity":             current["relative_humidity_2m"],
+				"wind_speed":           current["wind_speed_10m"],
+				"weather_code":         current["weather_code"],
+			}
+
+			output.WriteString(formatWeather(formattedData))
 			output.WriteString("\n\n")
 		}
 	}
 
-	output.WriteString("=== All requests completed concurrently ===")
+	// Add any errors from geocoding
+	for _, errMsg := range errors {
+		output.WriteString(errMsg)
+		output.WriteString("\n\n")
+	}
 
-	return TextResult(output.String()), nil
+	output.WriteString("=== All requests completed ===")
+	return output.String(), nil
 }
 
-func getWeatherForCity(location string) (string, error) {
+// -------------------------------------------------------------------------
+// Weather API Functions
+// -------------------------------------------------------------------------
+
+func fetchWeather(city string) (map[string]interface{}, error) {
 	// Geocode the location
-	geocodingURL := fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1",
-		url.QueryEscape(location))
+	geoURL := fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", url.QueryEscape(city))
 
-	resp, err := http.Get(geocodingURL)
+	geoResp, err := http.Get(geoURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to geocode location: %w", err)
+		return nil, fmt.Errorf("geocoding request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer geoResp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	geoBody, err := io.ReadAll(geoResp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
+		return nil, fmt.Errorf("reading geocoding response: %v", err)
 	}
 
-	var geocodingData struct {
-		Results []struct {
-			Latitude  float64 `json:"latitude"`
-			Longitude float64 `json:"longitude"`
-			Name      string  `json:"name"`
-			Country   string  `json:"country"`
-		} `json:"results"`
+	var geoData map[string]interface{}
+	if err := json.Unmarshal(geoBody, &geoData); err != nil {
+		return nil, fmt.Errorf("parsing geocoding response: %v", err)
 	}
 
-	if err := json.Unmarshal(body, &geocodingData); err != nil {
-		return "", fmt.Errorf("failed to parse geocoding response: %w", err)
+	results, ok := geoData["results"].([]interface{})
+	if !ok || len(results) == 0 {
+		return nil, fmt.Errorf("location '%s' not found", city)
 	}
 
-	if len(geocodingData.Results) == 0 {
-		return "", fmt.Errorf("location '%s' not found", location)
-	}
+	location := results[0].(map[string]interface{})
+	lat := location["latitude"].(float64)
+	lon := location["longitude"].(float64)
 
-	loc := geocodingData.Results[0]
-
-	// Fetch weather data
-	weatherURL := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
-		loc.Latitude, loc.Longitude)
+	// Get weather data
+	weatherURL := fmt.Sprintf(
+		"https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
+		lat, lon,
+	)
 
 	weatherResp, err := http.Get(weatherURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch weather: %w", err)
+		return nil, fmt.Errorf("weather request failed: %v", err)
 	}
 	defer weatherResp.Body.Close()
 
 	weatherBody, err := io.ReadAll(weatherResp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read weather response: %w", err)
+		return nil, fmt.Errorf("reading weather response: %v", err)
 	}
 
-	var weatherData struct {
-		Current struct {
-			Temperature         float64 `json:"temperature_2m"`
-			ApparentTemperature float64 `json:"apparent_temperature"`
-			Humidity            int     `json:"relative_humidity_2m"`
-			WindSpeed           float64 `json:"wind_speed_10m"`
-			WeatherCode         int     `json:"weather_code"`
-		} `json:"current"`
-	}
-
+	var weatherData map[string]interface{}
 	if err := json.Unmarshal(weatherBody, &weatherData); err != nil {
-		return "", fmt.Errorf("failed to parse weather response: %w", err)
+		return nil, fmt.Errorf("parsing weather response: %v", err)
 	}
 
-	conditions := getWeatherCondition(weatherData.Current.WeatherCode)
+	current := weatherData["current"].(map[string]interface{})
 
-	result := fmt.Sprintf(`Weather in %s, %s:
-Temperature: %.1f°C (feels like %.1f°C)
-Conditions: %s
-Humidity: %d%%
-Wind: %.1f km/h`,
-		loc.Name,
-		loc.Country,
-		weatherData.Current.Temperature,
-		weatherData.Current.ApparentTemperature,
-		conditions,
-		weatherData.Current.Humidity,
-		weatherData.Current.WindSpeed)
-
-	return result, nil
+	return map[string]interface{}{
+		"name":                 location["name"],
+		"country":              location["country"],
+		"temperature":          current["temperature_2m"],
+		"apparent_temperature": current["apparent_temperature"],
+		"humidity":             current["relative_humidity_2m"],
+		"wind_speed":           current["wind_speed_10m"],
+		"weather_code":         current["weather_code"],
+	}, nil
 }
 
-type weatherResult struct {
-	city    string
-	weather string
-	err     error
+func formatWeather(data map[string]interface{}) string {
+	code := int(data["weather_code"].(float64))
+	condition := weatherCondition(code)
+
+	return fmt.Sprintf(
+		"Weather in %s, %s:\nTemperature: %.1f°C (feels like %.1f°C)\nConditions: %s\nHumidity: %.0f%%\nWind: %.1f km/h",
+		data["name"], data["country"],
+		data["temperature"], data["apparent_temperature"],
+		condition,
+		data["humidity"],
+		data["wind_speed"],
+	)
 }
 
-func fetchMultiWeatherConcurrent(cities []string) []weatherResult {
-	// Build URLs for all cities (geocoding first)
-	geocodeURLs := make([]string, len(cities))
-	for i, city := range cities {
-		geocodeURLs[i] = fmt.Sprintf("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1",
-			url.QueryEscape(city))
-	}
-
-	// Fetch all geocoding results concurrently using WASI polling
-	client := wasihttp.DefaultClient
-	geocodeResponses := client.GetConcurrently(geocodeURLs)
-
-	// Process geocoding results and build weather URLs
-	weatherURLs := make([]string, 0, len(cities))
-	cityIndexMap := make(map[int]int) // maps weather request index to city index
-	results := make([]weatherResult, len(cities))
-
-	for i, resp := range geocodeResponses {
-		results[i].city = cities[i]
-
-		if resp.Error != nil {
-			results[i].err = fmt.Errorf("geocoding failed: %v", resp.Error)
-			continue
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			results[i].err = fmt.Errorf("reading geocode response: %v", err)
-			continue
-		}
-
-		var geocodingData struct {
-			Results []struct {
-				Latitude  float64 `json:"latitude"`
-				Longitude float64 `json:"longitude"`
-				Name      string  `json:"name"`
-				Country   string  `json:"country"`
-			} `json:"results"`
-		}
-
-		if err := json.Unmarshal(body, &geocodingData); err != nil {
-			results[i].err = fmt.Errorf("parsing geocode response: %v", err)
-			continue
-		}
-
-		if len(geocodingData.Results) == 0 {
-			results[i].err = fmt.Errorf("location not found")
-			continue
-		}
-
-		loc := geocodingData.Results[0]
-
-		// Build weather URL
-		weatherURL := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
-			loc.Latitude, loc.Longitude)
-		cityIndexMap[len(weatherURLs)] = i
-		weatherURLs = append(weatherURLs, weatherURL)
-
-		// Store location info for later formatting
-		results[i].weather = fmt.Sprintf("%s, %s", loc.Name, loc.Country)
-	}
-
-	// Fetch all weather data concurrently
-	if len(weatherURLs) > 0 {
-		weatherResponses := client.GetConcurrently(weatherURLs)
-
-		for weatherIdx, resp := range weatherResponses {
-			cityIdx := cityIndexMap[weatherIdx]
-
-			if resp.Error != nil {
-				results[cityIdx].err = fmt.Errorf("weather fetch failed: %v", resp.Error)
-				continue
-			}
-
-			body, err := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			if err != nil {
-				results[cityIdx].err = fmt.Errorf("reading weather response: %v", err)
-				continue
-			}
-
-			var weatherData struct {
-				Current struct {
-					Temperature         float64 `json:"temperature_2m"`
-					ApparentTemperature float64 `json:"apparent_temperature"`
-					Humidity            int     `json:"relative_humidity_2m"`
-					WindSpeed           float64 `json:"wind_speed_10m"`
-					WeatherCode         int     `json:"weather_code"`
-				} `json:"current"`
-			}
-
-			if err := json.Unmarshal(body, &weatherData); err != nil {
-				results[cityIdx].err = fmt.Errorf("parsing weather response: %v", err)
-				continue
-			}
-
-			conditions := getWeatherCondition(weatherData.Current.WeatherCode)
-
-			// Get location name from previous storage
-			locName := results[cityIdx].weather
-
-			results[cityIdx].weather = fmt.Sprintf(`Weather in %s:
-Temperature: %.1f°C (feels like %.1f°C)
-Conditions: %s
-Humidity: %d%%
-Wind: %.1f km/h`,
-				locName,
-				weatherData.Current.Temperature,
-				weatherData.Current.ApparentTemperature,
-				conditions,
-				weatherData.Current.Humidity,
-				weatherData.Current.WindSpeed)
-		}
-	}
-
-	return results
-}
-
-func getWeatherCondition(code int) string {
+func weatherCondition(code int) string {
 	conditions := map[int]string{
 		0:  "Clear sky",
 		1:  "Mainly clear",
@@ -387,17 +480,12 @@ func getWeatherCondition(code int) string {
 		51: "Light drizzle",
 		53: "Moderate drizzle",
 		55: "Dense drizzle",
-		56: "Light freezing drizzle",
-		57: "Dense freezing drizzle",
 		61: "Slight rain",
 		63: "Moderate rain",
 		65: "Heavy rain",
-		66: "Light freezing rain",
-		67: "Heavy freezing rain",
 		71: "Slight snow fall",
 		73: "Moderate snow fall",
 		75: "Heavy snow fall",
-		77: "Snow grains",
 		80: "Slight rain showers",
 		81: "Moderate rain showers",
 		82: "Violent rain showers",
@@ -414,5 +502,51 @@ func getWeatherCondition(code int) string {
 	return "Unknown"
 }
 
-// main is required for TinyGo/Wasm but remains empty
-func main() {}
+// -------------------------------------------------------------------------
+// Helper Functions for Creating MCP Results
+// -------------------------------------------------------------------------
+
+func textResult(text string) cm.Result[toolscapabilities.ToolResultShape, toolscapabilities.ToolResult, mcptypes.McpError] {
+	content := mcptypes.ContentBlockText(mcptypes.TextContent{
+		Text:        text,
+		Annotations: cm.None[mcptypes.Annotations](),
+		Meta:        cm.None[mcptypes.MetaFields](),
+	})
+
+	toolResult := tooltypes.ToolResult{
+		Content:           cm.ToList([]mcptypes.ContentBlock{content}),
+		StructuredContent: cm.None[mcptypes.JSONValue](),
+		IsError:           cm.Some(false),
+		Meta:              cm.None[mcptypes.MetaFields](),
+	}
+
+	var result cm.Result[toolscapabilities.ToolResultShape, toolscapabilities.ToolResult, mcptypes.McpError]
+	result.SetOK(toolResult)
+	return result
+}
+
+func errorResult(message string) cm.Result[toolscapabilities.ToolResultShape, toolscapabilities.ToolResult, mcptypes.McpError] {
+	content := mcptypes.ContentBlockText(mcptypes.TextContent{
+		Text:        message,
+		Annotations: cm.None[mcptypes.Annotations](),
+		Meta:        cm.None[mcptypes.MetaFields](),
+	})
+
+	toolResult := tooltypes.ToolResult{
+		Content:           cm.ToList([]mcptypes.ContentBlock{content}),
+		StructuredContent: cm.None[mcptypes.JSONValue](),
+		IsError:           cm.Some(true),
+		Meta:              cm.None[mcptypes.MetaFields](),
+	}
+
+	var result cm.Result[toolscapabilities.ToolResultShape, toolscapabilities.ToolResult, mcptypes.McpError]
+	result.SetOK(toolResult)
+	return result
+}
+
+// Required main function for WebAssembly
+func main() {
+	// WebAssembly components run until the host terminates them
+	// The exports are already initialized in init()
+	select {}
+}

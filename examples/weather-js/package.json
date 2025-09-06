@@ -5,9 +5,9 @@
   "description": "An MCP server written in JavaScript",
   "scripts": {
     "bundle": "esbuild index.js --bundle --format=esm --platform=neutral --outfile=bundled.js",
-    "build": "npm run bundle && jco componentize bundled.js --wit wit --world-name tools-handler --out handler.wasm",
+    "build": "npm run bundle && jco componentize bundled.js --wit wit --world-name weather-js --out weather-js_provider.wasm",
     "build:types": "npm run jco types wit -o types",
-    "clean": "rm -rf provider.wasm mcp-http-server.wasm .transport-tmp.wasm dist types bundled.js"
+    "clean": "rm -rf weather-js_provider.wasm mcp-http-server.wasm .transport-tmp.wasm dist types bundled.js"
   },
   "devDependencies": {
     "@bytecodealliance/jco": "^1.8.0",

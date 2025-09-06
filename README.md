@@ -13,9 +13,14 @@ The composition process (`provider + transport = mcp-http-server.wasm`) produces
 
 ## Quick start
 
-Try running one of the example servers in your favorite source language.
+Try running one of the example servers in your favorite source language. All examples provide transparent implementations that use WIT bindings directly as the SDK.
+
 ```bash
-cd examples/weather-py
+cd examples/weather-py    # Python
+cd examples/weather-go    # Go
+cd examples/weather-rs    # Rust
+cd examples/weather-ts    # TypeScript
+cd examples/weather-js    # JavaScript
 ```
 
 Ensure build dependencies are set up. The [examples/](./examples/) depend only on [wkg](https://github.com/bytecodealliance/wasm-pkg-tools) (for WIT package management), [wac](https://github.com/bytecodealliance/wac) (for component composition), and the standard toolchain of your chosen source language. Run setup to check and install these tools:
@@ -25,7 +30,7 @@ make setup
 
 Run any language-specific setup steps
 ```bash
-source venv/bin/activate
+source venv/bin/activate  # Python
 ```
 
 Build and compose the capability provider with a transport component
@@ -71,6 +76,15 @@ You can install the templates in this repo to scaffold new MCP provider componen
 spin templates install --git https://github.com/fastertools/wasmcp --upgrade
 ```
 
+Create a new MCP server project:
+```bash
+spin new -t wasmcp-python my-mcp-server    # Python
+spin new -t wasmcp-go my-mcp-server         # Go
+spin new -t wasmcp-rust my-mcp-server       # Rust
+spin new -t wasmcp-typescript my-mcp-server # TypeScript
+spin new -t wasmcp-javascript my-mcp-server # JavaScript
+```
+
 The resulting structure will include a `spin.toml` file that you can use for composing, running, and deploying components.
 ```bash
 spin cloud deploy
@@ -83,28 +97,30 @@ View application:   https://weather-py-xxxxxxxx.fermyon.app/
 
 ## Examples
 
-See [`examples/`](./examples/) for complete working servers implementing tools capabilities.
+See [`examples/`](./examples/) for complete working servers implementing tools capabilities. Each example provides a transparent implementation that uses WIT bindings directly as the SDK.
 
 ```python
-mcp = MCPServer(
-    name="weather-py",
-    version="0.1.0",
-    instructions="An MCP server written in Python",
-    auth_config=None,
-    # auth_config=ProviderAuthConfig(
-    #     expected_issuer="https://xxxxx.authkit.app",
-    #     expected_audiences=["client_xxxxx"],
-    #     jwks_uri="https://xxxxx.authkit.app/oauth2/jwks",
-    #     policy=None,  # Optional: Add Rego policy for additional authorization
-    #     policy_data=None,  # Optional: Add policy data as JSON string
-    # )
-)
-
-
-@mcp.tool
-def echo(message: str) -> str:
-    """Echo a message back to the user."""
-    return f"Echo: {message}"
+# Python example using direct WIT bindings
+class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
+    """Direct implementation of the MCP capabilities interfaces."""
+    
+    def handle_initialize(self, request: InitializeRequest) -> InitializeResponse:
+        return InitializeResponse(
+            protocol_version="v20250618",
+            capabilities=ServerCapabilities(tools=ToolsCapability()),
+            server_info=ImplementationInfo(
+                name="weather-py",
+                version="0.1.0",
+                title="weather-py Server"
+            ),
+            instructions="A Python MCP server providing weather tools"
+        )
+    
+    def handle_call_tool(self, request: CallToolRequest) -> ToolResult:
+        if request.name == "echo":
+            args = json.loads(request.arguments or "{}")
+            return text_result(f"Echo: {args.get('message', '')}")
+        # ... other tools
 ```
 
 ## WIT
@@ -113,13 +129,15 @@ The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/desi
 
 The WIT package is published as Wasm at https://github.com/orgs/fastertools/packages/container/package/mcp. It can be fetched with `wkg wit fetch` when included as a dependency in a component's world:
 
-```
-/// world.wit
+```wit
+// world.wit
 package weather-js:provider;
 
-/// MCP tools for an MCP provider written in JavaScript
+// MCP tools for a JavaScript provider
 world weather-js {
-    export fastertools:mcp/tools-capabilities@0.1.10;
+    import wasi:http/outgoing-handler@0.2.3;
+    export fastertools:mcp/core-capabilities@0.4.0;
+    export fastertools:mcp/tools-capabilities@0.4.0;
 }
 ```
 
@@ -131,7 +149,11 @@ A provider with I/O, directly for outbound HTTP or indirectly via composition wi
 
 The [`components/`](./components/) directory contains published components that are useful for composing MCP servers.
 
-The HTTP transport component (tools-only) is published and publicly available at https://github.com/orgs/fastertools/packages/container/package/mcp-transport-http-tools via `fastertools:mcp-transport-http-tools@0.1.11`+
+The HTTP transport component is published and publicly available at https://github.com/orgs/fastertools/packages/container/package/mcp-transport-http-tools via `fastertools:mcp-transport-http-tools@0.4.1`. This transport provides:
+- JSON-RPC over HTTP
+- Built-in OAuth 2.0 authentication support
+- JWKS caching capabilities
+- Rego policy enforcement (optional)
 
 ## Why components?
 

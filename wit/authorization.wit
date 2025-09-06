@@ -1,229 +1,88 @@
-/// Authorization and authentication interfaces for MCP servers
-/// Provides JWT validation, OAuth discovery, and policy-based authorization
+/// Authorization types for MCP servers
+/// These types define the authentication configuration that providers can declare
+/// and that transports use to enforce authorization
 
-interface authorization {
-    use types.{mcp-error, json-value};
-    use authorization-types.{provider-auth-config, auth-context, auth-request, auth-response, auth-error};
+/// Type definitions for authorization and authentication
+interface authorization-types {
+    use types.{meta-fields};
     
-    /// Main authorization function - validates token and applies policies
-    authorize: func(request: auth-request) -> auth-response;
-}
-
-/// Policy evaluation interface for OPA/Rego policies
-interface policy-engine {
-    use types.{json-value};
-    
-    /// Policy evaluation request
-    record policy-request {
-        /// Rego policy source code
-        policy: string,
-        /// Optional external data for policy evaluation
-        data: option<json-value>,
-        /// Input data for policy evaluation (token claims, request context, etc.)
-        input: json-value,
-        /// Query to evaluate (default: data.mcp.authorization.allow)
-        query: option<string>,
+    /// Provider declares its authentication requirements
+    /// This is returned by core-capabilities::get-auth-config()
+    /// and used by the transport to enforce authentication
+    record provider-auth-config {
+        /// Expected JWT issuer (REQUIRED for auth)
+        expected-issuer: string,
+        /// Expected JWT audiences (REQUIRED for auth - must have at least one)
+        expected-audiences: list<string>,
+        /// JWKS URI for key discovery (REQUIRED for auth)
+        jwks-uri: string,
+        /// Optional Rego policy for authorization
+        policy: option<string>,
+        /// Optional data for policy evaluation
+        policy-data: option<string>,
     }
     
-    /// Policy evaluation result
-    variant policy-result {
-        /// Policy allowed the request
-        allow,
-        /// Policy denied the request with reason
-        deny(string),
-        /// Policy evaluation error
-        error(string),
+    /// Authorization context passed between components after successful authentication
+    record auth-context {
+        /// OAuth client ID that made the request
+        client-id: option<string>,
+        /// Subject (user ID) from the token
+        user-id: option<string>,
+        /// OAuth scopes granted to this token
+        scopes: list<string>,
+        /// Token issuer URL
+        issuer: option<string>,
+        /// Audience claim from token
+        audience: option<string>,
+        /// Additional claims from token as key-value pairs
+        claims: meta-fields,
+        /// Expiration timestamp (Unix seconds)
+        exp: option<u64>,
+        /// Issued at timestamp (Unix seconds)  
+        iat: option<u64>,
     }
     
-    /// Evaluate a Rego policy with input and optional data
-    evaluate: func(request: policy-request) -> policy-result;
-}
-
-/// OAuth 2.0 discovery endpoints per RFC 8414 and RFC 9728
-interface oauth-discovery {
-    /// OAuth 2.0 Protected Resource Metadata per RFC 9728
-    record resource-metadata {
-        /// Resource identifier (canonical URI of the MCP server)
-        resource-url: string,
-        /// List of authorization server URLs that can issue tokens for this resource
-        authorization-servers: list<string>,
-        /// Scopes supported by this resource
-        scopes-supported: option<list<string>>,
-        /// Bearer token types supported
-        bearer-methods-supported: option<list<string>>,
-        /// Resource-specific metadata
-        resource-documentation: option<string>,
-    }
-    
-    /// OAuth 2.0 Authorization Server Metadata per RFC 8414
-    record server-metadata {
-        /// Authorization server identifier
-        issuer: string,
-        /// Authorization endpoint URL
-        authorization-endpoint: string,
-        /// Token endpoint URL
-        token-endpoint: string,
+    /// Authorization request containing all context needed for authorization decisions
+    record auth-request {
+        /// Bearer token extracted from Authorization header
+        token: string,
+        /// HTTP method (GET, POST, etc.)
+        method: string,
+        /// Request path
+        path: string,
+        /// Request headers as key-value pairs
+        headers: list<tuple<string, string>>,
+        /// Request body for policy evaluation (e.g., MCP JSON-RPC payload)
+        body: option<list<u8>>,
+        /// Expected issuer for validation
+        expected-issuer: string,
+        /// Expected audiences for validation (token must match at least one)
+        expected-audiences: list<string>,
         /// JWKS URI for key discovery
         jwks-uri: string,
-        /// Supported response types
-        response-types-supported: list<string>,
-        /// Supported grant types
-        grant-types-supported: list<string>,
-        /// Supported code challenge methods for PKCE
-        code-challenge-methods-supported: list<string>,
-        /// Supported scopes
-        scopes-supported: option<list<string>>,
-        /// Token endpoint auth methods supported
-        token-endpoint-auth-methods-supported: option<list<string>>,
-        /// Service documentation URL
-        service-documentation: option<string>,
-        /// Registration endpoint for dynamic client registration
-        registration-endpoint: option<string>,
+        /// Optional Rego policy to evaluate (if not provided, allows all authenticated requests)
+        policy: option<string>,
+        /// Optional data for policy evaluation (JSON string)
+        policy-data: option<string>,
     }
     
-    /// Get OAuth 2.0 Protected Resource Metadata
-    get-resource-metadata: func() -> resource-metadata;
-    
-    /// Get OAuth 2.0 Authorization Server Metadata
-    get-server-metadata: func() -> server-metadata;
-}
-
-/// JWT token validation interface
-interface jwt-validator {
-    use types.{json-value};
-    
-    /// JWT validation request
-    record jwt-request {
-        /// JWT token to validate
-        token: string,
-        /// Expected issuer
-        expected-issuer: string,
-        /// Expected audiences (token must match at least one)
-        expected-audiences: list<string>,
-        /// JWKS URI for fetching public keys
-        jwks-uri: string,
-        /// Optional JWKS JSON for offline validation
-        jwks-json: option<string>,
-        /// Validate token expiration (default: true)
-        validate-exp: option<bool>,
-        /// Validate not-before claim (default: true)
-        validate-nbf: option<bool>,
-        /// Clock skew tolerance in seconds (default: 60)
-        clock-skew: option<u64>,
+    /// Authorization response
+    variant auth-response {
+        /// Request is authorized with context
+        authorized(auth-context),
+        /// Request is unauthorized with error details
+        unauthorized(auth-error),
     }
     
-    /// JWT validation result
-    variant jwt-result {
-        /// Token is valid with extracted claims
-        valid(jwt-claims),
-        /// Token is invalid with error reason
-        invalid(jwt-error),
+    /// Authorization error details
+    record auth-error {
+        /// HTTP status code (401, 403, etc.)
+        status: u16,
+        /// OAuth error code (invalid_token, insufficient_scope, etc.)
+        error-code: string,
+        /// Human-readable error description
+        description: string,
+        /// WWW-Authenticate header value for 401 responses
+        www-authenticate: option<string>,
     }
-    
-    /// JWT validation error types
-    enum jwt-error {
-        /// Token format is invalid
-        malformed,
-        /// Token signature verification failed
-        invalid-signature,
-        /// Token has expired
-        expired,
-        /// Token not yet valid (nbf claim)
-        not-yet-valid,
-        /// Issuer doesn't match expected
-        invalid-issuer,
-        /// Audience doesn't match expected
-        invalid-audience,
-        /// Required claim is missing
-        missing-claim,
-        /// JWKS fetch or parse error
-        jwks-error,
-        /// Unknown key ID
-        unknown-kid,
-        /// Other validation error
-        other,
-    }
-    
-    /// Validated JWT claims
-    record jwt-claims {
-        /// Subject (user ID)
-        sub: string,
-        /// Issuer
-        iss: string,
-        /// Audience
-        aud: option<list<string>>,
-        /// Expiration time (Unix timestamp)
-        exp: option<u64>,
-        /// Issued at (Unix timestamp)
-        iat: option<u64>,
-        /// Not before (Unix timestamp)
-        nbf: option<u64>,
-        /// JWT ID
-        jti: option<string>,
-        /// OAuth scopes (from scope claim)
-        scopes: list<string>,
-        /// OAuth client ID (from azp or client_id claim)
-        client-id: option<string>,
-        /// Additional claims as JSON key-value pairs
-        additional-claims: list<tuple<string, json-value>>,
-    }
-    
-    /// Validate a JWT token
-    validate: func(request: jwt-request) -> jwt-result;
-    
-    /// Fetch and cache JWKS from a URI
-    fetch-jwks: func(uri: string) -> result<string, string>;
-}
-
-/// MCP-specific authorization helpers
-interface mcp-authorization {
-    use authorization.{auth-context, auth-error};
-    use types.{json-value};
-    
-    /// MCP method authorization request
-    record mcp-auth-request {
-        /// Authorization context from token validation
-        context: auth-context,
-        /// MCP method being called (e.g., "tools/call", "resources/list")
-        method: string,
-        /// Parameters from the JSON-RPC request
-        params: option<json-value>,
-    }
-    
-    /// MCP tool call authorization
-    record tool-auth-request {
-        /// Authorization context
-        context: auth-context,
-        /// Tool name being called
-        tool-name: string,
-        /// Tool arguments
-        arguments: option<json-value>,
-    }
-    
-    /// MCP resource authorization
-    record resource-auth-request {
-        /// Authorization context
-        context: auth-context,
-        /// Resource URI being accessed
-        uri: string,
-        /// Operation type (read, list, subscribe)
-        operation: resource-operation,
-    }
-    
-    /// Resource operation types
-    enum resource-operation {
-        list-op,
-        read-op,
-        subscribe-op,
-        unsubscribe-op,
-    }
-    
-    /// Authorize an MCP method call
-    authorize-method: func(request: mcp-auth-request) -> result<_, auth-error>;
-    
-    /// Authorize a specific tool call
-    authorize-tool: func(request: tool-auth-request) -> result<_, auth-error>;
-    
-    /// Authorize resource access
-    authorize-resource: func(request: resource-auth-request) -> result<_, auth-error>;
 }
