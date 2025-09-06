@@ -41,7 +41,7 @@ This server implements three demonstration tools:
 
 ```
 main.go          # MCP capabilities implementation
-wit/             # WIT interface definitions (fastertools:mcp@0.4.1)
+wit/             # WIT interface definitions (wasmcp:mcp@0.1.0)
 internal/        # Generated Go bindings (auto-generated)
 Makefile         # Build automation
 ```

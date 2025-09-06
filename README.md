@@ -7,7 +7,7 @@
 
 [wit/](./wit/) expresses the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18) specification in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (WebAssembly Interface Type) language.
 
-These [published types](https://github.com/orgs/fastertools/packages/container/package/mcp) enable polyglot MCP implementations via WebAssembly components. Transport components can be written once and reused with capability providers in any language.
+These [published types](https://github.com/orgs/wasmcp/packages/container/package/mcp) enable polyglot MCP implementations via WebAssembly components. Transport components can be written once and reused with capability providers in any language.
 
 The composition process (`provider + transport = mcp-http-server.wasm`) produces a standalone MCP server that runs on any component model runtime: [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/spinframework/spin), [wasmCloud](https://github.com/wasmCloud/wasmCloud), and others.
 
@@ -73,7 +73,7 @@ These components also work with Spin v3's built-in [component dependencies](http
 
 You can install the templates in this repo to scaffold new MCP provider components in different source languages.
 ```bash
-spin templates install --git https://github.com/fastertools/wasmcp --upgrade
+spin templates install --git https://github.com/wasmcp/wasmcp --upgrade
 ```
 
 Create a new MCP server project:
@@ -127,7 +127,7 @@ class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
 
 The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/design/wit.html)) package in [`wit/`](./wit/) aims to capture a complete representation of the MCP specification. It currently reflects the 2025-06-18 version of the spec, with some additional elements from the latest draft.
 
-The WIT package is published as Wasm at https://github.com/orgs/fastertools/packages/container/package/mcp. It can be fetched with `wkg wit fetch` when included as a dependency in a component's world:
+The WIT package is published as Wasm at https://github.com/orgs/wasmcp/packages/container/package/mcp. It can be fetched with `wkg wit fetch` when included as a dependency in a component's world:
 
 ```wit
 // world.wit
@@ -136,8 +136,8 @@ package weather-js:provider;
 // MCP tools for a JavaScript provider
 world weather-js {
     import wasi:http/outgoing-handler@0.2.3;
-    export fastertools:mcp/core-capabilities@0.4.1;
-    export fastertools:mcp/tools-capabilities@0.4.1;
+    export wasmcp:mcp/core-capabilities@0.1.0;
+    export wasmcp:mcp/tools-capabilities@0.1.0;
 }
 ```
 
@@ -149,7 +149,7 @@ A provider with I/O, directly for outbound HTTP or indirectly via composition wi
 
 The [`components/`](./components/) directory contains published components that are useful for composing MCP servers.
 
-The HTTP transport component is published and publicly available at https://github.com/orgs/fastertools/packages/container/package/mcp-transport-http-tools via `fastertools:mcp-transport-http-tools@0.4.3`. This transport provides:
+The HTTP transport component is published and publicly available at https://github.com/orgs/wasmcp/packages/container/package/mcp-transport-http-tools via `wasmcp:mcp-transport-http-tools@0.1.0`. This transport provides:
 - JSON-RPC over HTTP
 - Built-in OAuth 2.0 authorization support
 - JWKS caching capabilities

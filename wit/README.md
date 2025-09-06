@@ -2,7 +2,7 @@
 
 The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/design/wit.html)) package in this directory provides a complete representation of the MCP specification. It reflects the 2025-06-18 version of the spec, with additional elements from the latest draft.
 
-The WIT package is published as Wasm at https://github.com/orgs/fastertools/packages/container/package/mcp. It can be fetched with `wkg wit fetch` when included as a dependency in a component's world:
+The WIT package is published as Wasm at https://github.com/orgs/wasmcp/packages/container/package/mcp. It can be fetched with `wkg wit fetch` when included as a dependency in a component's world:
 
 ```wit
 // world.wit
@@ -14,8 +14,8 @@ world weather-js {
     import wasi:http/outgoing-handler@0.2.3;
     
     // Export MCP capabilities
-    export fastertools:mcp/core-capabilities@0.4.1;
-    export fastertools:mcp/tools-capabilities@0.4.1;
+    export wasmcp:mcp/core-capabilities@0.1.0;
+    export wasmcp:mcp/tools-capabilities@0.1.0;
 }
 ```
 

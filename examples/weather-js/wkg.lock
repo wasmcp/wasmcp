@@ -3,15 +3,6 @@
 version = 1
 
 [[packages]]
-name = "fastertools:mcp"
-registry = "ghcr.io"
-
-[[packages.versions]]
-requirement = "=0.4.1"
-version = "0.4.1"
-digest = "sha256:04893a2bb14e6de755bf96834feb32baed15634ad1615836223815fff1db1783"
-
-[[packages]]
 name = "wasi:http"
 registry = "wasi.dev"
 
@@ -19,3 +10,12 @@ registry = "wasi.dev"
 requirement = "=0.2.3"
 version = "0.2.3"
 digest = "sha256:e526c1586efc94cd148e33725139be05c4bb58ba20466d348282bd8dc3999f1d"
+
+[[packages]]
+name = "wasmcp:mcp"
+registry = "ghcr.io"
+
+[[packages.versions]]
+requirement = "=0.1.0"
+version = "0.1.0"
+digest = "sha256:577297b340c824dc13bb5a9df29b9ee32797ea465469b6430ea41386dd49a9e1"

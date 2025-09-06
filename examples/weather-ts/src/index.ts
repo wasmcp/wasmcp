@@ -13,7 +13,7 @@ import type {
   ServerCapabilities,
   ImplementationInfo,
   ToolsCapability,
-} from './generated/interfaces/fastertools-mcp-core-types.js';
+} from './generated/interfaces/wasmcp-mcp-core-types.js';
 
 import type {
   Tool,
@@ -21,18 +21,18 @@ import type {
   ListToolsRequest,
   ListToolsResponse,
   CallToolRequest,
-} from './generated/interfaces/fastertools-mcp-tool-types.js';
+} from './generated/interfaces/wasmcp-mcp-tool-types.js';
 
 import type {
   ContentBlock,
   ContentBlockText,
   TextContent,
   BaseMetadata,
-} from './generated/interfaces/fastertools-mcp-types.js';
+} from './generated/interfaces/wasmcp-mcp-types.js';
 
 import type {
   ProviderAuthConfig,
-} from './generated/interfaces/fastertools-mcp-authorization-types.js';
+} from './generated/interfaces/wasmcp-mcp-authorization-types.js';
 
 // -------------------------------------------------------------------------
 // Core Capabilities Implementation

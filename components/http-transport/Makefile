@@ -4,8 +4,8 @@
 COMPONENT_WASM = target/wasm32-wasip1/release/mcp_transport_http.wasm
 
 # Package versions
-TOOLS_PKG = fastertools:mcp-http-tools-server@0.1.0
-AUTH_PKG = fastertools:mcp-http-tools-auth-server@0.1.0
+TOOLS_PKG = wasmcp:mcp-http-tools-server@0.1.0
+AUTH_PKG = wasmcp:mcp-http-tools-auth-server@0.1.0
 
 # Build the transport component for release with wasm32-wasip1 target
 release: ## Build release version with wasip1 target

@@ -1,11 +1,11 @@
-/** @module Interface fastertools:mcp/tool-types@0.4.1 **/
-export type ContentBlock = import('./fastertools-mcp-types.js').ContentBlock;
-export type JsonValue = import('./fastertools-mcp-types.js').JsonValue;
-export type JsonSchema = import('./fastertools-mcp-types.js').JsonSchema;
-export type BaseMetadata = import('./fastertools-mcp-types.js').BaseMetadata;
-export type MetaFields = import('./fastertools-mcp-types.js').MetaFields;
-export type Cursor = import('./fastertools-mcp-types.js').Cursor;
-export type ProgressToken = import('./fastertools-mcp-types.js').ProgressToken;
+/** @module Interface wasmcp:mcp/tool-types@0.1.0 **/
+export type ContentBlock = import('./wasmcp-mcp-types.js').ContentBlock;
+export type JsonValue = import('./wasmcp-mcp-types.js').JsonValue;
+export type JsonSchema = import('./wasmcp-mcp-types.js').JsonSchema;
+export type BaseMetadata = import('./wasmcp-mcp-types.js').BaseMetadata;
+export type MetaFields = import('./wasmcp-mcp-types.js').MetaFields;
+export type Cursor = import('./wasmcp-mcp-types.js').Cursor;
+export type ProgressToken = import('./wasmcp-mcp-types.js').ProgressToken;
 /**
  * Behavioral hints about tool operations
  */

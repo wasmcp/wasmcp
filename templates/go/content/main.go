@@ -11,12 +11,12 @@ import (
 	"go.bytecodealliance.org/cm"
 
 	// Import the generated WIT bindings directly - these are our SDK
-	authorizationtypes "{{project-name | snake_case}}/internal/fastertools/mcp/authorization-types"
-	corecapabilities "{{project-name | snake_case}}/internal/fastertools/mcp/core-capabilities"
-	coretypes "{{project-name | snake_case}}/internal/fastertools/mcp/core-types"
-	tooltypes "{{project-name | snake_case}}/internal/fastertools/mcp/tool-types"
-	toolscapabilities "{{project-name | snake_case}}/internal/fastertools/mcp/tools-capabilities"
-	mcptypes "{{project-name | snake_case}}/internal/fastertools/mcp/types"
+	authorizationtypes "{{project-name | snake_case}}/internal/wasmcp/mcp/authorization-types"
+	corecapabilities "{{project-name | snake_case}}/internal/wasmcp/mcp/core-capabilities"
+	coretypes "{{project-name | snake_case}}/internal/wasmcp/mcp/core-types"
+	tooltypes "{{project-name | snake_case}}/internal/wasmcp/mcp/tool-types"
+	toolscapabilities "{{project-name | snake_case}}/internal/wasmcp/mcp/tools-capabilities"
+	mcptypes "{{project-name | snake_case}}/internal/wasmcp/mcp/types"
 	"{{project-name | snake_case}}/wasihttp"
 )
 

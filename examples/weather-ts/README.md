@@ -42,7 +42,7 @@ This server implements three demonstration tools:
 src/
   index.ts       # MCP capabilities implementation
   generated/     # Generated TypeScript bindings (auto-generated)
-wit/             # WIT interface definitions (fastertools:mcp@0.4.1)
+wit/             # WIT interface definitions (wasmcp:mcp@0.1.0)
 package.json     # Dependencies and scripts
 Makefile         # Build automation
 ```

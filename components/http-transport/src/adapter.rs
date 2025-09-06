@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
-#[cfg(any(feature = "resources", feature = "prompts"))]
+#[cfg(any(feature = "resources", feature = "prompts", feature = "tools"))]
 use base64::Engine;
 #[cfg(feature = "resources")]
 use rmcp::model::{
@@ -29,11 +29,11 @@ impl WitMcpAdapter {
     /// Convert WIT protocol version enum to actual protocol version string
     fn convert_protocol_version(
         &self,
-        version: crate::bindings::fastertools::mcp::core_types::ProtocolVersion,
+        version: crate::bindings::wasmcp::mcp::core_types::ProtocolVersion,
     ) -> rmcp::model::ProtocolVersion {
         use rmcp::model::ProtocolVersion;
 
-        use crate::bindings::fastertools::mcp::core_types::ProtocolVersion as WitVersion;
+        use crate::bindings::wasmcp::mcp::core_types::ProtocolVersion as WitVersion;
 
         match version {
             WitVersion::V20250326 => ProtocolVersion::V_2025_03_26,
@@ -44,7 +44,7 @@ impl WitMcpAdapter {
     /// Convert WIT InitializeResponse to rmcp ServerInfo
     pub fn convert_initialize_to_rmcp(
         &self,
-        response: crate::bindings::fastertools::mcp::core_types::InitializeResponse,
+        response: crate::bindings::wasmcp::mcp::core_types::InitializeResponse,
     ) -> Result<rmcp::model::ServerInfo> {
         use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
 
@@ -104,42 +104,110 @@ impl WitMcpAdapter {
         // Convert arguments Map directly to JSON string for WIT interface
         let args_str = arguments.map(|args| serde_json::to_string(&args).unwrap());
 
-        let request = crate::bindings::fastertools::mcp::tool_types::CallToolRequest {
+        let request = crate::bindings::wasmcp::mcp::tool_types::CallToolRequest {
             name: name.to_string(),
             arguments: args_str,
             progress_token: None,
             meta: None,
         };
 
-        let response =
-            crate::bindings::fastertools::mcp::tools_capabilities::handle_call_tool(&request)
-                .map_err(|e| anyhow!("Call tool failed: {}", e.message))?;
+        let response = crate::bindings::wasmcp::mcp::tools_capabilities::handle_call_tool(&request)
+            .map_err(|e| anyhow!("Call tool failed: {}", e.message))?;
 
         // Convert WIT result to rmcp result
         let content = response
             .content
             .into_iter()
-            .filter_map(|c| {
+            .map(|c| {
                 match c {
-                    crate::bindings::fastertools::mcp::types::ContentBlock::Text(t) => {
-                        Some(Content::text(t.text))
+                    crate::bindings::wasmcp::mcp::types::ContentBlock::Text(t) => {
+                        Content::text(t.text)
                     }
-                    _ => None, // Skip non-text content for now
+                    crate::bindings::wasmcp::mcp::types::ContentBlock::Image(i) => {
+                        // Convert from Vec<u8> to base64 string
+                        let data = base64::engine::general_purpose::STANDARD.encode(&i.data);
+                        Content::image(data, i.mime_type)
+                    }
+                    crate::bindings::wasmcp::mcp::types::ContentBlock::Audio(a) => {
+                        // Note: rmcp doesn't have direct audio support, convert to text with description
+                        // Could also consider using embedded resource for audio data
+                        let _data = base64::engine::general_purpose::STANDARD.encode(&a.data);
+                        Content::text(format!(
+                            "[Audio content: {} - {} bytes]",
+                            a.mime_type,
+                            a.data.len()
+                        ))
+                    }
+                    crate::bindings::wasmcp::mcp::types::ContentBlock::ResourceLink(r) => {
+                        // Create a resource link
+                        use rmcp::model::RawResource;
+                        Content::resource_link(RawResource {
+                            uri: r.uri,
+                            name: r.name,
+                            description: r.description,
+                            mime_type: r.mime_type,
+                            size: r.size.map(|s| s as u32),
+                        })
+                    }
+                    crate::bindings::wasmcp::mcp::types::ContentBlock::EmbeddedResource(e) => {
+                        // Convert embedded resource
+                        use rmcp::model::ResourceContents;
+                        let resource_contents = match e.contents {
+                            crate::bindings::wasmcp::mcp::types::ResourceContents::Text(t) => {
+                                ResourceContents::TextResourceContents {
+                                    uri: t.uri,
+                                    mime_type: t.mime_type,
+                                    text: t.text,
+                                    meta: None,
+                                }
+                            }
+                            crate::bindings::wasmcp::mcp::types::ResourceContents::Blob(b) => {
+                                ResourceContents::BlobResourceContents {
+                                    uri: b.uri,
+                                    mime_type: b.mime_type,
+                                    blob: base64::engine::general_purpose::STANDARD.encode(&b.blob),
+                                    meta: None,
+                                }
+                            }
+                        };
+                        Content::resource(resource_contents)
+                    }
                 }
             })
             .collect::<Vec<_>>();
 
+        // Convert meta fields from Vec<(String, String)> to Meta (JsonObject)
+        let meta = response.meta.map(|fields| {
+            let mut meta_obj = rmcp::model::Meta::new();
+            for (key, value) in fields {
+                // Parse the JSON string value back to a serde_json::Value
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&value) {
+                    meta_obj.insert(key, parsed);
+                } else {
+                    // If it's not valid JSON, insert as a string
+                    meta_obj.insert(key, serde_json::Value::String(value));
+                }
+            }
+            meta_obj
+        });
+
+        // Convert structured_content from JSON string to Value
+        let structured_content = response
+            .structured_content
+            .and_then(|json_str| serde_json::from_str(&json_str).ok());
+
         Ok(CallToolResult {
             content,
-            structured_content: None,
+            structured_content,
             is_error: response.is_error,
+            meta,
         })
     }
 
     /// Convert WIT ListToolsResponse to rmcp ListToolsResult
     pub fn convert_list_tools_to_rmcp(
         &self,
-        response: crate::bindings::fastertools::mcp::tool_types::ListToolsResponse,
+        response: crate::bindings::wasmcp::mcp::tool_types::ListToolsResponse,
     ) -> Result<ListToolsResult> {
         let tools = response
             .tools
@@ -177,7 +245,7 @@ impl WitMcpAdapter {
     /// Convert WIT ListResourcesResponse to rmcp ListResourcesResult
     pub fn convert_list_resources_to_rmcp(
         &self,
-        response: crate::bindings::fastertools::mcp::resource_types::ListResourcesResponse,
+        response: crate::bindings::wasmcp::mcp::resource_types::ListResourcesResponse,
     ) -> Result<ListResourcesResult> {
         let resources = response
             .resources
@@ -203,9 +271,9 @@ impl WitMcpAdapter {
     /// Convert WIT ReadResourceResponse to rmcp ReadResourceResult
     pub fn convert_read_resource_to_rmcp(
         &self,
-        response: crate::bindings::fastertools::mcp::resource_types::ReadResourceResponse,
+        response: crate::bindings::wasmcp::mcp::resource_types::ReadResourceResponse,
     ) -> Result<ReadResourceResult> {
-        use crate::bindings::fastertools::mcp::types::ResourceContents as WitResourceContents;
+        use crate::bindings::wasmcp::mcp::types::ResourceContents as WitResourceContents;
 
         let contents = response
             .contents
@@ -234,7 +302,7 @@ impl WitMcpAdapter {
     /// Convert WIT ListPromptsResponse to rmcp ListPromptsResult
     pub fn convert_list_prompts_to_rmcp(
         &self,
-        response: crate::bindings::fastertools::mcp::prompt_types::ListPromptsResponse,
+        response: crate::bindings::wasmcp::mcp::prompt_types::ListPromptsResponse,
     ) -> Result<ListPromptsResult> {
         let prompts = response
             .prompts
@@ -267,9 +335,9 @@ impl WitMcpAdapter {
     /// Convert WIT GetPromptResponse to rmcp GetPromptResult
     pub fn convert_get_prompt_to_rmcp(
         &self,
-        response: crate::bindings::fastertools::mcp::prompt_types::GetPromptResponse,
+        response: crate::bindings::wasmcp::mcp::prompt_types::GetPromptResponse,
     ) -> Result<GetPromptResult> {
-        use crate::bindings::fastertools::mcp::types::{ContentBlock, MessageRole};
+        use crate::bindings::wasmcp::mcp::types::{ContentBlock, MessageRole};
 
         let messages = response
             .messages

@@ -26,8 +26,8 @@ package = "{{project-name}}:provider"
 derives = ["Clone"]
 
 [package.metadata.component.target]
-package = "fastertools:mcp"
-version = "0.4.1"
+package = "wasmcp:mcp"
+version = "0.1.0"
 world = "tools-provider"
 
 [profile.release]

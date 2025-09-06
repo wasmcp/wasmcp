@@ -40,7 +40,7 @@ This server implements three demonstration tools:
 
 ```
 index.js         # MCP capabilities implementation
-wit/             # WIT interface definitions (fastertools:mcp@0.4.1)
+wit/             # WIT interface definitions (wasmcp:mcp@0.1.0)
 package.json     # Dependencies and scripts
 Makefile         # Build automation
 ```

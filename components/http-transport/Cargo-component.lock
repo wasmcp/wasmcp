@@ -3,9 +3,9 @@
 version = 1
 
 [[package]]
-name = "fastertools:mcp"
+name = "wasmcp:mcp"
 
 [[package.version]]
-requirement = "^0.4.1"
-version = "0.4.1"
-digest = "sha256:04893a2bb14e6de755bf96834feb32baed15634ad1615836223815fff1db1783"
+requirement = "^0.1.0"
+version = "0.1.0"
+digest = "sha256:577297b340c824dc13bb5a9df29b9ee32797ea465469b6430ea41386dd49a9e1"

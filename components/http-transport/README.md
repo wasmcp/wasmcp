@@ -4,7 +4,7 @@ Implements the Streamable HTTP transport for MCP in Rust, including spec-complia
 
 Supported MCP capababilities are configured by feature flags corresponding to the transport worlds in [mcp.wit](/wit/mcp.wit). This allows capability provider components to only implement what they need to, while avoiding deadcode bloat from unused capabilities. An alternative is to use stub/null components to fill in the gaps for a full transport world.
 
-The default, tools-only transport component is published and publicly available at https://github.com/orgs/fastertools/packages/container/package/mcp-transport-http-tools via `fastertools:mcp-transport-http-tools@0.1.11`+
+The default, tools-only transport component is published and publicly available at https://github.com/orgs/wasmcp/packages/container/package/mcp-transport-http-tools via `wasmcp:mcp-transport-http-tools@0.1.11`+
 
 ### Composition
 

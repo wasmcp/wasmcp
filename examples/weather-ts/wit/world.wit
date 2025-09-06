@@ -3,6 +3,6 @@ package weather-ts:provider;
 /// MCP tools for weather-ts
 world weather-ts {
     import wasi:http/outgoing-handler@0.2.3;
-    export fastertools:mcp/core-capabilities@0.4.1;
-    export fastertools:mcp/tools-capabilities@0.4.1;
+    export wasmcp:mcp/core-capabilities@0.1.0;
+    export wasmcp:mcp/tools-capabilities@0.1.0;
 }

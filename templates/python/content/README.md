@@ -40,7 +40,7 @@ This server implements three demonstration tools:
 
 ```
 app.py           # MCP capabilities implementation
-wit/             # WIT interface definitions (fastertools:mcp@0.4.1)
+wit/             # WIT interface definitions (wasmcp:mcp@0.1.0)
 wit_world/       # Generated Python bindings (auto-generated)
 requirements.txt # Python dependencies
 Makefile        # Build automation

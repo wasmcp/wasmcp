@@ -4,7 +4,7 @@
 //   * additional derives ["serde::Serialize", "serde::Deserialize", "Clone"]
 #[rustfmt::skip]
 #[allow(dead_code, clippy::all)]
-pub mod fastertools {
+pub mod wasmcp {
     pub mod mcp {
         /// Core type definitions for the Model Context Protocol
         /// These types are used across all MCP interfaces
@@ -540,7 +540,7 @@ pub mod fastertools {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type MetaFields = super::super::super::fastertools::mcp::types::MetaFields;
+            pub type MetaFields = super::super::super::wasmcp::mcp::types::MetaFields;
             /// Protocol versions supported by MCP
             /// These correspond to official MCP specification versions
             #[repr(u8)]
@@ -799,10 +799,10 @@ pub mod fastertools {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type McpError = super::super::super::fastertools::mcp::types::McpError;
-            pub type MetaFields = super::super::super::fastertools::mcp::types::MetaFields;
-            pub type ProgressToken = super::super::super::fastertools::mcp::types::ProgressToken;
-            pub type RequestId = super::super::super::fastertools::mcp::types::RequestId;
+            pub type McpError = super::super::super::wasmcp::mcp::types::McpError;
+            pub type MetaFields = super::super::super::wasmcp::mcp::types::MetaFields;
+            pub type ProgressToken = super::super::super::wasmcp::mcp::types::ProgressToken;
+            pub type RequestId = super::super::super::wasmcp::mcp::types::RequestId;
             /// Notification types that can be sent
             /// Notification that a long-running operation has progress
             #[derive(Clone, serde::Deserialize, serde::Serialize)]
@@ -1215,7 +1215,7 @@ pub mod fastertools {
                                 reason: reason10,
                                 meta: meta10,
                             } = e;
-                            use super::super::super::fastertools::mcp::types::RequestId as V12;
+                            use super::super::super::wasmcp::mcp::types::RequestId as V12;
                             let (result13_0, result13_1, result13_2) = match request_id10 {
                                 V12::Str(e) => {
                                     let vec11 = e;
@@ -1784,9 +1784,7 @@ pub mod fastertools {
                     };
                     let ptr67 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/notification-types@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/notification-types@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "send-notification"]
                         fn wit_import68(
@@ -1854,7 +1852,7 @@ pub mod fastertools {
                                 let l70 = i32::from(
                                     *ptr67.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::fastertools::mcp::types::ErrorCode as V72;
+                                use super::super::super::wasmcp::mcp::types::ErrorCode as V72;
                                 let v72 = match l70 {
                                     0 => V72::ParseError,
                                     1 => V72::InvalidRequest,
@@ -1896,7 +1894,7 @@ pub mod fastertools {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::types::McpError {
                                     code: v72,
                                     message: _rt::string_lift(bytes75),
                                     data: match l76 {
@@ -1952,9 +1950,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/notification-types@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/notification-types@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "set-log-level"]
                         fn wit_import1(_: i32, _: *mut u8);
@@ -1975,7 +1971,7 @@ pub mod fastertools {
                                 let l3 = i32::from(
                                     *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::fastertools::mcp::types::ErrorCode as V5;
+                                use super::super::super::wasmcp::mcp::types::ErrorCode as V5;
                                 let v5 = match l3 {
                                     0 => V5::ParseError,
                                     1 => V5::InvalidRequest,
@@ -2017,7 +2013,7 @@ pub mod fastertools {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::types::McpError {
                                     code: v5,
                                     message: _rt::string_lift(bytes8),
                                     data: match l9 {
@@ -2101,10 +2097,10 @@ pub mod fastertools {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type McpError = super::super::super::fastertools::mcp::types::McpError;
-            pub type InitializeRequest = super::super::super::fastertools::mcp::core_types::InitializeRequest;
-            pub type InitializeResponse = super::super::super::fastertools::mcp::core_types::InitializeResponse;
-            pub type ProviderAuthConfig = super::super::super::fastertools::mcp::authorization_types::ProviderAuthConfig;
+            pub type McpError = super::super::super::wasmcp::mcp::types::McpError;
+            pub type InitializeRequest = super::super::super::wasmcp::mcp::core_types::InitializeRequest;
+            pub type InitializeResponse = super::super::super::wasmcp::mcp::core_types::InitializeResponse;
+            pub type ProviderAuthConfig = super::super::super::wasmcp::mcp::authorization_types::ProviderAuthConfig;
             #[allow(unused_unsafe, clippy::all)]
             /// Handle session initialization
             /// Implementations should declare their capabilities here
@@ -2125,14 +2121,14 @@ pub mod fastertools {
                             + 18 * ::core::mem::size_of::<*const u8>()],
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    let super::super::super::fastertools::mcp::core_types::InitializeRequest {
+                    let super::super::super::wasmcp::mcp::core_types::InitializeRequest {
                         protocol_version: protocol_version1,
                         capabilities: capabilities1,
                         client_info: client_info1,
                         meta: meta1,
                     } = request;
                     *ptr0.add(0).cast::<u8>() = (protocol_version1.clone() as i32) as u8;
-                    let super::super::super::fastertools::mcp::core_types::ClientCapabilities {
+                    let super::super::super::wasmcp::mcp::core_types::ClientCapabilities {
                         experimental: experimental2,
                         roots: roots2,
                         sampling: sampling2,
@@ -2200,7 +2196,7 @@ pub mod fastertools {
                             *ptr0
                                 .add(4 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (1i32) as u8;
-                            let super::super::super::fastertools::mcp::core_types::RootsCapability {
+                            let super::super::super::wasmcp::mcp::core_types::RootsCapability {
                                 list_changed: list_changed7,
                             } = e;
                             match list_changed7 {
@@ -2264,7 +2260,7 @@ pub mod fastertools {
                                 .cast::<u8>() = (0i32) as u8;
                         }
                     };
-                    let super::super::super::fastertools::mcp::core_types::ImplementationInfo {
+                    let super::super::super::wasmcp::mcp::core_types::ImplementationInfo {
                         name: name8,
                         version: version8,
                         title: title8,
@@ -2367,9 +2363,7 @@ pub mod fastertools {
                     };
                     let ptr16 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/core-capabilities@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "handle-initialize"]
                         fn wit_import17(_: *mut u8, _: *mut u8);
@@ -2455,11 +2449,11 @@ pub mod fastertools {
                                         .add(16 + 15 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::core_types::InitializeResponse {
-                                    protocol_version: super::super::super::fastertools::mcp::core_types::ProtocolVersion::_lift(
+                                super::super::super::wasmcp::mcp::core_types::InitializeResponse {
+                                    protocol_version: super::super::super::wasmcp::mcp::core_types::ProtocolVersion::_lift(
                                         l19 as u8,
                                     ),
-                                    capabilities: super::super::super::fastertools::mcp::core_types::ServerCapabilities {
+                                    capabilities: super::super::super::wasmcp::mcp::core_types::ServerCapabilities {
                                         experimental: match l20 {
                                             0 => None,
                                             1 => {
@@ -2553,7 +2547,7 @@ pub mod fastertools {
                                                             .add(5 + 5 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::fastertools::mcp::core_types::PromptsCapability {
+                                                    super::super::super::wasmcp::mcp::core_types::PromptsCapability {
                                                         list_changed: match l35 {
                                                             0 => None,
                                                             1 => {
@@ -2589,7 +2583,7 @@ pub mod fastertools {
                                                             .add(10 + 5 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::fastertools::mcp::core_types::ResourcesCapability {
+                                                    super::super::super::wasmcp::mcp::core_types::ResourcesCapability {
                                                         subscribe: match l38 {
                                                             0 => None,
                                                             1 => {
@@ -2635,7 +2629,7 @@ pub mod fastertools {
                                                             .add(13 + 5 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::fastertools::mcp::core_types::ToolsCapability {
+                                                    super::super::super::wasmcp::mcp::core_types::ToolsCapability {
                                                         list_changed: match l43 {
                                                             0 => None,
                                                             1 => {
@@ -2658,7 +2652,7 @@ pub mod fastertools {
                                             _ => _rt::invalid_enum_discriminant(),
                                         },
                                     },
-                                    server_info: super::super::super::fastertools::mcp::core_types::ImplementationInfo {
+                                    server_info: super::super::super::wasmcp::mcp::core_types::ImplementationInfo {
                                         name: _rt::string_lift(bytes47),
                                         version: _rt::string_lift(bytes50),
                                         title: match l51 {
@@ -2769,7 +2763,7 @@ pub mod fastertools {
                                 let l69 = i32::from(
                                     *ptr16.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::fastertools::mcp::types::ErrorCode as V71;
+                                use super::super::super::wasmcp::mcp::types::ErrorCode as V71;
                                 let v71 = match l69 {
                                     0 => V71::ParseError,
                                     1 => V71::InvalidRequest,
@@ -2811,7 +2805,7 @@ pub mod fastertools {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::types::McpError {
                                     code: v71,
                                     message: _rt::string_lift(bytes74),
                                     data: match l75 {
@@ -2867,9 +2861,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/core-capabilities@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "handle-initialized"]
                         fn wit_import1(_: *mut u8);
@@ -2890,7 +2882,7 @@ pub mod fastertools {
                                 let l3 = i32::from(
                                     *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::fastertools::mcp::types::ErrorCode as V5;
+                                use super::super::super::wasmcp::mcp::types::ErrorCode as V5;
                                 let v5 = match l3 {
                                     0 => V5::ParseError,
                                     1 => V5::InvalidRequest,
@@ -2932,7 +2924,7 @@ pub mod fastertools {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::types::McpError {
                                     code: v5,
                                     message: _rt::string_lift(bytes8),
                                     data: match l9 {
@@ -2983,9 +2975,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/core-capabilities@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "handle-ping"]
                         fn wit_import1(_: *mut u8);
@@ -3006,7 +2996,7 @@ pub mod fastertools {
                                 let l3 = i32::from(
                                     *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::fastertools::mcp::types::ErrorCode as V5;
+                                use super::super::super::wasmcp::mcp::types::ErrorCode as V5;
                                 let v5 = match l3 {
                                     0 => V5::ParseError,
                                     1 => V5::InvalidRequest,
@@ -3048,7 +3038,7 @@ pub mod fastertools {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::types::McpError {
                                     code: v5,
                                     message: _rt::string_lift(bytes8),
                                     data: match l9 {
@@ -3099,9 +3089,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/core-capabilities@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "handle-shutdown"]
                         fn wit_import1(_: *mut u8);
@@ -3122,7 +3110,7 @@ pub mod fastertools {
                                 let l3 = i32::from(
                                     *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::fastertools::mcp::types::ErrorCode as V5;
+                                use super::super::super::wasmcp::mcp::types::ErrorCode as V5;
                                 let v5 = match l3 {
                                     0 => V5::ParseError,
                                     1 => V5::InvalidRequest,
@@ -3164,7 +3152,7 @@ pub mod fastertools {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::types::McpError {
                                     code: v5,
                                     message: _rt::string_lift(bytes8),
                                     data: match l9 {
@@ -3216,9 +3204,7 @@ pub mod fastertools {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/core-capabilities@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "get-auth-config"]
                         fn wit_import1(_: *mut u8);
@@ -3299,7 +3285,7 @@ pub mod fastertools {
                                         .add(10 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::authorization_types::ProviderAuthConfig {
+                                super::super::super::wasmcp::mcp::authorization_types::ProviderAuthConfig {
                                     expected_issuer: _rt::string_lift(bytes5),
                                     expected_audiences: result11,
                                     jwks_uri: _rt::string_lift(bytes14),
@@ -3378,9 +3364,7 @@ pub mod fastertools {
                     let len0 = vec0.len();
                     let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/core-capabilities@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "jwks-cache-get"]
                         fn wit_import2(_: *mut u8, _: usize, _: *mut u8);
@@ -3430,9 +3414,7 @@ pub mod fastertools {
                     let ptr1 = vec1.as_ptr().cast::<u8>();
                     let len1 = vec1.len();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/core-capabilities@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "jwks-cache-set"]
                         fn wit_import2(_: *mut u8, _: usize, _: *mut u8, _: usize);
@@ -3458,13 +3440,13 @@ pub mod fastertools {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type ContentBlock = super::super::super::fastertools::mcp::types::ContentBlock;
-            pub type JsonValue = super::super::super::fastertools::mcp::types::JsonValue;
-            pub type JsonSchema = super::super::super::fastertools::mcp::types::JsonSchema;
-            pub type BaseMetadata = super::super::super::fastertools::mcp::types::BaseMetadata;
-            pub type MetaFields = super::super::super::fastertools::mcp::types::MetaFields;
-            pub type Cursor = super::super::super::fastertools::mcp::types::Cursor;
-            pub type ProgressToken = super::super::super::fastertools::mcp::types::ProgressToken;
+            pub type ContentBlock = super::super::super::wasmcp::mcp::types::ContentBlock;
+            pub type JsonValue = super::super::super::wasmcp::mcp::types::JsonValue;
+            pub type JsonSchema = super::super::super::wasmcp::mcp::types::JsonSchema;
+            pub type BaseMetadata = super::super::super::wasmcp::mcp::types::BaseMetadata;
+            pub type MetaFields = super::super::super::wasmcp::mcp::types::MetaFields;
+            pub type Cursor = super::super::super::wasmcp::mcp::types::Cursor;
+            pub type ProgressToken = super::super::super::wasmcp::mcp::types::ProgressToken;
             /// Behavioral hints about tool operations
             #[derive(Clone, serde::Deserialize, serde::Serialize)]
             pub struct ToolAnnotations {
@@ -3627,11 +3609,11 @@ pub mod fastertools {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type McpError = super::super::super::fastertools::mcp::types::McpError;
-            pub type ListToolsRequest = super::super::super::fastertools::mcp::tool_types::ListToolsRequest;
-            pub type ListToolsResponse = super::super::super::fastertools::mcp::tool_types::ListToolsResponse;
-            pub type CallToolRequest = super::super::super::fastertools::mcp::tool_types::CallToolRequest;
-            pub type ToolResult = super::super::super::fastertools::mcp::tool_types::ToolResult;
+            pub type McpError = super::super::super::wasmcp::mcp::types::McpError;
+            pub type ListToolsRequest = super::super::super::wasmcp::mcp::tool_types::ListToolsRequest;
+            pub type ListToolsResponse = super::super::super::wasmcp::mcp::tool_types::ListToolsResponse;
+            pub type CallToolRequest = super::super::super::wasmcp::mcp::tool_types::CallToolRequest;
+            pub type ToolResult = super::super::super::wasmcp::mcp::tool_types::ToolResult;
             #[allow(unused_unsafe, clippy::all)]
             /// List available tools
             pub fn handle_list_tools(
@@ -3650,7 +3632,7 @@ pub mod fastertools {
                         [::core::mem::MaybeUninit::uninit(); 9
                             * ::core::mem::size_of::<*const u8>()],
                     );
-                    let super::super::super::fastertools::mcp::tool_types::ListToolsRequest {
+                    let super::super::super::wasmcp::mcp::tool_types::ListToolsRequest {
                         cursor: cursor0,
                         progress_token: progress_token0,
                         meta: meta0,
@@ -3720,9 +3702,7 @@ pub mod fastertools {
                     };
                     let ptr10 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/tools-capabilities@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/tools-capabilities@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "handle-list-tools"]
                         fn wit_import11(
@@ -3831,8 +3811,8 @@ pub mod fastertools {
                                                 .add(8 + 17 * ::core::mem::size_of::<*const u8>())
                                                 .cast::<u8>(),
                                         );
-                                        super::super::super::fastertools::mcp::tool_types::Tool {
-                                            base: super::super::super::fastertools::mcp::types::BaseMetadata {
+                                        super::super::super::wasmcp::mcp::tool_types::Tool {
+                                            base: super::super::super::wasmcp::mcp::types::BaseMetadata {
                                                 name: _rt::string_lift(bytes17),
                                                 title: match l18 {
                                                     0 => None,
@@ -3931,7 +3911,7 @@ pub mod fastertools {
                                                                 .add(6 + 17 * ::core::mem::size_of::<*const u8>())
                                                                 .cast::<u8>(),
                                                         );
-                                                        super::super::super::fastertools::mcp::tool_types::ToolAnnotations {
+                                                        super::super::super::wasmcp::mcp::tool_types::ToolAnnotations {
                                                             title: match l34 {
                                                                 0 => None,
                                                                 1 => {
@@ -4093,7 +4073,7 @@ pub mod fastertools {
                                         .add(6 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::tool_types::ListToolsResponse {
+                                super::super::super::wasmcp::mcp::tool_types::ListToolsResponse {
                                     tools: result56,
                                     next_cursor: match l57 {
                                         0 => None,
@@ -4180,7 +4160,7 @@ pub mod fastertools {
                                 let l71 = i32::from(
                                     *ptr10.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::fastertools::mcp::types::ErrorCode as V73;
+                                use super::super::super::wasmcp::mcp::types::ErrorCode as V73;
                                 let v73 = match l71 {
                                     0 => V73::ParseError,
                                     1 => V73::InvalidRequest,
@@ -4222,7 +4202,7 @@ pub mod fastertools {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::types::McpError {
                                     code: v73,
                                     message: _rt::string_lift(bytes76),
                                     data: match l77 {
@@ -4279,7 +4259,7 @@ pub mod fastertools {
                         [::core::mem::MaybeUninit::uninit(); 10
                             * ::core::mem::size_of::<*const u8>()],
                     );
-                    let super::super::super::fastertools::mcp::tool_types::CallToolRequest {
+                    let super::super::super::wasmcp::mcp::tool_types::CallToolRequest {
                         name: name0,
                         arguments: arguments0,
                         progress_token: progress_token0,
@@ -4353,9 +4333,7 @@ pub mod fastertools {
                     };
                     let ptr11 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "fastertools:mcp/tools-capabilities@0.4.1"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/tools-capabilities@0.1.0")]
                     unsafe extern "C" {
                         #[link_name = "handle-call-tool"]
                         fn wit_import12(
@@ -4424,7 +4402,7 @@ pub mod fastertools {
                                         .add(i * (80 + 18 * ::core::mem::size_of::<*const u8>()));
                                     let e205 = {
                                         let l16 = i32::from(*base.add(0).cast::<u8>());
-                                        use super::super::super::fastertools::mcp::types::ContentBlock as V204;
+                                        use super::super::super::wasmcp::mcp::types::ContentBlock as V204;
                                         let v204 = match l16 {
                                             0 => {
                                                 let e204 = {
@@ -4448,7 +4426,7 @@ pub mod fastertools {
                                                             .add(48 + 6 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::fastertools::mcp::types::TextContent {
+                                                    super::super::super::wasmcp::mcp::types::TextContent {
                                                         text: _rt::string_lift(bytes19),
                                                         annotations: match l20 {
                                                             0 => None,
@@ -4469,7 +4447,7 @@ pub mod fastertools {
                                                                             .add(40 + 4 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::fastertools::mcp::types::Annotations {
+                                                                    super::super::super::wasmcp::mcp::types::Annotations {
                                                                         audience: match l21 {
                                                                             0 => None,
                                                                             1 => {
@@ -4487,7 +4465,7 @@ pub mod fastertools {
                                                                                         let base = base25.add(i * 1);
                                                                                         let e25 = {
                                                                                             let l24 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::fastertools::mcp::types::Role::_lift(
+                                                                                            super::super::super::wasmcp::mcp::types::Role::_lift(
                                                                                                 l24 as u8,
                                                                                             )
                                                                                         };
@@ -4628,7 +4606,7 @@ pub mod fastertools {
                                                             .add(48 + 8 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::fastertools::mcp::types::ImageContent {
+                                                    super::super::super::wasmcp::mcp::types::ImageContent {
                                                         data: _rt::Vec::from_raw_parts(l42.cast(), len44, len44),
                                                         mime_type: _rt::string_lift(bytes47),
                                                         annotations: match l48 {
@@ -4650,7 +4628,7 @@ pub mod fastertools {
                                                                             .add(40 + 6 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::fastertools::mcp::types::Annotations {
+                                                                    super::super::super::wasmcp::mcp::types::Annotations {
                                                                         audience: match l49 {
                                                                             0 => None,
                                                                             1 => {
@@ -4668,7 +4646,7 @@ pub mod fastertools {
                                                                                         let base = base53.add(i * 1);
                                                                                         let e53 = {
                                                                                             let l52 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::fastertools::mcp::types::Role::_lift(
+                                                                                            super::super::super::wasmcp::mcp::types::Role::_lift(
                                                                                                 l52 as u8,
                                                                                             )
                                                                                         };
@@ -4809,7 +4787,7 @@ pub mod fastertools {
                                                             .add(48 + 8 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::fastertools::mcp::types::AudioContent {
+                                                    super::super::super::wasmcp::mcp::types::AudioContent {
                                                         data: _rt::Vec::from_raw_parts(l70.cast(), len72, len72),
                                                         mime_type: _rt::string_lift(bytes75),
                                                         annotations: match l76 {
@@ -4831,7 +4809,7 @@ pub mod fastertools {
                                                                             .add(40 + 6 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::fastertools::mcp::types::Annotations {
+                                                                    super::super::super::wasmcp::mcp::types::Annotations {
                                                                         audience: match l77 {
                                                                             0 => None,
                                                                             1 => {
@@ -4849,7 +4827,7 @@ pub mod fastertools {
                                                                                         let base = base81.add(i * 1);
                                                                                         let e81 = {
                                                                                             let l80 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::fastertools::mcp::types::Role::_lift(
+                                                                                            super::super::super::wasmcp::mcp::types::Role::_lift(
                                                                                                 l80 as u8,
                                                                                             )
                                                                                         };
@@ -5015,7 +4993,7 @@ pub mod fastertools {
                                                             .add(72 + 16 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::fastertools::mcp::types::ResourceLink {
+                                                    super::super::super::wasmcp::mcp::types::ResourceLink {
                                                         uri: _rt::string_lift(bytes100),
                                                         name: _rt::string_lift(bytes103),
                                                         title: match l104 {
@@ -5116,7 +5094,7 @@ pub mod fastertools {
                                                                             .add(64 + 14 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::fastertools::mcp::types::Annotations {
+                                                                    super::super::super::wasmcp::mcp::types::Annotations {
                                                                         audience: match l119 {
                                                                             0 => None,
                                                                             1 => {
@@ -5134,7 +5112,7 @@ pub mod fastertools {
                                                                                         let base = base123.add(i * 1);
                                                                                         let e123 = {
                                                                                             let l122 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::fastertools::mcp::types::Role::_lift(
+                                                                                            super::super::super::wasmcp::mcp::types::Role::_lift(
                                                                                                 l122 as u8,
                                                                                             )
                                                                                         };
@@ -5250,7 +5228,7 @@ pub mod fastertools {
                                                 debug_assert_eq!(n, 4, "invalid enum discriminant");
                                                 let e204 = {
                                                     let l140 = i32::from(*base.add(8).cast::<u8>());
-                                                    use super::super::super::fastertools::mcp::types::ResourceContents as V181;
+                                                    use super::super::super::wasmcp::mcp::types::ResourceContents as V181;
                                                     let v181 = match l140 {
                                                         0 => {
                                                             let e181 = {
@@ -5288,7 +5266,7 @@ pub mod fastertools {
                                                                         .add(8 + 8 * ::core::mem::size_of::<*const u8>())
                                                                         .cast::<u8>(),
                                                                 );
-                                                                super::super::super::fastertools::mcp::types::TextResourceContents {
+                                                                super::super::super::wasmcp::mcp::types::TextResourceContents {
                                                                     uri: _rt::string_lift(bytes143),
                                                                     mime_type: match l144 {
                                                                         0 => None,
@@ -5403,7 +5381,7 @@ pub mod fastertools {
                                                                         .add(8 + 8 * ::core::mem::size_of::<*const u8>())
                                                                         .cast::<u8>(),
                                                                 );
-                                                                super::super::super::fastertools::mcp::types::BlobResourceContents {
+                                                                super::super::super::wasmcp::mcp::types::BlobResourceContents {
                                                                     uri: _rt::string_lift(bytes163),
                                                                     mime_type: match l164 {
                                                                         0 => None,
@@ -5497,7 +5475,7 @@ pub mod fastertools {
                                                             .add(56 + 14 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::fastertools::mcp::types::EmbeddedResource {
+                                                    super::super::super::wasmcp::mcp::types::EmbeddedResource {
                                                         contents: v181,
                                                         annotations: match l182 {
                                                             0 => None,
@@ -5518,7 +5496,7 @@ pub mod fastertools {
                                                                             .add(48 + 12 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::fastertools::mcp::types::Annotations {
+                                                                    super::super::super::wasmcp::mcp::types::Annotations {
                                                                         audience: match l183 {
                                                                             0 => None,
                                                                             1 => {
@@ -5536,7 +5514,7 @@ pub mod fastertools {
                                                                                         let base = base187.add(i * 1);
                                                                                         let e187 = {
                                                                                             let l186 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::fastertools::mcp::types::Role::_lift(
+                                                                                            super::super::super::wasmcp::mcp::types::Role::_lift(
                                                                                                 l186 as u8,
                                                                                             )
                                                                                         };
@@ -5673,7 +5651,7 @@ pub mod fastertools {
                                         .add(7 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::tool_types::ToolResult {
+                                super::super::super::wasmcp::mcp::tool_types::ToolResult {
                                     content: result205,
                                     structured_content: match l206 {
                                         0 => None,
@@ -5775,7 +5753,7 @@ pub mod fastertools {
                                 let l222 = i32::from(
                                     *ptr11.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::fastertools::mcp::types::ErrorCode as V224;
+                                use super::super::super::wasmcp::mcp::types::ErrorCode as V224;
                                 let v224 = match l222 {
                                     0 => V224::ParseError,
                                     1 => V224::InvalidRequest,
@@ -5817,7 +5795,7 @@ pub mod fastertools {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::fastertools::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::types::McpError {
                                     code: v224,
                                     message: _rt::string_lift(bytes227),
                                     data: match l228 {
@@ -5941,12 +5919,12 @@ mod _rt {
 }
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.4.1:tools-transport:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.1.0:tools-transport:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 5173] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xaf'\x01A\x02\x01A\x1e\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 5133] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x87'\x01A\x02\x01A\x1e\
 \x01B;\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajson-va\
 lue\x03\0\x02\x01o\x02ss\x01p\x04\x04\0\x0bmeta-fields\x03\0\x05\x01p\x01\x01k\x07\
 \x01ku\x01ks\x01r\x03\x08audience\x08\x08priority\x09\x0dlast-modified\x0a\x04\0\
@@ -5974,8 +5952,8 @@ user\x09assistant\x06system\x04\0\x0cmessage-role\x03\01\x01r\x01\x04name\x0a\x0
 \0\x0amodel-hint\x03\03\x01p4\x01k5\x01r\x04\x05hints6\x0dcost-priority\x09\x0es\
 peed-priority\x09\x15intelligence-priority\x09\x04\0\x11model-preferences\x03\07\
 \x01r\x04\x0curi-templates\x04names\x0bdescription\x0a\x09mime-type\x0a\x04\0\x11\
-resource-template\x03\09\x03\0\x1bfastertools:mcp/types@0.4.1\x05\0\x02\x03\0\0\x0b\
-meta-fields\x01B\x1d\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x01m\x02\x09\
+resource-template\x03\09\x03\0\x16wasmcp:mcp/types@0.1.0\x05\0\x02\x03\0\0\x0bme\
+ta-fields\x01B\x1d\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x01m\x02\x09\
 v20250326\x09v20250618\x04\0\x10protocol-version\x03\0\x02\x01ks\x01r\x03\x04nam\
 es\x07versions\x05title\x04\x04\0\x13implementation-info\x03\0\x05\x01k\x7f\x01r\
 \x01\x0clist-changed\x07\x04\0\x10roots-capability\x03\0\x08\x01r\x01\x0clist-ch\
@@ -5988,74 +5966,73 @@ completions\x07\x07prompts\x14\x09resources\x15\x05tools\x16\x04\0\x13server-cap
 abilities\x03\0\x17\x01r\x04\x10protocol-version\x03\x0ccapabilities\x13\x0bclie\
 nt-info\x06\x04meta\x10\x04\0\x12initialize-request\x03\0\x19\x01r\x05\x10protoc\
 ol-version\x03\x0ccapabilities\x18\x0bserver-info\x06\x0cinstructions\x04\x04met\
-a\x10\x04\0\x13initialize-response\x03\0\x1b\x03\0\x20fastertools:mcp/core-types\
-@0.4.1\x05\x02\x02\x03\0\0\x09mcp-error\x02\x03\0\0\x0eprogress-token\x02\x03\0\0\
-\x0arequest-id\x01B'\x02\x03\x02\x01\x03\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\
-\x01\x04\0\x0bmeta-fields\x03\0\x02\x02\x03\x02\x01\x04\x04\0\x0eprogress-token\x03\
-\0\x04\x02\x03\x02\x01\x05\x04\0\x0arequest-id\x03\0\x06\x01ku\x01ks\x01k\x03\x01\
-r\x05\x0eprogress-token\x05\x08progressu\x05total\x08\x07message\x09\x04meta\x0a\
-\x04\0\x15progress-notification\x03\0\x0b\x01r\x03\x0arequest-id\x07\x06reason\x09\
-\x04meta\x0a\x04\0\x16cancelled-notification\x03\0\x0d\x01r\x01\x04meta\x0a\x04\0\
-\x12tools-list-changed\x03\0\x0f\x01r\x01\x04meta\x0a\x04\0\x16resources-list-ch\
-anged\x03\0\x11\x01r\x01\x04meta\x0a\x04\0\x14prompts-list-changed\x03\0\x13\x01\
-r\x02\x03uris\x04meta\x0a\x04\0\x10resource-updated\x03\0\x15\x01r\x01\x04meta\x0a\
-\x04\0\x12roots-list-changed\x03\0\x17\x01m\x08\x05debug\x04info\x06notice\x07wa\
-rning\x05error\x08critical\x05alert\x09emergency\x04\0\x09log-level\x03\0\x19\x01\
-o\x02ss\x01p\x1b\x01k\x1c\x01r\x05\x05level\x1a\x06logger\x09\x07messages\x04dat\
-a\x1d\x04meta\x0a\x04\0\x0blog-message\x03\0\x1e\x01q\x08\x08progress\x01\x0c\0\x09\
-cancelled\x01\x0e\0\x12tools-list-changed\x01\x10\0\x16resources-list-changed\x01\
-\x12\0\x14prompts-list-changed\x01\x14\0\x10resource-updated\x01\x16\0\x12roots-\
-list-changed\x01\x18\0\x0blog-message\x01\x1f\0\x04\0\x0cnotification\x03\0\x20\x01\
-j\0\x01\x01\x01@\x01\x0cnotification!\0\"\x04\0\x11send-notification\x01#\x01@\x01\
-\x05level\x1a\0\"\x04\0\x0dset-log-level\x01$\x03\0(fastertools:mcp/notification\
--types@0.4.1\x05\x06\x01B\x13\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x01\
-ps\x01ks\x01r\x05\x0fexpected-issuers\x12expected-audiences\x02\x08jwks-uris\x06\
-policy\x03\x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01kw\x01r\
-\x08\x09client-id\x03\x07user-id\x03\x06scopes\x02\x06issuer\x03\x08audience\x03\
-\x06claims\x01\x03exp\x06\x03iat\x06\x04\0\x0cauth-context\x03\0\x07\x01o\x02ss\x01\
-p\x09\x01p}\x01k\x0b\x01r\x0a\x05tokens\x06methods\x04paths\x07headers\x0a\x04bo\
-dy\x0c\x0fexpected-issuers\x12expected-audiences\x02\x08jwks-uris\x06policy\x03\x0b\
-policy-data\x03\x04\0\x0cauth-request\x03\0\x0d\x01r\x04\x06status{\x0aerror-cod\
-es\x0bdescriptions\x10www-authenticate\x03\x04\0\x0aauth-error\x03\0\x0f\x01q\x02\
-\x0aauthorized\x01\x08\0\x0cunauthorized\x01\x10\0\x04\0\x0dauth-response\x03\0\x11\
-\x03\0)fastertools:mcp/authorization-types@0.4.1\x05\x07\x02\x03\0\x01\x12initia\
-lize-request\x02\x03\0\x01\x13initialize-response\x02\x03\0\x03\x14provider-auth\
--config\x01B\x18\x02\x03\x02\x01\x03\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x08\
-\x04\0\x12initialize-request\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x13initialize-r\
-esponse\x03\0\x04\x02\x03\x02\x01\x0a\x04\0\x14provider-auth-config\x03\0\x06\x01\
-j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x08\x04\0\x11handle-initialize\x01\x09\
-\x01j\0\x01\x01\x01@\0\0\x0a\x04\0\x12handle-initialized\x01\x0b\x04\0\x0bhandle\
--ping\x01\x0b\x04\0\x0fhandle-shutdown\x01\x0b\x01k\x07\x01@\0\0\x0c\x04\0\x0fge\
-t-auth-config\x01\x0d\x01ks\x01@\x01\x08jwks-uris\0\x0e\x04\0\x0ejwks-cache-get\x01\
-\x0f\x01@\x02\x08jwks-uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\x10\x03\0'\
-fastertools:mcp/core-capabilities@0.4.1\x05\x0b\x02\x03\0\0\x0dcontent-block\x02\
-\x03\0\0\x0ajson-value\x02\x03\0\0\x0bjson-schema\x02\x03\0\0\x0dbase-metadata\x02\
-\x03\0\0\x06cursor\x01B$\x02\x03\x02\x01\x0c\x04\0\x0dcontent-block\x03\0\0\x02\x03\
-\x02\x01\x0d\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x0e\x04\0\x0bjson-sch\
-ema\x03\0\x04\x02\x03\x02\x01\x0f\x04\0\x0dbase-metadata\x03\0\x06\x02\x03\x02\x01\
-\x01\x04\0\x0bmeta-fields\x03\0\x08\x02\x03\x02\x01\x10\x04\0\x06cursor\x03\0\x0a\
-\x02\x03\x02\x01\x04\x04\0\x0eprogress-token\x03\0\x0c\x01ks\x01k\x7f\x01r\x05\x05\
-title\x0e\x0eread-only-hint\x0f\x10destructive-hint\x0f\x0fidempotent-hint\x0f\x0f\
-open-world-hint\x0f\x04\0\x10tool-annotations\x03\0\x10\x01k\x05\x01k\x11\x01k\x09\
-\x01r\x06\x04base\x07\x0bdescription\x0e\x0cinput-schema\x05\x0doutput-schema\x12\
-\x0bannotations\x13\x04meta\x14\x04\0\x04tool\x03\0\x15\x01p\x01\x01k\x03\x01r\x04\
-\x07content\x17\x12structured-content\x18\x08is-error\x0f\x04meta\x14\x04\0\x0bt\
-ool-result\x03\0\x19\x01k\x0b\x01k\x0d\x01r\x03\x06cursor\x1b\x0eprogress-token\x1c\
-\x04meta\x14\x04\0\x12list-tools-request\x03\0\x1d\x01p\x16\x01r\x03\x05tools\x1f\
-\x0bnext-cursor\x1b\x04meta\x14\x04\0\x13list-tools-response\x03\0\x20\x01r\x04\x04\
-names\x09arguments\x18\x0eprogress-token\x1c\x04meta\x14\x04\0\x11call-tool-requ\
-est\x03\0\"\x03\0\x20fastertools:mcp/tool-types@0.4.1\x05\x11\x02\x03\0\x05\x12l\
-ist-tools-request\x02\x03\0\x05\x13list-tools-response\x02\x03\0\x05\x11call-too\
-l-request\x02\x03\0\x05\x0btool-result\x01B\x10\x02\x03\x02\x01\x03\x04\0\x09mcp\
--error\x03\0\0\x02\x03\x02\x01\x12\x04\0\x12list-tools-request\x03\0\x02\x02\x03\
-\x02\x01\x13\x04\0\x13list-tools-response\x03\0\x04\x02\x03\x02\x01\x14\x04\0\x11\
-call-tool-request\x03\0\x06\x02\x03\x02\x01\x15\x04\0\x0btool-result\x03\0\x08\x01\
-j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\
-\x01j\x01\x09\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x10handle-call-tool\x01\
-\x0d\x03\0(fastertools:mcp/tools-capabilities@0.4.1\x05\x16\x04\0%fastertools:mc\
-p/tools-transport@0.4.1\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\0\0\0G\x09pro\
-ducers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x06\
-0.41.0";
+a\x10\x04\0\x13initialize-response\x03\0\x1b\x03\0\x1bwasmcp:mcp/core-types@0.1.\
+0\x05\x02\x02\x03\0\0\x09mcp-error\x02\x03\0\0\x0eprogress-token\x02\x03\0\0\x0a\
+request-id\x01B'\x02\x03\x02\x01\x03\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x01\
+\x04\0\x0bmeta-fields\x03\0\x02\x02\x03\x02\x01\x04\x04\0\x0eprogress-token\x03\0\
+\x04\x02\x03\x02\x01\x05\x04\0\x0arequest-id\x03\0\x06\x01ku\x01ks\x01k\x03\x01r\
+\x05\x0eprogress-token\x05\x08progressu\x05total\x08\x07message\x09\x04meta\x0a\x04\
+\0\x15progress-notification\x03\0\x0b\x01r\x03\x0arequest-id\x07\x06reason\x09\x04\
+meta\x0a\x04\0\x16cancelled-notification\x03\0\x0d\x01r\x01\x04meta\x0a\x04\0\x12\
+tools-list-changed\x03\0\x0f\x01r\x01\x04meta\x0a\x04\0\x16resources-list-change\
+d\x03\0\x11\x01r\x01\x04meta\x0a\x04\0\x14prompts-list-changed\x03\0\x13\x01r\x02\
+\x03uris\x04meta\x0a\x04\0\x10resource-updated\x03\0\x15\x01r\x01\x04meta\x0a\x04\
+\0\x12roots-list-changed\x03\0\x17\x01m\x08\x05debug\x04info\x06notice\x07warnin\
+g\x05error\x08critical\x05alert\x09emergency\x04\0\x09log-level\x03\0\x19\x01o\x02\
+ss\x01p\x1b\x01k\x1c\x01r\x05\x05level\x1a\x06logger\x09\x07messages\x04data\x1d\
+\x04meta\x0a\x04\0\x0blog-message\x03\0\x1e\x01q\x08\x08progress\x01\x0c\0\x09ca\
+ncelled\x01\x0e\0\x12tools-list-changed\x01\x10\0\x16resources-list-changed\x01\x12\
+\0\x14prompts-list-changed\x01\x14\0\x10resource-updated\x01\x16\0\x12roots-list\
+-changed\x01\x18\0\x0blog-message\x01\x1f\0\x04\0\x0cnotification\x03\0\x20\x01j\
+\0\x01\x01\x01@\x01\x0cnotification!\0\"\x04\0\x11send-notification\x01#\x01@\x01\
+\x05level\x1a\0\"\x04\0\x0dset-log-level\x01$\x03\0#wasmcp:mcp/notification-type\
+s@0.1.0\x05\x06\x01B\x13\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x01ps\x01\
+ks\x01r\x05\x0fexpected-issuers\x12expected-audiences\x02\x08jwks-uris\x06policy\
+\x03\x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01kw\x01r\x08\x09\
+client-id\x03\x07user-id\x03\x06scopes\x02\x06issuer\x03\x08audience\x03\x06clai\
+ms\x01\x03exp\x06\x03iat\x06\x04\0\x0cauth-context\x03\0\x07\x01o\x02ss\x01p\x09\
+\x01p}\x01k\x0b\x01r\x0a\x05tokens\x06methods\x04paths\x07headers\x0a\x04body\x0c\
+\x0fexpected-issuers\x12expected-audiences\x02\x08jwks-uris\x06policy\x03\x0bpol\
+icy-data\x03\x04\0\x0cauth-request\x03\0\x0d\x01r\x04\x06status{\x0aerror-codes\x0b\
+descriptions\x10www-authenticate\x03\x04\0\x0aauth-error\x03\0\x0f\x01q\x02\x0aa\
+uthorized\x01\x08\0\x0cunauthorized\x01\x10\0\x04\0\x0dauth-response\x03\0\x11\x03\
+\0$wasmcp:mcp/authorization-types@0.1.0\x05\x07\x02\x03\0\x01\x12initialize-requ\
+est\x02\x03\0\x01\x13initialize-response\x02\x03\0\x03\x14provider-auth-config\x01\
+B\x18\x02\x03\x02\x01\x03\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x08\x04\0\x12\
+initialize-request\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x13initialize-response\x03\
+\0\x04\x02\x03\x02\x01\x0a\x04\0\x14provider-auth-config\x03\0\x06\x01j\x01\x05\x01\
+\x01\x01@\x01\x07request\x03\0\x08\x04\0\x11handle-initialize\x01\x09\x01j\0\x01\
+\x01\x01@\0\0\x0a\x04\0\x12handle-initialized\x01\x0b\x04\0\x0bhandle-ping\x01\x0b\
+\x04\0\x0fhandle-shutdown\x01\x0b\x01k\x07\x01@\0\0\x0c\x04\0\x0fget-auth-config\
+\x01\x0d\x01ks\x01@\x01\x08jwks-uris\0\x0e\x04\0\x0ejwks-cache-get\x01\x0f\x01@\x02\
+\x08jwks-uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\x10\x03\0\"wasmcp:mcp/c\
+ore-capabilities@0.1.0\x05\x0b\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-\
+value\x02\x03\0\0\x0bjson-schema\x02\x03\0\0\x0dbase-metadata\x02\x03\0\0\x06cur\
+sor\x01B$\x02\x03\x02\x01\x0c\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\x0d\
+\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x0e\x04\0\x0bjson-schema\x03\0\x04\
+\x02\x03\x02\x01\x0f\x04\0\x0dbase-metadata\x03\0\x06\x02\x03\x02\x01\x01\x04\0\x0b\
+meta-fields\x03\0\x08\x02\x03\x02\x01\x10\x04\0\x06cursor\x03\0\x0a\x02\x03\x02\x01\
+\x04\x04\0\x0eprogress-token\x03\0\x0c\x01ks\x01k\x7f\x01r\x05\x05title\x0e\x0er\
+ead-only-hint\x0f\x10destructive-hint\x0f\x0fidempotent-hint\x0f\x0fopen-world-h\
+int\x0f\x04\0\x10tool-annotations\x03\0\x10\x01k\x05\x01k\x11\x01k\x09\x01r\x06\x04\
+base\x07\x0bdescription\x0e\x0cinput-schema\x05\x0doutput-schema\x12\x0bannotati\
+ons\x13\x04meta\x14\x04\0\x04tool\x03\0\x15\x01p\x01\x01k\x03\x01r\x04\x07conten\
+t\x17\x12structured-content\x18\x08is-error\x0f\x04meta\x14\x04\0\x0btool-result\
+\x03\0\x19\x01k\x0b\x01k\x0d\x01r\x03\x06cursor\x1b\x0eprogress-token\x1c\x04met\
+a\x14\x04\0\x12list-tools-request\x03\0\x1d\x01p\x16\x01r\x03\x05tools\x1f\x0bne\
+xt-cursor\x1b\x04meta\x14\x04\0\x13list-tools-response\x03\0\x20\x01r\x04\x04nam\
+es\x09arguments\x18\x0eprogress-token\x1c\x04meta\x14\x04\0\x11call-tool-request\
+\x03\0\"\x03\0\x1bwasmcp:mcp/tool-types@0.1.0\x05\x11\x02\x03\0\x05\x12list-tool\
+s-request\x02\x03\0\x05\x13list-tools-response\x02\x03\0\x05\x11call-tool-reques\
+t\x02\x03\0\x05\x0btool-result\x01B\x10\x02\x03\x02\x01\x03\x04\0\x09mcp-error\x03\
+\0\0\x02\x03\x02\x01\x12\x04\0\x12list-tools-request\x03\0\x02\x02\x03\x02\x01\x13\
+\x04\0\x13list-tools-response\x03\0\x04\x02\x03\x02\x01\x14\x04\0\x11call-tool-r\
+equest\x03\0\x06\x02\x03\x02\x01\x15\x04\0\x0btool-result\x03\0\x08\x01j\x01\x05\
+\x01\x01\x01@\x01\x07request\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\x01j\x01\
+\x09\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x10handle-call-tool\x01\x0d\x03\
+\0#wasmcp:mcp/tools-capabilities@0.1.0\x05\x16\x04\0\x20wasmcp:mcp/tools-transpo\
+rt@0.1.0\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\0\0\0G\x09producers\x01\x0cp\
+rocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {
