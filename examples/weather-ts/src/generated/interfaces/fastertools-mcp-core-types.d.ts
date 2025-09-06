@@ -1,4 +1,4 @@
-/** @module Interface fastertools:mcp/core-types@0.4.0 **/
+/** @module Interface fastertools:mcp/core-types@0.4.1 **/
 export type MetaFields = import('./fastertools-mcp-types.js').MetaFields;
 /**
  * Protocol versions supported by MCP

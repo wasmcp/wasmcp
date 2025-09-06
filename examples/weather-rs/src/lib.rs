@@ -11,36 +11,18 @@ use bindings::exports::fastertools::mcp::tools_capabilities::Guest as ToolsGuest
 use bindings::fastertools::mcp::{
     authorization_types::ProviderAuthConfig,
     core_types::{
-        ImplementationInfo,
-        InitializeRequest,
-        InitializeResponse,
-        ProtocolVersion,
-        ServerCapabilities,
-        ToolsCapability,
+        ImplementationInfo, InitializeRequest, InitializeResponse, ProtocolVersion,
+        ServerCapabilities, ToolsCapability,
     },
     tool_types::{
-        BaseMetadata,
-        CallToolRequest,
-        ListToolsRequest,
-        ListToolsResponse,
-        Tool,
-        ToolResult,
+        BaseMetadata, CallToolRequest, ListToolsRequest, ListToolsResponse, Tool, ToolResult,
     },
-    types::{
-        ContentBlock,
-        ErrorCode,
-        McpError,
-        TextContent,
-    },
+    types::{ContentBlock, ErrorCode, McpError, TextContent},
 };
 use futures::future::join_all;
 use serde::Deserialize;
 use serde_json::json;
-use spin_sdk::http::{
-    Request,
-    Response,
-    send,
-};
+use spin_sdk::http::{Request, Response, send};
 
 /// The main component struct required by the WIT bindings.
 pub struct Component;
@@ -84,7 +66,7 @@ impl CoreGuest for Component {
     }
 
     fn get_auth_config() -> Option<ProviderAuthConfig> {
-        // Uncomment and configure to enable OAuth authentication:
+        // Uncomment and configure to enable OAuth authorization:
         // Some(ProviderAuthConfig {
         // expected_issuer: "https://your-auth-domain.example.com".to_string(),
         // expected_audiences: vec!["your-client-id".to_string()],

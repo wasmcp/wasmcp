@@ -1,21 +1,21 @@
-# Authentication Configuration
+# Authorization Configuration
 
-This MCP provider supports optional OAuth 2.0 authentication via JWT tokens.
+This MCP provider supports optional OAuth 2.0 authorization via JWT tokens.
 
-## Quick Start (No Authentication)
+## Quick Start (No Authorization)
 
-By default, authentication is **disabled**. Simply run:
+By default, authorization is **disabled**. Simply run:
 
 ```bash
 make build
 make serve
 ```
 
-The server will accept all requests without authentication.
+The server will accept all requests without authorization.
 
-## Enabling OAuth 2.0 Authentication
+## Enabling OAuth 2.0 Authorization
 
-To enable authentication, edit `src/lib.rs` and modify the `auth_config()` function:
+To enable authorization, edit `src/lib.rs` and modify the `auth_config()` function:
 
 ```rust
 fn auth_config() -> Option<ProviderAuthConfig> {
@@ -43,7 +43,7 @@ make serve
 
 ## How It Works
 
-When authentication is enabled:
+When authorization is enabled:
 1. All MCP requests must include a `Bearer` token in the `Authorization` header
 2. The token is validated against the configured issuer and audience
 3. Invalid or missing tokens receive a `401 Unauthorized` response
@@ -95,9 +95,9 @@ The policy receives:
 - `input.request` - HTTP request details (method, path, headers)
 - `input.mcp` - MCP-specific context (method name, tool name, etc.)
 
-## Testing Authentication
+## Testing Authorization
 
-With authentication enabled, test with a bearer token:
+With authorization enabled, test with a bearer token:
 
 ```bash
 # This will fail without a token

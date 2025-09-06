@@ -1785,7 +1785,7 @@ pub mod fastertools {
                     let ptr67 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/notification-types@0.4.0"
+                        wasm_import_module = "fastertools:mcp/notification-types@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "send-notification"]
@@ -1953,7 +1953,7 @@ pub mod fastertools {
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/notification-types@0.4.0"
+                        wasm_import_module = "fastertools:mcp/notification-types@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "set-log-level"]
@@ -2053,18 +2053,18 @@ pub mod fastertools {
             }
         }
         /// Authorization types for MCP servers
-        /// These types define the authentication configuration that providers can declare
+        /// These types define the authorization configuration that providers can declare
         /// and that transports use to enforce authorization
-        /// Type definitions for authorization and authentication
+        /// Type definitions for authentication and authorization
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
         pub mod authorization_types {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            /// Provider declares its authentication requirements
+            /// Provider declares its authorization requirements
             /// This is returned by core-capabilities::get-auth-config()
-            /// and used by the transport to enforce authentication
+            /// and used by the transport to enforce authorization
             #[derive(Clone, serde::Deserialize, serde::Serialize)]
             pub struct ProviderAuthConfig {
                 /// Expected JWT issuer (REQUIRED for auth)
@@ -2368,7 +2368,7 @@ pub mod fastertools {
                     let ptr16 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.0"
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "handle-initialize"]
@@ -2868,7 +2868,7 @@ pub mod fastertools {
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.0"
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "handle-initialized"]
@@ -2984,7 +2984,7 @@ pub mod fastertools {
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.0"
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "handle-ping"]
@@ -3100,7 +3100,7 @@ pub mod fastertools {
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.0"
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "handle-shutdown"]
@@ -3200,7 +3200,7 @@ pub mod fastertools {
             }
             #[allow(unused_unsafe, clippy::all)]
             /// Get provider's auth configuration (optional - return none for no auth)
-            /// If auth configuration is provided, the transport will enforce authentication
+            /// If auth configuration is provided, the transport will enforce authorization
             pub fn get_auth_config() -> Option<ProviderAuthConfig> {
                 unsafe {
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
@@ -3217,7 +3217,7 @@ pub mod fastertools {
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.0"
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "get-auth-config"]
@@ -3379,7 +3379,7 @@ pub mod fastertools {
                     let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.0"
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "jwks-cache-get"]
@@ -3431,7 +3431,7 @@ pub mod fastertools {
                     let len1 = vec1.len();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.0"
+                        wasm_import_module = "fastertools:mcp/core-capabilities@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "jwks-cache-set"]
@@ -3721,7 +3721,7 @@ pub mod fastertools {
                     let ptr10 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/tools-capabilities@0.4.0"
+                        wasm_import_module = "fastertools:mcp/tools-capabilities@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "handle-list-tools"]
@@ -4354,7 +4354,7 @@ pub mod fastertools {
                     let ptr11 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "fastertools:mcp/tools-capabilities@0.4.0"
+                        wasm_import_module = "fastertools:mcp/tools-capabilities@0.4.1"
                     )]
                     unsafe extern "C" {
                         #[link_name = "handle-call-tool"]
@@ -5941,7 +5941,7 @@ mod _rt {
 }
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.4.0:tools-transport:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.4.1:tools-transport:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
@@ -5974,7 +5974,7 @@ user\x09assistant\x06system\x04\0\x0cmessage-role\x03\01\x01r\x01\x04name\x0a\x0
 \0\x0amodel-hint\x03\03\x01p4\x01k5\x01r\x04\x05hints6\x0dcost-priority\x09\x0es\
 peed-priority\x09\x15intelligence-priority\x09\x04\0\x11model-preferences\x03\07\
 \x01r\x04\x0curi-templates\x04names\x0bdescription\x0a\x09mime-type\x0a\x04\0\x11\
-resource-template\x03\09\x03\0\x1bfastertools:mcp/types@0.4.0\x05\0\x02\x03\0\0\x0b\
+resource-template\x03\09\x03\0\x1bfastertools:mcp/types@0.4.1\x05\0\x02\x03\0\0\x0b\
 meta-fields\x01B\x1d\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x01m\x02\x09\
 v20250326\x09v20250618\x04\0\x10protocol-version\x03\0\x02\x01ks\x01r\x03\x04nam\
 es\x07versions\x05title\x04\x04\0\x13implementation-info\x03\0\x05\x01k\x7f\x01r\
@@ -5989,7 +5989,7 @@ abilities\x03\0\x17\x01r\x04\x10protocol-version\x03\x0ccapabilities\x13\x0bclie
 nt-info\x06\x04meta\x10\x04\0\x12initialize-request\x03\0\x19\x01r\x05\x10protoc\
 ol-version\x03\x0ccapabilities\x18\x0bserver-info\x06\x0cinstructions\x04\x04met\
 a\x10\x04\0\x13initialize-response\x03\0\x1b\x03\0\x20fastertools:mcp/core-types\
-@0.4.0\x05\x02\x02\x03\0\0\x09mcp-error\x02\x03\0\0\x0eprogress-token\x02\x03\0\0\
+@0.4.1\x05\x02\x02\x03\0\0\x09mcp-error\x02\x03\0\0\x0eprogress-token\x02\x03\0\0\
 \x0arequest-id\x01B'\x02\x03\x02\x01\x03\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\
 \x01\x04\0\x0bmeta-fields\x03\0\x02\x02\x03\x02\x01\x04\x04\0\x0eprogress-token\x03\
 \0\x04\x02\x03\x02\x01\x05\x04\0\x0arequest-id\x03\0\x06\x01ku\x01ks\x01k\x03\x01\
@@ -6008,7 +6008,7 @@ cancelled\x01\x0e\0\x12tools-list-changed\x01\x10\0\x16resources-list-changed\x0
 list-changed\x01\x18\0\x0blog-message\x01\x1f\0\x04\0\x0cnotification\x03\0\x20\x01\
 j\0\x01\x01\x01@\x01\x0cnotification!\0\"\x04\0\x11send-notification\x01#\x01@\x01\
 \x05level\x1a\0\"\x04\0\x0dset-log-level\x01$\x03\0(fastertools:mcp/notification\
--types@0.4.0\x05\x06\x01B\x13\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x01\
+-types@0.4.1\x05\x06\x01B\x13\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x01\
 ps\x01ks\x01r\x05\x0fexpected-issuers\x12expected-audiences\x02\x08jwks-uris\x06\
 policy\x03\x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01kw\x01r\
 \x08\x09client-id\x03\x07user-id\x03\x06scopes\x02\x06issuer\x03\x08audience\x03\
@@ -6018,7 +6018,7 @@ dy\x0c\x0fexpected-issuers\x12expected-audiences\x02\x08jwks-uris\x06policy\x03\
 policy-data\x03\x04\0\x0cauth-request\x03\0\x0d\x01r\x04\x06status{\x0aerror-cod\
 es\x0bdescriptions\x10www-authenticate\x03\x04\0\x0aauth-error\x03\0\x0f\x01q\x02\
 \x0aauthorized\x01\x08\0\x0cunauthorized\x01\x10\0\x04\0\x0dauth-response\x03\0\x11\
-\x03\0)fastertools:mcp/authorization-types@0.4.0\x05\x07\x02\x03\0\x01\x12initia\
+\x03\0)fastertools:mcp/authorization-types@0.4.1\x05\x07\x02\x03\0\x01\x12initia\
 lize-request\x02\x03\0\x01\x13initialize-response\x02\x03\0\x03\x14provider-auth\
 -config\x01B\x18\x02\x03\x02\x01\x03\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x08\
 \x04\0\x12initialize-request\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x13initialize-r\
@@ -6028,7 +6028,7 @@ j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x08\x04\0\x11handle-initialize\x01\x
 -ping\x01\x0b\x04\0\x0fhandle-shutdown\x01\x0b\x01k\x07\x01@\0\0\x0c\x04\0\x0fge\
 t-auth-config\x01\x0d\x01ks\x01@\x01\x08jwks-uris\0\x0e\x04\0\x0ejwks-cache-get\x01\
 \x0f\x01@\x02\x08jwks-uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\x10\x03\0'\
-fastertools:mcp/core-capabilities@0.4.0\x05\x0b\x02\x03\0\0\x0dcontent-block\x02\
+fastertools:mcp/core-capabilities@0.4.1\x05\x0b\x02\x03\0\0\x0dcontent-block\x02\
 \x03\0\0\x0ajson-value\x02\x03\0\0\x0bjson-schema\x02\x03\0\0\x0dbase-metadata\x02\
 \x03\0\0\x06cursor\x01B$\x02\x03\x02\x01\x0c\x04\0\x0dcontent-block\x03\0\0\x02\x03\
 \x02\x01\x0d\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x0e\x04\0\x0bjson-sch\
@@ -6044,7 +6044,7 @@ ool-result\x03\0\x19\x01k\x0b\x01k\x0d\x01r\x03\x06cursor\x1b\x0eprogress-token\
 \x04meta\x14\x04\0\x12list-tools-request\x03\0\x1d\x01p\x16\x01r\x03\x05tools\x1f\
 \x0bnext-cursor\x1b\x04meta\x14\x04\0\x13list-tools-response\x03\0\x20\x01r\x04\x04\
 names\x09arguments\x18\x0eprogress-token\x1c\x04meta\x14\x04\0\x11call-tool-requ\
-est\x03\0\"\x03\0\x20fastertools:mcp/tool-types@0.4.0\x05\x11\x02\x03\0\x05\x12l\
+est\x03\0\"\x03\0\x20fastertools:mcp/tool-types@0.4.1\x05\x11\x02\x03\0\x05\x12l\
 ist-tools-request\x02\x03\0\x05\x13list-tools-response\x02\x03\0\x05\x11call-too\
 l-request\x02\x03\0\x05\x0btool-result\x01B\x10\x02\x03\x02\x01\x03\x04\0\x09mcp\
 -error\x03\0\0\x02\x03\x02\x01\x12\x04\0\x12list-tools-request\x03\0\x02\x02\x03\
@@ -6052,8 +6052,8 @@ l-request\x02\x03\0\x05\x0btool-result\x01B\x10\x02\x03\x02\x01\x03\x04\0\x09mcp
 call-tool-request\x03\0\x06\x02\x03\x02\x01\x15\x04\0\x0btool-result\x03\0\x08\x01\
 j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\
 \x01j\x01\x09\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x10handle-call-tool\x01\
-\x0d\x03\0(fastertools:mcp/tools-capabilities@0.4.0\x05\x16\x04\0%fastertools:mc\
-p/tools-transport@0.4.0\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\0\0\0G\x09pro\
+\x0d\x03\0(fastertools:mcp/tools-capabilities@0.4.1\x05\x16\x04\0%fastertools:mc\
+p/tools-transport@0.4.1\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\0\0\0G\x09pro\
 ducers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x06\
 0.41.0";
 #[inline(never)]

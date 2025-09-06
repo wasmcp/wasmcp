@@ -116,9 +116,9 @@ class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
         return None
 
     def get_auth_config(self) -> Optional:
-        """Return auth configuration if this server requires authentication."""
+        """Return auth configuration if this server requires authorization."""
         return None  # No auth required for this example
-        # Uncomment and configure for OAuth authentication:
+        # Uncomment and configure for OAuth authorization:
         # from wit_world.imports.authorization_types import ProviderAuthConfig
         # return ProviderAuthConfig(
         #     expected_issuer="https://xxxxx.authkit.app",

@@ -126,7 +126,7 @@ interface core-capabilities {
     handle-shutdown: func() -> result<_, mcp-error>;
     
     /// Get provider's auth configuration (optional - return none for no auth)
-    /// If auth configuration is provided, the transport will enforce authentication
+    /// If auth configuration is provided, the transport will enforce authorization
     get-auth-config: func() -> option<provider-auth-config>;
     
     /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)

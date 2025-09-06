@@ -17,7 +17,7 @@ This implementation uses WIT bindings directly as the SDK, providing transparent
 Components composed at build time:
 - Provider component (this code) - exports MCP capabilities
 - HTTP transport v0.4.1 (from registry) - handles JSON-RPC over HTTP
-- Optional OAuth 2.0 authentication
+- Optional OAuth 2.0 authorization
 
 ## Example Tools
 
@@ -41,7 +41,7 @@ This server implements three demonstration tools:
 
 ```
 main.go          # MCP capabilities implementation
-wit/             # WIT interface definitions (fastertools:mcp@0.4.0)
+wit/             # WIT interface definitions (fastertools:mcp@0.4.1)
 internal/        # Generated Go bindings (auto-generated)
 Makefile         # Build automation
 ```
@@ -114,13 +114,13 @@ make test-weather    # Test weather tool
 make test-multi      # Test concurrent fetching
 ```
 
-## Authentication
+## Authorization
 
-OAuth 2.0 authentication is optional and configured in the `GetAuthConfig` method:
+OAuth 2.0 authorization is optional and configured in the `GetAuthConfig` method:
 
 ```go
 func (m *MCPProvider) GetAuthConfig() cm.Option[cm.ProviderAuthConfig] {
-    // Return None to disable authentication
+    // Return None to disable authorization
     return cm.None[cm.ProviderAuthConfig]()
     
     // Or enable OAuth 2.0 protection:

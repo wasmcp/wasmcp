@@ -1,14 +1,14 @@
 /// Authorization types for MCP servers
-/// These types define the authentication configuration that providers can declare
+/// These types define the authorization configuration that providers can declare
 /// and that transports use to enforce authorization
 
-/// Type definitions for authorization and authentication
+/// Type definitions for authentication and authorization
 interface authorization-types {
     use types.{meta-fields};
     
-    /// Provider declares its authentication requirements
+    /// Provider declares its authorization requirements
     /// This is returned by core-capabilities::get-auth-config()
-    /// and used by the transport to enforce authentication
+    /// and used by the transport to enforce authorization
     record provider-auth-config {
         /// Expected JWT issuer (REQUIRED for auth)
         expected-issuer: string,
@@ -22,7 +22,7 @@ interface authorization-types {
         policy-data: option<string>,
     }
     
-    /// Authorization context passed between components after successful authentication
+    /// Authorization context passed between components after successful authorization
     record auth-context {
         /// OAuth client ID that made the request
         client-id: option<string>,

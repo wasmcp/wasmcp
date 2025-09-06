@@ -1883,7 +1883,7 @@ pub mod fastertools {
                 }
             }
         }
-        /// Authorization and authentication interfaces for MCP servers
+        /// Authentication and authorization interfaces for MCP servers
         /// Provides JWT validation, OAuth discovery, and policy-based authorization
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
         pub mod authorization {
@@ -1892,7 +1892,7 @@ pub mod fastertools {
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
             pub type MetaFields = super::super::super::fastertools::mcp::types::MetaFields;
-            /// Provider declares its authentication requirements
+            /// Provider declares its authorization requirements
             #[derive(Clone)]
             pub struct ProviderAuthConfig {
                 /// Expected JWT issuer (REQUIRED for auth)
@@ -1920,7 +1920,7 @@ pub mod fastertools {
                         .finish()
                 }
             }
-            /// Authorization context passed between components after successful authentication
+            /// Authorization context passed between components after successful authorization
             #[derive(Clone)]
             pub struct AuthContext {
                 /// OAuth client ID that made the request
@@ -4351,7 +4351,7 @@ pub mod exports {
                     /// Handle shutdown request
                     fn handle_shutdown() -> Result<(), McpError>;
                     /// Get provider's auth configuration (optional - return none for no auth)
-                    /// If auth configuration is provided, the transport will enforce authentication
+                    /// If auth configuration is provided, the transport will enforce authorization
                     fn get_auth_config() -> Option<ProviderAuthConfig>;
                 }
                 #[doc(hidden)]

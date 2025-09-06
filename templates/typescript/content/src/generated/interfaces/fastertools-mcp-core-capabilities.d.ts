@@ -18,7 +18,7 @@ export function handlePing(): void;
 export function handleShutdown(): void;
 /**
  * Get provider's auth configuration (optional - return none for no auth)
- * If auth configuration is provided, the transport will enforce authentication
+ * If auth configuration is provided, the transport will enforce authorization
  */
 export function getAuthConfig(): ProviderAuthConfig | undefined;
 export type McpError = import('./fastertools-mcp-types.js').McpError;

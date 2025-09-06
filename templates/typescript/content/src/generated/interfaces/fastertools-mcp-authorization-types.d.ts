@@ -1,7 +1,7 @@
 /** @module Interface fastertools:mcp/authorization-types@0.1.23 **/
 export type MetaFields = import('./fastertools-mcp-types.js').MetaFields;
 /**
- * Provider declares its authentication requirements
+ * Provider declares its authorization requirements
  */
 export interface ProviderAuthConfig {
   /**
@@ -26,7 +26,7 @@ export interface ProviderAuthConfig {
   policyData?: string,
 }
 /**
- * Authorization context passed between components after successful authentication
+ * Authorization context passed between components after successful authorization
  */
 export interface AuthContext {
   /**

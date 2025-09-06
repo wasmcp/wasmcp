@@ -765,18 +765,18 @@ pub mod fastertools {
             }
         }
         /// Authorization types for MCP servers
-        /// These types define the authentication configuration that providers can declare
+        /// These types define the authorization configuration that providers can declare
         /// and that transports use to enforce authorization
-        /// Type definitions for authorization and authentication
+        /// Type definitions for authentication and authorization
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
         pub mod authorization_types {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            /// Provider declares its authentication requirements
+            /// Provider declares its authorization requirements
             /// This is returned by core-capabilities::get-auth-config()
-            /// and used by the transport to enforce authentication
+            /// and used by the transport to enforce authorization
             #[derive(Clone)]
             pub struct ProviderAuthConfig {
                 /// Expected JWT issuer (REQUIRED for auth)
@@ -2649,7 +2649,7 @@ pub mod exports {
                     /// Handle shutdown request
                     fn handle_shutdown() -> Result<(), McpError>;
                     /// Get provider's auth configuration (optional - return none for no auth)
-                    /// If auth configuration is provided, the transport will enforce authentication
+                    /// If auth configuration is provided, the transport will enforce authorization
                     fn get_auth_config() -> Option<ProviderAuthConfig>;
                     /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
                     /// Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms
@@ -2662,66 +2662,66 @@ pub mod exports {
                     fn jwks_cache_set(jwks_uri: _rt::String, jwks: _rt::String) -> ();
                 }
                 #[doc(hidden)]
-                macro_rules! __export_fastertools_mcp_core_capabilities_0_4_0_cabi {
+                macro_rules! __export_fastertools_mcp_core_capabilities_0_4_1_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "fastertools:mcp/core-capabilities@0.4.0#handle-initialize")]
+                        "fastertools:mcp/core-capabilities@0.4.1#handle-initialize")]
                         unsafe extern "C" fn export_handle_initialize(arg0 : * mut u8,)
                         -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_handle_initialize_cabi::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "cabi_post_fastertools:mcp/core-capabilities@0.4.0#handle-initialize")]
+                        "cabi_post_fastertools:mcp/core-capabilities@0.4.1#handle-initialize")]
                         unsafe extern "C" fn _post_return_handle_initialize(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_initialize::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "fastertools:mcp/core-capabilities@0.4.0#handle-initialized")]
+                        "fastertools:mcp/core-capabilities@0.4.1#handle-initialized")]
                         unsafe extern "C" fn export_handle_initialized() -> * mut u8 {
                         unsafe { $($path_to_types)*::
                         _export_handle_initialized_cabi::<$ty > () } } #[unsafe
                         (export_name =
-                        "cabi_post_fastertools:mcp/core-capabilities@0.4.0#handle-initialized")]
+                        "cabi_post_fastertools:mcp/core-capabilities@0.4.1#handle-initialized")]
                         unsafe extern "C" fn _post_return_handle_initialized(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_initialized::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "fastertools:mcp/core-capabilities@0.4.0#handle-ping")] unsafe
+                        "fastertools:mcp/core-capabilities@0.4.1#handle-ping")] unsafe
                         extern "C" fn export_handle_ping() -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_handle_ping_cabi::<$ty > () } }
                         #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/core-capabilities@0.4.0#handle-ping")]
+                        "cabi_post_fastertools:mcp/core-capabilities@0.4.1#handle-ping")]
                         unsafe extern "C" fn _post_return_handle_ping(arg0 : * mut u8,) {
                         unsafe { $($path_to_types)*:: __post_return_handle_ping::<$ty >
                         (arg0) } } #[unsafe (export_name =
-                        "fastertools:mcp/core-capabilities@0.4.0#handle-shutdown")]
+                        "fastertools:mcp/core-capabilities@0.4.1#handle-shutdown")]
                         unsafe extern "C" fn export_handle_shutdown() -> * mut u8 {
                         unsafe { $($path_to_types)*:: _export_handle_shutdown_cabi::<$ty
                         > () } } #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/core-capabilities@0.4.0#handle-shutdown")]
+                        "cabi_post_fastertools:mcp/core-capabilities@0.4.1#handle-shutdown")]
                         unsafe extern "C" fn _post_return_handle_shutdown(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_shutdown::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "fastertools:mcp/core-capabilities@0.4.0#get-auth-config")]
+                        "fastertools:mcp/core-capabilities@0.4.1#get-auth-config")]
                         unsafe extern "C" fn export_get_auth_config() -> * mut u8 {
                         unsafe { $($path_to_types)*:: _export_get_auth_config_cabi::<$ty
                         > () } } #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/core-capabilities@0.4.0#get-auth-config")]
+                        "cabi_post_fastertools:mcp/core-capabilities@0.4.1#get-auth-config")]
                         unsafe extern "C" fn _post_return_get_auth_config(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_get_auth_config::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "fastertools:mcp/core-capabilities@0.4.0#jwks-cache-get")] unsafe
+                        "fastertools:mcp/core-capabilities@0.4.1#jwks-cache-get")] unsafe
                         extern "C" fn export_jwks_cache_get(arg0 : * mut u8, arg1 :
                         usize,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_jwks_cache_get_cabi::<$ty > (arg0, arg1) } } #[unsafe
                         (export_name =
-                        "cabi_post_fastertools:mcp/core-capabilities@0.4.0#jwks-cache-get")]
+                        "cabi_post_fastertools:mcp/core-capabilities@0.4.1#jwks-cache-get")]
                         unsafe extern "C" fn _post_return_jwks_cache_get(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_jwks_cache_get::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "fastertools:mcp/core-capabilities@0.4.0#jwks-cache-set")] unsafe
+                        "fastertools:mcp/core-capabilities@0.4.1#jwks-cache-set")] unsafe
                         extern "C" fn export_jwks_cache_set(arg0 : * mut u8, arg1 :
                         usize, arg2 : * mut u8, arg3 : usize,) { unsafe {
                         $($path_to_types)*:: _export_jwks_cache_set_cabi::<$ty > (arg0,
@@ -2729,7 +2729,7 @@ pub mod exports {
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_fastertools_mcp_core_capabilities_0_4_0_cabi;
+                pub(crate) use __export_fastertools_mcp_core_capabilities_0_4_1_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -5934,22 +5934,22 @@ pub mod exports {
                     ) -> Result<ToolResult, McpError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_fastertools_mcp_tools_capabilities_0_4_0_cabi {
+                macro_rules! __export_fastertools_mcp_tools_capabilities_0_4_1_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "fastertools:mcp/tools-capabilities@0.4.0#handle-list-tools")]
+                        "fastertools:mcp/tools-capabilities@0.4.1#handle-list-tools")]
                         unsafe extern "C" fn export_handle_list_tools(arg0 : i32, arg1 :
                         * mut u8, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5 :
                         usize, arg6 : i32, arg7 : * mut u8, arg8 : usize,) -> * mut u8 {
                         unsafe { $($path_to_types)*::
                         _export_handle_list_tools_cabi::<$ty > (arg0, arg1, arg2, arg3,
                         arg4, arg5, arg6, arg7, arg8) } } #[unsafe (export_name =
-                        "cabi_post_fastertools:mcp/tools-capabilities@0.4.0#handle-list-tools")]
+                        "cabi_post_fastertools:mcp/tools-capabilities@0.4.1#handle-list-tools")]
                         unsafe extern "C" fn _post_return_handle_list_tools(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_list_tools::<$ty > (arg0) } } #[unsafe
                         (export_name =
-                        "fastertools:mcp/tools-capabilities@0.4.0#handle-call-tool")]
+                        "fastertools:mcp/tools-capabilities@0.4.1#handle-call-tool")]
                         unsafe extern "C" fn export_handle_call_tool(arg0 : * mut u8,
                         arg1 : usize, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 :
                         i32, arg6 : * mut u8, arg7 : usize, arg8 : i32, arg9 : * mut u8,
@@ -5957,14 +5957,14 @@ pub mod exports {
                         _export_handle_call_tool_cabi::<$ty > (arg0, arg1, arg2, arg3,
                         arg4, arg5, arg6, arg7, arg8, arg9, arg10) } } #[unsafe
                         (export_name =
-                        "cabi_post_fastertools:mcp/tools-capabilities@0.4.0#handle-call-tool")]
+                        "cabi_post_fastertools:mcp/tools-capabilities@0.4.1#handle-call-tool")]
                         unsafe extern "C" fn _post_return_handle_call_tool(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_handle_call_tool::<$ty > (arg0) } } };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_fastertools_mcp_tools_capabilities_0_4_0_cabi;
+                pub(crate) use __export_fastertools_mcp_tools_capabilities_0_4_1_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -6147,10 +6147,10 @@ macro_rules! __export_tools_provider_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::fastertools::mcp::core_capabilities::__export_fastertools_mcp_core_capabilities_0_4_0_cabi!($ty
+        exports::fastertools::mcp::core_capabilities::__export_fastertools_mcp_core_capabilities_0_4_1_cabi!($ty
         with_types_in $($path_to_types_root)*::
         exports::fastertools::mcp::core_capabilities); $($path_to_types_root)*::
-        exports::fastertools::mcp::tools_capabilities::__export_fastertools_mcp_tools_capabilities_0_4_0_cabi!($ty
+        exports::fastertools::mcp::tools_capabilities::__export_fastertools_mcp_tools_capabilities_0_4_1_cabi!($ty
         with_types_in $($path_to_types_root)*::
         exports::fastertools::mcp::tools_capabilities);
     };
@@ -6158,9 +6158,7 @@ macro_rules! __export_tools_provider_impl {
 #[doc(inline)]
 pub(crate) use __export_tools_provider_impl as export;
 #[cfg(target_arch = "wasm32")]
-#[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.4.0:tools-provider:encoded world"
-)]
+#[unsafe(link_section = "component-type:wit-bindgen:0.41.0:fastertools:mcp@0.4.1:tools-provider:encoded world")]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
 pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4309] = *b"\
@@ -6192,7 +6190,7 @@ m\x03\x04user\x09assistant\x06system\x04\0\x0cmessage-role\x03\01\x01r\x01\x04na
 me\x0a\x04\0\x0amodel-hint\x03\03\x01p4\x01k5\x01r\x04\x05hints6\x0dcost-priorit\
 y\x09\x0espeed-priority\x09\x15intelligence-priority\x09\x04\0\x11model-preferen\
 ces\x03\07\x01r\x04\x0curi-templates\x04names\x0bdescription\x0a\x09mime-type\x0a\
-\x04\0\x11resource-template\x03\09\x03\0\x1bfastertools:mcp/types@0.4.0\x05\0\x02\
+\x04\0\x11resource-template\x03\09\x03\0\x1bfastertools:mcp/types@0.4.1\x05\0\x02\
 \x03\0\0\x0bmeta-fields\x01B\x1d\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\
 \x01m\x02\x09v20250326\x09v20250618\x04\0\x10protocol-version\x03\0\x02\x01ks\x01\
 r\x03\x04names\x07versions\x05title\x04\x04\0\x13implementation-info\x03\0\x05\x01\
@@ -6207,7 +6205,7 @@ ogging\x07\x0bcompletions\x07\x07prompts\x14\x09resources\x15\x05tools\x16\x04\0
 es\x13\x0bclient-info\x06\x04meta\x10\x04\0\x12initialize-request\x03\0\x19\x01r\
 \x05\x10protocol-version\x03\x0ccapabilities\x18\x0bserver-info\x06\x0cinstructi\
 ons\x04\x04meta\x10\x04\0\x13initialize-response\x03\0\x1b\x03\0\x20fastertools:\
-mcp/core-types@0.4.0\x05\x02\x01B\x13\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\
+mcp/core-types@0.4.1\x05\x02\x01B\x13\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\
 \0\0\x01ps\x01ks\x01r\x05\x0fexpected-issuers\x12expected-audiences\x02\x08jwks-\
 uris\x06policy\x03\x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01\
 kw\x01r\x08\x09client-id\x03\x07user-id\x03\x06scopes\x02\x06issuer\x03\x08audie\
@@ -6217,7 +6215,7 @@ nce\x03\x06claims\x01\x03exp\x06\x03iat\x06\x04\0\x0cauth-context\x03\0\x07\x01o
 olicy\x03\x0bpolicy-data\x03\x04\0\x0cauth-request\x03\0\x0d\x01r\x04\x06status{\
 \x0aerror-codes\x0bdescriptions\x10www-authenticate\x03\x04\0\x0aauth-error\x03\0\
 \x0f\x01q\x02\x0aauthorized\x01\x08\0\x0cunauthorized\x01\x10\0\x04\0\x0dauth-re\
-sponse\x03\0\x11\x03\0)fastertools:mcp/authorization-types@0.4.0\x05\x03\x02\x03\
+sponse\x03\0\x11\x03\0)fastertools:mcp/authorization-types@0.4.1\x05\x03\x02\x03\
 \0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\x03\0\0\x0bjson-schema\x02\x03\
 \0\0\x0dbase-metadata\x02\x03\0\0\x06cursor\x02\x03\0\0\x0eprogress-token\x01B$\x02\
 \x03\x02\x01\x04\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\x05\x04\0\x0ajso\
@@ -6234,7 +6232,7 @@ k\x0b\x01k\x0d\x01r\x03\x06cursor\x1b\x0eprogress-token\x1c\x04meta\x14\x04\0\x1
 list-tools-request\x03\0\x1d\x01p\x16\x01r\x03\x05tools\x1f\x0bnext-cursor\x1b\x04\
 meta\x14\x04\0\x13list-tools-response\x03\0\x20\x01r\x04\x04names\x09arguments\x18\
 \x0eprogress-token\x1c\x04meta\x14\x04\0\x11call-tool-request\x03\0\"\x03\0\x20f\
-astertools:mcp/tool-types@0.4.0\x05\x0a\x02\x03\0\0\x09mcp-error\x02\x03\0\x01\x12\
+astertools:mcp/tool-types@0.4.1\x05\x0a\x02\x03\0\0\x09mcp-error\x02\x03\0\x01\x12\
 initialize-request\x02\x03\0\x01\x13initialize-response\x02\x03\0\x02\x14provide\
 r-auth-config\x01B\x18\x02\x03\x02\x01\x0b\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\
 \x01\x0c\x04\0\x12initialize-request\x03\0\x02\x02\x03\x02\x01\x0d\x04\0\x13init\
@@ -6244,7 +6242,7 @@ ze\x01\x09\x01j\0\x01\x01\x01@\0\0\x0a\x04\0\x12handle-initialized\x01\x0b\x04\0
 \x0bhandle-ping\x01\x0b\x04\0\x0fhandle-shutdown\x01\x0b\x01k\x07\x01@\0\0\x0c\x04\
 \0\x0fget-auth-config\x01\x0d\x01ks\x01@\x01\x08jwks-uris\0\x0e\x04\0\x0ejwks-ca\
 che-get\x01\x0f\x01@\x02\x08jwks-uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\
-\x10\x04\0'fastertools:mcp/core-capabilities@0.4.0\x05\x0f\x02\x03\0\x03\x12list\
+\x10\x04\0'fastertools:mcp/core-capabilities@0.4.1\x05\x0f\x02\x03\0\x03\x12list\
 -tools-request\x02\x03\0\x03\x13list-tools-response\x02\x03\0\x03\x11call-tool-r\
 equest\x02\x03\0\x03\x0btool-result\x01B\x10\x02\x03\x02\x01\x0b\x04\0\x09mcp-er\
 ror\x03\0\0\x02\x03\x02\x01\x10\x04\0\x12list-tools-request\x03\0\x02\x02\x03\x02\
@@ -6252,8 +6250,8 @@ ror\x03\0\0\x02\x03\x02\x01\x10\x04\0\x12list-tools-request\x03\0\x02\x02\x03\x0
 l-tool-request\x03\0\x06\x02\x03\x02\x01\x13\x04\0\x0btool-result\x03\0\x08\x01j\
 \x01\x05\x01\x01\x01@\x01\x07request\x03\0\x0a\x04\0\x11handle-list-tools\x01\x0b\
 \x01j\x01\x09\x01\x01\x01@\x01\x07request\x07\0\x0c\x04\0\x10handle-call-tool\x01\
-\x0d\x04\0(fastertools:mcp/tools-capabilities@0.4.0\x05\x14\x04\0$fastertools:mc\
-p/tools-provider@0.4.0\x04\0\x0b\x14\x01\0\x0etools-provider\x03\0\0\0G\x09produ\
+\x0d\x04\0(fastertools:mcp/tools-capabilities@0.4.1\x05\x14\x04\0$fastertools:mc\
+p/tools-provider@0.4.1\x04\0\x0b\x14\x01\0\x0etools-provider\x03\0\0\0G\x09produ\
 cers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x06\
 0.41.0";
 #[inline(never)]

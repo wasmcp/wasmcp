@@ -1,4 +1,4 @@
-/** @module Interface fastertools:mcp/types@0.4.0 **/
+/** @module Interface fastertools:mcp/types@0.4.1 **/
 /**
  * Role in a conversation
  * # Variants

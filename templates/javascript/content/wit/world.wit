@@ -3,6 +3,6 @@ package {{project-name}}:provider;
 /// MCP tools for {{project-name}}
 world {{project-name}} {
     import wasi:http/outgoing-handler@0.2.3;
-    export fastertools:mcp/core-capabilities@0.4.0;
-    export fastertools:mcp/tools-capabilities@0.4.0;
+    export fastertools:mcp/core-capabilities@0.4.1;
+    export fastertools:mcp/tools-capabilities@0.4.1;
 }
