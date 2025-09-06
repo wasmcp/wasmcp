@@ -1,11 +1,11 @@
 .PHONY: build build-auth test clean run run-auth help
 
 # Component paths
-PROVIDER_WASM = weather_js_provider.wasm
+PROVIDER_WASM = weather-js_provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport
-TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.1.11
+TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.4.1
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
