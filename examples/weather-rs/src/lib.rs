@@ -1,225 +1,284 @@
-//! MCP provider implementation for weather-rs.
+//! Transparent MCP provider implementation for weather-rs.
 //!
-//! This module provides tools accessible via the Model Context Protocol.
+//! This implementation uses WIT bindings directly as the SDK, without abstraction layers.
 
 #![warn(missing_docs)]
-// Allow unsafe in generated bindings only
 #![allow(unsafe_code)]
 
 #[allow(warnings)]
 mod bindings;
-#[macro_use]
-mod helpers;
 
-use bindings::fastertools::mcp::authorization_types::ProviderAuthConfig;
+use bindings::exports::fastertools::mcp::core_capabilities::Guest as CoreGuest;
+use bindings::exports::fastertools::mcp::tools_capabilities::Guest as ToolsGuest;
+use bindings::fastertools::mcp::{
+    authorization_types::ProviderAuthConfig,
+    core_types::{
+        ImplementationInfo, InitializeRequest, InitializeResponse,
+        ProtocolVersion, ServerCapabilities, ToolsCapability,
+    },
+    tool_types::{
+        BaseMetadata, CallToolRequest, ListToolsRequest, ListToolsResponse, Tool, ToolResult,
+    },
+    types::{ContentBlock, ErrorCode, McpError, TextContent},
+};
 
 use futures::future::join_all;
-use helpers::{parse_args, text_result, IntoToolResult, McpError, Tool, ToolResult};
 use serde::Deserialize;
 use serde_json::json;
 use spin_sdk::http::{send, Request, Response};
 
-// ==============================================================================
-// AUTHENTICATION CONFIGURATION
-// ==============================================================================
-
-/// OAuth 2.0 authentication configuration.
-/// 
-/// To enable authentication:
-/// 1. Uncomment the auth_config() function below
-/// 2. Replace the placeholder values with your actual OAuth provider details
-/// 3. Run `make build` to rebuild with authentication enabled
-/// 
-/// To disable authentication:
-/// - Comment out the auth_config() function or have it return None
-pub fn auth_config() -> Option<ProviderAuthConfig> {
-    // Uncomment and configure the lines below to enable OAuth 2.0 authentication:
-    /*
-    Some(ProviderAuthConfig {
-        expected_issuer: "https://your-auth-domain.example.com".to_string(),
-        expected_audiences: vec!["your-client-id".to_string()],
-        jwks_uri: "https://your-auth-domain.example.com/oauth2/jwks".to_string(),
-        policy: None,  // Optional: Add Rego policy as a string for additional authorization rules
-        policy_data: None,  // Optional: Add policy data as JSON string
-    })
-    */
-    
-    // Authentication disabled by default - return None for no auth
-    None
-}
-
-// ==============================================================================
-// MCP PROVIDER IMPLEMENTATION
-// ==============================================================================
-
 /// The main component struct required by the WIT bindings.
 pub struct Component;
 
-/// Server information for MCP clients.
-/// 
-/// Customize this to identify your MCP server.
-pub fn server_info() -> (String, String, String) {
-    (
-        "weather-rs".to_string(),  // Server name
-        "0.1.0".to_string(),                            // Server version
-        "weather-rs MCP Server".to_string(),      // Server title
-    )
+// -------------------------------------------------------------------------
+// Core Capabilities Implementation
+// -------------------------------------------------------------------------
+
+impl CoreGuest for Component {
+    fn handle_initialize(_request: InitializeRequest) -> Result<InitializeResponse, McpError> {
+        Ok(InitializeResponse {
+            protocol_version: ProtocolVersion::V20250618,
+            capabilities: ServerCapabilities {
+                tools: Some(ToolsCapability {
+                    list_changed: None,
+                }),
+                experimental: None,
+                logging: None,
+                completions: None,
+                prompts: None,
+                resources: None,
+            },
+            server_info: ImplementationInfo {
+                name: "weather-rs".to_string(),
+                version: "0.1.0".to_string(),
+                title: Some("Rust Weather Server".to_string()),
+            },
+            instructions: Some("A Rust MCP server providing weather tools".to_string()),
+            meta: None,
+        })
+    }
+
+    fn handle_initialized() -> Result<(), McpError> {
+        Ok(())
+    }
+
+    fn handle_ping() -> Result<(), McpError> {
+        Ok(())
+    }
+
+    fn handle_shutdown() -> Result<(), McpError> {
+        Ok(())
+    }
+
+    fn get_auth_config() -> Option<ProviderAuthConfig> {
+        // Uncomment and configure to enable OAuth authentication:
+        /*
+        Some(ProviderAuthConfig {
+            expected_issuer: "https://your-auth-domain.example.com".to_string(),
+            expected_audiences: vec!["your-client-id".to_string()],
+            jwks_uri: "https://your-auth-domain.example.com/oauth2/jwks".to_string(),
+            policy: None,
+            policy_data: None,
+        })
+        */
+        None
+    }
+
+    fn jwks_cache_get(_jwks_uri: String) -> Option<String> {
+        // Optional: Implement JWKS caching
+        None
+    }
+
+    fn jwks_cache_set(_jwks_uri: String, _jwks: String) {
+        // Optional: Implement JWKS caching
+    }
 }
 
-/// MCP protocol version to use.
-/// 
-/// Available versions:
-/// - V20250326: Earlier protocol version
-/// - V20250618: Current protocol version (recommended)
-pub fn protocol_version() -> bindings::fastertools::mcp::session_types::ProtocolVersion {
-    bindings::fastertools::mcp::session_types::ProtocolVersion::V20250618
+// -------------------------------------------------------------------------
+// Tools Capabilities Implementation
+// -------------------------------------------------------------------------
+
+impl ToolsGuest for Component {
+    fn handle_list_tools(_request: ListToolsRequest) -> Result<ListToolsResponse, McpError> {
+        let tools = vec![
+            Tool {
+                base: BaseMetadata {
+                    name: "echo".to_string(),
+                    title: Some("echo".to_string()),
+                },
+                description: Some("Echo a message back to the user".to_string()),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "description": "The message to echo"
+                        }
+                    },
+                    "required": ["message"]
+                })
+                .to_string(),
+                output_schema: None,
+                annotations: None,
+                meta: None,
+            },
+            Tool {
+                base: BaseMetadata {
+                    name: "get_weather".to_string(),
+                    title: Some("get_weather".to_string()),
+                },
+                description: Some("Get current weather for a location".to_string()),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                            "type": "string",
+                            "description": "City name to get weather for"
+                        }
+                    },
+                    "required": ["location"]
+                })
+                .to_string(),
+                output_schema: None,
+                annotations: None,
+                meta: None,
+            },
+            Tool {
+                base: BaseMetadata {
+                    name: "multi_weather".to_string(),
+                    title: Some("multi_weather".to_string()),
+                },
+                description: Some("Get weather for multiple cities concurrently".to_string()),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "cities": {
+                            "type": "array",
+                            "description": "List of city names (max 5)",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": ["cities"]
+                })
+                .to_string(),
+                output_schema: None,
+                annotations: None,
+                meta: None,
+            },
+        ];
+
+        Ok(ListToolsResponse {
+            tools,
+            next_cursor: None,
+            meta: None,
+        })
+    }
+
+    fn handle_call_tool(request: CallToolRequest) -> Result<ToolResult, McpError> {
+        match request.name.as_str() {
+            "echo" => {
+                spin_sdk::http::run(async move {
+                    handle_echo(request.arguments).await
+                })
+            }
+            "get_weather" => {
+                spin_sdk::http::run(async move {
+                    handle_get_weather(request.arguments).await
+                })
+            }
+            "multi_weather" => {
+                spin_sdk::http::run(async move {
+                    handle_multi_weather(request.arguments).await
+                })
+            }
+            _ => Err(McpError {
+                code: ErrorCode::MethodNotFound,
+                message: format!("Unknown tool: {}", request.name),
+                data: None,
+            }),
+        }
+    }
 }
 
-/// Arguments for the echo tool.
+// -------------------------------------------------------------------------
+// Tool Implementations
+// -------------------------------------------------------------------------
+
 #[derive(Deserialize)]
 struct EchoArgs {
     message: String,
 }
 
-/// Echo tool - echoes a message back to the user.
-struct EchoTool;
-
-impl Tool for EchoTool {
-    const NAME: &'static str = "echo";
-    const DESCRIPTION: &'static str = "Echo a message back to the user";
-
-    fn input_schema() -> String {
-        json!({
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "description": "The message to echo"
-                }
-            },
-            "required": ["message"]
-        })
-        .to_string()
-    }
-
-    async fn execute(args: Option<String>) -> Result<ToolResult, McpError> {
-        let args: EchoArgs = parse_args(&args)?;
-        Ok(format!("Echo: {}", args.message).into_result())
-    }
+async fn handle_echo(args: Option<String>) -> Result<ToolResult, McpError> {
+    let args: EchoArgs = parse_args(&args)?;
+    Ok(text_result(format!("Echo: {}", args.message)))
 }
 
-/// Arguments for the weather tool.
 #[derive(Deserialize)]
 struct WeatherArgs {
     location: String,
 }
 
-/// Weather tool - fetches current weather for a single location.
-struct WeatherTool;
-
-impl Tool for WeatherTool {
-    const NAME: &'static str = "get_weather";
-    const DESCRIPTION: &'static str = "Get current weather for a location";
-
-    fn input_schema() -> String {
-        json!({
-            "type": "object",
-            "properties": {
-                "location": {
-                    "type": "string",
-                    "description": "City name to get weather for"
-                }
-            },
-            "required": ["location"]
-        })
-        .to_string()
-    }
-
-    async fn execute(args: Option<String>) -> Result<ToolResult, McpError> {
-        let args: WeatherArgs = parse_args(&args)?;
-
-        match get_weather_for_city(&args.location).await {
-            Ok(weather) => Ok(text_result(weather)),
-            Err(e) => Ok(format!("Error fetching weather: {e}").into_error()),
-        }
+async fn handle_get_weather(args: Option<String>) -> Result<ToolResult, McpError> {
+    let args: WeatherArgs = parse_args(&args)?;
+    
+    match get_weather_for_city(&args.location).await {
+        Ok(weather) => Ok(text_result(weather)),
+        Err(e) => Ok(error_result(format!("Error fetching weather: {e}"))),
     }
 }
 
-/// Arguments for the multi-weather tool.
 #[derive(Deserialize)]
 struct MultiWeatherArgs {
     cities: Vec<String>,
 }
 
-/// Multi-weather tool - fetches weather for multiple cities concurrently.
-struct MultiWeatherTool;
-
-impl Tool for MultiWeatherTool {
-    const NAME: &'static str = "multi_weather";
-    const DESCRIPTION: &'static str = "Get weather for multiple cities concurrently";
-
-    fn input_schema() -> String {
-        json!({
-            "type": "object",
-            "properties": {
-                "cities": {
-                    "type": "array",
-                    "description": "List of cities to get weather for",
-                    "items": {
-                        "type": "string"
-                    },
-                    "minItems": 1,
-                    "maxItems": 5
-                }
-            },
-            "required": ["cities"]
+async fn handle_multi_weather(args: Option<String>) -> Result<ToolResult, McpError> {
+    let args: MultiWeatherArgs = parse_args(&args)?;
+    
+    if args.cities.is_empty() {
+        return Ok(error_result("No cities provided".to_string()));
+    }
+    
+    if args.cities.len() > 5 {
+        return Ok(error_result("Maximum 5 cities allowed".to_string()));
+    }
+    
+    // Create futures for all cities
+    let futures = args.cities.iter().map(|city| {
+        let city = city.clone();
+        Box::pin(async move {
+            match get_weather_for_city(&city).await {
+                Ok(weather) => format!("{weather}\n"),
+                Err(e) => format!("Error fetching weather for {city}: {e}\n"),
+            }
         })
-        .to_string()
+    });
+    
+    // Execute all requests concurrently
+    let results = join_all(futures).await;
+    
+    let mut output = String::from("=== Weather Results ===\n\n");
+    for result in results {
+        output.push_str(&result);
+        output.push('\n');
     }
-
-    async fn execute(args: Option<String>) -> Result<ToolResult, McpError> {
-        let args: MultiWeatherArgs = parse_args(&args)?;
-
-        if args.cities.is_empty() {
-            return Ok("No cities provided".into_error());
-        }
-
-        if args.cities.len() > 5 {
-            return Ok("Maximum 5 cities allowed".into_error());
-        }
-
-        // Create futures for all cities
-        let futures = args.cities.iter().map(|city| {
-            let city = city.clone();
-            Box::pin(async move {
-                match get_weather_for_city(&city).await {
-                    Ok(weather) => format!("{weather}\n"),
-                    Err(e) => format!("Error fetching weather for {city}: {e}\n"),
-                }
-            })
-        });
-
-        // Execute all requests concurrently
-        let results = join_all(futures).await;
-
-        let mut output = String::from("=== Weather Results ===\n\n");
-        for result in results {
-            output.push_str(&result);
-            output.push('\n');
-        }
-        output.push_str("=== All requests completed ===");
-
-        Ok(text_result(output))
-    }
+    output.push_str("=== All requests completed ===");
+    
+    Ok(text_result(output))
 }
 
-/// Geocoding response structure.
+// -------------------------------------------------------------------------
+// Weather API Functions
+// -------------------------------------------------------------------------
+
 #[derive(Debug, Deserialize)]
 struct GeocodingResponse {
     results: Option<Vec<GeocodingResult>>,
 }
 
-/// Individual geocoding result.
 #[derive(Debug, Deserialize)]
 struct GeocodingResult {
     latitude: f64,
@@ -228,13 +287,11 @@ struct GeocodingResult {
     country: String,
 }
 
-/// Weather API response structure.
 #[derive(Debug, Deserialize)]
 struct WeatherResponse {
     current: CurrentWeather,
 }
 
-/// Current weather data.
 #[derive(Debug, Deserialize)]
 struct CurrentWeather {
     temperature_2m: f64,
@@ -244,88 +301,71 @@ struct CurrentWeather {
     weather_code: i32,
 }
 
-/// Fetches weather data for a single city.
-///
-/// # Errors
-/// Returns an error if geocoding or weather fetching fails.
-async fn get_weather_for_city(location: &str) -> Result<String, String> {
+async fn get_weather_for_city(city: &str) -> Result<String, String> {
     // First, geocode the location
-    let geocoding_url = format!(
+    let geo_url = format!(
         "https://geocoding-api.open-meteo.com/v1/search?name={}&count=1",
-        urlencoding::encode(location)
+        urlencoding::encode(city)
     );
-
-    let geocoding_req = Request::get(&geocoding_url).build();
-
-    let geocoding_resp: Response = send(geocoding_req)
+    
+    let geo_request = Request::get(&geo_url)
+        .header("User-Agent", "MCP-Weather-Server")
+        .build();
+    
+    let geo_response: Response = send(geo_request)
         .await
         .map_err(|e| format!("Geocoding request failed: {e}"))?;
-
-    if *geocoding_resp.status() != 200 {
-        return Err(format!(
-            "Geocoding failed with status: {}",
-            geocoding_resp.status()
-        ));
+    
+    if *geo_response.status() != 200 {
+        return Err(format!("Geocoding failed with status: {}", geo_response.status()));
     }
-
-    let geocoding_body = geocoding_resp
-        .body()
-        .to_vec();
-
-    let geocoding_data: GeocodingResponse = serde_json::from_slice(&geocoding_body)
+    
+    let geo_body = geo_response.body();
+    let geo_data: GeocodingResponse = serde_json::from_slice(geo_body)
         .map_err(|e| format!("Failed to parse geocoding response: {e}"))?;
-
-    let loc = geocoding_data
+    
+    let location = geo_data
         .results
         .and_then(|r| r.into_iter().next())
-        .ok_or_else(|| format!("Location '{location}' not found"))?;
-
-    // Now fetch weather data
+        .ok_or_else(|| format!("Location '{city}' not found"))?;
+    
+    // Now fetch the weather
     let weather_url = format!(
         "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
-        loc.latitude, loc.longitude
+        location.latitude, location.longitude
     );
-
-    let weather_req = Request::get(&weather_url).build();
-
-    let weather_resp: Response = send(weather_req)
+    
+    let weather_request = Request::get(&weather_url)
+        .header("User-Agent", "MCP-Weather-Server")
+        .build();
+    
+    let weather_response: Response = send(weather_request)
         .await
         .map_err(|e| format!("Weather request failed: {e}"))?;
-
-    if *weather_resp.status() != 200 {
-        return Err(format!(
-            "Weather API failed with status: {}",
-            weather_resp.status()
-        ));
+    
+    if *weather_response.status() != 200 {
+        return Err(format!("Weather API failed with status: {}", weather_response.status()));
     }
-
-    let weather_body = weather_resp
-        .body()
-        .to_vec();
-
-    let weather_data: WeatherResponse = serde_json::from_slice(&weather_body)
+    
+    let weather_body = weather_response.body();
+    let weather_data: WeatherResponse = serde_json::from_slice(weather_body)
         .map_err(|e| format!("Failed to parse weather response: {e}"))?;
-
-    let conditions = get_weather_condition(weather_data.current.weather_code);
-
+    
+    let condition = weather_condition(weather_data.current.weather_code);
+    
     Ok(format!(
-        "Weather in {}, {}:\n\
-         Temperature: {:.1}°C (feels like {:.1}°C)\n\
-         Conditions: {}\n\
-         Humidity: {}%\n\
-         Wind: {:.1} km/h",
-        loc.name,
-        loc.country,
+        "Weather in {}, {}:\nTemperature: {:.1}°C (feels like {:.1}°C)\nConditions: {}\nHumidity: {}%\nWind: {:.1} km/h",
+        location.name,
+        location.country,
         weather_data.current.temperature_2m,
         weather_data.current.apparent_temperature,
-        conditions,
+        condition,
         weather_data.current.relative_humidity_2m,
         weather_data.current.wind_speed_10m
     ))
 }
 
-/// Converts weather code to human-readable condition.
-fn get_weather_condition(code: i32) -> &'static str {
+fn weather_condition(code: i32) -> &'static str {
     match code {
         0 => "Clear sky",
         1 => "Mainly clear",
@@ -336,17 +376,12 @@ fn get_weather_condition(code: i32) -> &'static str {
         51 => "Light drizzle",
         53 => "Moderate drizzle",
         55 => "Dense drizzle",
-        56 => "Light freezing drizzle",
-        57 => "Dense freezing drizzle",
         61 => "Slight rain",
         63 => "Moderate rain",
         65 => "Heavy rain",
-        66 => "Light freezing rain",
-        67 => "Heavy freezing rain",
         71 => "Slight snow fall",
         73 => "Moderate snow fall",
         75 => "Heavy snow fall",
-        77 => "Snow grains",
         80 => "Slight rain showers",
         81 => "Moderate rain showers",
         82 => "Violent rain showers",
@@ -359,5 +394,44 @@ fn get_weather_condition(code: i32) -> &'static str {
     }
 }
 
-// Register all tools with the MCP provider
-register_tools!(EchoTool, WeatherTool, MultiWeatherTool);
+// -------------------------------------------------------------------------
+// Helper Functions
+// -------------------------------------------------------------------------
+
+fn parse_args<T: for<'a> Deserialize<'a>>(args: &Option<String>) -> Result<T, McpError> {
+    let args_str = args.as_deref().unwrap_or("{}");
+    serde_json::from_str(args_str).map_err(|e| McpError {
+        code: ErrorCode::InvalidParams,
+        message: format!("Failed to parse arguments: {e}"),
+        data: None,
+    })
+}
+
+fn text_result(text: String) -> ToolResult {
+    ToolResult {
+        content: vec![ContentBlock::Text(TextContent {
+            text,
+            annotations: None,
+            meta: None,
+        })],
+        structured_content: None,
+        is_error: Some(false),
+        meta: None,
+    }
+}
+
+fn error_result(message: String) -> ToolResult {
+    ToolResult {
+        content: vec![ContentBlock::Text(TextContent {
+            text: message,
+            annotations: None,
+            meta: None,
+        })],
+        structured_content: None,
+        is_error: Some(true),
+        meta: None,
+    }
+}
+
+// Export the WIT bindings
+bindings::export!(Component with_types_in bindings);
