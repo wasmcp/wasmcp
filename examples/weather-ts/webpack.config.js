@@ -8,7 +8,7 @@ export default {
     devtool: false,  // No source maps
     stats: 'errors-only',
     entry: './src/index.ts',
-    target: 'webworker',  // Target webworker for WASM/fetch event compatibility
+    target: 'webworker',  // Target webworker for Wasm/fetch event compatibility
     experiments: {
         outputModule: true,
     },

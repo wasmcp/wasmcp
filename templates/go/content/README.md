@@ -6,7 +6,7 @@
 
 ```bash
 make setup  # Install dependencies and configure tools
-make build  # Build and compose WASM components
+make build  # Build and compose Wasm components
 make serve  # Run server on port 8080
 ```
 
@@ -81,7 +81,7 @@ func handleGetWeather(args cm.Option[string]) cm.Result[cm.ToolResult, cm.McpErr
 
 ## Concurrency
 
-Go's WASM environment uses `wasihttp.GetConcurrently()` for concurrent HTTP operations. Example from the multi-weather implementation:
+Go's Wasm environment uses `wasihttp.GetConcurrently()` for concurrent HTTP operations. Example from the multi-weather implementation:
 
 ```go
 func handleMultiWeather(args cm.Option[string]) cm.Result[cm.ToolResult, cm.McpError, cm.McpError] {

@@ -6,7 +6,7 @@ MCP server implementation in TypeScript demonstrating weather tools with concurr
 
 ```bash
 make setup  # Install dependencies and configure tools
-make build  # Build and compose WASM components
+make build  # Build and compose Wasm components
 make serve  # Run server on port 8080
 ```
 
@@ -80,7 +80,7 @@ async function handleGetWeather(args?: string): Promise<ToolResult> {
 
 ## Concurrency
 
-TypeScript's WASM environment uses standard Promise APIs for concurrent operations. Example from the multi-weather implementation:
+TypeScript's Wasm environment uses standard Promise APIs for concurrent operations. Example from the multi-weather implementation:
 
 ```typescript
 async function handleMultiWeather(args?: string): Promise<ToolResult> {

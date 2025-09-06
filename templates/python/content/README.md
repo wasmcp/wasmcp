@@ -6,7 +6,7 @@
 
 ```bash
 make setup  # Install dependencies and configure tools
-make build  # Build and compose WASM components
+make build  # Build and compose Wasm components
 make serve  # Run server on port 8080
 ```
 
@@ -80,13 +80,13 @@ class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
 
 ## Concurrency
 
-Python's WASM environment uses PollLoop for async operations. Example from the multi-weather implementation:
+Python's Wasm environment uses PollLoop for async operations. Example from the multi-weather implementation:
 
 ```python
 def _handle_multi_weather(self, arguments: dict) -> str:
     cities = arguments.get("cities", [])
     
-    # PollLoop enables async operations in WASM
+    # PollLoop enables async operations in Wasm
     loop = PollLoop()
     asyncio.set_event_loop(loop)
     try:
