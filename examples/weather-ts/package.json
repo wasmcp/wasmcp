@@ -12,7 +12,7 @@
     "format:check": "prettier --check 'src/**/*.ts'",
     "bundle": "webpack",
     "build": "npm run typecheck && npm run lint && npm run bundle",
-    "clean": "rm -rf dist *.wasm wit_world bundled.js",
+    "clean": "rm -rf dist weather-ts_provider.wasm mcp-http-server.wasm .transport-tmp.wasm bundled.js",
     "test": "npm run typecheck && npm run lint && npm run bundle && node --test"
   },
   "devDependencies": {
