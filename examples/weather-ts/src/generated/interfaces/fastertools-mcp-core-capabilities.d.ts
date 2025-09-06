@@ -1,4 +1,4 @@
-/** @module Interface fastertools:mcp/core-capabilities@0.1.23 **/
+/** @module Interface fastertools:mcp/core-capabilities@0.4.0 **/
 /**
  * Handle session initialization
  * Implementations should declare their capabilities here
@@ -21,7 +21,20 @@ export function handleShutdown(): void;
  * If auth configuration is provided, the transport will enforce authentication
  */
 export function getAuthConfig(): ProviderAuthConfig | undefined;
+/**
+ * Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
+ * Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms
+ * The transport will call this before fetching from jwks-uri to check for cached keys
+ */
+export function jwksCacheGet(jwksUri: string): string | undefined;
+/**
+ * Cache JWKS for a given URI (optional - no-op if caching not implemented)
+ * The transport calls this after successfully fetching JWKS from jwks-uri
+ * Providers can implement caching via WASI-KV or other persistence mechanisms
+ * The jwks parameter contains the raw JWKS JSON string to cache
+ */
+export function jwksCacheSet(jwksUri: string, jwks: string): void;
 export type McpError = import('./fastertools-mcp-types.js').McpError;
-export type InitializeRequest = import('./fastertools-mcp-session-types.js').InitializeRequest;
-export type InitializeResponse = import('./fastertools-mcp-session-types.js').InitializeResponse;
+export type InitializeRequest = import('./fastertools-mcp-core-types.js').InitializeRequest;
+export type InitializeResponse = import('./fastertools-mcp-core-types.js').InitializeResponse;
 export type ProviderAuthConfig = import('./fastertools-mcp-authorization-types.js').ProviderAuthConfig;

@@ -1,4 +1,4 @@
-/** @module Interface fastertools:mcp/tools-capabilities@0.1.23 **/
+/** @module Interface fastertools:mcp/tools-capabilities@0.4.0 **/
 /**
  * List available tools
  */
@@ -8,7 +8,7 @@ export function handleListTools(request: ListToolsRequest): ListToolsResponse;
  */
 export function handleCallTool(request: CallToolRequest): ToolResult;
 export type McpError = import('./fastertools-mcp-types.js').McpError;
-export type ListToolsRequest = import('./fastertools-mcp-tools.js').ListToolsRequest;
-export type ListToolsResponse = import('./fastertools-mcp-tools.js').ListToolsResponse;
-export type CallToolRequest = import('./fastertools-mcp-tools.js').CallToolRequest;
-export type ToolResult = import('./fastertools-mcp-tools.js').ToolResult;
+export type ListToolsRequest = import('./fastertools-mcp-tool-types.js').ListToolsRequest;
+export type ListToolsResponse = import('./fastertools-mcp-tool-types.js').ListToolsResponse;
+export type CallToolRequest = import('./fastertools-mcp-tool-types.js').CallToolRequest;
+export type ToolResult = import('./fastertools-mcp-tool-types.js').ToolResult;

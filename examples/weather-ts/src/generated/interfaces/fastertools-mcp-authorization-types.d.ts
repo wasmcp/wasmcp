@@ -1,7 +1,9 @@
-/** @module Interface fastertools:mcp/authorization-types@0.1.23 **/
+/** @module Interface fastertools:mcp/authorization-types@0.4.0 **/
 export type MetaFields = import('./fastertools-mcp-types.js').MetaFields;
 /**
  * Provider declares its authentication requirements
+ * This is returned by core-capabilities::get-auth-config()
+ * and used by the transport to enforce authentication
  */
 export interface ProviderAuthConfig {
   /**

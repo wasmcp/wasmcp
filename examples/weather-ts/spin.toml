@@ -3,7 +3,7 @@ spin_manifest_version = 2
 [application]
 name = "weather-ts"
 version = "0.1.0"
-authors = ["Ian McDonald <bowlofarugula@gmail.com>"]
+authors = ["bowlofarugula <bowlofarugula@gmail.com>"]
 description = "An MCP server written in TypeScript"
 
 [[trigger.http]]
