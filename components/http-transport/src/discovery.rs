@@ -1,23 +1,29 @@
-use crate::auth_types::{
-    ResourceMetadata, ServerMetadata,
-};
+use crate::auth_types::{ResourceMetadata, ServerMetadata};
 use crate::bindings::fastertools::mcp::authorization_types::ProviderAuthConfig;
 
 /// Get OAuth 2.0 Protected Resource Metadata
 /// Uses the provider's auth configuration to build the metadata
-pub fn get_resource_metadata(provider_config: &ProviderAuthConfig, server_url: &str) -> ResourceMetadata {
+pub fn get_resource_metadata(
+    provider_config: &ProviderAuthConfig,
+    server_url: &str,
+) -> ResourceMetadata {
     // Extract the authorization server URL from the JWKS URI
     // e.g., "https://divine-lion-50-staging.authkit.app/oauth2/jwks" -> "https://divine-lion-50-staging.authkit.app"
-    let auth_server = provider_config.jwks_uri
+    let auth_server = provider_config
+        .jwks_uri
         .rsplit_once("/oauth2/jwks")
-        .or_else(|| provider_config.jwks_uri.rsplit_once("/.well-known/jwks.json"))
+        .or_else(|| {
+            provider_config
+                .jwks_uri
+                .rsplit_once("/.well-known/jwks.json")
+        })
         .map(|(base, _)| base.to_string())
         .unwrap_or_else(|| provider_config.expected_issuer.clone());
-    
+
     ResourceMetadata {
         resource_url: server_url.to_string(),
         authorization_servers: vec![auth_server],
-        scopes_supported: None,  // Let the authorization server define its own scopes
+        scopes_supported: None, // Let the authorization server define its own scopes
         bearer_methods_supported: Some(vec!["header".to_string()]),
         resource_documentation: Some("https://modelcontextprotocol.io/docs".to_string()),
     }
@@ -27,16 +33,21 @@ pub fn get_resource_metadata(provider_config: &ProviderAuthConfig, server_url: &
 /// Uses the provider's auth configuration to build the metadata
 pub fn get_server_metadata(provider_config: &ProviderAuthConfig) -> ServerMetadata {
     // Extract the authorization server URL from the JWKS URI or use issuer
-    let auth_server = provider_config.jwks_uri
+    let auth_server = provider_config
+        .jwks_uri
         .rsplit_once("/oauth2/jwks")
-        .or_else(|| provider_config.jwks_uri.rsplit_once("/.well-known/jwks.json"))
+        .or_else(|| {
+            provider_config
+                .jwks_uri
+                .rsplit_once("/.well-known/jwks.json")
+        })
         .map(|(base, _)| base.to_string())
         .unwrap_or_else(|| provider_config.expected_issuer.clone());
-    
+
     ServerMetadata {
         issuer: provider_config.expected_issuer.clone(),
-        authorization_endpoint: format!("{}/oauth2/authorize", auth_server),
-        token_endpoint: format!("{}/oauth2/token", auth_server),
+        authorization_endpoint: format!("{auth_server}/oauth2/authorize"),
+        token_endpoint: format!("{auth_server}/oauth2/token"),
         jwks_uri: provider_config.jwks_uri.clone(),
         response_types_supported: vec!["code".to_string()],
         grant_types_supported: vec![
@@ -56,6 +67,6 @@ pub fn get_server_metadata(provider_config: &ProviderAuthConfig) -> ServerMetada
             "client_secret_basic".to_string(),
         ]),
         service_documentation: Some("https://modelcontextprotocol.io/docs".to_string()),
-        registration_endpoint: Some(format!("{}/oauth2/register", auth_server)),
+        registration_endpoint: Some(format!("{auth_server}/oauth2/register")),
     }
 }

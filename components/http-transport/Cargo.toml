@@ -1,7 +1,8 @@
 [package]
 name = "mcp_transport_http"
-version = "0.4.1"
-edition = "2021"
+version = "0.4.2"
+edition = "2024"
+rust-version = "1.89"
 
 [lib]
 crate-type = ["cdylib"]
@@ -61,6 +62,4 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 package = "fastertools:mcp"
 version = "0.4.0"
 # All transports now support optional auth - providers control it via get-auth-config()
-world = "tools-transport" 
-
-[workspace]
+world = "tools-transport"

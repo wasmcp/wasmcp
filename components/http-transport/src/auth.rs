@@ -1,7 +1,5 @@
 use crate::auth_types::*;
-use crate::jwt;
-use crate::policy;
-use serde_json;
+use crate::{jwt, policy};
 
 /// Main authorization function - checks JWT token and applies policy
 pub fn authorize(request: AuthRequest) -> AuthResponse {
@@ -9,10 +7,10 @@ pub fn authorize(request: AuthRequest) -> AuthResponse {
     let expected_issuer = request.expected_issuer.clone();
     let expected_audiences = request.expected_audiences.clone();
     let jwks_uri = request.jwks_uri.clone();
-    
+
     // Default clock skew to 60 seconds
     let clock_skew = 60;
-    
+
     // First validate the JWT token
     let jwt_request = JwtRequest {
         token: request.token.clone(),
@@ -26,14 +24,14 @@ pub fn authorize(request: AuthRequest) -> AuthResponse {
     };
 
     let jwt_result = jwt::validate(jwt_request);
-    
+
     let claims = match jwt_result {
         JwtResult::Valid(claims) => claims,
         JwtResult::Invalid(error) => {
             return AuthResponse::Unauthorized(AuthError {
                 status: 401,
                 error_code: "invalid_token".to_string(),
-                description: format!("JWT validation failed: {:?}", error),
+                description: format!("JWT validation failed: {error:?}"),
                 www_authenticate: Some(build_www_authenticate(&error)),
             });
         }
@@ -54,58 +52,58 @@ pub fn authorize(request: AuthRequest) -> AuthResponse {
     // Apply policy-based authorization if we have a body
     if let Some(body) = request.body {
         // Parse the body as JSON-RPC for MCP context
-        if let Ok(json_str) = std::str::from_utf8(&body) {
-            if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(json_str) {
-                // Build policy input
-                let policy_input = serde_json::json!({
-                    "token": {
-                        "sub": claims.sub,
-                        "iss": claims.iss,
-                        "aud": claims.aud.clone(),
-                        "scopes": claims.scopes,
-                        "client_id": claims.client_id,
-                    },
-                    "request": {
-                        "method": request.method,
-                        "path": request.path,
-                        "headers": headers_to_object(&request.headers),
-                    },
-                    "mcp": parse_mcp_context(&json_value),
-                });
+        if let Ok(json_str) = std::str::from_utf8(&body)
+            && let Ok(json_value) = serde_json::from_str::<serde_json::Value>(json_str)
+        {
+            // Build policy input
+            let policy_input = serde_json::json!({
+                "token": {
+                    "sub": claims.sub,
+                    "iss": claims.iss,
+                    "aud": claims.aud.clone(),
+                    "scopes": claims.scopes,
+                    "client_id": claims.client_id,
+                },
+                "request": {
+                    "method": request.method,
+                    "path": request.path,
+                    "headers": headers_to_object(&request.headers),
+                },
+                "mcp": parse_mcp_context(&json_value),
+            });
 
-                // If policy is provided, evaluate it
-                if let Some(policy) = request.policy.clone() {
-                    let policy_request = PolicyRequest {
-                        policy,
-                        data: request.policy_data.clone(),
-                        input: serde_json::to_string(&policy_input).unwrap(),
-                        query: Some("data.mcp.authorization.allow".to_string()),
-                    };
+            // If policy is provided, evaluate it
+            if let Some(policy) = request.policy.clone() {
+                let policy_request = PolicyRequest {
+                    policy,
+                    data: request.policy_data.clone(),
+                    input: serde_json::to_string(&policy_input).unwrap(),
+                    query: Some("data.mcp.authorization.allow".to_string()),
+                };
 
-                    match policy::evaluate(policy_request) {
-                        PolicyResult::Allow => {
-                            // Policy allowed, continue
-                        }
-                        PolicyResult::Deny(reason) => {
-                            return AuthResponse::Unauthorized(AuthError {
-                                status: 403,
-                                error_code: "insufficient_scope".to_string(),
-                                description: format!("Authorization denied: {}", reason),
-                                www_authenticate: None,
-                            });
-                        }
-                        PolicyResult::Error(err) => {
-                            return AuthResponse::Unauthorized(AuthError {
-                                status: 500,
-                                error_code: "server_error".to_string(),
-                                description: format!("Policy evaluation failed: {}", err),
-                                www_authenticate: None,
-                            });
-                        }
+                match policy::evaluate(policy_request) {
+                    PolicyResult::Allow => {
+                        // Policy allowed, continue
+                    }
+                    PolicyResult::Deny(reason) => {
+                        return AuthResponse::Unauthorized(AuthError {
+                            status: 403,
+                            error_code: "insufficient_scope".to_string(),
+                            description: format!("Authorization denied: {reason}"),
+                            www_authenticate: None,
+                        });
+                    }
+                    PolicyResult::Error(err) => {
+                        return AuthResponse::Unauthorized(AuthError {
+                            status: 500,
+                            error_code: "server_error".to_string(),
+                            description: format!("Policy evaluation failed: {err}"),
+                            www_authenticate: None,
+                        });
                     }
                 }
-                // If no policy provided, allow all authenticated requests
             }
+            // If no policy provided, allow all authenticated requests
         }
     }
 
@@ -122,7 +120,7 @@ fn build_www_authenticate(error: &JwtError) -> String {
         JwtError::InvalidAudience => "invalid_token",
         _ => "invalid_token",
     };
-    
+
     let description = match error {
         JwtError::Expired => "Token has expired",
         JwtError::InvalidSignature => "Invalid token signature",
@@ -135,8 +133,8 @@ fn build_www_authenticate(error: &JwtError) -> String {
         JwtError::UnknownKid => "Unknown key ID",
         JwtError::Other => "Token validation failed",
     };
-    
-    format!(r#"Bearer error="{}", error_description="{}""#, error_code, description)
+
+    format!(r#"Bearer error="{error_code}", error_description="{description}""#)
 }
 
 fn convert_claims_to_meta(claims: &[(String, String)]) -> Vec<(String, String)> {
@@ -156,18 +154,18 @@ fn parse_mcp_context(json: &serde_json::Value) -> serde_json::Value {
         let mut context = serde_json::json!({
             "method": method,
         });
-        
-        if method == "tools/call" {
-            if let Some(params) = json.get("params") {
-                if let Some(name) = params.get("name") {
-                    context["tool"] = name.clone();
-                }
-                if let Some(args) = params.get("arguments") {
-                    context["arguments"] = args.clone();
-                }
+
+        if method == "tools/call"
+            && let Some(params) = json.get("params")
+        {
+            if let Some(name) = params.get("name") {
+                context["tool"] = name.clone();
+            }
+            if let Some(args) = params.get("arguments") {
+                context["arguments"] = args.clone();
             }
         }
-        
+
         context
     } else {
         serde_json::json!({})

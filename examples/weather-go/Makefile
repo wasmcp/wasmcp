@@ -5,7 +5,7 @@ PROVIDER_WASM = weather_go-provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages
-TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.4.1
+TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.4.2
 
 # Go/TinyGo configuration
 TINYGO = tinygo

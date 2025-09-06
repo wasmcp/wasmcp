@@ -5,7 +5,7 @@ PROVIDER_WASM = {{project-name}}_provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport
-TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.4.1
+TRANSPORT_PKG = fastertools:mcp-transport-http-tools@0.4.2
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'

@@ -1,4 +1,6 @@
 # Rustfmt configuration for wasmcp project
+# This file is shared by all Rust projects in the repository
+# and is automatically inherited by subdirectories
 
 # Basic settings
 edition = "2021"

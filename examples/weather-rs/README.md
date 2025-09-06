@@ -1,6 +1,6 @@
 # weather-rs
 
-MCP server implementation in Rust demonstrating weather tools with concurrent HTTP capabilities.
+An MCP server written in Rust
 
 ## Quick Start
 

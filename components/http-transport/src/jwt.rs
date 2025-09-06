@@ -1,15 +1,15 @@
-use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use base64::{Engine as _, engine::general_purpose};
-use spin_sdk::http::{send, Method, Request};
-use once_cell::sync::Lazy;
 
-use crate::auth_types::{
-    JwtClaims, JwtError, JwtRequest, JwtResult,
-};
+use base64::Engine as _;
+use base64::engine::general_purpose;
+use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
+use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
+use spin_sdk::http::{Method, Request, send};
+
+use crate::auth_types::{JwtClaims, JwtError, JwtRequest, JwtResult};
 
 /// Standard JWT claims structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,7 +17,7 @@ struct StandardClaims {
     // Required claims
     sub: String,
     iss: String,
-    
+
     // Optional standard claims
     #[serde(skip_serializing_if = "Option::is_none")]
     aud: Option<AudienceClaim>,
@@ -29,7 +29,7 @@ struct StandardClaims {
     iat: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     jti: Option<String>,
-    
+
     // OAuth-specific claims
     #[serde(skip_serializing_if = "Option::is_none")]
     scope: Option<String>,
@@ -37,7 +37,7 @@ struct StandardClaims {
     azp: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     client_id: Option<String>,
-    
+
     // Capture all other claims
     #[serde(flatten)]
     additional: HashMap<String, serde_json::Value>,
@@ -73,19 +73,18 @@ struct Jwk {
     alg: Option<String>,
     #[serde(rename = "use")]
     use_: Option<String>,
-    
+
     // RSA specific
     n: Option<String>,
     e: Option<String>,
-    
+
     // HMAC specific
     k: Option<String>,
 }
 
 /// Cache for JWKS to avoid repeated fetches
-static JWKS_CACHE: Lazy<Mutex<HashMap<String, (Jwks, u64)>>> = Lazy::new(|| {
-    Mutex::new(HashMap::new())
-});
+static JWKS_CACHE: Lazy<Mutex<HashMap<String, (Jwks, u64)>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 const JWKS_CACHE_DURATION: u64 = 3600; // 1 hour
 
 pub fn validate(request: JwtRequest) -> JwtResult {
@@ -94,10 +93,10 @@ pub fn validate(request: JwtRequest) -> JwtResult {
         Ok(h) => h,
         Err(_) => return JwtResult::Invalid(JwtError::Malformed),
     };
-    
+
     // Set up validation parameters
     let mut validation = Validation::new(header.alg);
-    
+
     // Configure validation based on request parameters
     if let Some(false) = request.validate_exp {
         validation.validate_exp = false;
@@ -105,19 +104,25 @@ pub fn validate(request: JwtRequest) -> JwtResult {
     if let Some(false) = request.validate_nbf {
         validation.validate_nbf = false;
     }
-    
+
     // Set expected issuer (now required)
     validation.set_issuer(&[request.expected_issuer.as_str()]);
-    
+
     // Set expected audiences (now required)
-    validation.set_audience(&request.expected_audiences.iter().map(|s| s.as_str()).collect::<Vec<_>>());
-    
+    validation.set_audience(
+        &request
+            .expected_audiences
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>(),
+    );
+
     // Get the decoding key
     let decoding_key = match get_decoding_key(&header, &request) {
         Ok(key) => key,
         Err(err) => return JwtResult::Invalid(err),
     };
-    
+
     // Decode and validate the token
     let token_data = match decode::<StandardClaims>(&request.token, &decoding_key, &validation) {
         Ok(data) => data,
@@ -125,24 +130,31 @@ pub fn validate(request: JwtRequest) -> JwtResult {
             return JwtResult::Invalid(map_jwt_error(err));
         }
     };
-    
+
     let claims = token_data.claims;
-    
+
     // Extract scopes from the scope claim
-    let scopes = claims.scope
+    let scopes = claims
+        .scope
         .as_ref()
         .map(|s| s.split_whitespace().map(String::from).collect())
         .unwrap_or_default();
-    
+
     // Extract client ID (prefer azp over client_id)
     let client_id = claims.azp.clone().or(claims.client_id.clone());
-    
+
     // Convert additional claims to string pairs
-    let additional_claims: Vec<(String, String)> = claims.additional
+    let additional_claims: Vec<(String, String)> = claims
+        .additional
         .into_iter()
-        .map(|(k, v)| (k, serde_json::to_string(&v).unwrap_or_else(|_| v.to_string())))
+        .map(|(k, v)| {
+            (
+                k,
+                serde_json::to_string(&v).unwrap_or_else(|_| v.to_string()),
+            )
+        })
         .collect();
-    
+
     // Build the validated claims response
     JwtResult::Valid(JwtClaims {
         sub: claims.sub,
@@ -164,11 +176,10 @@ fn get_decoding_key(
 ) -> Result<DecodingKey, JwtError> {
     // If JWKS JSON is provided directly, use it
     if let Some(ref jwks_json) = request.jwks_json {
-        let jwks: Jwks = serde_json::from_str(jwks_json)
-            .map_err(|_| JwtError::JwksError)?;
+        let jwks: Jwks = serde_json::from_str(jwks_json).map_err(|_| JwtError::JwksError)?;
         return find_key_in_jwks(&jwks, header.kid.as_deref());
     }
-    
+
     // Fetch and cache JWKS (now required)
     let jwks = fetch_and_cache_jwks(&request.jwks_uri)?;
     find_key_in_jwks(&jwks, header.kid.as_deref())
@@ -182,20 +193,20 @@ fn find_key_in_jwks(jwks: &Jwks, kid: Option<&str>) -> Result<DecodingKey, JwtEr
         // No kid specified, use first signing key
         jwks.keys.iter().find(|k| k.use_.as_deref() == Some("sig"))
     };
-    
+
     let jwk = jwk.ok_or(JwtError::UnknownKid)?;
-    
+
     // Convert JWK to DecodingKey based on key type
     match jwk.kty.as_str() {
         "RSA" => {
             let n = jwk.n.as_ref().ok_or(JwtError::JwksError)?;
             let e = jwk.e.as_ref().ok_or(JwtError::JwksError)?;
-            DecodingKey::from_rsa_components(n, e)
-                .map_err(|_| JwtError::JwksError)
+            DecodingKey::from_rsa_components(n, e).map_err(|_| JwtError::JwksError)
         }
         "oct" => {
             let k = jwk.k.as_ref().ok_or(JwtError::JwksError)?;
-            let key_bytes = general_purpose::URL_SAFE_NO_PAD.decode(k)
+            let key_bytes = general_purpose::URL_SAFE_NO_PAD
+                .decode(k)
                 .map_err(|_| JwtError::JwksError)?;
             Ok(DecodingKey::from_secret(&key_bytes))
         }
@@ -208,10 +219,12 @@ fn fetch_and_cache_jwks(uri: &str) -> Result<Jwks, JwtError> {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs();
-    
+
     // First, try to get from provider's cache (if implemented)
-    if let Some(cached_jwks_json) = crate::bindings::fastertools::mcp::core_capabilities::jwks_cache_get(uri) {
-        eprintln!("Retrieved JWKS from provider cache for: {}", uri);
+    if let Some(cached_jwks_json) =
+        crate::bindings::fastertools::mcp::core_capabilities::jwks_cache_get(uri)
+    {
+        eprintln!("Retrieved JWKS from provider cache for: {uri}");
         if let Ok(jwks) = serde_json::from_str::<Jwks>(&cached_jwks_json) {
             // Also update our internal cache with the provider's cached version
             let mut cache = JWKS_CACHE.lock().unwrap();
@@ -221,58 +234,57 @@ fn fetch_and_cache_jwks(uri: &str) -> Result<Jwks, JwtError> {
         // If parsing failed, continue to fetch fresh
         eprintln!("Failed to parse cached JWKS, fetching fresh");
     }
-    
+
     // Check internal cache as fallback (in case provider doesn't implement caching)
     {
         let cache = JWKS_CACHE.lock().unwrap();
-        if let Some((jwks, cached_at)) = cache.get(uri) {
-            if now - cached_at < JWKS_CACHE_DURATION {
-                return Ok(jwks.clone());
-            }
+        if let Some((jwks, cached_at)) = cache.get(uri)
+            && now - cached_at < JWKS_CACHE_DURATION
+        {
+            return Ok(jwks.clone());
         }
     }
-    
+
     // Fetch JWKS using spin-sdk HTTP client
     let jwks_json = fetch_jwks(uri).map_err(|_| JwtError::JwksError)?;
-    let jwks: Jwks = serde_json::from_str(&jwks_json)
-        .map_err(|_| JwtError::JwksError)?;
-    
+    let jwks: Jwks = serde_json::from_str(&jwks_json).map_err(|_| JwtError::JwksError)?;
+
     // Store in provider's cache (fire-and-forget, as it's optional)
     crate::bindings::fastertools::mcp::core_capabilities::jwks_cache_set(uri, &jwks_json);
-    eprintln!("Stored JWKS in provider cache for: {}", uri);
-    
+    eprintln!("Stored JWKS in provider cache for: {uri}");
+
     // Update internal cache
     {
         let mut cache = JWKS_CACHE.lock().unwrap();
         cache.insert(uri.to_string(), (jwks.clone(), now));
     }
-    
+
     Ok(jwks)
 }
 
 pub fn fetch_jwks(uri: &str) -> Result<String, String> {
     // Use spin-sdk for WASI-compatible HTTP requests
-    eprintln!("Fetching JWKS from: {}", uri);
-    
+    eprintln!("Fetching JWKS from: {uri}");
+
     // Use spin's executor to run async HTTP request
     spin_sdk::http::run(async move {
-        let request = Request::builder()
-            .method(Method::Get)
-            .uri(uri)
-            .build();
-        
+        let request = Request::builder().method(Method::Get).uri(uri).build();
+
         let response: spin_sdk::http::Response = send(request)
             .await
-            .map_err(|e| format!("Failed to fetch JWKS: {:?}", e))?;
-        
+            .map_err(|e| format!("Failed to fetch JWKS: {e:?}"))?;
+
         if response.status() != &200 {
-            return Err(format!("JWKS fetch failed with status: {:?}", response.status()));
+            return Err(format!(
+                "JWKS fetch failed with status: {:?}",
+                response.status()
+            ));
         }
-        
+
         let body = response.into_body();
-        let text = String::from_utf8(body)
-            .map_err(|e| format!("Failed to parse JWKS response: {}", e))?;
-        
+        let text =
+            String::from_utf8(body).map_err(|e| format!("Failed to parse JWKS response: {e}"))?;
+
         eprintln!("Successfully fetched JWKS");
         Ok(text)
     })
@@ -280,7 +292,7 @@ pub fn fetch_jwks(uri: &str) -> Result<String, String> {
 
 fn map_jwt_error(err: jsonwebtoken::errors::Error) -> JwtError {
     use jsonwebtoken::errors::ErrorKind;
-    
+
     match err.kind() {
         ErrorKind::InvalidToken => JwtError::Malformed,
         ErrorKind::InvalidSignature => JwtError::InvalidSignature,
@@ -291,4 +303,3 @@ fn map_jwt_error(err: jsonwebtoken::errors::Error) -> JwtError {
         _ => JwtError::Other,
     }
 }
-
