@@ -6,7 +6,7 @@
 
 ```bash
 make setup  # Install dependencies and configure tools
-make build  # Build and compose WASM components
+make build  # Build and compose Wasm components
 make serve  # Run server on port 8080
 ```
 
@@ -78,7 +78,7 @@ async function handleGetWeather(args) {
 
 ## Concurrency
 
-JavaScript's WASM environment uses standard Promise APIs for concurrent operations. Example from the multi-weather implementation:
+JavaScript's Wasm environment uses standard Promise APIs for concurrent operations. Example from the multi-weather implementation:
 
 ```javascript
 async function handleMultiWeather(args) {

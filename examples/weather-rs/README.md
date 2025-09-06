@@ -6,7 +6,7 @@ An MCP server written in Rust
 
 ```bash
 make setup  # Install dependencies and configure tools
-make build  # Build and compose WASM components
+make build  # Build and compose Wasm components
 make serve  # Run server on port 8080
 ```
 
@@ -81,7 +81,7 @@ make test-multi      # Test concurrent fetching
 
 ## Concurrency
 
-Rust's WASM environment uses `spin_sdk::http::run()` for async operations. Example from the multi-weather implementation:
+Rust's Wasm environment uses `spin_sdk::http::run()` for async operations. Example from the multi-weather implementation:
 
 ```rust
 async fn handle_multi_weather(args: Option<String>) -> Result<ToolResult, McpError> {
