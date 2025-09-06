@@ -7,8 +7,8 @@ their responsibilities and how maintainership evolves over time.
 
 | Name         | GitHub            | Email                       | Affiliation            |
 |--------------|-------------------|-----------------------------|------------------------|
-| Ian McDonald | @bowlofarugula     | bowlofarugula@gmail.com     | [fastertools](https://github.com/fastertools) |
-| Corey Ryan   | @DevOpsDali  | corey@coreyr.com            | [fastertools](https://github.com/fastertools) |
+| Ian McDonald | @bowlofarugula     | ian@fastertools.ai     | [fastertools](https://github.com/fastertools) |
+| Corey Ryan   | @DevOpsDali  | corey@fastertools.ai            | [fastertools](https://github.com/fastertools) |
 
 ## Responsibilities
 
