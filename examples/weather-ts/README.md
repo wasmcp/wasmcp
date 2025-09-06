@@ -1,6 +1,6 @@
 # weather-ts
 
-MCP server implementation in TypeScript demonstrating weather tools with concurrent HTTP capabilities.
+An MCP server written in TypeScript
 
 ## Quick Start
 
