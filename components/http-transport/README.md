@@ -12,7 +12,7 @@ The default, tools-only transport component is published and publicly available 
 wac plug --plug capabilities-provider.wasm transport.wasm -o server.wasm
 ```
 
-## Authorization & Authorization
+## Authorization
 
 The HTTP transport component provides comprehensive OAuth 2.0 authorization and policy-based authorization capabilities:
 
