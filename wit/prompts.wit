@@ -1,8 +1,49 @@
-/// Prompt types and capabilities for MCP
+/// Prompts allow servers to provide structured messages and instructions for interacting with language models.
+/// Clients can discover available prompts, retrieve their contents, and provide arguments to customize them.
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
+
+
+/// Serves the PROMPTS capability over the Streamable HTTP transport
+world prompts-transport {
+    import lifecycle;
+    import prompts;
+}
+
+/// Serves the PROMPTS capability over the Streamable HTTP transport with authorization
+world authorized-prompts-transport {
+    include prompts-transport;
+    import authorization;
+}
+
+/// Implements the PROMPTS capability
+world prompts-provider {
+    export lifecycle;
+    export prompts;
+}
+
+/// Implements the PROMPTS capability with authorization
+world authorized-prompts-provider {
+    include prompts-provider;
+    export authorization;
+}
+
+
+/// The PROMPTS capability
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
+interface prompts {
+    use mcp-types.{mcp-error};
+    use prompts-types.{list-prompts-request, list-prompts-result, get-prompt-request, get-prompt-result};
+    
+    /// List available prompts
+    list-prompts: func(request: list-prompts-request) -> result<list-prompts-result, mcp-error>;
+    
+    /// Get a specific prompt
+    get-prompt: func(request: get-prompt-request) -> result<get-prompt-result, mcp-error>;
+}
 
 /// Type definitions for prompts
-interface prompt-types {
-    use types.{message-role, content-block, base-metadata, meta-fields, cursor, progress-token};
+interface prompts-types {
+    use mcp-types.{message-role, content-block, base-metadata, meta-fields, cursor, progress-token};
 
     /// Argument definition for a prompt template
     record prompt-argument {
@@ -45,7 +86,7 @@ interface prompt-types {
     }
 
     /// Response with list of prompts
-    record list-prompts-response {
+    record list-prompts-result {
         /// Available prompts
         prompts: list<prompt>,
         /// Cursor for next page
@@ -67,7 +108,7 @@ interface prompt-types {
     }
 
     /// Response with rendered prompt messages
-    record get-prompt-response {
+    record get-prompt-result {
         /// Optional description of the rendered prompt
         description: option<string>,
         /// Messages that make up the prompt
@@ -76,16 +117,4 @@ interface prompt-types {
         meta: option<meta-fields>,
     }
 
-}
-
-/// Prompt capabilities - implement this to provide prompts
-interface prompts-capabilities {
-    use types.{mcp-error};
-    use prompt-types.{list-prompts-request, list-prompts-response, get-prompt-request, get-prompt-response};
-    
-    /// List available prompts
-    handle-list-prompts: func(request: list-prompts-request) -> result<list-prompts-response, mcp-error>;
-    
-    /// Get a specific prompt
-    handle-get-prompt: func(request: get-prompt-request) -> result<get-prompt-response, mcp-error>;
 }

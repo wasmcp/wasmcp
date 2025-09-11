@@ -33,24 +33,11 @@ regorus = { version = "0.3", default-features = false, features = ["std"] }
 default = ["tools"]
 
 # Capabilities - choose which capabilities this transport will support
+auth = []
 tools = []
 resources = []
 prompts = []
-sampling = []
-elicitation = []
-roots = []
 completion = []
-
-# Common combinations
-basic = ["tools", "resources"]
-standard = ["tools", "resources", "prompts"]
-full = ["tools", "resources", "prompts", "sampling", "elicitation", "roots", "completion"]
-
-# Note: auth is now always available - providers control it via get-auth-config()
-
-# Future features:
-# sse = []  # Server-Sent Events for subscriptions and notifications
-# sessions = ["dep:wasi-keyvalue"]  # Stateful session support
 
 [package.metadata.component]
 package = "mcp:transport-http"
@@ -60,6 +47,5 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "wasmcp:mcp"
-version = "0.2.0-alpha.6"
-# All transports now support optional auth - providers control it via get-auth-config()
+version = "0.2.0-alpha.10"
 world = "tools-transport"

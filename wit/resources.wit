@@ -1,9 +1,60 @@
-/// Resource types and capabilities for MCP
+/// Resources allow servers to share data that provides context to language models, such as files, database schemas, or application-specific information.
+/// Each resource is uniquely identified by a URI.
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/resources
+
+
+/// Serves the RESOURCES capability over the Streamable HTTP transport
+world resources-transport {
+    import lifecycle;
+    import resources;
+}
+
+/// Serves the RESOURCES capability over the Streamable HTTP transport with authorization
+world authorized-resources-transport {
+    include resources-transport;
+    import authorization;
+}
+
+/// Implements the RESOURCES capability
+world resources-provider {
+    export lifecycle;
+    export resources;
+}
+
+/// Implements the RESOURCES capability with authorization
+world authorized-resources-provider {
+    include resources-provider;
+    export authorization;
+}
+
+/// The RESOURCES capability.
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/resources
+interface resources {
+    use mcp-types.{mcp-error};
+    use resources-types.{list-resources-request, list-resources-result, list-resource-templates-request, 
+                        list-resource-templates-result, read-resource-request, read-resource-result,
+                        subscribe-request, unsubscribe-request};
+    
+    /// List available resources
+    list-resources: func(request: list-resources-request) -> result<list-resources-result, mcp-error>;
+    
+    /// List resource templates
+    list-resource-templates: func(request: list-resource-templates-request) -> result<list-resource-templates-result, mcp-error>;
+    
+    /// Read a specific resource
+    read-resource: func(request: read-resource-request) -> result<read-resource-result, mcp-error>;
+    
+    /// Subscribe to resource changes
+    subscribe-resource: func(request: subscribe-request) -> result<_, mcp-error>;
+    
+    /// Unsubscribe from resource changes
+    unsubscribe-resource: func(request: unsubscribe-request) -> result<_, mcp-error>;
+} 
 
 /// Type definitions for resources
-interface resource-types {
-    use types.{base-metadata, annotations, meta-fields, cursor, resource-contents, progress-token, resource-template};
-
+interface resources-types {
+    use mcp-types.{base-metadata, annotations, meta-fields, cursor, resource-contents, progress-token};
+    
     /// A resource that can be read by the client
     record mcp-resource {
         /// Base metadata (name and optional title)
@@ -22,6 +73,18 @@ interface resource-types {
         meta: option<meta-fields>,
     }
 
+    /// Resource template with URI template support (RFC 6570)
+    record resource-template {
+        /// URI template that can be expanded with variables
+        uri-template: string,
+        /// Identifier for the template
+        name: string,
+        /// Human-readable description
+        description: option<string>,
+        /// Expected MIME type of resources
+        mime-type: option<string>,
+    }
+
     /// Request to list available resources
     record list-resources-request {
         /// Pagination cursor
@@ -33,7 +96,7 @@ interface resource-types {
     }
 
     /// Response with list of resources
-    record list-resources-response {
+    record list-resources-result {
         /// Available resources
         resources: list<mcp-resource>,
         /// Cursor for next page
@@ -43,7 +106,7 @@ interface resource-types {
     }
 
     /// Request to list resource templates
-    record list-templates-request {
+    record list-resource-templates-request {
         /// Pagination cursor
         cursor: option<cursor>,
         /// Progress tracking token
@@ -53,7 +116,7 @@ interface resource-types {
     }
 
     /// Response with list of resource templates
-    record list-templates-response {
+    record list-resource-templates-result {
         /// Available templates
         templates: list<resource-template>,
         /// Cursor for next page
@@ -73,7 +136,7 @@ interface resource-types {
     }
 
     /// Response with resource contents
-    record read-resource-response {
+    record read-resource-result {
         /// Resource contents (may be multiple for sub-resources)
         contents: list<resource-contents>,
         /// Extension metadata
@@ -97,25 +160,3 @@ interface resource-types {
     }
 }
 
-/// Resource capabilities - implement this to provide resources
-interface resources-capabilities {
-    use types.{mcp-error};
-    use resource-types.{list-resources-request, list-resources-response, list-templates-request, 
-                        list-templates-response, read-resource-request, read-resource-response,
-                        subscribe-request, unsubscribe-request};
-    
-    /// List available resources
-    handle-list-resources: func(request: list-resources-request) -> result<list-resources-response, mcp-error>;
-    
-    /// List resource templates
-    handle-list-resource-templates: func(request: list-templates-request) -> result<list-templates-response, mcp-error>;
-    
-    /// Read a specific resource
-    handle-read-resource: func(request: read-resource-request) -> result<read-resource-response, mcp-error>;
-    
-    /// Subscribe to resource changes
-    handle-subscribe-resource: func(request: subscribe-request) -> result<_, mcp-error>;
-    
-    /// Unsubscribe from resource changes
-    handle-unsubscribe-resource: func(request: unsubscribe-request) -> result<_, mcp-error>;
-}

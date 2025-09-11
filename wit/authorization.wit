@@ -2,28 +2,49 @@
 /// These types define the authorization configuration that providers can declare
 /// and that transports use to enforce authorization
 
+
+/// Provides authorization config and JWKS hooks
+interface authorization {
+    use authorization-types.{provider-auth-config};
+
+    /// Get provider's auth configuration
+    /// The transport should enforce authorization
+    get-auth-config: func() -> provider-auth-config;
+    
+    /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
+    /// Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms
+    /// The transport will call this before fetching from jwks-uri to check for cached keys
+    jwks-cache-get: func(jwks-uri: string) -> option<string>;
+    
+    /// Cache JWKS for a given URI (optional - no-op if caching not implemented)
+    /// The transport calls this after successfully fetching JWKS from jwks-uri
+    /// Providers can implement caching via WASI-KV or other persistence mechanisms
+    /// The jwks parameter contains the raw JWKS JSON string to cache
+    jwks-cache-set: func(jwks-uri: string, jwks: string);
+}
+
 /// Type definitions for authentication and authorization
 interface authorization-types {
-    use types.{meta-fields};
+    use mcp-types.{meta-fields};
     
     /// Provider declares its authorization requirements
-    /// This is returned by core-capabilities::get-auth-config()
+    /// This is returned by lifecycle::get-auth-config()
     /// and used by the transport to enforce authorization
     record provider-auth-config {
         /// Expected JWT issuer (REQUIRED for auth)
         expected-issuer: string,
         /// Expected JWT audiences (REQUIRED for auth - must have at least one)
         expected-audiences: list<string>,
-        /// Expected JWT subject - if set, only this exact subject is allowed
-        expected-subject: option<string>,
         /// JWKS URI for key discovery (REQUIRED for auth)
         jwks-uri: string,
+        /// Pass raw JWT token to tools via "jwt.token" meta field.
+        pass-jwt: bool,
+        /// Expected JWT subject - if set, only this exact subject is allowed
+        expected-subject: option<string>,
         /// Optional Rego policy for complex authorization rules
         policy: option<string>,
         /// Optional data for policy evaluation
         policy-data: option<string>,
-        /// Pass raw JWT token to tools via "jwt.token" meta field (default: false)
-        pass-jwt: bool,
     }
     
     /// Authorization context passed between components after successful authorization

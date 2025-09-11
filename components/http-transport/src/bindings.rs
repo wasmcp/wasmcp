@@ -6,10 +6,9 @@
 #[allow(dead_code, clippy::all)]
 pub mod wasmcp {
     pub mod mcp {
-        /// Core type definitions for the Model Context Protocol
-        /// These types are used across all MCP interfaces
+        /// Core type definitions for the Model Context Protocol, shared by other interfaces.
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod types {
+        pub mod mcp_types {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
@@ -483,42 +482,15 @@ pub mod wasmcp {
                     }
                 }
             }
-            /// Resource template with URI template support (RFC 6570)
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ResourceTemplate {
-                /// URI template that can be expanded with variables
-                pub uri_template: _rt::String,
-                /// Identifier for the template
-                pub name: _rt::String,
-                /// Human-readable description
-                pub description: Option<_rt::String>,
-                /// Expected MIME type of resources
-                pub mime_type: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for ResourceTemplate {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ResourceTemplate")
-                        .field("uri-template", &self.uri_template)
-                        .field("name", &self.name)
-                        .field("description", &self.description)
-                        .field("mime-type", &self.mime_type)
-                        .finish()
-                }
-            }
         }
-        /// Core types and capabilities for MCP
-        /// Every MCP implementation requires these fundamental types and functions
-        /// Type definitions for core MCP protocol operations
+        /// Type definitions for the MCP lifecycle
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod core_types {
+        pub mod lifecycle_types {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type MetaFields = super::super::super::wasmcp::mcp::types::MetaFields;
+            pub type MetaFields = super::super::super::wasmcp::mcp::mcp_types::MetaFields;
             /// Protocol versions supported by MCP
             /// These correspond to official MCP specification versions
             #[repr(u8)]
@@ -742,7 +714,7 @@ pub mod wasmcp {
             }
             /// Initialize response from server
             #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct InitializeResponse {
+            pub struct InitializeResult {
                 /// Protocol version the server will use
                 pub protocol_version: ProtocolVersion,
                 /// Server's capabilities
@@ -754,12 +726,12 @@ pub mod wasmcp {
                 /// Optional metadata
                 pub meta: Option<MetaFields>,
             }
-            impl ::core::fmt::Debug for InitializeResponse {
+            impl ::core::fmt::Debug for InitializeResult {
                 fn fmt(
                     &self,
                     f: &mut ::core::fmt::Formatter<'_>,
                 ) -> ::core::fmt::Result {
-                    f.debug_struct("InitializeResponse")
+                    f.debug_struct("InitializeResult")
                         .field("protocol-version", &self.protocol_version)
                         .field("capabilities", &self.capabilities)
                         .field("server-info", &self.server_info)
@@ -769,115 +741,25 @@ pub mod wasmcp {
                 }
             }
         }
-        /// Authorization types for MCP servers
-        /// These types define the authorization configuration that providers can declare
-        /// and that transports use to enforce authorization
-        /// Type definitions for authentication and authorization
+        /// Lifecycle for client-server connections that ensures proper capability negotiation and state management.
+        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle
+        /// Handles connection lifecycle events
+        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod authorization_types {
+        pub mod lifecycle {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type MetaFields = super::super::super::wasmcp::mcp::types::MetaFields;
-            /// Provider declares its authorization requirements
-            /// This is returned by core-capabilities::get-auth-config()
-            /// and used by the transport to enforce authorization
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ProviderAuthConfig {
-                /// Expected JWT issuer (REQUIRED for auth)
-                pub expected_issuer: _rt::String,
-                /// Expected JWT audiences (REQUIRED for auth - must have at least one)
-                pub expected_audiences: _rt::Vec<_rt::String>,
-                /// Expected JWT subject - if set, only this exact subject is allowed
-                pub expected_subject: Option<_rt::String>,
-                /// JWKS URI for key discovery (REQUIRED for auth)
-                pub jwks_uri: _rt::String,
-                /// Optional Rego policy for complex authorization rules
-                pub policy: Option<_rt::String>,
-                /// Optional data for policy evaluation
-                pub policy_data: Option<_rt::String>,
-                /// Pass raw JWT token to tools via "jwt.token" meta field (default: false)
-                pub pass_jwt: bool,
-            }
-            impl ::core::fmt::Debug for ProviderAuthConfig {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ProviderAuthConfig")
-                        .field("expected-issuer", &self.expected_issuer)
-                        .field("expected-audiences", &self.expected_audiences)
-                        .field("expected-subject", &self.expected_subject)
-                        .field("jwks-uri", &self.jwks_uri)
-                        .field("policy", &self.policy)
-                        .field("policy-data", &self.policy_data)
-                        .field("pass-jwt", &self.pass_jwt)
-                        .finish()
-                }
-            }
-            /// Authorization context passed between components after successful authorization
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct AuthContext {
-                /// OAuth client ID that made the request
-                pub client_id: Option<_rt::String>,
-                /// Subject claim from the token - always present from validated JWT
-                pub sub: _rt::String,
-                /// OAuth scopes granted to this token
-                pub scopes: _rt::Vec<_rt::String>,
-                /// Issuer claim from the token - always present from validated JWT
-                pub iss: _rt::String,
-                /// Audience claim from token (aud) - always validated, can be multiple values
-                pub aud: _rt::Vec<_rt::String>,
-                /// Additional claims from token as key-value pairs
-                pub claims: MetaFields,
-                /// Expiration timestamp (Unix seconds) - always validated and required for security
-                pub exp: u64,
-                /// Issued at timestamp (Unix seconds)
-                pub iat: Option<u64>,
-                /// Not before timestamp (Unix seconds)
-                pub nbf: Option<u64>,
-                /// Raw JWT iff enabled by authorization-types::pass-jwt
-                pub jwt: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for AuthContext {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("AuthContext")
-                        .field("client-id", &self.client_id)
-                        .field("sub", &self.sub)
-                        .field("scopes", &self.scopes)
-                        .field("iss", &self.iss)
-                        .field("aud", &self.aud)
-                        .field("claims", &self.claims)
-                        .field("exp", &self.exp)
-                        .field("iat", &self.iat)
-                        .field("nbf", &self.nbf)
-                        .field("jwt", &self.jwt)
-                        .finish()
-                }
-            }
-        }
-        /// Core capabilities that all MCP implementations must provide
-        /// These are the essential protocol functions every server needs
-        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod core_capabilities {
-            #[used]
-            #[doc(hidden)]
-            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            pub type McpError = super::super::super::wasmcp::mcp::types::McpError;
-            pub type InitializeRequest = super::super::super::wasmcp::mcp::core_types::InitializeRequest;
-            pub type InitializeResponse = super::super::super::wasmcp::mcp::core_types::InitializeResponse;
-            pub type ProviderAuthConfig = super::super::super::wasmcp::mcp::authorization_types::ProviderAuthConfig;
+            pub type McpError = super::super::super::wasmcp::mcp::mcp_types::McpError;
+            pub type InitializeRequest = super::super::super::wasmcp::mcp::lifecycle_types::InitializeRequest;
+            pub type InitializeResult = super::super::super::wasmcp::mcp::lifecycle_types::InitializeResult;
             #[allow(unused_unsafe, clippy::all)]
             /// Handle session initialization
             /// Implementations should declare their capabilities here
-            pub fn handle_initialize(
+            pub fn initialize(
                 request: &InitializeRequest,
-            ) -> Result<InitializeResponse, McpError> {
+            ) -> Result<InitializeResult, McpError> {
                 unsafe {
                     let mut cleanup_list = _rt::Vec::new();
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
@@ -892,14 +774,14 @@ pub mod wasmcp {
                             + 18 * ::core::mem::size_of::<*const u8>()],
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    let super::super::super::wasmcp::mcp::core_types::InitializeRequest {
+                    let super::super::super::wasmcp::mcp::lifecycle_types::InitializeRequest {
                         protocol_version: protocol_version1,
                         capabilities: capabilities1,
                         client_info: client_info1,
                         meta: meta1,
                     } = request;
                     *ptr0.add(0).cast::<u8>() = (protocol_version1.clone() as i32) as u8;
-                    let super::super::super::wasmcp::mcp::core_types::ClientCapabilities {
+                    let super::super::super::wasmcp::mcp::lifecycle_types::ClientCapabilities {
                         experimental: experimental2,
                         roots: roots2,
                         sampling: sampling2,
@@ -967,7 +849,7 @@ pub mod wasmcp {
                             *ptr0
                                 .add(4 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (1i32) as u8;
-                            let super::super::super::wasmcp::mcp::core_types::RootsCapability {
+                            let super::super::super::wasmcp::mcp::lifecycle_types::RootsCapability {
                                 list_changed: list_changed7,
                             } = e;
                             match list_changed7 {
@@ -1031,7 +913,7 @@ pub mod wasmcp {
                                 .cast::<u8>() = (0i32) as u8;
                         }
                     };
-                    let super::super::super::wasmcp::mcp::core_types::ImplementationInfo {
+                    let super::super::super::wasmcp::mcp::lifecycle_types::ImplementationInfo {
                         name: name8,
                         version: version8,
                         title: title8,
@@ -1134,11 +1016,9 @@ pub mod wasmcp {
                     };
                     let ptr16 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/core-capabilities@0.2.0-alpha.6"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0-alpha.10")]
                     unsafe extern "C" {
-                        #[link_name = "handle-initialize"]
+                        #[link_name = "initialize"]
                         fn wit_import17(_: *mut u8, _: *mut u8);
                     }
                     #[cfg(not(target_arch = "wasm32"))]
@@ -1222,11 +1102,11 @@ pub mod wasmcp {
                                         .add(16 + 15 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::core_types::InitializeResponse {
-                                    protocol_version: super::super::super::wasmcp::mcp::core_types::ProtocolVersion::_lift(
+                                super::super::super::wasmcp::mcp::lifecycle_types::InitializeResult {
+                                    protocol_version: super::super::super::wasmcp::mcp::lifecycle_types::ProtocolVersion::_lift(
                                         l19 as u8,
                                     ),
-                                    capabilities: super::super::super::wasmcp::mcp::core_types::ServerCapabilities {
+                                    capabilities: super::super::super::wasmcp::mcp::lifecycle_types::ServerCapabilities {
                                         experimental: match l20 {
                                             0 => None,
                                             1 => {
@@ -1320,7 +1200,7 @@ pub mod wasmcp {
                                                             .add(5 + 5 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::core_types::PromptsCapability {
+                                                    super::super::super::wasmcp::mcp::lifecycle_types::PromptsCapability {
                                                         list_changed: match l35 {
                                                             0 => None,
                                                             1 => {
@@ -1356,7 +1236,7 @@ pub mod wasmcp {
                                                             .add(10 + 5 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::core_types::ResourcesCapability {
+                                                    super::super::super::wasmcp::mcp::lifecycle_types::ResourcesCapability {
                                                         subscribe: match l38 {
                                                             0 => None,
                                                             1 => {
@@ -1402,7 +1282,7 @@ pub mod wasmcp {
                                                             .add(13 + 5 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::core_types::ToolsCapability {
+                                                    super::super::super::wasmcp::mcp::lifecycle_types::ToolsCapability {
                                                         list_changed: match l43 {
                                                             0 => None,
                                                             1 => {
@@ -1425,7 +1305,7 @@ pub mod wasmcp {
                                             _ => _rt::invalid_enum_discriminant(),
                                         },
                                     },
-                                    server_info: super::super::super::wasmcp::mcp::core_types::ImplementationInfo {
+                                    server_info: super::super::super::wasmcp::mcp::lifecycle_types::ImplementationInfo {
                                         name: _rt::string_lift(bytes47),
                                         version: _rt::string_lift(bytes50),
                                         title: match l51 {
@@ -1536,7 +1416,7 @@ pub mod wasmcp {
                                 let l69 = i32::from(
                                     *ptr16.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::wasmcp::mcp::types::ErrorCode as V71;
+                                use super::super::super::wasmcp::mcp::mcp_types::ErrorCode as V71;
                                 let v71 = match l69 {
                                     0 => V71::ParseError,
                                     1 => V71::InvalidRequest,
@@ -1578,7 +1458,7 @@ pub mod wasmcp {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::mcp_types::McpError {
                                     code: v71,
                                     message: _rt::string_lift(bytes74),
                                     data: match l75 {
@@ -1617,654 +1497,21 @@ pub mod wasmcp {
                     result79
                 }
             }
-            #[allow(unused_unsafe, clippy::all)]
-            /// Handle initialization complete notification
-            pub fn handle_initialized() -> Result<(), McpError> {
-                unsafe {
-                    #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
-                    #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
-                    struct RetArea(
-                        [::core::mem::MaybeUninit<
-                            u8,
-                        >; 8 + 6 * ::core::mem::size_of::<*const u8>()],
-                    );
-                    let mut ret_area = RetArea(
-                        [::core::mem::MaybeUninit::uninit(); 8
-                            + 6 * ::core::mem::size_of::<*const u8>()],
-                    );
-                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/core-capabilities@0.2.0-alpha.6"
-                    )]
-                    unsafe extern "C" {
-                        #[link_name = "handle-initialized"]
-                        fn wit_import1(_: *mut u8);
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    unsafe extern "C" fn wit_import1(_: *mut u8) {
-                        unreachable!()
-                    }
-                    unsafe { wit_import1(ptr0) };
-                    let l2 = i32::from(*ptr0.add(0).cast::<u8>());
-                    let result13 = match l2 {
-                        0 => {
-                            let e = ();
-                            Ok(e)
-                        }
-                        1 => {
-                            let e = {
-                                let l3 = i32::from(
-                                    *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
-                                );
-                                use super::super::super::wasmcp::mcp::types::ErrorCode as V5;
-                                let v5 = match l3 {
-                                    0 => V5::ParseError,
-                                    1 => V5::InvalidRequest,
-                                    2 => V5::MethodNotFound,
-                                    3 => V5::InvalidParams,
-                                    4 => V5::InternalError,
-                                    5 => V5::ResourceNotFound,
-                                    6 => V5::ToolNotFound,
-                                    7 => V5::PromptNotFound,
-                                    8 => V5::Unauthorized,
-                                    9 => V5::RateLimited,
-                                    10 => V5::Timeout,
-                                    11 => V5::Cancelled,
-                                    n => {
-                                        debug_assert_eq!(n, 12, "invalid enum discriminant");
-                                        let e5 = {
-                                            let l4 = *ptr0
-                                                .add(4 + 1 * ::core::mem::size_of::<*const u8>())
-                                                .cast::<i32>();
-                                            l4
-                                        };
-                                        V5::CustomCode(e5)
-                                    }
-                                };
-                                let l6 = *ptr0
-                                    .add(8 + 1 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<*mut u8>();
-                                let l7 = *ptr0
-                                    .add(8 + 2 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<usize>();
-                                let len8 = l7;
-                                let bytes8 = _rt::Vec::from_raw_parts(
-                                    l6.cast(),
-                                    len8,
-                                    len8,
-                                );
-                                let l9 = i32::from(
-                                    *ptr0
-                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<u8>(),
-                                );
-                                super::super::super::wasmcp::mcp::types::McpError {
-                                    code: v5,
-                                    message: _rt::string_lift(bytes8),
-                                    data: match l9 {
-                                        0 => None,
-                                        1 => {
-                                            let e = {
-                                                let l10 = *ptr0
-                                                    .add(8 + 4 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<*mut u8>();
-                                                let l11 = *ptr0
-                                                    .add(8 + 5 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<usize>();
-                                                let len12 = l11;
-                                                let bytes12 = _rt::Vec::from_raw_parts(
-                                                    l10.cast(),
-                                                    len12,
-                                                    len12,
-                                                );
-                                                _rt::string_lift(bytes12)
-                                            };
-                                            Some(e)
-                                        }
-                                        _ => _rt::invalid_enum_discriminant(),
-                                    },
-                                }
-                            };
-                            Err(e)
-                        }
-                        _ => _rt::invalid_enum_discriminant(),
-                    };
-                    result13
-                }
-            }
-            #[allow(unused_unsafe, clippy::all)]
-            /// Handle ping request for keepalive
-            pub fn handle_ping() -> Result<(), McpError> {
-                unsafe {
-                    #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
-                    #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
-                    struct RetArea(
-                        [::core::mem::MaybeUninit<
-                            u8,
-                        >; 8 + 6 * ::core::mem::size_of::<*const u8>()],
-                    );
-                    let mut ret_area = RetArea(
-                        [::core::mem::MaybeUninit::uninit(); 8
-                            + 6 * ::core::mem::size_of::<*const u8>()],
-                    );
-                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/core-capabilities@0.2.0-alpha.6"
-                    )]
-                    unsafe extern "C" {
-                        #[link_name = "handle-ping"]
-                        fn wit_import1(_: *mut u8);
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    unsafe extern "C" fn wit_import1(_: *mut u8) {
-                        unreachable!()
-                    }
-                    unsafe { wit_import1(ptr0) };
-                    let l2 = i32::from(*ptr0.add(0).cast::<u8>());
-                    let result13 = match l2 {
-                        0 => {
-                            let e = ();
-                            Ok(e)
-                        }
-                        1 => {
-                            let e = {
-                                let l3 = i32::from(
-                                    *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
-                                );
-                                use super::super::super::wasmcp::mcp::types::ErrorCode as V5;
-                                let v5 = match l3 {
-                                    0 => V5::ParseError,
-                                    1 => V5::InvalidRequest,
-                                    2 => V5::MethodNotFound,
-                                    3 => V5::InvalidParams,
-                                    4 => V5::InternalError,
-                                    5 => V5::ResourceNotFound,
-                                    6 => V5::ToolNotFound,
-                                    7 => V5::PromptNotFound,
-                                    8 => V5::Unauthorized,
-                                    9 => V5::RateLimited,
-                                    10 => V5::Timeout,
-                                    11 => V5::Cancelled,
-                                    n => {
-                                        debug_assert_eq!(n, 12, "invalid enum discriminant");
-                                        let e5 = {
-                                            let l4 = *ptr0
-                                                .add(4 + 1 * ::core::mem::size_of::<*const u8>())
-                                                .cast::<i32>();
-                                            l4
-                                        };
-                                        V5::CustomCode(e5)
-                                    }
-                                };
-                                let l6 = *ptr0
-                                    .add(8 + 1 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<*mut u8>();
-                                let l7 = *ptr0
-                                    .add(8 + 2 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<usize>();
-                                let len8 = l7;
-                                let bytes8 = _rt::Vec::from_raw_parts(
-                                    l6.cast(),
-                                    len8,
-                                    len8,
-                                );
-                                let l9 = i32::from(
-                                    *ptr0
-                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<u8>(),
-                                );
-                                super::super::super::wasmcp::mcp::types::McpError {
-                                    code: v5,
-                                    message: _rt::string_lift(bytes8),
-                                    data: match l9 {
-                                        0 => None,
-                                        1 => {
-                                            let e = {
-                                                let l10 = *ptr0
-                                                    .add(8 + 4 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<*mut u8>();
-                                                let l11 = *ptr0
-                                                    .add(8 + 5 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<usize>();
-                                                let len12 = l11;
-                                                let bytes12 = _rt::Vec::from_raw_parts(
-                                                    l10.cast(),
-                                                    len12,
-                                                    len12,
-                                                );
-                                                _rt::string_lift(bytes12)
-                                            };
-                                            Some(e)
-                                        }
-                                        _ => _rt::invalid_enum_discriminant(),
-                                    },
-                                }
-                            };
-                            Err(e)
-                        }
-                        _ => _rt::invalid_enum_discriminant(),
-                    };
-                    result13
-                }
-            }
-            #[allow(unused_unsafe, clippy::all)]
-            /// Handle shutdown request
-            pub fn handle_shutdown() -> Result<(), McpError> {
-                unsafe {
-                    #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
-                    #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
-                    struct RetArea(
-                        [::core::mem::MaybeUninit<
-                            u8,
-                        >; 8 + 6 * ::core::mem::size_of::<*const u8>()],
-                    );
-                    let mut ret_area = RetArea(
-                        [::core::mem::MaybeUninit::uninit(); 8
-                            + 6 * ::core::mem::size_of::<*const u8>()],
-                    );
-                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/core-capabilities@0.2.0-alpha.6"
-                    )]
-                    unsafe extern "C" {
-                        #[link_name = "handle-shutdown"]
-                        fn wit_import1(_: *mut u8);
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    unsafe extern "C" fn wit_import1(_: *mut u8) {
-                        unreachable!()
-                    }
-                    unsafe { wit_import1(ptr0) };
-                    let l2 = i32::from(*ptr0.add(0).cast::<u8>());
-                    let result13 = match l2 {
-                        0 => {
-                            let e = ();
-                            Ok(e)
-                        }
-                        1 => {
-                            let e = {
-                                let l3 = i32::from(
-                                    *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
-                                );
-                                use super::super::super::wasmcp::mcp::types::ErrorCode as V5;
-                                let v5 = match l3 {
-                                    0 => V5::ParseError,
-                                    1 => V5::InvalidRequest,
-                                    2 => V5::MethodNotFound,
-                                    3 => V5::InvalidParams,
-                                    4 => V5::InternalError,
-                                    5 => V5::ResourceNotFound,
-                                    6 => V5::ToolNotFound,
-                                    7 => V5::PromptNotFound,
-                                    8 => V5::Unauthorized,
-                                    9 => V5::RateLimited,
-                                    10 => V5::Timeout,
-                                    11 => V5::Cancelled,
-                                    n => {
-                                        debug_assert_eq!(n, 12, "invalid enum discriminant");
-                                        let e5 = {
-                                            let l4 = *ptr0
-                                                .add(4 + 1 * ::core::mem::size_of::<*const u8>())
-                                                .cast::<i32>();
-                                            l4
-                                        };
-                                        V5::CustomCode(e5)
-                                    }
-                                };
-                                let l6 = *ptr0
-                                    .add(8 + 1 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<*mut u8>();
-                                let l7 = *ptr0
-                                    .add(8 + 2 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<usize>();
-                                let len8 = l7;
-                                let bytes8 = _rt::Vec::from_raw_parts(
-                                    l6.cast(),
-                                    len8,
-                                    len8,
-                                );
-                                let l9 = i32::from(
-                                    *ptr0
-                                        .add(8 + 3 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<u8>(),
-                                );
-                                super::super::super::wasmcp::mcp::types::McpError {
-                                    code: v5,
-                                    message: _rt::string_lift(bytes8),
-                                    data: match l9 {
-                                        0 => None,
-                                        1 => {
-                                            let e = {
-                                                let l10 = *ptr0
-                                                    .add(8 + 4 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<*mut u8>();
-                                                let l11 = *ptr0
-                                                    .add(8 + 5 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<usize>();
-                                                let len12 = l11;
-                                                let bytes12 = _rt::Vec::from_raw_parts(
-                                                    l10.cast(),
-                                                    len12,
-                                                    len12,
-                                                );
-                                                _rt::string_lift(bytes12)
-                                            };
-                                            Some(e)
-                                        }
-                                        _ => _rt::invalid_enum_discriminant(),
-                                    },
-                                }
-                            };
-                            Err(e)
-                        }
-                        _ => _rt::invalid_enum_discriminant(),
-                    };
-                    result13
-                }
-            }
-            #[allow(unused_unsafe, clippy::all)]
-            /// Get provider's auth configuration (optional - return none for no auth)
-            /// If auth configuration is provided, the transport will enforce authorization
-            pub fn get_auth_config() -> Option<ProviderAuthConfig> {
-                unsafe {
-                    #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
-                    #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
-                    struct RetArea(
-                        [::core::mem::MaybeUninit<
-                            u8,
-                        >; 17 * ::core::mem::size_of::<*const u8>()],
-                    );
-                    let mut ret_area = RetArea(
-                        [::core::mem::MaybeUninit::uninit(); 17
-                            * ::core::mem::size_of::<*const u8>()],
-                    );
-                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/core-capabilities@0.2.0-alpha.6"
-                    )]
-                    unsafe extern "C" {
-                        #[link_name = "get-auth-config"]
-                        fn wit_import1(_: *mut u8);
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    unsafe extern "C" fn wit_import1(_: *mut u8) {
-                        unreachable!()
-                    }
-                    unsafe { wit_import1(ptr0) };
-                    let l2 = i32::from(*ptr0.add(0).cast::<u8>());
-                    let result28 = match l2 {
-                        0 => None,
-                        1 => {
-                            let e = {
-                                let l3 = *ptr0
-                                    .add(::core::mem::size_of::<*const u8>())
-                                    .cast::<*mut u8>();
-                                let l4 = *ptr0
-                                    .add(2 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<usize>();
-                                let len5 = l4;
-                                let bytes5 = _rt::Vec::from_raw_parts(
-                                    l3.cast(),
-                                    len5,
-                                    len5,
-                                );
-                                let l6 = *ptr0
-                                    .add(3 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<*mut u8>();
-                                let l7 = *ptr0
-                                    .add(4 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<usize>();
-                                let base11 = l6;
-                                let len11 = l7;
-                                let mut result11 = _rt::Vec::with_capacity(len11);
-                                for i in 0..len11 {
-                                    let base = base11
-                                        .add(i * (2 * ::core::mem::size_of::<*const u8>()));
-                                    let e11 = {
-                                        let l8 = *base.add(0).cast::<*mut u8>();
-                                        let l9 = *base
-                                            .add(::core::mem::size_of::<*const u8>())
-                                            .cast::<usize>();
-                                        let len10 = l9;
-                                        let bytes10 = _rt::Vec::from_raw_parts(
-                                            l8.cast(),
-                                            len10,
-                                            len10,
-                                        );
-                                        _rt::string_lift(bytes10)
-                                    };
-                                    result11.push(e11);
-                                }
-                                _rt::cabi_dealloc(
-                                    base11,
-                                    len11 * (2 * ::core::mem::size_of::<*const u8>()),
-                                    ::core::mem::size_of::<*const u8>(),
-                                );
-                                let l12 = i32::from(
-                                    *ptr0
-                                        .add(5 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<u8>(),
-                                );
-                                let l16 = *ptr0
-                                    .add(8 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<*mut u8>();
-                                let l17 = *ptr0
-                                    .add(9 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<usize>();
-                                let len18 = l17;
-                                let bytes18 = _rt::Vec::from_raw_parts(
-                                    l16.cast(),
-                                    len18,
-                                    len18,
-                                );
-                                let l19 = i32::from(
-                                    *ptr0
-                                        .add(10 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<u8>(),
-                                );
-                                let l23 = i32::from(
-                                    *ptr0
-                                        .add(13 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<u8>(),
-                                );
-                                let l27 = i32::from(
-                                    *ptr0
-                                        .add(16 * ::core::mem::size_of::<*const u8>())
-                                        .cast::<u8>(),
-                                );
-                                super::super::super::wasmcp::mcp::authorization_types::ProviderAuthConfig {
-                                    expected_issuer: _rt::string_lift(bytes5),
-                                    expected_audiences: result11,
-                                    expected_subject: match l12 {
-                                        0 => None,
-                                        1 => {
-                                            let e = {
-                                                let l13 = *ptr0
-                                                    .add(6 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<*mut u8>();
-                                                let l14 = *ptr0
-                                                    .add(7 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<usize>();
-                                                let len15 = l14;
-                                                let bytes15 = _rt::Vec::from_raw_parts(
-                                                    l13.cast(),
-                                                    len15,
-                                                    len15,
-                                                );
-                                                _rt::string_lift(bytes15)
-                                            };
-                                            Some(e)
-                                        }
-                                        _ => _rt::invalid_enum_discriminant(),
-                                    },
-                                    jwks_uri: _rt::string_lift(bytes18),
-                                    policy: match l19 {
-                                        0 => None,
-                                        1 => {
-                                            let e = {
-                                                let l20 = *ptr0
-                                                    .add(11 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<*mut u8>();
-                                                let l21 = *ptr0
-                                                    .add(12 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<usize>();
-                                                let len22 = l21;
-                                                let bytes22 = _rt::Vec::from_raw_parts(
-                                                    l20.cast(),
-                                                    len22,
-                                                    len22,
-                                                );
-                                                _rt::string_lift(bytes22)
-                                            };
-                                            Some(e)
-                                        }
-                                        _ => _rt::invalid_enum_discriminant(),
-                                    },
-                                    policy_data: match l23 {
-                                        0 => None,
-                                        1 => {
-                                            let e = {
-                                                let l24 = *ptr0
-                                                    .add(14 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<*mut u8>();
-                                                let l25 = *ptr0
-                                                    .add(15 * ::core::mem::size_of::<*const u8>())
-                                                    .cast::<usize>();
-                                                let len26 = l25;
-                                                let bytes26 = _rt::Vec::from_raw_parts(
-                                                    l24.cast(),
-                                                    len26,
-                                                    len26,
-                                                );
-                                                _rt::string_lift(bytes26)
-                                            };
-                                            Some(e)
-                                        }
-                                        _ => _rt::invalid_enum_discriminant(),
-                                    },
-                                    pass_jwt: _rt::bool_lift(l27 as u8),
-                                }
-                            };
-                            Some(e)
-                        }
-                        _ => _rt::invalid_enum_discriminant(),
-                    };
-                    result28
-                }
-            }
-            #[allow(unused_unsafe, clippy::all)]
-            /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
-            /// Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms
-            /// The transport will call this before fetching from jwks-uri to check for cached keys
-            pub fn jwks_cache_get(jwks_uri: &str) -> Option<_rt::String> {
-                unsafe {
-                    #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
-                    #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
-                    struct RetArea(
-                        [::core::mem::MaybeUninit<
-                            u8,
-                        >; 3 * ::core::mem::size_of::<*const u8>()],
-                    );
-                    let mut ret_area = RetArea(
-                        [::core::mem::MaybeUninit::uninit(); 3
-                            * ::core::mem::size_of::<*const u8>()],
-                    );
-                    let vec0 = jwks_uri;
-                    let ptr0 = vec0.as_ptr().cast::<u8>();
-                    let len0 = vec0.len();
-                    let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/core-capabilities@0.2.0-alpha.6"
-                    )]
-                    unsafe extern "C" {
-                        #[link_name = "jwks-cache-get"]
-                        fn wit_import2(_: *mut u8, _: usize, _: *mut u8);
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    unsafe extern "C" fn wit_import2(_: *mut u8, _: usize, _: *mut u8) {
-                        unreachable!()
-                    }
-                    unsafe { wit_import2(ptr0.cast_mut(), len0, ptr1) };
-                    let l3 = i32::from(*ptr1.add(0).cast::<u8>());
-                    let result7 = match l3 {
-                        0 => None,
-                        1 => {
-                            let e = {
-                                let l4 = *ptr1
-                                    .add(::core::mem::size_of::<*const u8>())
-                                    .cast::<*mut u8>();
-                                let l5 = *ptr1
-                                    .add(2 * ::core::mem::size_of::<*const u8>())
-                                    .cast::<usize>();
-                                let len6 = l5;
-                                let bytes6 = _rt::Vec::from_raw_parts(
-                                    l4.cast(),
-                                    len6,
-                                    len6,
-                                );
-                                _rt::string_lift(bytes6)
-                            };
-                            Some(e)
-                        }
-                        _ => _rt::invalid_enum_discriminant(),
-                    };
-                    result7
-                }
-            }
-            #[allow(unused_unsafe, clippy::all)]
-            /// Cache JWKS for a given URI (optional - no-op if caching not implemented)
-            /// The transport calls this after successfully fetching JWKS from jwks-uri
-            /// Providers can implement caching via WASI-KV or other persistence mechanisms
-            /// The jwks parameter contains the raw JWKS JSON string to cache
-            pub fn jwks_cache_set(jwks_uri: &str, jwks: &str) -> () {
-                unsafe {
-                    let vec0 = jwks_uri;
-                    let ptr0 = vec0.as_ptr().cast::<u8>();
-                    let len0 = vec0.len();
-                    let vec1 = jwks;
-                    let ptr1 = vec1.as_ptr().cast::<u8>();
-                    let len1 = vec1.len();
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/core-capabilities@0.2.0-alpha.6"
-                    )]
-                    unsafe extern "C" {
-                        #[link_name = "jwks-cache-set"]
-                        fn wit_import2(_: *mut u8, _: usize, _: *mut u8, _: usize);
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    unsafe extern "C" fn wit_import2(
-                        _: *mut u8,
-                        _: usize,
-                        _: *mut u8,
-                        _: usize,
-                    ) {
-                        unreachable!()
-                    }
-                    unsafe { wit_import2(ptr0.cast_mut(), len0, ptr1.cast_mut(), len1) };
-                }
-            }
         }
-        /// Tool types and capabilities for MCP
         /// Type definitions for tools
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod tool_types {
+        pub mod tools_types {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type ContentBlock = super::super::super::wasmcp::mcp::types::ContentBlock;
-            pub type JsonValue = super::super::super::wasmcp::mcp::types::JsonValue;
-            pub type JsonSchema = super::super::super::wasmcp::mcp::types::JsonSchema;
-            pub type BaseMetadata = super::super::super::wasmcp::mcp::types::BaseMetadata;
-            pub type MetaFields = super::super::super::wasmcp::mcp::types::MetaFields;
-            pub type Cursor = super::super::super::wasmcp::mcp::types::Cursor;
-            pub type ProgressToken = super::super::super::wasmcp::mcp::types::ProgressToken;
+            pub type ContentBlock = super::super::super::wasmcp::mcp::mcp_types::ContentBlock;
+            pub type JsonValue = super::super::super::wasmcp::mcp::mcp_types::JsonValue;
+            pub type JsonSchema = super::super::super::wasmcp::mcp::mcp_types::JsonSchema;
+            pub type BaseMetadata = super::super::super::wasmcp::mcp::mcp_types::BaseMetadata;
+            pub type MetaFields = super::super::super::wasmcp::mcp::mcp_types::MetaFields;
+            pub type Cursor = super::super::super::wasmcp::mcp::mcp_types::Cursor;
+            pub type ProgressToken = super::super::super::wasmcp::mcp::mcp_types::ProgressToken;
             /// Behavioral hints about tool operations
             #[derive(Clone, serde::Deserialize, serde::Serialize)]
             pub struct ToolAnnotations {
@@ -2324,9 +1571,34 @@ pub mod wasmcp {
                         .finish()
                 }
             }
+            /// Request to execute a tool
+            #[derive(Clone, serde::Deserialize, serde::Serialize)]
+            pub struct CallToolRequest {
+                /// Name of the tool to execute
+                pub name: _rt::String,
+                /// Arguments as JSON object
+                pub arguments: Option<JsonValue>,
+                /// Optional progress tracking token
+                pub progress_token: Option<ProgressToken>,
+                /// Extension metadata
+                pub meta: Option<MetaFields>,
+            }
+            impl ::core::fmt::Debug for CallToolRequest {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("CallToolRequest")
+                        .field("name", &self.name)
+                        .field("arguments", &self.arguments)
+                        .field("progress-token", &self.progress_token)
+                        .field("meta", &self.meta)
+                        .finish()
+                }
+            }
             /// Result from executing a tool
             #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ToolResult {
+            pub struct CallToolResult {
                 /// Unstructured content blocks (text, images, etc.)
                 pub content: _rt::Vec<ContentBlock>,
                 /// Optional structured JSON output
@@ -2337,12 +1609,12 @@ pub mod wasmcp {
                 /// Extension metadata
                 pub meta: Option<MetaFields>,
             }
-            impl ::core::fmt::Debug for ToolResult {
+            impl ::core::fmt::Debug for CallToolResult {
                 fn fmt(
                     &self,
                     f: &mut ::core::fmt::Formatter<'_>,
                 ) -> ::core::fmt::Result {
-                    f.debug_struct("ToolResult")
+                    f.debug_struct("CallToolResult")
                         .field("content", &self.content)
                         .field("structured-content", &self.structured_content)
                         .field("is-error", &self.is_error)
@@ -2374,7 +1646,7 @@ pub mod wasmcp {
             }
             /// Response with list of available tools
             #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ListToolsResponse {
+            pub struct ListToolsResult {
                 /// Available tools
                 pub tools: _rt::Vec<Tool>,
                 /// Cursor for next page if more tools exist
@@ -2382,62 +1654,126 @@ pub mod wasmcp {
                 /// Extension metadata
                 pub meta: Option<MetaFields>,
             }
-            impl ::core::fmt::Debug for ListToolsResponse {
+            impl ::core::fmt::Debug for ListToolsResult {
                 fn fmt(
                     &self,
                     f: &mut ::core::fmt::Formatter<'_>,
                 ) -> ::core::fmt::Result {
-                    f.debug_struct("ListToolsResponse")
+                    f.debug_struct("ListToolsResult")
                         .field("tools", &self.tools)
                         .field("next-cursor", &self.next_cursor)
                         .field("meta", &self.meta)
                         .finish()
                 }
             }
-            /// Request to execute a tool
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct CallToolRequest {
-                /// Name of the tool to execute
-                pub name: _rt::String,
-                /// Arguments as JSON object
-                pub arguments: Option<JsonValue>,
-                /// Optional progress tracking token
-                pub progress_token: Option<ProgressToken>,
-                /// Extension metadata
-                pub meta: Option<MetaFields>,
-            }
-            impl ::core::fmt::Debug for CallToolRequest {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("CallToolRequest")
-                        .field("name", &self.name)
-                        .field("arguments", &self.arguments)
-                        .field("progress-token", &self.progress_token)
-                        .field("meta", &self.meta)
-                        .finish()
-                }
-            }
         }
-        /// Tool capabilities - implement this to provide tools
+        /// Type definitions for authentication and authorization
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod tools_capabilities {
+        pub mod authorization_types {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type McpError = super::super::super::wasmcp::mcp::types::McpError;
-            pub type ListToolsRequest = super::super::super::wasmcp::mcp::tool_types::ListToolsRequest;
-            pub type ListToolsResponse = super::super::super::wasmcp::mcp::tool_types::ListToolsResponse;
-            pub type CallToolRequest = super::super::super::wasmcp::mcp::tool_types::CallToolRequest;
-            pub type ToolResult = super::super::super::wasmcp::mcp::tool_types::ToolResult;
+            pub type MetaFields = super::super::super::wasmcp::mcp::mcp_types::MetaFields;
+            /// Provider declares its authorization requirements
+            /// This is returned by lifecycle::get-auth-config()
+            /// and used by the transport to enforce authorization
+            #[derive(Clone, serde::Deserialize, serde::Serialize)]
+            pub struct ProviderAuthConfig {
+                /// Expected JWT issuer (REQUIRED for auth)
+                pub expected_issuer: _rt::String,
+                /// Expected JWT audiences (REQUIRED for auth - must have at least one)
+                pub expected_audiences: _rt::Vec<_rt::String>,
+                /// JWKS URI for key discovery (REQUIRED for auth)
+                pub jwks_uri: _rt::String,
+                /// Pass raw JWT token to tools via "jwt.token" meta field.
+                pub pass_jwt: bool,
+                /// Expected JWT subject - if set, only this exact subject is allowed
+                pub expected_subject: Option<_rt::String>,
+                /// Optional Rego policy for complex authorization rules
+                pub policy: Option<_rt::String>,
+                /// Optional data for policy evaluation
+                pub policy_data: Option<_rt::String>,
+            }
+            impl ::core::fmt::Debug for ProviderAuthConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("ProviderAuthConfig")
+                        .field("expected-issuer", &self.expected_issuer)
+                        .field("expected-audiences", &self.expected_audiences)
+                        .field("jwks-uri", &self.jwks_uri)
+                        .field("pass-jwt", &self.pass_jwt)
+                        .field("expected-subject", &self.expected_subject)
+                        .field("policy", &self.policy)
+                        .field("policy-data", &self.policy_data)
+                        .finish()
+                }
+            }
+            /// Authorization context passed between components after successful authorization
+            #[derive(Clone, serde::Deserialize, serde::Serialize)]
+            pub struct AuthContext {
+                /// OAuth client ID that made the request
+                pub client_id: Option<_rt::String>,
+                /// Subject claim from the token - always present from validated JWT
+                pub sub: _rt::String,
+                /// OAuth scopes granted to this token
+                pub scopes: _rt::Vec<_rt::String>,
+                /// Issuer claim from the token - always present from validated JWT
+                pub iss: _rt::String,
+                /// Audience claim from token (aud) - always validated, can be multiple values
+                pub aud: _rt::Vec<_rt::String>,
+                /// Additional claims from token as key-value pairs
+                pub claims: MetaFields,
+                /// Expiration timestamp (Unix seconds) - always validated and required for security
+                pub exp: u64,
+                /// Issued at timestamp (Unix seconds)
+                pub iat: Option<u64>,
+                /// Not before timestamp (Unix seconds)
+                pub nbf: Option<u64>,
+                /// Raw JWT iff enabled by authorization-types::pass-jwt
+                pub jwt: Option<_rt::String>,
+            }
+            impl ::core::fmt::Debug for AuthContext {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("AuthContext")
+                        .field("client-id", &self.client_id)
+                        .field("sub", &self.sub)
+                        .field("scopes", &self.scopes)
+                        .field("iss", &self.iss)
+                        .field("aud", &self.aud)
+                        .field("claims", &self.claims)
+                        .field("exp", &self.exp)
+                        .field("iat", &self.iat)
+                        .field("nbf", &self.nbf)
+                        .field("jwt", &self.jwt)
+                        .finish()
+                }
+            }
+        }
+        /// The TOOLS capability
+        /// https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
+        pub mod tools {
+            #[used]
+            #[doc(hidden)]
+            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
+            use super::super::super::_rt;
+            pub type McpError = super::super::super::wasmcp::mcp::mcp_types::McpError;
+            pub type ListToolsRequest = super::super::super::wasmcp::mcp::tools_types::ListToolsRequest;
+            pub type ListToolsResult = super::super::super::wasmcp::mcp::tools_types::ListToolsResult;
+            pub type CallToolRequest = super::super::super::wasmcp::mcp::tools_types::CallToolRequest;
+            pub type CallToolResult = super::super::super::wasmcp::mcp::tools_types::CallToolResult;
             pub type AuthContext = super::super::super::wasmcp::mcp::authorization_types::AuthContext;
             #[allow(unused_unsafe, clippy::all)]
             /// List available tools
-            pub fn handle_list_tools(
+            pub fn list_tools(
                 request: &ListToolsRequest,
-            ) -> Result<ListToolsResponse, McpError> {
+            ) -> Result<ListToolsResult, McpError> {
                 unsafe {
                     let mut cleanup_list = _rt::Vec::new();
                     #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
@@ -2451,7 +1787,7 @@ pub mod wasmcp {
                         [::core::mem::MaybeUninit::uninit(); 9
                             * ::core::mem::size_of::<*const u8>()],
                     );
-                    let super::super::super::wasmcp::mcp::tool_types::ListToolsRequest {
+                    let super::super::super::wasmcp::mcp::tools_types::ListToolsRequest {
                         cursor: cursor0,
                         progress_token: progress_token0,
                         meta: meta0,
@@ -2521,11 +1857,9 @@ pub mod wasmcp {
                     };
                     let ptr10 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/tools-capabilities@0.2.0-alpha.6"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0-alpha.10")]
                     unsafe extern "C" {
-                        #[link_name = "handle-list-tools"]
+                        #[link_name = "list-tools"]
                         fn wit_import11(
                             _: i32,
                             _: *mut u8,
@@ -2632,8 +1966,8 @@ pub mod wasmcp {
                                                 .add(8 + 17 * ::core::mem::size_of::<*const u8>())
                                                 .cast::<u8>(),
                                         );
-                                        super::super::super::wasmcp::mcp::tool_types::Tool {
-                                            base: super::super::super::wasmcp::mcp::types::BaseMetadata {
+                                        super::super::super::wasmcp::mcp::tools_types::Tool {
+                                            base: super::super::super::wasmcp::mcp::mcp_types::BaseMetadata {
                                                 name: _rt::string_lift(bytes17),
                                                 title: match l18 {
                                                     0 => None,
@@ -2732,7 +2066,7 @@ pub mod wasmcp {
                                                                 .add(6 + 17 * ::core::mem::size_of::<*const u8>())
                                                                 .cast::<u8>(),
                                                         );
-                                                        super::super::super::wasmcp::mcp::tool_types::ToolAnnotations {
+                                                        super::super::super::wasmcp::mcp::tools_types::ToolAnnotations {
                                                             title: match l34 {
                                                                 0 => None,
                                                                 1 => {
@@ -2894,7 +2228,7 @@ pub mod wasmcp {
                                         .add(6 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::tool_types::ListToolsResponse {
+                                super::super::super::wasmcp::mcp::tools_types::ListToolsResult {
                                     tools: result56,
                                     next_cursor: match l57 {
                                         0 => None,
@@ -2981,7 +2315,7 @@ pub mod wasmcp {
                                 let l71 = i32::from(
                                     *ptr10.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::wasmcp::mcp::types::ErrorCode as V73;
+                                use super::super::super::wasmcp::mcp::mcp_types::ErrorCode as V73;
                                 let v73 = match l71 {
                                     0 => V73::ParseError,
                                     1 => V73::InvalidRequest,
@@ -3023,7 +2357,7 @@ pub mod wasmcp {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::mcp_types::McpError {
                                     code: v73,
                                     message: _rt::string_lift(bytes76),
                                     data: match l77 {
@@ -3064,10 +2398,10 @@ pub mod wasmcp {
             }
             #[allow(unused_unsafe, clippy::all)]
             /// Execute a tool
-            pub fn handle_call_tool(
+            pub fn call_tool(
                 request: &CallToolRequest,
                 auth_context: Option<&AuthContext>,
-            ) -> Result<ToolResult, McpError> {
+            ) -> Result<CallToolResult, McpError> {
                 unsafe {
                     let mut cleanup_list = _rt::Vec::new();
                     #[repr(align(8))]
@@ -3081,7 +2415,7 @@ pub mod wasmcp {
                             + 24 * ::core::mem::size_of::<*const u8>()],
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    let super::super::super::wasmcp::mcp::tool_types::CallToolRequest {
+                    let super::super::super::wasmcp::mcp::tools_types::CallToolRequest {
                         name: name1,
                         arguments: arguments1,
                         progress_token: progress_token1,
@@ -3430,11 +2764,9 @@ pub mod wasmcp {
                     };
                     let ptr22 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/tools-capabilities@0.2.0-alpha.6"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0-alpha.10")]
                     unsafe extern "C" {
-                        #[link_name = "handle-call-tool"]
+                        #[link_name = "call-tool"]
                         fn wit_import23(_: *mut u8, _: *mut u8);
                     }
                     #[cfg(not(target_arch = "wasm32"))]
@@ -3460,7 +2792,7 @@ pub mod wasmcp {
                                         .add(i * (80 + 18 * ::core::mem::size_of::<*const u8>()));
                                     let e216 = {
                                         let l27 = i32::from(*base.add(0).cast::<u8>());
-                                        use super::super::super::wasmcp::mcp::types::ContentBlock as V215;
+                                        use super::super::super::wasmcp::mcp::mcp_types::ContentBlock as V215;
                                         let v215 = match l27 {
                                             0 => {
                                                 let e215 = {
@@ -3484,7 +2816,7 @@ pub mod wasmcp {
                                                             .add(48 + 6 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::types::TextContent {
+                                                    super::super::super::wasmcp::mcp::mcp_types::TextContent {
                                                         text: _rt::string_lift(bytes30),
                                                         annotations: match l31 {
                                                             0 => None,
@@ -3505,7 +2837,7 @@ pub mod wasmcp {
                                                                             .add(40 + 4 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::wasmcp::mcp::types::Annotations {
+                                                                    super::super::super::wasmcp::mcp::mcp_types::Annotations {
                                                                         audience: match l32 {
                                                                             0 => None,
                                                                             1 => {
@@ -3523,7 +2855,7 @@ pub mod wasmcp {
                                                                                         let base = base36.add(i * 1);
                                                                                         let e36 = {
                                                                                             let l35 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::wasmcp::mcp::types::Role::_lift(
+                                                                                            super::super::super::wasmcp::mcp::mcp_types::Role::_lift(
                                                                                                 l35 as u8,
                                                                                             )
                                                                                         };
@@ -3664,7 +2996,7 @@ pub mod wasmcp {
                                                             .add(48 + 8 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::types::ImageContent {
+                                                    super::super::super::wasmcp::mcp::mcp_types::ImageContent {
                                                         data: _rt::Vec::from_raw_parts(l53.cast(), len55, len55),
                                                         mime_type: _rt::string_lift(bytes58),
                                                         annotations: match l59 {
@@ -3686,7 +3018,7 @@ pub mod wasmcp {
                                                                             .add(40 + 6 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::wasmcp::mcp::types::Annotations {
+                                                                    super::super::super::wasmcp::mcp::mcp_types::Annotations {
                                                                         audience: match l60 {
                                                                             0 => None,
                                                                             1 => {
@@ -3704,7 +3036,7 @@ pub mod wasmcp {
                                                                                         let base = base64.add(i * 1);
                                                                                         let e64 = {
                                                                                             let l63 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::wasmcp::mcp::types::Role::_lift(
+                                                                                            super::super::super::wasmcp::mcp::mcp_types::Role::_lift(
                                                                                                 l63 as u8,
                                                                                             )
                                                                                         };
@@ -3845,7 +3177,7 @@ pub mod wasmcp {
                                                             .add(48 + 8 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::types::AudioContent {
+                                                    super::super::super::wasmcp::mcp::mcp_types::AudioContent {
                                                         data: _rt::Vec::from_raw_parts(l81.cast(), len83, len83),
                                                         mime_type: _rt::string_lift(bytes86),
                                                         annotations: match l87 {
@@ -3867,7 +3199,7 @@ pub mod wasmcp {
                                                                             .add(40 + 6 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::wasmcp::mcp::types::Annotations {
+                                                                    super::super::super::wasmcp::mcp::mcp_types::Annotations {
                                                                         audience: match l88 {
                                                                             0 => None,
                                                                             1 => {
@@ -3885,7 +3217,7 @@ pub mod wasmcp {
                                                                                         let base = base92.add(i * 1);
                                                                                         let e92 = {
                                                                                             let l91 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::wasmcp::mcp::types::Role::_lift(
+                                                                                            super::super::super::wasmcp::mcp::mcp_types::Role::_lift(
                                                                                                 l91 as u8,
                                                                                             )
                                                                                         };
@@ -4051,7 +3383,7 @@ pub mod wasmcp {
                                                             .add(72 + 16 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::types::ResourceLink {
+                                                    super::super::super::wasmcp::mcp::mcp_types::ResourceLink {
                                                         uri: _rt::string_lift(bytes111),
                                                         name: _rt::string_lift(bytes114),
                                                         title: match l115 {
@@ -4152,7 +3484,7 @@ pub mod wasmcp {
                                                                             .add(64 + 14 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::wasmcp::mcp::types::Annotations {
+                                                                    super::super::super::wasmcp::mcp::mcp_types::Annotations {
                                                                         audience: match l130 {
                                                                             0 => None,
                                                                             1 => {
@@ -4170,7 +3502,7 @@ pub mod wasmcp {
                                                                                         let base = base134.add(i * 1);
                                                                                         let e134 = {
                                                                                             let l133 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::wasmcp::mcp::types::Role::_lift(
+                                                                                            super::super::super::wasmcp::mcp::mcp_types::Role::_lift(
                                                                                                 l133 as u8,
                                                                                             )
                                                                                         };
@@ -4286,7 +3618,7 @@ pub mod wasmcp {
                                                 debug_assert_eq!(n, 4, "invalid enum discriminant");
                                                 let e215 = {
                                                     let l151 = i32::from(*base.add(8).cast::<u8>());
-                                                    use super::super::super::wasmcp::mcp::types::ResourceContents as V192;
+                                                    use super::super::super::wasmcp::mcp::mcp_types::ResourceContents as V192;
                                                     let v192 = match l151 {
                                                         0 => {
                                                             let e192 = {
@@ -4324,7 +3656,7 @@ pub mod wasmcp {
                                                                         .add(8 + 8 * ::core::mem::size_of::<*const u8>())
                                                                         .cast::<u8>(),
                                                                 );
-                                                                super::super::super::wasmcp::mcp::types::TextResourceContents {
+                                                                super::super::super::wasmcp::mcp::mcp_types::TextResourceContents {
                                                                     uri: _rt::string_lift(bytes154),
                                                                     mime_type: match l155 {
                                                                         0 => None,
@@ -4439,7 +3771,7 @@ pub mod wasmcp {
                                                                         .add(8 + 8 * ::core::mem::size_of::<*const u8>())
                                                                         .cast::<u8>(),
                                                                 );
-                                                                super::super::super::wasmcp::mcp::types::BlobResourceContents {
+                                                                super::super::super::wasmcp::mcp::mcp_types::BlobResourceContents {
                                                                     uri: _rt::string_lift(bytes174),
                                                                     mime_type: match l175 {
                                                                         0 => None,
@@ -4533,7 +3865,7 @@ pub mod wasmcp {
                                                             .add(56 + 14 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::types::EmbeddedResource {
+                                                    super::super::super::wasmcp::mcp::mcp_types::EmbeddedResource {
                                                         contents: v192,
                                                         annotations: match l193 {
                                                             0 => None,
@@ -4554,7 +3886,7 @@ pub mod wasmcp {
                                                                             .add(48 + 12 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::wasmcp::mcp::types::Annotations {
+                                                                    super::super::super::wasmcp::mcp::mcp_types::Annotations {
                                                                         audience: match l194 {
                                                                             0 => None,
                                                                             1 => {
@@ -4572,7 +3904,7 @@ pub mod wasmcp {
                                                                                         let base = base198.add(i * 1);
                                                                                         let e198 = {
                                                                                             let l197 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::wasmcp::mcp::types::Role::_lift(
+                                                                                            super::super::super::wasmcp::mcp::mcp_types::Role::_lift(
                                                                                                 l197 as u8,
                                                                                             )
                                                                                         };
@@ -4709,7 +4041,7 @@ pub mod wasmcp {
                                         .add(7 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::tool_types::ToolResult {
+                                super::super::super::wasmcp::mcp::tools_types::CallToolResult {
                                     content: result216,
                                     structured_content: match l217 {
                                         0 => None,
@@ -4811,7 +4143,7 @@ pub mod wasmcp {
                                 let l233 = i32::from(
                                     *ptr22.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::wasmcp::mcp::types::ErrorCode as V235;
+                                use super::super::super::wasmcp::mcp::mcp_types::ErrorCode as V235;
                                 let v235 = match l233 {
                                     0 => V235::ParseError,
                                     1 => V235::InvalidRequest,
@@ -4853,7 +4185,7 @@ pub mod wasmcp {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::types::McpError {
+                                super::super::super::wasmcp::mcp::mcp_types::McpError {
                                     code: v235,
                                     message: _rt::string_lift(bytes238),
                                     data: match l239 {
@@ -4960,13 +4292,13 @@ mod _rt {
 }
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.2.0-alpha.6:tools-transport:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.2.0-alpha.10:tools-transport:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4154] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xb4\x1f\x01A\x02\x01\
-A\x1c\x01B;\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajs\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3832] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xf2\x1c\x01A\x02\x01\
+A\x1b\x01B9\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajs\
 on-value\x03\0\x02\x01o\x02ss\x01p\x04\x04\0\x0bmeta-fields\x03\0\x05\x01p\x01\x01\
 k\x07\x01ku\x01ks\x01r\x03\x08audience\x08\x08priority\x09\x0dlast-modified\x0a\x04\
 \0\x0bannotations\x03\0\x0b\x01r\x02\x04names\x05title\x0a\x04\0\x0dbase-metadat\
@@ -4992,67 +4324,61 @@ ss-token\x03\0-\x01q\x02\x03str\x01s\0\x03num\x01x\0\x04\0\x0arequest-id\x03\0/\
 m\x03\x04user\x09assistant\x06system\x04\0\x0cmessage-role\x03\01\x01r\x01\x04na\
 me\x0a\x04\0\x0amodel-hint\x03\03\x01p4\x01k5\x01r\x04\x05hints6\x0dcost-priorit\
 y\x09\x0espeed-priority\x09\x15intelligence-priority\x09\x04\0\x11model-preferen\
-ces\x03\07\x01r\x04\x0curi-templates\x04names\x0bdescription\x0a\x09mime-type\x0a\
-\x04\0\x11resource-template\x03\09\x03\0\x1ewasmcp:mcp/types@0.2.0-alpha.6\x05\0\
-\x02\x03\0\0\x0bmeta-fields\x01B\x1d\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\
-\0\0\x01m\x02\x09v20250326\x09v20250618\x04\0\x10protocol-version\x03\0\x02\x01k\
-s\x01r\x03\x04names\x07versions\x05title\x04\x04\0\x13implementation-info\x03\0\x05\
-\x01k\x7f\x01r\x01\x0clist-changed\x07\x04\0\x10roots-capability\x03\0\x08\x01r\x01\
-\x0clist-changed\x07\x04\0\x12prompts-capability\x03\0\x0a\x01r\x02\x09subscribe\
-\x07\x0clist-changed\x07\x04\0\x14resources-capability\x03\0\x0c\x01r\x01\x0clis\
-t-changed\x07\x04\0\x10tools-capability\x03\0\x0e\x01k\x01\x01k\x09\x01r\x04\x0c\
-experimental\x10\x05roots\x11\x08sampling\x07\x0belicitation\x07\x04\0\x13client\
--capabilities\x03\0\x12\x01k\x0b\x01k\x0d\x01k\x0f\x01r\x06\x0cexperimental\x10\x07\
-logging\x07\x0bcompletions\x07\x07prompts\x14\x09resources\x15\x05tools\x16\x04\0\
-\x13server-capabilities\x03\0\x17\x01r\x04\x10protocol-version\x03\x0ccapabiliti\
-es\x13\x0bclient-info\x06\x04meta\x10\x04\0\x12initialize-request\x03\0\x19\x01r\
-\x05\x10protocol-version\x03\x0ccapabilities\x18\x0bserver-info\x06\x0cinstructi\
-ons\x04\x04meta\x10\x04\0\x13initialize-response\x03\0\x1b\x03\0#wasmcp:mcp/core\
--types@0.2.0-alpha.6\x05\x02\x01B\x09\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\
-\0\0\x01ps\x01ks\x01r\x07\x0fexpected-issuers\x12expected-audiences\x02\x10expec\
-ted-subject\x03\x08jwks-uris\x06policy\x03\x0bpolicy-data\x03\x08pass-jwt\x7f\x04\
-\0\x14provider-auth-config\x03\0\x04\x01kw\x01r\x0a\x09client-id\x03\x03subs\x06\
-scopes\x02\x03isss\x03aud\x02\x06claims\x01\x03expw\x03iat\x06\x03nbf\x06\x03jwt\
-\x03\x04\0\x0cauth-context\x03\0\x07\x03\0,wasmcp:mcp/authorization-types@0.2.0-\
-alpha.6\x05\x03\x02\x03\0\0\x09mcp-error\x02\x03\0\x01\x12initialize-request\x02\
-\x03\0\x01\x13initialize-response\x02\x03\0\x02\x14provider-auth-config\x01B\x18\
-\x02\x03\x02\x01\x04\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x05\x04\0\x12ini\
-tialize-request\x03\0\x02\x02\x03\x02\x01\x06\x04\0\x13initialize-response\x03\0\
-\x04\x02\x03\x02\x01\x07\x04\0\x14provider-auth-config\x03\0\x06\x01j\x01\x05\x01\
-\x01\x01@\x01\x07request\x03\0\x08\x04\0\x11handle-initialize\x01\x09\x01j\0\x01\
-\x01\x01@\0\0\x0a\x04\0\x12handle-initialized\x01\x0b\x04\0\x0bhandle-ping\x01\x0b\
-\x04\0\x0fhandle-shutdown\x01\x0b\x01k\x07\x01@\0\0\x0c\x04\0\x0fget-auth-config\
-\x01\x0d\x01ks\x01@\x01\x08jwks-uris\0\x0e\x04\0\x0ejwks-cache-get\x01\x0f\x01@\x02\
-\x08jwks-uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\x10\x03\0*wasmcp:mcp/co\
-re-capabilities@0.2.0-alpha.6\x05\x08\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0a\
-json-value\x02\x03\0\0\x0bjson-schema\x02\x03\0\0\x0dbase-metadata\x02\x03\0\0\x06\
-cursor\x02\x03\0\0\x0eprogress-token\x01B$\x02\x03\x02\x01\x09\x04\0\x0dcontent-\
-block\x03\0\0\x02\x03\x02\x01\x0a\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x0b\
-\x04\0\x0bjson-schema\x03\0\x04\x02\x03\x02\x01\x0c\x04\0\x0dbase-metadata\x03\0\
-\x06\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\x08\x02\x03\x02\x01\x0d\x04\0\
-\x06cursor\x03\0\x0a\x02\x03\x02\x01\x0e\x04\0\x0eprogress-token\x03\0\x0c\x01ks\
-\x01k\x7f\x01r\x05\x05title\x0e\x0eread-only-hint\x0f\x10destructive-hint\x0f\x0f\
-idempotent-hint\x0f\x0fopen-world-hint\x0f\x04\0\x10tool-annotations\x03\0\x10\x01\
-k\x05\x01k\x11\x01k\x09\x01r\x06\x04base\x07\x0bdescription\x0e\x0cinput-schema\x05\
-\x0doutput-schema\x12\x0bannotations\x13\x04meta\x14\x04\0\x04tool\x03\0\x15\x01\
-p\x01\x01k\x03\x01r\x04\x07content\x17\x12structured-content\x18\x08is-error\x0f\
-\x04meta\x14\x04\0\x0btool-result\x03\0\x19\x01k\x0b\x01k\x0d\x01r\x03\x06cursor\
-\x1b\x0eprogress-token\x1c\x04meta\x14\x04\0\x12list-tools-request\x03\0\x1d\x01\
-p\x16\x01r\x03\x05tools\x1f\x0bnext-cursor\x1b\x04meta\x14\x04\0\x13list-tools-r\
-esponse\x03\0\x20\x01r\x04\x04names\x09arguments\x18\x0eprogress-token\x1c\x04me\
-ta\x14\x04\0\x11call-tool-request\x03\0\"\x03\0#wasmcp:mcp/tool-types@0.2.0-alph\
-a.6\x05\x0f\x02\x03\0\x04\x12list-tools-request\x02\x03\0\x04\x13list-tools-resp\
-onse\x02\x03\0\x04\x11call-tool-request\x02\x03\0\x04\x0btool-result\x02\x03\0\x02\
-\x0cauth-context\x01B\x13\x02\x03\x02\x01\x04\x04\0\x09mcp-error\x03\0\0\x02\x03\
-\x02\x01\x10\x04\0\x12list-tools-request\x03\0\x02\x02\x03\x02\x01\x11\x04\0\x13\
-list-tools-response\x03\0\x04\x02\x03\x02\x01\x12\x04\0\x11call-tool-request\x03\
-\0\x06\x02\x03\x02\x01\x13\x04\0\x0btool-result\x03\0\x08\x02\x03\x02\x01\x14\x04\
-\0\x0cauth-context\x03\0\x0a\x01j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x0c\x04\
-\0\x11handle-list-tools\x01\x0d\x01k\x0b\x01j\x01\x09\x01\x01\x01@\x02\x07reques\
-t\x07\x0cauth-context\x0e\0\x0f\x04\0\x10handle-call-tool\x01\x10\x03\0+wasmcp:m\
-cp/tools-capabilities@0.2.0-alpha.6\x05\x15\x04\0(wasmcp:mcp/tools-transport@0.2\
-.0-alpha.6\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\0\0\0G\x09producers\x01\x0c\
-processed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+ces\x03\07\x03\0#wasmcp:mcp/mcp-types@0.2.0-alpha.10\x05\0\x02\x03\0\0\x0bmeta-f\
+ields\x01B\x1d\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x01m\x02\x09v202\
+50326\x09v20250618\x04\0\x10protocol-version\x03\0\x02\x01ks\x01r\x03\x04names\x07\
+versions\x05title\x04\x04\0\x13implementation-info\x03\0\x05\x01k\x7f\x01r\x01\x0c\
+list-changed\x07\x04\0\x10roots-capability\x03\0\x08\x01r\x01\x0clist-changed\x07\
+\x04\0\x12prompts-capability\x03\0\x0a\x01r\x02\x09subscribe\x07\x0clist-changed\
+\x07\x04\0\x14resources-capability\x03\0\x0c\x01r\x01\x0clist-changed\x07\x04\0\x10\
+tools-capability\x03\0\x0e\x01k\x01\x01k\x09\x01r\x04\x0cexperimental\x10\x05roo\
+ts\x11\x08sampling\x07\x0belicitation\x07\x04\0\x13client-capabilities\x03\0\x12\
+\x01k\x0b\x01k\x0d\x01k\x0f\x01r\x06\x0cexperimental\x10\x07logging\x07\x0bcompl\
+etions\x07\x07prompts\x14\x09resources\x15\x05tools\x16\x04\0\x13server-capabili\
+ties\x03\0\x17\x01r\x04\x10protocol-version\x03\x0ccapabilities\x13\x0bclient-in\
+fo\x06\x04meta\x10\x04\0\x12initialize-request\x03\0\x19\x01r\x05\x10protocol-ve\
+rsion\x03\x0ccapabilities\x18\x0bserver-info\x06\x0cinstructions\x04\x04meta\x10\
+\x04\0\x11initialize-result\x03\0\x1b\x03\0)wasmcp:mcp/lifecycle-types@0.2.0-alp\
+ha.10\x05\x02\x02\x03\0\0\x09mcp-error\x02\x03\0\x01\x12initialize-request\x02\x03\
+\0\x01\x11initialize-result\x01B\x09\x02\x03\x02\x01\x03\x04\0\x09mcp-error\x03\0\
+\0\x02\x03\x02\x01\x04\x04\0\x12initialize-request\x03\0\x02\x02\x03\x02\x01\x05\
+\x04\0\x11initialize-result\x03\0\x04\x01j\x01\x05\x01\x01\x01@\x01\x07request\x03\
+\0\x06\x04\0\x0ainitialize\x01\x07\x03\0#wasmcp:mcp/lifecycle@0.2.0-alpha.10\x05\
+\x06\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\x03\0\0\x0bjson-\
+schema\x02\x03\0\0\x0dbase-metadata\x02\x03\0\0\x06cursor\x02\x03\0\0\x0eprogres\
+s-token\x01B$\x02\x03\x02\x01\x07\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\
+\x08\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x0bjson-schema\x03\0\
+\x04\x02\x03\x02\x01\x0a\x04\0\x0dbase-metadata\x03\0\x06\x02\x03\x02\x01\x01\x04\
+\0\x0bmeta-fields\x03\0\x08\x02\x03\x02\x01\x0b\x04\0\x06cursor\x03\0\x0a\x02\x03\
+\x02\x01\x0c\x04\0\x0eprogress-token\x03\0\x0c\x01ks\x01k\x7f\x01r\x05\x05title\x0e\
+\x0eread-only-hint\x0f\x10destructive-hint\x0f\x0fidempotent-hint\x0f\x0fopen-wo\
+rld-hint\x0f\x04\0\x10tool-annotations\x03\0\x10\x01k\x05\x01k\x11\x01k\x09\x01r\
+\x06\x04base\x07\x0bdescription\x0e\x0cinput-schema\x05\x0doutput-schema\x12\x0b\
+annotations\x13\x04meta\x14\x04\0\x04tool\x03\0\x15\x01k\x03\x01k\x0d\x01r\x04\x04\
+names\x09arguments\x17\x0eprogress-token\x18\x04meta\x14\x04\0\x11call-tool-requ\
+est\x03\0\x19\x01p\x01\x01r\x04\x07content\x1b\x12structured-content\x17\x08is-e\
+rror\x0f\x04meta\x14\x04\0\x10call-tool-result\x03\0\x1c\x01k\x0b\x01r\x03\x06cu\
+rsor\x1e\x0eprogress-token\x18\x04meta\x14\x04\0\x12list-tools-request\x03\0\x1f\
+\x01p\x16\x01r\x03\x05tools!\x0bnext-cursor\x1e\x04meta\x14\x04\0\x11list-tools-\
+result\x03\0\"\x03\0%wasmcp:mcp/tools-types@0.2.0-alpha.10\x05\x0d\x01B\x09\x02\x03\
+\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x01ps\x01ks\x01r\x07\x0fexpected-issue\
+rs\x12expected-audiences\x02\x08jwks-uris\x08pass-jwt\x7f\x10expected-subject\x03\
+\x06policy\x03\x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01kw\x01\
+r\x0a\x09client-id\x03\x03subs\x06scopes\x02\x03isss\x03aud\x02\x06claims\x01\x03\
+expw\x03iat\x06\x03nbf\x06\x03jwt\x03\x04\0\x0cauth-context\x03\0\x07\x03\0-wasm\
+cp:mcp/authorization-types@0.2.0-alpha.10\x05\x0e\x02\x03\0\x03\x12list-tools-re\
+quest\x02\x03\0\x03\x11list-tools-result\x02\x03\0\x03\x11call-tool-request\x02\x03\
+\0\x03\x10call-tool-result\x02\x03\0\x04\x0cauth-context\x01B\x13\x02\x03\x02\x01\
+\x03\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x0f\x04\0\x12list-tools-request\x03\
+\0\x02\x02\x03\x02\x01\x10\x04\0\x11list-tools-result\x03\0\x04\x02\x03\x02\x01\x11\
+\x04\0\x11call-tool-request\x03\0\x06\x02\x03\x02\x01\x12\x04\0\x10call-tool-res\
+ult\x03\0\x08\x02\x03\x02\x01\x13\x04\0\x0cauth-context\x03\0\x0a\x01j\x01\x05\x01\
+\x01\x01@\x01\x07request\x03\0\x0c\x04\0\x0alist-tools\x01\x0d\x01k\x0b\x01j\x01\
+\x09\x01\x01\x01@\x02\x07request\x07\x0cauth-context\x0e\0\x0f\x04\0\x09call-too\
+l\x01\x10\x03\0\x1fwasmcp:mcp/tools@0.2.0-alpha.10\x05\x14\x04\0)wasmcp:mcp/tool\
+s-transport@0.2.0-alpha.10\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\0\0\0G\x09\
+producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rus\
+t\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

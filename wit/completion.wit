@@ -1,9 +1,34 @@
-/// Argument completion types and capabilities for MCP
-/// Provides context-aware suggestions for tool arguments and prompts
+/// Provides a standardized way for servers to offer argument autocompletion suggestions for prompts and resource URIs
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion
+
+
+/// Serves the COMPLETION capability over the Streamable HTTP transport
+world completion-transport {
+    import lifecycle;
+    import completion;
+}
+
+/// Serves the COMPLETION capability over the Streamable HTTP transport with authorization
+world authorized-completion-transport {
+    include completion-transport;
+    import authorization;
+}
+
+/// Implements the COMPLETION capability
+world completion-provider {
+    export lifecycle;
+    export completion;
+}
+ 
+/// Implements the COMPLETION capability with authorization
+world authorized-completion-provider {
+    include completion-provider;
+    export authorization;
+}
 
 /// Type definitions for completion
 interface completion-types {
-    use types.{meta-fields};
+    use mcp-types.{meta-fields};
 
     /// Request for completion suggestions
     record complete-request {
@@ -46,11 +71,12 @@ interface completion-types {
     }
 }
 
-/// Completion capabilities - implement this to provide autocompletion
-interface completion-capabilities {
-    use types.{mcp-error};
+/// The COMPLETION capability
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion
+interface completion {
+    use mcp-types.{mcp-error};
     use completion-types.{complete-request, complete-result};
     
     /// Handle request for completion suggestions
-    handle-complete: func(request: complete-request) -> result<complete-result, mcp-error>;
+    complete: func(request: complete-request) -> result<complete-result, mcp-error>;
 }
