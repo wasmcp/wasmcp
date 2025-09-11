@@ -74,7 +74,7 @@ mod tests {
             
             default allow = false
             
-            allow {
+            allow if {
                 input.token.sub == "user123"
             }
         "#;
@@ -105,11 +105,11 @@ mod tests {
             
             default allow = false
             
-            allow {
+            allow if {
                 input.token.sub == "admin"
             }
             
-            deny_reason = "User is not admin" {
+            deny_reason = "User is not admin" if {
                 input.token.sub != "admin"
             }
         "#;
@@ -142,7 +142,7 @@ mod tests {
             
             default allow = false
             
-            allow {
+            allow if {
                 input.token.sub == data.allowed_users[_]
             }
         "#;

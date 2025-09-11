@@ -1,0 +1,33 @@
+[package]
+name = "wasmcp-core"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["tools"]
+native-optimizations = []  # Enable native-only performance optimizations
+std = []                   # Use std library features
+
+# MCP Capability features
+tools = []
+resources = []
+prompts = []
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rmcp = { version = "0.6.3", default-features = false, features = ["server", "macros", "base64"] }
+jsonwebtoken = { version = "9.3", default-features = false }
+regorus = { version = "0.5", default-features = false }
+async-trait = "0.1"
+thiserror = "2.0"
+chrono = { version = "0.4", default-features = false, features = ["serde"] }
+base64 = "0.22"
+
+# Native-only dependencies
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1", features = ["time"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "time"] }
+wasm-pack = "0.13"  # For WASM testing
