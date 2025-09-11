@@ -97,18 +97,18 @@ pub fn validate(request: JwtRequest) -> JwtResult {
     // Set up validation parameters
     let mut validation = Validation::new(header.alg);
 
-    // Configure validation based on request parameters
-    if let Some(false) = request.validate_exp {
-        validation.validate_exp = false;
-    }
-    if let Some(false) = request.validate_nbf {
-        validation.validate_nbf = false;
+    // Set clock skew leeway for time-based claims (exp, nbf, iat)
+    if let Some(skew) = request.clock_skew {
+        validation.leeway = skew;
     }
 
-    // Set expected issuer (now required)
+    // Require critical claims for security (using the correct method)
+    validation.set_required_spec_claims(&["exp", "sub", "iss", "aud"]);
+    
+    // Validate issuer - token must match this exact value
     validation.set_issuer(&[request.expected_issuer.as_str()]);
 
-    // Set expected audiences (now required)
+    // Validate audiences - token must contain at least one of these
     validation.set_audience(
         &request
             .expected_audiences
@@ -116,6 +116,11 @@ pub fn validate(request: JwtRequest) -> JwtResult {
             .map(|s| s.as_str())
             .collect::<Vec<_>>(),
     );
+    
+    // Validate subject if specified - token must match this exact value
+    if let Some(expected_sub) = &request.expected_subject {
+        validation.sub = Some(expected_sub.clone());
+    }
 
     // Get the decoding key
     let decoding_key = match get_decoding_key(&header, &request) {

@@ -21,7 +21,7 @@ from poll_loop import PollLoop, Stream
 
 # Import the generated WIT bindings directly - these are our SDK
 from wit_world.exports import ToolsCapabilities, CoreCapabilities
-from wit_world.imports import core_types, tool_types, wasmcp_mcp_types as mcp_types
+from wit_world.imports import core_types, tool_types, wasmcp_mcp_types as mcp_types, authorization_types as auth_types
 from wit_world.imports.types import (
     OutgoingRequest,
     Fields,
@@ -119,13 +119,14 @@ class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
         """Return auth configuration if this server requires authorization."""
         return None  # No auth required for this example
         # Uncomment and configure for OAuth authorization:
-        # from wit_world.imports.authorization_types import ProviderAuthConfig
-        # return ProviderAuthConfig(
+        # return auth_types.ProviderAuthConfig(
         #     expected_issuer="https://xxxxx.authkit.app",
         #     expected_audiences=["client_xxxxx"],
         #     jwks_uri="https://xxxxx.authkit.app/oauth2/jwks",
         #     policy=None,  # Optional: Add Rego policy for additional authorization
         #     policy_data=None,  # Optional: Add policy data as JSON string
+        #     pass_jwt=False,
+        #     expected_subject=None,
         # )
 
     def jwks_cache_get(self, jwks_uri: str) -> Optional[str]:
@@ -161,7 +162,7 @@ class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
         return tool_types.ListToolsResponse(tools=tools, next_cursor=None, meta=None)
 
     def handle_call_tool(
-        self, request: tool_types.CallToolRequest
+        self, request: tool_types.CallToolRequest, _auth_context: Optional[auth_types.AuthContext]
     ) -> tool_types.ToolResult:
         """Execute a tool and return the result."""
         # Parse arguments

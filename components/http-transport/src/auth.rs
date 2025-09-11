@@ -6,6 +6,7 @@ pub fn authorize(request: AuthRequest) -> AuthResponse {
     // All configuration comes from the request (required fields)
     let expected_issuer = request.expected_issuer.clone();
     let expected_audiences = request.expected_audiences.clone();
+    let expected_subject = request.expected_subject.clone();
     let jwks_uri = request.jwks_uri.clone();
 
     // Default clock skew to 60 seconds
@@ -16,10 +17,9 @@ pub fn authorize(request: AuthRequest) -> AuthResponse {
         token: request.token.clone(),
         expected_issuer,
         expected_audiences,
+        expected_subject,
         jwks_uri,
         jwks_json: None,
-        validate_exp: Some(true),
-        validate_nbf: Some(true),
         clock_skew: Some(clock_skew),
     };
 
@@ -38,15 +38,22 @@ pub fn authorize(request: AuthRequest) -> AuthResponse {
     };
 
     // Extract auth context from validated claims
+    // exp is guaranteed to exist because validation.require_exp = true
     let auth_context = AuthContext {
         client_id: claims.client_id.clone(),
-        user_id: Some(claims.sub.clone()),
+        sub: claims.sub.clone(),  // Standard JWT claim name
         scopes: claims.scopes.clone(),
-        issuer: Some(claims.iss.clone()),
-        audience: claims.aud.as_ref().and_then(|a| a.first().cloned()),
+        iss: claims.iss.clone(),  // Standard JWT claim name
+        aud: claims.aud.clone().unwrap_or_else(Vec::new),  // Required by validation, but defensive
         claims: convert_claims_to_meta(&claims.additional_claims),
-        exp: claims.exp,
+        exp: claims.exp.unwrap(),  // Safe: validation.require_exp ensures this exists
         iat: claims.iat,
+        nbf: claims.nbf,
+        jwt: if request.pass_jwt {
+            Some(request.token.clone())
+        } else {
+            None
+        },
     };
 
     // Apply policy-based authorization if we have a body

@@ -9,7 +9,7 @@ mod bindings;
 use bindings::exports::wasmcp::mcp::core_capabilities::Guest as CoreGuest;
 use bindings::exports::wasmcp::mcp::tools_capabilities::Guest as ToolsGuest;
 use bindings::wasmcp::mcp::{
-    authorization_types::ProviderAuthConfig,
+    authorization_types::{AuthContext, ProviderAuthConfig},
     core_types::{
         ImplementationInfo,
         InitializeRequest,
@@ -88,6 +88,8 @@ impl CoreGuest for Component {
         // Some(ProviderAuthConfig {
         // expected_issuer: "https://your-auth-domain.example.com".to_string(),
         // expected_audiences: vec!["your-client-id".to_string()],
+        // expected_subject: None,
+        // pass_jwt: false,
         // jwks_uri: "https://your-auth-domain.example.com/oauth2/jwks".to_string(),
         // policy: None,
         // policy_data: None,
@@ -187,7 +189,7 @@ impl ToolsGuest for Component {
         })
     }
 
-    fn handle_call_tool(request: CallToolRequest) -> Result<ToolResult, McpError> {
+    fn handle_call_tool(request: CallToolRequest, _auth_context: Option<AuthContext>) -> Result<ToolResult, McpError> {
         match request.name.as_str() {
             "echo" => spin_sdk::http::run(async move { handle_echo(request.arguments.as_ref()) }),
             "get_weather" => {

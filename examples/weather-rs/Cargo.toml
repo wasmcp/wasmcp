@@ -23,11 +23,11 @@ lazy_static = "1.5"
 package = "weather-rs:provider"
 
 [package.metadata.component.bindings]
-derives = ["Clone"]
+derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "wasmcp:mcp"
-version = "0.1.0"
+version = "0.2.0-alpha.6"
 world = "tools-provider"
 
 [profile.release]

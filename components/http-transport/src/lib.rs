@@ -15,7 +15,7 @@ use spin_sdk::http::{IntoResponse, Request, Response};
 mod bindings;
 
 // Always import types and core for functionality
-use bindings::wasmcp::mcp::authorization_types::ProviderAuthConfig;
+use bindings::wasmcp::mcp::authorization_types::{AuthContext, ProviderAuthConfig};
 use bindings::wasmcp::mcp::core_capabilities;
 use bindings::wasmcp::mcp::types::{ErrorCode, McpError};
 
@@ -94,11 +94,14 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
     }
 
     // Apply authorization only if provider has auth config
-    if is_auth_enabled()
-        && let Err(auth_error) = authorize_request(&req).await
-    {
-        return Ok(create_auth_error_response(auth_error));
-    }
+    let auth_context = if is_auth_enabled() {
+        match authorize_request(&req).await {
+            Ok(context) => Some(context),
+            Err(auth_error) => return Ok(create_auth_error_response(auth_error)),
+        }
+    } else {
+        None
+    };
 
     // Handle standard JSON-RPC endpoint
     let body = req.body();
@@ -118,7 +121,7 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
     let id = json_request.get("id").cloned();
 
     // Route to appropriate handler
-    match route_method(&server, method, params).await {
+    match route_method(&server, method, params, auth_context).await {
         Ok(result) => {
             let response = if let Some(id) = id {
                 json!({
@@ -166,6 +169,7 @@ async fn route_method(
     server: &McpServer,
     method: &str,
     params: Option<Value>,
+    auth_context: Option<AuthContext>,
 ) -> Result<Value, McpError> {
     match method {
         // Core methods - always available
@@ -291,10 +295,10 @@ async fn route_method(
                     })
                 })?;
 
-            // Use the adapter's call_tool method directly
+            // Use the adapter's call_tool method directly - auth_context is already WIT type
             let result = server
                 .adapter
-                .call_tool(&params.name, params.arguments)
+                .call_tool(&params.name, params.arguments, auth_context.as_ref())
                 .await
                 .map_err(|e| McpError {
                     code: ErrorCode::InternalError,
@@ -451,7 +455,7 @@ async fn route_method(
 }
 
 /// Authorize request using the authorization component
-async fn authorize_request(req: &Request) -> Result<(), McpError> {
+async fn authorize_request(req: &Request) -> Result<AuthContext, McpError> {
     // Extract bearer token from Authorization header
     let token = req
         .headers()
@@ -486,14 +490,16 @@ async fn authorize_request(req: &Request) -> Result<(), McpError> {
         body: Some(req.body().to_vec()),
         expected_issuer: provider_config.expected_issuer.clone(),
         expected_audiences: provider_config.expected_audiences.clone(),
+        expected_subject: provider_config.expected_subject.clone(),
         jwks_uri: provider_config.jwks_uri.clone(),
         policy: provider_config.policy.clone(),
         policy_data: provider_config.policy_data.clone(),
+        pass_jwt: provider_config.pass_jwt,
     };
 
     // Call the internal authorization function
     match auth::authorize(auth_request) {
-        AuthResponse::Authorized(_context) => Ok(()),
+        AuthResponse::Authorized(context) => Ok(context),
         AuthResponse::Unauthorized(error) => Err(McpError {
             code: if error.status == 403 {
                 ErrorCode::Unauthorized

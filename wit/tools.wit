@@ -84,10 +84,11 @@ interface tool-types {
 interface tools-capabilities {
     use types.{mcp-error};
     use tool-types.{list-tools-request, list-tools-response, call-tool-request, tool-result};
+    use authorization-types.{auth-context};
     
     /// List available tools
     handle-list-tools: func(request: list-tools-request) -> result<list-tools-response, mcp-error>;
     
     /// Execute a tool
-    handle-call-tool: func(request: call-tool-request) -> result<tool-result, mcp-error>;
+    handle-call-tool: func(request: call-tool-request, auth-context: option<auth-context>) -> result<tool-result, mcp-error>;
 }

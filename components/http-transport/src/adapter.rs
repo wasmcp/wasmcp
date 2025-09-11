@@ -100,6 +100,7 @@ impl WitMcpAdapter {
         &self,
         name: &str,
         arguments: Option<serde_json::Map<String, Value>>,
+        auth_context: Option<&crate::bindings::wasmcp::mcp::authorization_types::AuthContext>,
     ) -> Result<CallToolResult> {
         // Convert arguments Map directly to JSON string for WIT interface
         let args_str = arguments.map(|args| serde_json::to_string(&args).unwrap());
@@ -111,7 +112,7 @@ impl WitMcpAdapter {
             meta: None,
         };
 
-        let response = crate::bindings::wasmcp::mcp::tools_capabilities::handle_call_tool(&request)
+        let response = crate::bindings::wasmcp::mcp::tools_capabilities::handle_call_tool(&request, auth_context)
             .map_err(|e| anyhow!("Call tool failed: {}", e.message))?;
 
         // Convert WIT result to rmcp result

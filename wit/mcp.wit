@@ -1,4 +1,4 @@
-package wasmcp:mcp@0.1.0;
+package wasmcp:mcp@0.2.0-alpha.6;
 
 /// World definitions for MCP transports and capabilities
 /// 
@@ -11,17 +11,8 @@ package wasmcp:mcp@0.1.0;
 // === TOOLS ONLY ===
 
 /// Minimal transport with just tools
-world tools-transport {
-    // Core types always needed
-    import types;
-    import core-types;
-    import notification-types;
-    
-    // Core capabilities for session management (includes optional auth config)
-    import core-capabilities;
-    
-    // Tool-specific types and capabilities
-    import tool-types;
+world tools-transport {    
+    import core-capabilities;    
     import tools-capabilities;
 }
 
@@ -34,51 +25,24 @@ world tools-provider {
 
 /// Transport with tools and resources
 world tools-resources-transport {
-    // Core types always needed
-    import types;
-    import core-types;
-    import notification-types;
-    
-    // Core capabilities for session management (includes optional auth config)
-    import core-capabilities;
-    
-    // Feature-specific types and capabilities
-    import tool-types;
-    import tools-capabilities;
-    import resource-types;
+    include tools-transport;
     import resources-capabilities;
 }
 
 world tools-resources-provider {
-    export core-capabilities;
-    export tools-capabilities;
+    include tools-provider;
     export resources-capabilities;
 }
 
 // === TOOLS + RESOURCES + PROMPTS ===
 
 world tools-resources-prompts-transport {
-    // Core types always needed
-    import types;
-    import core-types;
-    import notification-types;
-    
-    // Core capabilities for session management (includes optional auth config)
-    import core-capabilities;
-    
-    // Feature-specific types and capabilities
-    import tool-types;
-    import tools-capabilities;
-    import resource-types;
-    import resources-capabilities;
-    import prompt-types;
+    include tools-resources-transport;
     import prompts-capabilities;
 }
 
 world tools-resources-prompts-provider {
-    export core-capabilities;
-    export tools-capabilities;
-    export resources-capabilities;
+    include tools-resources-provider;
     export prompts-capabilities;
 }
 
@@ -86,36 +50,11 @@ world tools-resources-prompts-provider {
 
 /// Full transport with all server capabilities
 world full-transport {
-    // Core types always needed
-    import types;
-    import core-types;
-    import notification-types;
-    
-    // Core capabilities for session management (includes optional auth config)
-    import core-capabilities;
-    
-    // Server capability types
-    import tool-types;
-    import resource-types;
-    import prompt-types;
-    import completion-types;
-    
-    // Client capability types (for protocol marshaling only)
-    import sampling-types;
-    import elicitation-types;
-    import roots-types;
-    
-    // Import server capabilities
-    import tools-capabilities;
-    import resources-capabilities;
-    import prompts-capabilities;
+    include tools-resources-prompts-transport;
     import completion-capabilities;
 }
 
 world full-provider {
-    export core-capabilities;
-    export tools-capabilities;
-    export resources-capabilities;
-    export prompts-capabilities;
+    include tools-resources-prompts-provider;
     export completion-capabilities;
 }

@@ -14,75 +14,39 @@ interface authorization-types {
         expected-issuer: string,
         /// Expected JWT audiences (REQUIRED for auth - must have at least one)
         expected-audiences: list<string>,
+        /// Expected JWT subject - if set, only this exact subject is allowed
+        expected-subject: option<string>,
         /// JWKS URI for key discovery (REQUIRED for auth)
         jwks-uri: string,
-        /// Optional Rego policy for authorization
+        /// Optional Rego policy for complex authorization rules
         policy: option<string>,
         /// Optional data for policy evaluation
         policy-data: option<string>,
+        /// Pass raw JWT token to tools via "jwt.token" meta field (default: false)
+        pass-jwt: bool,
     }
     
     /// Authorization context passed between components after successful authorization
     record auth-context {
         /// OAuth client ID that made the request
         client-id: option<string>,
-        /// Subject (user ID) from the token
-        user-id: option<string>,
+        /// Subject claim from the token - always present from validated JWT
+        sub: string,
         /// OAuth scopes granted to this token
         scopes: list<string>,
-        /// Token issuer URL
-        issuer: option<string>,
-        /// Audience claim from token
-        audience: option<string>,
+        /// Issuer claim from the token - always present from validated JWT
+        iss: string,
+        /// Audience claim from token (aud) - always validated, can be multiple values
+        aud: list<string>,
         /// Additional claims from token as key-value pairs
         claims: meta-fields,
-        /// Expiration timestamp (Unix seconds)
-        exp: option<u64>,
+        /// Expiration timestamp (Unix seconds) - always validated and required for security
+        exp: u64,
         /// Issued at timestamp (Unix seconds)  
         iat: option<u64>,
-    }
-    
-    /// Authorization request containing all context needed for authorization decisions
-    record auth-request {
-        /// Bearer token extracted from Authorization header
-        token: string,
-        /// HTTP method (GET, POST, etc.)
-        method: string,
-        /// Request path
-        path: string,
-        /// Request headers as key-value pairs
-        headers: list<tuple<string, string>>,
-        /// Request body for policy evaluation (e.g., MCP JSON-RPC payload)
-        body: option<list<u8>>,
-        /// Expected issuer for validation
-        expected-issuer: string,
-        /// Expected audiences for validation (token must match at least one)
-        expected-audiences: list<string>,
-        /// JWKS URI for key discovery
-        jwks-uri: string,
-        /// Optional Rego policy to evaluate (if not provided, allows all authenticated requests)
-        policy: option<string>,
-        /// Optional data for policy evaluation (JSON string)
-        policy-data: option<string>,
-    }
-    
-    /// Authorization response
-    variant auth-response {
-        /// Request is authorized with context
-        authorized(auth-context),
-        /// Request is unauthorized with error details
-        unauthorized(auth-error),
-    }
-    
-    /// Authorization error details
-    record auth-error {
-        /// HTTP status code (401, 403, etc.)
-        status: u16,
-        /// OAuth error code (invalid_token, insufficient_scope, etc.)
-        error-code: string,
-        /// Human-readable error description
-        description: string,
-        /// WWW-Authenticate header value for 401 responses
-        www-authenticate: option<string>,
+        /// Not before timestamp (Unix seconds)
+        nbf: option<u64>,
+        /// Raw JWT iff enabled by authorization-types::pass-jwt
+        jwt: option<string>,
     }
 }

@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-// Internal auth types that mirror the WIT types but are independent
+// Use WIT AuthContext directly from bindings and re-export it
+pub use crate::bindings::wasmcp::mcp::authorization_types::AuthContext;
+
+// Internal auth types for transport implementation
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthRequest {
@@ -11,21 +14,11 @@ pub struct AuthRequest {
     pub body: Option<Vec<u8>>,
     pub expected_issuer: String,
     pub expected_audiences: Vec<String>,
+    pub expected_subject: Option<String>,
     pub jwks_uri: String,
     pub policy: Option<String>,
     pub policy_data: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuthContext {
-    pub client_id: Option<String>,
-    pub user_id: Option<String>,
-    pub scopes: Vec<String>,
-    pub issuer: Option<String>,
-    pub audience: Option<String>,
-    pub claims: Vec<(String, String)>,
-    pub exp: Option<u64>,
-    pub iat: Option<u64>,
+    pub pass_jwt: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,10 +41,9 @@ pub struct JwtRequest {
     pub token: String,
     pub expected_issuer: String,
     pub expected_audiences: Vec<String>,
+    pub expected_subject: Option<String>,
     pub jwks_uri: String,
     pub jwks_json: Option<String>,
-    pub validate_exp: Option<bool>,
-    pub validate_nbf: Option<bool>,
     pub clock_skew: Option<u64>,
 }
 
