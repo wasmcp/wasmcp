@@ -3,7 +3,6 @@ use std::sync::OnceLock;
 use anyhow::Result;
 #[cfg(feature = "tools")]
 use rmcp::model::CallToolRequestParam;
-// Use rmcp types for protocol compliance
 use rmcp::model::InitializeRequestParam;
 #[cfg(any(feature = "tools", feature = "resources", feature = "prompts"))]
 use rmcp::model::PaginatedRequestParam;
@@ -14,15 +13,15 @@ use spin_sdk::http::{IntoResponse, Request, Response};
 #[allow(warnings)]
 mod bindings;
 
-// Always import types and core for functionality
+// Always import authorization types (no longer feature-gated)
+use bindings::wasmcp::mcp::authorization;
 use bindings::wasmcp::mcp::authorization_types::{AuthContext, ProviderAuthConfig};
-use bindings::wasmcp::mcp::core_capabilities;
-use bindings::wasmcp::mcp::types::{ErrorCode, McpError};
+use bindings::wasmcp::mcp::mcp_types::{ErrorCode, McpError};
 
 mod adapter;
 use adapter::WitMcpAdapter;
 
-// Internal auth modules
+// Internal auth modules (always included now)
 mod auth;
 mod auth_types;
 mod discovery;
@@ -34,21 +33,18 @@ use auth_types::{AuthRequest, AuthResponse};
 /// Static storage for auth configuration
 static AUTH_CONFIG: OnceLock<Option<ProviderAuthConfig>> = OnceLock::new();
 
-/// Check if auth is enabled (cached at first request)
-fn is_auth_enabled() -> bool {
-    AUTH_CONFIG
-        .get_or_init(|| {
-            // Get auth config from provider - returns None if no auth needed
-            core_capabilities::get_auth_config()
-        })
-        .is_some()
+/// Get the cached auth configuration
+/// Returns None if provider doesn't require auth
+fn get_auth_config() -> &'static Option<ProviderAuthConfig> {
+    AUTH_CONFIG.get_or_init(|| {
+        // Provider can return None to disable auth
+        authorization::get_auth_config()
+    })
 }
 
-/// Get the cached auth configuration
-fn get_auth_config() -> Option<&'static ProviderAuthConfig> {
-    AUTH_CONFIG
-        .get_or_init(core_capabilities::get_auth_config)
-        .as_ref()
+/// Check if auth is enabled (provider returned Some config)
+fn is_auth_enabled() -> bool {
+    get_auth_config().is_some()
 }
 
 /// MCP Server that bridges to WIT interface
@@ -93,7 +89,7 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
         }
     }
 
-    // Apply authorization only if provider has auth config
+    // Apply authorization only if auth is enabled
     let auth_context = if is_auth_enabled() {
         match authorize_request(&req).await {
             Ok(context) => Some(context),
@@ -164,7 +160,8 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
     }
 }
 
-/// Route method calls based on enabled features
+/// Route method calls to appropriate handlers
+/// Auth context is None if auth is disabled by provider
 async fn route_method(
     server: &McpServer,
     method: &str,
@@ -172,7 +169,7 @@ async fn route_method(
     auth_context: Option<AuthContext>,
 ) -> Result<Value, McpError> {
     match method {
-        // Core methods - always available
+        // Core lifecycle methods - always available
         "initialize" => {
             // Convert JSON-RPC params to WIT request
             let wit_request = if let Some(p) = params {
@@ -184,34 +181,24 @@ async fn route_method(
                         data: None,
                     })?;
 
-                // Convert to WIT types - would need proper conversion here
-                // For now, create a minimal request
-                bindings::wasmcp::mcp::core_types::InitializeRequest {
-                    protocol_version: bindings::wasmcp::mcp::core_types::ProtocolVersion::V20250618,
-                    capabilities: bindings::wasmcp::mcp::core_types::ClientCapabilities {
-                        experimental: None,
-                        roots: None,
-                        sampling: None,
-                        elicitation: None,
-                    },
-                    client_info: bindings::wasmcp::mcp::core_types::ImplementationInfo {
-                        name: params.client_info.name,
-                        version: params.client_info.version,
-                        title: None,
-                    },
-                    meta: None,
-                }
+                // Use proper conversion from adapter
+                server.adapter.convert_initialize_request(params)
+                    .map_err(|e| McpError {
+                        code: ErrorCode::InvalidParams,
+                        message: format!("Invalid initialize params: {e}"),
+                        data: None,
+                    })?
             } else {
-                // Default request
-                bindings::wasmcp::mcp::core_types::InitializeRequest {
-                    protocol_version: bindings::wasmcp::mcp::core_types::ProtocolVersion::V20250618,
-                    capabilities: bindings::wasmcp::mcp::core_types::ClientCapabilities {
+                // Default request when no params provided
+                bindings::wasmcp::mcp::lifecycle_types::InitializeRequest {
+                    protocol_version: bindings::wasmcp::mcp::lifecycle_types::ProtocolVersion::V20250618,
+                    capabilities: bindings::wasmcp::mcp::lifecycle_types::ClientCapabilities {
                         experimental: None,
                         roots: None,
                         sampling: None,
                         elicitation: None,
                     },
-                    client_info: bindings::wasmcp::mcp::core_types::ImplementationInfo {
+                    client_info: bindings::wasmcp::mcp::lifecycle_types::ImplementationInfo {
                         name: "unknown".to_string(),
                         version: "0.0.0".to_string(),
                         title: None,
@@ -220,9 +207,8 @@ async fn route_method(
                 }
             };
 
-            // Call the provider's core-capabilities
-            let response =
-                bindings::wasmcp::mcp::core_capabilities::handle_initialize(&wit_request)?;
+            // Call the provider's initialize handler
+            let response = bindings::wasmcp::mcp::lifecycle::initialize(&wit_request)?;
 
             // Convert WIT response back to rmcp/JSON format
             let result = server
@@ -236,16 +222,21 @@ async fn route_method(
             Ok(serde_json::to_value(result).unwrap())
         }
 
-        "initialized" | "notifications/initialized" => {
-            bindings::wasmcp::mcp::core_capabilities::handle_initialized()?;
+        "notifications/initialized" => {
+            // Client notification that it's ready for normal operations
+            // Call the provider's client-initialized handler
+            bindings::wasmcp::mcp::lifecycle::client_initialized()?;
             Ok(Value::Null)
         }
+
         "ping" => {
-            bindings::wasmcp::mcp::core_capabilities::handle_ping()?;
+            // MCP spec doesn't define ping in lifecycle, just return success
             Ok(json!({}))
         }
+
         "shutdown" => {
-            bindings::wasmcp::mcp::core_capabilities::handle_shutdown()?;
+            // Call the provider's shutdown handler
+            bindings::wasmcp::mcp::lifecycle::shutdown()?;
             Ok(json!({}))
         }
 
@@ -261,13 +252,13 @@ async fn route_method(
                     data: None,
                 })?;
 
-            let request = bindings::wasmcp::mcp::tool_types::ListToolsRequest {
+            let request = bindings::wasmcp::mcp::tools_types::ListToolsRequest {
                 cursor: None,
                 progress_token: None,
                 meta: None,
             };
 
-            let response = bindings::wasmcp::mcp::tools_capabilities::handle_list_tools(&request)?;
+            let response = bindings::wasmcp::mcp::tools::list_tools(&request)?;
             let result = server
                 .adapter
                 .convert_list_tools_to_rmcp(response)
@@ -295,11 +286,23 @@ async fn route_method(
                     })
                 })?;
 
-            // Use the adapter's call_tool method directly - auth_context is already WIT type
+            // Convert request to WIT types
+            let request = server
+                .adapter
+                .convert_call_tool_request(&params.name, params.arguments);
+
+            // Call WIT binding directly with auth context if available (None if auth disabled)
+            let response = bindings::wasmcp::mcp::tools::call_tool(&request, auth_context.as_ref())
+                .map_err(|e| McpError {
+                    code: ErrorCode::InternalError,
+                    message: e.message,
+                    data: None,
+                })?;
+
+            // Convert WIT response to rmcp result
             let result = server
                 .adapter
-                .call_tool(&params.name, params.arguments, auth_context.as_ref())
-                .await
+                .convert_call_tool_to_rmcp(response)
                 .map_err(|e| McpError {
                     code: ErrorCode::InternalError,
                     message: e.to_string(),
@@ -320,14 +323,13 @@ async fn route_method(
                     data: None,
                 })?;
 
-            let request = bindings::wasmcp::mcp::resource_types::ListResourcesRequest {
+            let request = bindings::wasmcp::mcp::resources_types::ListResourcesRequest {
                 cursor: None,
                 progress_token: None,
                 meta: None,
             };
 
-            let response =
-                bindings::wasmcp::mcp::resources_capabilities::handle_list_resources(&request)?;
+            let response = bindings::wasmcp::mcp::resources::list_resources(&request)?;
             let result = server
                 .adapter
                 .convert_list_resources_to_rmcp(response)
@@ -353,14 +355,13 @@ async fn route_method(
                 data: None,
             })?;
 
-            let request = bindings::wasmcp::mcp::resource_types::ReadResourceRequest {
+            let request = bindings::wasmcp::mcp::resources_types::ReadResourceRequest {
                 uri: uri.to_string(),
                 progress_token: None,
                 meta: None,
             };
 
-            let response =
-                bindings::wasmcp::mcp::resources_capabilities::handle_read_resource(&request)?;
+            let response = bindings::wasmcp::mcp::resources::read_resource(&request)?;
             let result = server
                 .adapter
                 .convert_read_resource_to_rmcp(response)
@@ -384,14 +385,13 @@ async fn route_method(
                     data: None,
                 })?;
 
-            let request = bindings::wasmcp::mcp::prompt_types::ListPromptsRequest {
+            let request = bindings::wasmcp::mcp::prompts_types::ListPromptsRequest {
                 cursor: None,
                 progress_token: None,
                 meta: None,
             };
 
-            let response =
-                bindings::wasmcp::mcp::prompts_capabilities::handle_list_prompts(&request)?;
+            let response = bindings::wasmcp::mcp::prompts::list_prompts(&request)?;
             let result = server
                 .adapter
                 .convert_list_prompts_to_rmcp(response)
@@ -426,15 +426,14 @@ async fn route_method(
                         .collect()
                 });
 
-            let request = bindings::wasmcp::mcp::prompt_types::GetPromptRequest {
+            let request = bindings::wasmcp::mcp::prompts_types::GetPromptRequest {
                 name: name.to_string(),
                 arguments,
                 progress_token: None,
                 meta: None,
             };
 
-            let response =
-                bindings::wasmcp::mcp::prompts_capabilities::handle_get_prompt(&request)?;
+            let response = bindings::wasmcp::mcp::prompts::get_prompt(&request)?;
             let result = server
                 .adapter
                 .convert_get_prompt_to_rmcp(response)
@@ -444,6 +443,17 @@ async fn route_method(
                     data: None,
                 })?;
             Ok(serde_json::to_value(result).unwrap())
+        }
+
+        // Completion methods - only if feature enabled
+        #[cfg(feature = "completion")]
+        "completion/complete" => {
+            // TODO: Implement completion when WIT interface is defined
+            Err(McpError {
+                code: ErrorCode::InternalError,
+                message: "Completion not yet implemented".to_string(),
+                data: None,
+            })
         }
 
         _ => Err(McpError {
@@ -474,12 +484,33 @@ async fn authorize_request(req: &Request) -> Result<AuthContext, McpError> {
         .map(|(name, value)| (name.to_string(), value.as_str().unwrap_or("").to_string()))
         .collect();
 
-    // Get auth configuration from cache
-    let provider_config = get_auth_config().ok_or_else(|| McpError {
-        code: ErrorCode::InternalError,
-        message: "Auth enabled but no configuration available".to_string(),
-        data: None,
-    })?;
+    // Get auth configuration - we know it's Some because authorize_request is only called when auth is enabled
+    let provider_config = get_auth_config()
+        .as_ref()
+        .expect("authorize_request called but auth config is None");
+
+    // Validate that the provider gave us valid auth config
+    if provider_config.expected_issuer.is_empty() {
+        return Err(McpError {
+            code: ErrorCode::InternalError,
+            message: "Provider returned invalid auth config: expected_issuer cannot be empty".to_string(),
+            data: None,
+        });
+    }
+    if provider_config.expected_audiences.is_empty() {
+        return Err(McpError {
+            code: ErrorCode::InternalError,
+            message: "Provider returned invalid auth config: expected_audiences cannot be empty".to_string(),
+            data: None,
+        });
+    }
+    if provider_config.jwks_uri.is_empty() {
+        return Err(McpError {
+            code: ErrorCode::InternalError,
+            message: "Provider returned invalid auth config: jwks_uri cannot be empty".to_string(),
+            data: None,
+        });
+    }
 
     // Build authorization request with provider's required configuration
     let auth_request = AuthRequest {
@@ -513,9 +544,14 @@ async fn authorize_request(req: &Request) -> Result<AuthContext, McpError> {
 }
 
 fn handle_resource_metadata(request_uri: &str) -> Result<Response> {
+    if !is_auth_enabled() {
+        return Err(anyhow::anyhow!("Resource metadata endpoint requires auth to be enabled"));
+    }
+    
     let provider_config = get_auth_config()
-        .ok_or_else(|| anyhow::anyhow!("Auth enabled but no configuration available"))?;
-
+        .as_ref()
+        .expect("handle_resource_metadata called but auth config is None");
+    
     // Build the server URL from the request
     let server_url = if request_uri.contains("://") {
         request_uri
@@ -543,9 +579,14 @@ fn handle_resource_metadata(request_uri: &str) -> Result<Response> {
 }
 
 fn handle_server_metadata() -> Result<Response> {
+    if !is_auth_enabled() {
+        return Err(anyhow::anyhow!("Server metadata endpoint requires auth to be enabled"));
+    }
+    
     let provider_config = get_auth_config()
-        .ok_or_else(|| anyhow::anyhow!("Auth enabled but no configuration available"))?;
-
+        .as_ref()
+        .expect("handle_server_metadata called but auth config is None");
+        
     let metadata = discovery::get_server_metadata(provider_config);
     let json = serde_json::json!({
         "issuer": metadata.issuer,

@@ -6,27 +6,25 @@
 #[allow(warnings)]
 mod bindings;
 
-use bindings::exports::wasmcp::mcp::core_capabilities::Guest as CoreGuest;
-use bindings::exports::wasmcp::mcp::tools_capabilities::Guest as ToolsGuest;
+use bindings::exports::wasmcp::mcp::lifecycle::Guest as LifecycleGuest;
+use bindings::exports::wasmcp::mcp::tools::Guest as ToolsGuest;
+use bindings::exports::wasmcp::mcp::authorization::Guest as AuthorizationGuest;
 use bindings::wasmcp::mcp::{
     authorization_types::{AuthContext, ProviderAuthConfig},
-    core_types::{
+    lifecycle_types::{
         ImplementationInfo,
         InitializeRequest,
-        InitializeResponse,
-        ProtocolVersion,
-        ServerCapabilities,
-        ToolsCapability,
+        InitializeResult,
     },
-    tool_types::{
+    tools_types::{
         BaseMetadata,
         CallToolRequest,
+        CallToolResult,
         ListToolsRequest,
-        ListToolsResponse,
+        ListToolsResult,
         Tool,
-        ToolResult,
     },
-    types::{
+    mcp_types::{
         ContentBlock,
         ErrorCode,
         McpError,
@@ -46,64 +44,47 @@ use spin_sdk::http::{
 pub struct Component;
 
 // -------------------------------------------------------------------------
-// Core Capabilities Implementation
+// Lifecycle Implementation
 // -------------------------------------------------------------------------
 
-impl CoreGuest for Component {
-    fn handle_initialize(_request: InitializeRequest) -> Result<InitializeResponse, McpError> {
-        Ok(InitializeResponse {
-            protocol_version: ProtocolVersion::V20250618,
-            capabilities: ServerCapabilities {
-                tools: Some(ToolsCapability { list_changed: None }),
-                experimental: None,
-                logging: None,
-                completions: None,
-                prompts: None,
-                resources: None,
-            },
+impl LifecycleGuest for Component {
+    fn initialize(_request: InitializeRequest) -> Result<InitializeResult, McpError> {
+        Ok(InitializeResult {
             server_info: ImplementationInfo {
                 name: "weather-rs".to_string(),
                 version: "0.1.0".to_string(),
-                title: Some("weather-rs Server".to_string()),
+                title: Some("Weather RS Provider".to_string()),
             },
             instructions: Some("A Rust MCP server providing weather tools".to_string()),
             meta: None,
         })
     }
 
-    fn handle_initialized() -> Result<(), McpError> {
+    fn client_initialized() -> Result<(), McpError> {
         Ok(())
     }
 
-    fn handle_ping() -> Result<(), McpError> {
+    fn shutdown() -> Result<(), McpError> {
         Ok(())
     }
+}
 
-    fn handle_shutdown() -> Result<(), McpError> {
-        Ok(())
-    }
+// -------------------------------------------------------------------------
+// Authorization Implementation
+// -------------------------------------------------------------------------
 
+impl AuthorizationGuest for Component {
     fn get_auth_config() -> Option<ProviderAuthConfig> {
-        // Uncomment and configure to enable OAuth authorization:
-        // Some(ProviderAuthConfig {
-        // expected_issuer: "https://your-auth-domain.example.com".to_string(),
-        // expected_audiences: vec!["your-client-id".to_string()],
-        // expected_subject: None,
-        // pass_jwt: false,
-        // jwks_uri: "https://your-auth-domain.example.com/oauth2/jwks".to_string(),
-        // policy: None,
-        // policy_data: None,
-        // })
+        // Return None to disable auth for this example
         None
     }
 
     fn jwks_cache_get(_jwks_uri: String) -> Option<String> {
-        // Optional: Implement JWKS caching
         None
     }
 
     fn jwks_cache_set(_jwks_uri: String, _jwks: String) {
-        // Optional: Implement JWKS caching
+        // No-op for this example
     }
 }
 
@@ -112,7 +93,7 @@ impl CoreGuest for Component {
 // -------------------------------------------------------------------------
 
 impl ToolsGuest for Component {
-    fn handle_list_tools(_request: ListToolsRequest) -> Result<ListToolsResponse, McpError> {
+    fn list_tools(_request: ListToolsRequest) -> Result<ListToolsResult, McpError> {
         let tools = vec![
             Tool {
                 base: BaseMetadata {
@@ -182,14 +163,14 @@ impl ToolsGuest for Component {
             },
         ];
 
-        Ok(ListToolsResponse {
+        Ok(ListToolsResult {
             tools,
             next_cursor: None,
             meta: None,
         })
     }
 
-    fn handle_call_tool(request: CallToolRequest, _auth_context: Option<AuthContext>) -> Result<ToolResult, McpError> {
+    fn call_tool(request: CallToolRequest, _: Option<AuthContext>) -> Result<CallToolResult, McpError> {
         match request.name.as_str() {
             "echo" => spin_sdk::http::run(async move { handle_echo(request.arguments.as_ref()) }),
             "get_weather" => {
@@ -216,7 +197,7 @@ struct EchoArgs {
     message: String,
 }
 
-fn handle_echo(args: Option<&String>) -> Result<ToolResult, McpError> {
+fn handle_echo(args: Option<&String>) -> Result<CallToolResult, McpError> {
     let args: EchoArgs = parse_args(args)?;
     Ok(text_result(format!("Echo: {}", args.message)))
 }
@@ -226,7 +207,7 @@ struct WeatherArgs {
     location: String,
 }
 
-async fn handle_get_weather(args: Option<String>) -> Result<ToolResult, McpError> {
+async fn handle_get_weather(args: Option<String>) -> Result<CallToolResult, McpError> {
     let args: WeatherArgs = parse_args(args.as_ref())?;
 
     match get_weather_for_city(&args.location).await {
@@ -240,7 +221,7 @@ struct MultiWeatherArgs {
     cities: Vec<String>,
 }
 
-async fn handle_multi_weather(args: Option<String>) -> Result<ToolResult, McpError> {
+async fn handle_multi_weather(args: Option<String>) -> Result<CallToolResult, McpError> {
     let args: MultiWeatherArgs = parse_args(args.as_ref())?;
 
     if args.cities.is_empty() {
@@ -419,8 +400,8 @@ fn parse_args<T: for<'a> Deserialize<'a>>(args: Option<&String>) -> Result<T, Mc
     })
 }
 
-fn text_result(text: String) -> ToolResult {
-    ToolResult {
+fn text_result(text: String) -> CallToolResult {
+    CallToolResult {
         content: vec![ContentBlock::Text(TextContent {
             text,
             annotations: None,
@@ -432,8 +413,8 @@ fn text_result(text: String) -> ToolResult {
     }
 }
 
-fn error_result(message: String) -> ToolResult {
-    ToolResult {
+fn error_result(message: String) -> CallToolResult {
+    CallToolResult {
         content: vec![ContentBlock::Text(TextContent {
             text: message,
             annotations: None,

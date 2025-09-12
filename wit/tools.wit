@@ -1,49 +1,24 @@
 /// Tools enable models to interact with external systems, such as querying databases, calling APIs, or performing computations.
 /// Each tool is uniquely identified by a name and includes metadata describing its schema.
-/// https://modelcontextprotocol.io/specification/2025-06-18/server/tools
-
-
-/// Serves the TOOLS capability over the Streamable HTTP transport
-world tools-transport {
-    import lifecycle;
-    import tools;
-}
-
-/// Serves the TOOLS capability over the Streamable HTTP transport with authorization
-world authorized-tools-transport {
-    include tools-transport;
-    import authorization;
-}
-
-/// Implements the TOOLS capability
-world tools-provider {
-    export lifecycle;
-    export tools;
-}
-
-/// Implements the TOOLS capability with authorization.
-world authorized-tools-provider {
-    include tools-provider;
-    export authorization;
-}
-
-/// The TOOLS capability
+///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/tools
 interface tools {
     use mcp-types.{mcp-error};
-    use tools-types.{list-tools-request, list-tools-result, call-tool-request, call-tool-result};
     use authorization-types.{auth-context};
+    use tools-types.{list-tools-request, list-tools-result, call-tool-request, call-tool-result};
     
     /// List available tools
     list-tools: func(request: list-tools-request) -> result<list-tools-result, mcp-error>;
     
     /// Execute a tool
-    call-tool: func(request: call-tool-request, auth-context: option<auth-context>) -> result<call-tool-result, mcp-error>;
+    call-tool: func(request: call-tool-request, context: option<auth-context>) -> result<call-tool-result, mcp-error>;
 }
+
 
 /// Type definitions for tools
 interface tools-types {
     use mcp-types.{content-block, json-value, json-schema, base-metadata, meta-fields, cursor, progress-token};
+    use authorization-types.{auth-context};
 
     /// Behavioral hints about tool operations
     record tool-annotations {

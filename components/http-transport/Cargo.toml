@@ -1,6 +1,6 @@
 [package]
 name = "mcp_transport_http"
-version = "0.2.0-alpha.6"
+version = "0.2.0-alpha.20"
 edition = "2024"
 rust-version = "1.89"
 
@@ -33,7 +33,6 @@ regorus = { version = "0.3", default-features = false, features = ["std"] }
 default = ["tools"]
 
 # Capabilities - choose which capabilities this transport will support
-auth = []
 tools = []
 resources = []
 prompts = []
@@ -47,5 +46,5 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "wasmcp:mcp"
-version = "0.2.0-alpha.10"
-world = "tools-transport"
+version = "0.2.0-alpha.20"
+world = "full-transport"

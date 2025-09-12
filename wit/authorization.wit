@@ -1,15 +1,12 @@
-/// Authorization types for MCP servers
-/// These types define the authorization configuration that providers can declare
-/// and that transports use to enforce authorization
-
-
-/// Provides authorization config and JWKS hooks
+/// Authorization capabilities are provided at the transport level, enabling MCP clients to make requests to restricted MCP servers on behalf of resource owners.
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
 interface authorization {
     use authorization-types.{provider-auth-config};
 
     /// Get provider's auth configuration
     /// The transport should enforce authorization
-    get-auth-config: func() -> provider-auth-config;
+    get-auth-config: func() -> option<provider-auth-config>;
     
     /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
     /// Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms

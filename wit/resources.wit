@@ -1,33 +1,6 @@
 /// Resources allow servers to share data that provides context to language models, such as files, database schemas, or application-specific information.
 /// Each resource is uniquely identified by a URI.
-/// https://modelcontextprotocol.io/specification/2025-06-18/server/resources
-
-
-/// Serves the RESOURCES capability over the Streamable HTTP transport
-world resources-transport {
-    import lifecycle;
-    import resources;
-}
-
-/// Serves the RESOURCES capability over the Streamable HTTP transport with authorization
-world authorized-resources-transport {
-    include resources-transport;
-    import authorization;
-}
-
-/// Implements the RESOURCES capability
-world resources-provider {
-    export lifecycle;
-    export resources;
-}
-
-/// Implements the RESOURCES capability with authorization
-world authorized-resources-provider {
-    include resources-provider;
-    export authorization;
-}
-
-/// The RESOURCES capability.
+///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/resources
 interface resources {
     use mcp-types.{mcp-error};

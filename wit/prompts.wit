@@ -1,34 +1,6 @@
 /// Prompts allow servers to provide structured messages and instructions for interacting with language models.
 /// Clients can discover available prompts, retrieve their contents, and provide arguments to customize them.
-/// https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
-
-
-/// Serves the PROMPTS capability over the Streamable HTTP transport
-world prompts-transport {
-    import lifecycle;
-    import prompts;
-}
-
-/// Serves the PROMPTS capability over the Streamable HTTP transport with authorization
-world authorized-prompts-transport {
-    include prompts-transport;
-    import authorization;
-}
-
-/// Implements the PROMPTS capability
-world prompts-provider {
-    export lifecycle;
-    export prompts;
-}
-
-/// Implements the PROMPTS capability with authorization
-world authorized-prompts-provider {
-    include prompts-provider;
-    export authorization;
-}
-
-
-/// The PROMPTS capability
+///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
 interface prompts {
     use mcp-types.{mcp-error};

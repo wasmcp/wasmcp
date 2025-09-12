@@ -1,7 +1,6 @@
 /// Model Context Protocol (MCP) is an open protocol that enables seamless integration between LLM applications and external data sources and tools.
 /// https://modelcontextprotocol.io/specification/2025-06-18
-package wasmcp:mcp@0.2.0-alpha.10;
-
+package wasmcp:mcp@0.2.0-alpha.20;
 
 /// Core type definitions for the Model Context Protocol, shared by other interfaces.
 interface mcp-types {

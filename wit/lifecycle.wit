@@ -1,8 +1,8 @@
-/// Lifecycle for client-server connections that ensures proper capability negotiation and state management.
-/// https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle
-
-
-/// Handles connection lifecycle events
+/// A lifecycle for client-server connections that ensures proper capability negotiation and state management.
+/// Initialization: Capability negotiation and protocol version agreement
+/// Operation: Normal protocol communication
+/// Shutdown: Graceful termination of the connection
+///
 /// https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle
 interface lifecycle {
     use mcp-types.{mcp-error};
@@ -11,6 +11,12 @@ interface lifecycle {
     /// Handle session initialization
     /// Implementations should declare their capabilities here
     initialize: func(request: initialize-request) -> result<initialize-result, mcp-error>;
+
+    /// Handle initialization complete notification
+    client-initialized: func() -> result<_, mcp-error>;
+
+    /// Handle shutdown request
+    shutdown: func() -> result<_, mcp-error>;
 }
 
 /// Type definitions for the MCP lifecycle
@@ -20,8 +26,6 @@ interface lifecycle-types {
     /// Protocol versions supported by MCP
     /// These correspond to official MCP specification versions
     enum protocol-version {
-        /// MCP 2025-03-26 specification
-        v20250326,
         /// MCP 2025-06-18 specification (latest)
         v20250618,
     }
@@ -104,10 +108,6 @@ interface lifecycle-types {
 
     /// Initialize response from server
     record initialize-result {
-        /// Protocol version the server will use
-        protocol-version: protocol-version,
-        /// Server's capabilities
-        capabilities: server-capabilities,
         /// Server implementation details
         server-info: implementation-info,
         /// Optional instructions for using the server
