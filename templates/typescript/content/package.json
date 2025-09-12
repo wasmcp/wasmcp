@@ -12,7 +12,7 @@
     "format:check": "prettier --check 'src/**/*.ts'",
     "bundle": "webpack",
     "build": "npm run typecheck && npm run lint && npm run bundle",
-    "clean": "rm -rf dist {{project-name}}_provider.wasm mcp-http-server.wasm .transport-tmp.wasm bundled.js",
+    "clean": "rm -rf dist {{project-name | snake_case}}_provider.wasm mcp-http-server.wasm .transport-tmp.wasm bundled.js",
     "test": "npm run typecheck && npm run lint && npm run bundle && node --test"
   },
   "devDependencies": {
@@ -31,5 +31,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "zod": "^4.1.8"
   }
 }

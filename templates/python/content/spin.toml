@@ -3,11 +3,11 @@ spin_manifest_version = 2
 [application]
 name = "{{project-name | kebab_case}}"
 version = "0.1.0"
-authors = ["{{authors}}"]
+authors = ["Your Name <your.email@example.com>"]
 description = "{{project-description}}"
 
 [[trigger.http]]
-route = "/mcp"
+route = "{{route}}"
 component = "mcp-server"
 
 [[trigger.http]]
