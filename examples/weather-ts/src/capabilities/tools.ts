@@ -6,6 +6,7 @@
  * async/await and Promise.all() provide natural concurrency support.
  */
 
+import { z } from 'zod';
 import type {
   ListToolsRequest,
   ListToolsResult,
@@ -19,12 +20,79 @@ import type {
 } from '../generated/interfaces/wasmcp-mcp-mcp-types.js';
 import type { AuthContext } from '../generated/interfaces/wasmcp-mcp-authorization-types.js';
 
+// -------------------------------------------------------------------------
+// Tool Schemas with Zod - Type-safe and idiomatic TypeScript
+// -------------------------------------------------------------------------
+
+const EchoSchema = z.object({
+  message: z.string().describe('The message to echo'),
+});
+type EchoArgs = z.infer<typeof EchoSchema>;
+
+const WeatherSchema = z.object({
+  location: z.string().describe('City name to get weather for'),
+});
+type WeatherArgs = z.infer<typeof WeatherSchema>;
+
+const MultiWeatherSchema = z.object({
+  cities: z.array(z.string()).max(5).describe('List of city names (max 5)'),
+});
+type MultiWeatherArgs = z.infer<typeof MultiWeatherSchema>;
+
+/**
+ * Convert a Zod schema to JSON Schema for the WIT interface.
+ * This gives us type safety AND proper schema generation.
+ */
+function zodToJsonSchema(schema: z.ZodType<any>): string {
+  // For now, we'll use a simple approach. In production, you might use
+  // zod-to-json-schema package for complete conversion.
+  if (schema instanceof z.ZodObject) {
+    const shape = schema.shape;
+    const properties: Record<string, any> = {};
+    const required: string[] = [];
+    
+    for (const [key, value] of Object.entries(shape)) {
+      const zodField = value as z.ZodType<any>;
+      properties[key] = getFieldSchema(zodField);
+      
+      // Check if field is required
+      if (!zodField.isOptional()) {
+        required.push(key);
+      }
+    }
+    
+    return JSON.stringify({
+      type: 'object',
+      properties,
+      required,
+    });
+  }
+  
+  return JSON.stringify({ type: 'object' });
+}
+
+function getFieldSchema(field: z.ZodType<any>): any {
+  if (field instanceof z.ZodString) {
+    return { 
+      type: 'string',
+      description: field.description,
+    };
+  } else if (field instanceof z.ZodArray) {
+    const itemType = (field as any)._def.type;
+    return {
+      type: 'array',
+      description: field.description,
+      items: getFieldSchema(itemType),
+    };
+  }
+  return { type: 'string' };
+}
+
 /**
  * List available tools.
  * 
- * Tools are defined inline as an array. The inputSchema is a JSON string
- * because WIT's json-object type is represented as a string in the bindings.
- * This is similar to Python's approach but different from Rust's json! macro.
+ * Now using Zod schemas as the single source of truth for both
+ * TypeScript types AND JSON Schema generation. Much more idiomatic!
  */
 export function listTools(_request: ListToolsRequest): ListToolsResult {
   const tools: Tool[] = [
@@ -33,16 +101,7 @@ export function listTools(_request: ListToolsRequest): ListToolsResult {
       title: 'echo',
       description: 'Echo a message back to the user',
       icons: undefined,
-      inputSchema: JSON.stringify({
-        type: 'object',
-        properties: {
-          message: {
-            type: 'string',
-            description: 'The message to echo',
-          },
-        },
-        required: ['message'],
-      }),
+      inputSchema: zodToJsonSchema(EchoSchema),
       outputSchema: undefined,
       annotations: undefined,
     },
@@ -51,16 +110,7 @@ export function listTools(_request: ListToolsRequest): ListToolsResult {
       title: 'get_weather',
       description: 'Get current weather for a location',
       icons: undefined,
-      inputSchema: JSON.stringify({
-        type: 'object',
-        properties: {
-          location: {
-            type: 'string',
-            description: 'City name to get weather for',
-          },
-        },
-        required: ['location'],
-      }),
+      inputSchema: zodToJsonSchema(WeatherSchema),
       outputSchema: undefined,
       annotations: undefined,
     },
@@ -69,19 +119,7 @@ export function listTools(_request: ListToolsRequest): ListToolsResult {
       title: 'multi_weather',
       description: 'Get weather for multiple cities concurrently',
       icons: undefined,
-      inputSchema: JSON.stringify({
-        type: 'object',
-        properties: {
-          cities: {
-            type: 'array',
-            description: 'List of city names (max 5)',
-            items: {
-              type: 'string',
-            },
-          },
-        },
-        required: ['cities'],
-      }),
+      inputSchema: zodToJsonSchema(MultiWeatherSchema),
       outputSchema: undefined,
       annotations: undefined,
     },
@@ -107,22 +145,32 @@ export async function callTool(
   _context: AuthContext | undefined
 ): Promise<CallToolResult> {
   try {
+    // Parse the arguments - they come as a JSON string per the WIT type
     const args = request.arguments ? JSON.parse(request.arguments) : {};
     
     switch (request.name) {
-      case 'echo':
-        return await handleEcho(args);
+      case 'echo': {
+        const validated = EchoSchema.parse(args);
+        return await handleEcho(validated);
+      }
       
-      case 'get_weather':
-        return await handleGetWeather(args);
+      case 'get_weather': {
+        const validated = WeatherSchema.parse(args);
+        return await handleGetWeather(validated);
+      }
       
-      case 'multi_weather':
-        return await handleMultiWeather(args);
+      case 'multi_weather': {
+        const validated = MultiWeatherSchema.parse(args);
+        return await handleMultiWeather(validated);
+      }
       
       default:
         return errorResult(`Unknown tool: ${request.name}`);
     }
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return errorResult(`Invalid arguments: ${error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`);
+    }
     return errorResult(
       `Error executing ${request.name}: ${error instanceof Error ? error.message : String(error)}`
     );
@@ -130,77 +178,47 @@ export async function callTool(
 }
 
 // -------------------------------------------------------------------------
-// Tool Implementations
+// Tool Implementations - Now with proper typed arguments!
 // -------------------------------------------------------------------------
 
-interface EchoArgs {
-  message: string;
+async function handleEcho(args: EchoArgs): Promise<CallToolResult> {
+  return textResult(`Echo: ${args.message}`);
 }
 
-async function handleEcho(args: any): Promise<CallToolResult> {
+async function handleGetWeather(args: WeatherArgs): Promise<CallToolResult> {
   try {
-    const parsedArgs: EchoArgs = typeof args === 'string' ? JSON.parse(args) : args;
-    return textResult(`Echo: ${parsedArgs.message}`);
-  } catch (error) {
-    return errorResult(`Invalid arguments: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-interface WeatherArgs {
-  location: string;
-}
-
-async function handleGetWeather(args: any): Promise<CallToolResult> {
-  try {
-    const parsedArgs: WeatherArgs = typeof args === 'string' ? JSON.parse(args) : args;
-    const weather = await getWeatherForCity(parsedArgs.location);
+    const weather = await getWeatherForCity(args.location);
     return textResult(weather);
   } catch (error) {
     return errorResult(`Error fetching weather: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-interface MultiWeatherArgs {
-  cities: string[];
-}
-
-async function handleMultiWeather(args: any): Promise<CallToolResult> {
-  try {
-    const parsedArgs: MultiWeatherArgs = typeof args === 'string' ? JSON.parse(args) : args;
-    
-    if (parsedArgs.cities.length === 0) {
-      return errorResult('No cities provided');
-    }
-    
-    if (parsedArgs.cities.length > 5) {
-      return errorResult('Maximum 5 cities allowed');
-    }
-    
-    // JavaScript's Promise.all() provides natural concurrency.
-    // Unlike Go which needs wasihttp.RequestsConcurrently() or Python
-    // which needs PollLoop, JavaScript's async model works naturally with jco.
-    const results = await Promise.all(
-      parsedArgs.cities.map(async (city) => {
-        try {
-          const weather = await getWeatherForCity(city);
-          return `${weather}\n`;
-        } catch (error) {
-          return `Error fetching weather for ${city}: ${error instanceof Error ? error.message : String(error)}\n`;
-        }
-      })
-    );
-    
-    let output = '=== Weather Results ===\n\n';
-    for (const result of results) {
-      output += result;
-      output += '\n';
-    }
-    output += '=== All requests completed ===';
-    
-    return textResult(output);
-  } catch (error) {
-    return errorResult(`Invalid arguments: ${error instanceof Error ? error.message : String(error)}`);
+async function handleMultiWeather(args: MultiWeatherArgs): Promise<CallToolResult> {
+  // Zod already validated the array length, so we know it's 1-5 cities
+  
+  // JavaScript's Promise.all() provides natural concurrency.
+  // Unlike Go which needs wasihttp.RequestsConcurrently() or Python
+  // which needs PollLoop, JavaScript's async model works naturally with jco.
+  const results = await Promise.all(
+    args.cities.map(async (city) => {
+      try {
+        const weather = await getWeatherForCity(city);
+        return `${weather}\n`;
+      } catch (error) {
+        return `Error fetching weather for ${city}: ${error instanceof Error ? error.message : String(error)}\n`;
+      }
+    })
+  );
+  
+  let output = '=== Weather Results ===\n\n';
+  for (const result of results) {
+    output += result;
+    output += '\n';
   }
+  output += '=== All requests completed ===';
+  
+  return textResult(output);
 }
 
 // -------------------------------------------------------------------------

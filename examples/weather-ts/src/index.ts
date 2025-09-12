@@ -2,63 +2,35 @@
  * Weather-ts MCP Provider
  * 
  * A TypeScript implementation of an MCP provider using the WebAssembly Component Model.
- * This file re-exports the capability implementations for jco to use when building
- * the component.
- * 
- * TypeScript/JavaScript with jco uses a different pattern than Rust or Python:
- * - Rust uses Guest traits implemented on a Component struct
- * - Python uses classes that are instantiated by componentize-py
- * - TypeScript uses plain function exports that jco wires up
- * 
- * The Component Model's stateless nature means each function call is independent,
- * with no shared state between calls.
+ * This file exports the capability implementations in the pattern jco expects.
+ * While we need to group by interface name, we can do it more concisely.
  */
 
-// jco expects exports to be grouped by interface name.
-// Each WIT interface needs to be exported as an object with its methods.
+// Direct imports and re-exports - more idiomatic TypeScript
+import * as lifecycle from './capabilities/lifecycle.js';
+import * as authorization from './capabilities/authorization.js';
+import * as tools from './capabilities/tools.js';
 
-import * as lifecycleImpl from './capabilities/lifecycle.js';
-import * as authorizationImpl from './capabilities/authorization.js';
-import * as toolsImpl from './capabilities/tools.js';
-
-// Export lifecycle interface
-export const lifecycle = {
-  initialize: lifecycleImpl.initialize,
-  clientInitialized: lifecycleImpl.clientInitialized,
-  shutdown: lifecycleImpl.shutdown,
-};
-
-// Export authorization interface
-export const authorization = {
-  getAuthConfig: authorizationImpl.getAuthConfig,
-  jwksCacheGet: authorizationImpl.jwksCacheGet,
-  jwksCacheSet: authorizationImpl.jwksCacheSet,
-};
-
-// Export tools interface
-export const tools = {
-  listTools: toolsImpl.listTools,
-  callTool: toolsImpl.callTool,
-};
+// jco requires exports to be grouped by interface name
+export { lifecycle, authorization, tools };
 
 /**
- * Component Model Integration Notes:
+ * Component Model Integration with jco
  * 
- * jco (JavaScript Component Objects) is the TypeScript/JavaScript toolchain for
- * WebAssembly Components, similar to:
- * - cargo-component for Rust
- * - componentize-py for Python
- * - wit-bindgen-go for Go
+ * Key advantages of TypeScript/JavaScript with jco:
  * 
- * Key differences in TypeScript:
- * 1. Type generation: jco generates .d.ts files from WIT
- * 2. Async handling: Component Model exports are synchronous, requiring workarounds
- * 3. Variant types: Represented as discriminated unions with { tag, val }
- * 4. Result types: Handled transparently (return success, throw errors)
- * 5. Option types: Native undefined/null mapping
+ * 1. **Native async support** - Just use async/await and fetch()
+ * 2. **Natural concurrency** - Promise.all() works as expected
+ * 3. **Type safety** - Full TypeScript types from WIT
+ * 4. **Familiar patterns** - Feels like normal JavaScript development
  * 
- * Build process:
- * 1. Bundle TypeScript to JavaScript (webpack/esbuild)
- * 2. Use jco componentize to create WebAssembly component
- * 3. Compose with transport using wac
+ * The Component Model's constraints:
+ * - Stateless exports (no global state between calls)
+ * - WIT type system (strings for JSON)
+ * - WebAssembly sandbox (no direct filesystem/network except through WASI)
+ * 
+ * But jco makes these constraints feel natural by:
+ * - Transparently handling async-to-sync bridging
+ * - Providing native fetch() that works through WASI HTTP
+ * - Generating idiomatic TypeScript types
  */

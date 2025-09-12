@@ -28,7 +28,9 @@ build: ## Build and compose everything into mcp-http-server.wasm
 	@echo "Bundling TypeScript..."
 	@npm run bundle
 	@echo "Building provider component..."
-	@npx jco componentize bundled.js --wit wit --world-name weather-ts --out $(PROVIDER_WASM)
+	# Increase stack size to 8MB to handle concurrent fetch operations
+	# Without this, multi_weather fails with memory faults when Promise.all() makes concurrent requests
+	@npx jco componentize bundled.js --wit wit --world-name weather-ts --aot-min-stack-size-bytes 8388608 --out $(PROVIDER_WASM)
 	@echo "Downloading transport from registry..."
 	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
 	@echo "Plugging provider into transport..."
@@ -50,7 +52,7 @@ run: build ## Build and run
 serve: ## Serve already built mcp-http-server.wasm
 	@if command -v wasmtime >/dev/null 2>&1; then \
 		echo "Starting server with wasmtime..."; \
-		wasmtime serve -Scli mcp-http-server.wasm; \
+		wasmtime serve -Scli -Wmax-memory-size=104857600 mcp-http-server.wasm; \
 	elif command -v spin >/dev/null 2>&1; then \
 		echo "Starting server with spin..."; \
 		spin up --from mcp-http-server.wasm; \
