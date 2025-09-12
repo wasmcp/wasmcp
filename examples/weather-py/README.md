@@ -32,50 +32,57 @@ This server implements three demonstration tools:
 ### Prerequisites
 
 - Python 3.10+
-- componentize-py
-- wac
-- wkg
+- componentize-py 0.13.2+
+- wac (WebAssembly Composition)
+- wkg (WebAssembly package manager)
 
 ### Project Structure
 
 ```
-app.py           # MCP capabilities implementation
-wit/             # WIT interface definitions (wasmcp:mcp@0.1.0)
-wit_world/       # Generated Python bindings (auto-generated)
-requirements.txt # Python dependencies
-Makefile        # Build automation
+app.py                    # Entry point - exports capability implementations
+capabilities/             # MCP capability implementations
+├── __init__.py
+├── authorization.py      # OAuth 2.0 configuration
+├── lifecycle.py          # Server initialization and lifecycle
+└── tools.py              # Tool implementations
+wit/                      # WIT interface definitions (wasmcp:mcp@0.2.0)
+wit_world/                # Generated Python bindings (auto-generated)
+requirements.txt          # Python dependencies
+Makefile                  # Build automation
+setup.sh                  # Initial setup script
 ```
 
 ### Implementing Tools
 
-Tools are defined in the `TOOLS` dictionary and handled in `handle_call_tool`:
+Tools are implemented in `capabilities/tools.py`:
 
 ```python
-class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
-    TOOLS = {
-        "get_weather": {
-            "description": "Get current weather for a location",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "City name to get weather for"
-                    }
-                },
-                "required": ["location"]
-            }
-        }
-    }
+class Tools:
+    def list_tools(self, request: ListToolsRequest) -> ListToolsResult:
+        tools = [
+            Tool(
+                name="get_weather",
+                title="get_weather",
+                description="Get current weather for a location",
+                input_schema=json.dumps({
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                            "type": "string",
+                            "description": "City name to get weather for"
+                        }
+                    },
+                    "required": ["location"]
+                })
+            )
+        ]
+        return ListToolsResult(tools=tools, next_cursor=None)
     
-    def handle_call_tool(self, request: CallToolRequest) -> ToolResult:
+    def call_tool(self, request: CallToolRequest, context: Optional[AuthContext]) -> CallToolResult:
         if request.name == "get_weather":
-            arguments = json.loads(request.arguments or "{}")
-            location = arguments.get("location", "")
-            
-            # Fetch weather data
-            result = self._get_weather_for_city(location)
-            return self._text_result(result)
+            args = json.loads(request.arguments or "{}")
+            result_text = execute_weather_sync(args)
+            return text_result(result_text)
 ```
 
 ## Concurrency
@@ -83,29 +90,40 @@ class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
 Python's Wasm environment uses PollLoop for async operations. Example from the multi-weather implementation:
 
 ```python
-def _handle_multi_weather(self, arguments: dict) -> str:
-    cities = arguments.get("cities", [])
+def execute_multi_weather_sync(args: Dict[str, Any]) -> str:
+    cities = args.get("cities", [])
     
     # PollLoop enables async operations in Wasm
     loop = PollLoop()
     asyncio.set_event_loop(loop)
     try:
-        return loop.run_until_complete(self._fetch_weather_concurrent(cities))
+        return loop.run_until_complete(fetch_multi_weather(cities))
     finally:
         loop.close()
 
-async def _fetch_weather_concurrent(self, cities: List[str]) -> str:
-    # Concurrent HTTP requests
-    tasks = [self._fetch_weather_async(city) for city in cities]
+async def fetch_multi_weather(cities: List[str]) -> str:
+    # Concurrent HTTP requests using WASI HTTP
+    tasks = [fetch_weather(city) for city in cities]
     results = await asyncio.gather(*tasks, return_exceptions=True)
-    return self._format_results(results)
+    
+    output = "=== Weather Results ===\n\n"
+    for city, result in zip(cities, results):
+        if isinstance(result, Exception):
+            output += f"Error fetching weather for {city}: {result}\n\n"
+        else:
+            output += format_weather(result) + "\n\n"
+    return output
 ```
 
 ## Testing
 
 ```bash
-make test-all    # Run all tests
-make test-echo   # Test echo tool
+make test-all        # Run all tests
+make test-init       # Test initialization
+make test-tools      # Test tools/list
+make test-echo       # Test echo tool
+make test-weather    # Test get_weather tool
+make test-multi      # Test multi_weather tool
 ```
 
 ## Authorization
@@ -137,10 +155,10 @@ The transport component handles:
 
 ```bash
 # Local development with Wasmtime
-wasmtime serve -Scli mcp-http-server.wasm
+wasmtime serve -Scli build/mcp-http-server.wasm
 
 # Spin framework
-spin up --from mcp-http-server.wasm
+spin up --from build/mcp-http-server.wasm
 
 # Deploy to Fermyon Cloud
 spin cloud deploy

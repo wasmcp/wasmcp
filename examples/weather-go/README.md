@@ -33,15 +33,15 @@ This server implements three demonstration tools:
 
 - Go 1.23+
 - TinyGo 0.34+
-- wit-bindgen-go
-- wac
-- wkg
+- wit-bindgen-go 0.12.0+
+- wac (WebAssembly Composition)
+- wkg (WebAssembly package manager)
 
 ### Project Structure
 
 ```
 main.go          # MCP capabilities implementation
-wit/             # WIT interface definitions (wasmcp:mcp@0.1.0)
+wit/             # WIT interface definitions (wasmcp:mcp@0.2.0)
 internal/        # Generated Go bindings (auto-generated)
 Makefile         # Build automation
 ```
@@ -144,10 +144,10 @@ The transport component handles:
 
 ```bash
 # Local development with Wasmtime
-wasmtime serve -Scli mcp-http-server.wasm
+wasmtime serve -Scli build/mcp-http-server.wasm
 
 # Spin framework
-spin up --from mcp-http-server.wasm
+spin up --from build/mcp-http-server.wasm
 
 # Deploy to Fermyon Cloud
 spin cloud deploy
