@@ -4,7 +4,7 @@
 BUILD_DIR = build
 
 # Component paths
-PROVIDER_WASM = $(BUILD_DIR)/weather_py_provider.wasm
+PROVIDER_WASM = $(BUILD_DIR)/weather-py-provider.wasm
 MCP_SERVER_WASM = $(BUILD_DIR)/mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport

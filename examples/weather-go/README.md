@@ -16,7 +16,7 @@ This implementation uses WIT bindings directly as the SDK, providing transparent
 
 Components composed at build time:
 - Provider component (this code) - exports MCP capabilities
-- HTTP transport v0.4.1 (from registry) - handles JSON-RPC over HTTP
+- HTTP transport v0.2.0 (from registry) - handles JSON-RPC over HTTP
 - Optional OAuth 2.0 authorization
 
 ## Example Tools

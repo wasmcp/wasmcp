@@ -39,7 +39,7 @@ export function initialize(_request: InitializeRequest): InitializeResult {
   const serverInfo: Implementation = {
     name: 'weather-ts',
     version: '0.1.0',
-    title: 'Weather TypeScript Provider',
+    title: 'weather-ts Provider',
     icons: undefined,
     websiteUrl: undefined,
   };
@@ -48,7 +48,7 @@ export function initialize(_request: InitializeRequest): InitializeResult {
     protocolVersion: '0.1.0',
     capabilities,
     serverInfo,
-    instructions: 'A TypeScript MCP server providing weather tools',
+    instructions: 'An MCP server written in TypeScript',
   };
 }
 

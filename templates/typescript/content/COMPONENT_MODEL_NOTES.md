@@ -135,7 +135,7 @@ This is **fundamentally different** from other languages:
      --wit wit \
      --world-name {{project-name | kebab_case}} \
      --aot-min-stack-size-bytes 8388608 \
-     --out {{project-name | snake_case}}_provider.wasm
+     --out {{project-name | kebab_case}}-provider.wasm
    ```
    - Embeds JavaScript into StarlingMonkey
    - Generates Component Model metadata
@@ -143,7 +143,7 @@ This is **fundamentally different** from other languages:
 
 4. **Composition**
    ```bash
-   wac plug --plug {{project-name | snake_case}}_provider.wasm transport.wasm \
+   wac plug --plug {{project-name | kebab_case}}-provider.wasm transport.wasm \
      -o mcp-http-server.wasm
    ```
 

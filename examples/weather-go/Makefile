@@ -4,7 +4,7 @@
 BUILD_DIR = build
 
 # Component paths
-PROVIDER_WASM = $(BUILD_DIR)/weather_go_provider.wasm
+PROVIDER_WASM = $(BUILD_DIR)/weather-go-provider.wasm
 MCP_SERVER_WASM = $(BUILD_DIR)/mcp-http-server.wasm
 
 # Registry packages

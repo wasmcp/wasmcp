@@ -135,7 +135,7 @@ This is **fundamentally different** from other languages:
      --wit wit \
      --world-name weather-ts \
      --aot-min-stack-size-bytes 8388608 \
-     --out weather-ts_provider.wasm
+     --out weather-ts-provider.wasm
    ```
    - Embeds JavaScript into StarlingMonkey
    - Generates Component Model metadata
@@ -143,7 +143,7 @@ This is **fundamentally different** from other languages:
 
 4. **Composition**
    ```bash
-   wac plug --plug weather-ts_provider.wasm transport.wasm \
+   wac plug --plug weather-ts-provider.wasm transport.wasm \
      -o mcp-http-server.wasm
    ```
 

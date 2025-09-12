@@ -32,11 +32,11 @@ impl LifecycleGuest for Component {
             server_info: Implementation {
                 name: "weather-rs".to_string(),
                 version: "0.1.0".to_string(),
-                title: Some("Weather RS Provider".to_string()),
+                title: Some("weather-rs Provider".to_string()),
                 icons: None,
                 website_url: None,
             },
-            instructions: Some("A Rust MCP server providing weather tools".to_string()),
+            instructions: Some("An MCP server written in Rust".to_string()),
         })
     }
 

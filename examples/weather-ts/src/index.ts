@@ -1,5 +1,5 @@
 /**
- * Weather-ts MCP Provider
+ * weather-ts MCP Provider
  * 
  * A TypeScript implementation of an MCP provider using the WebAssembly Component Model.
  * This file exports the capability implementations in the pattern jco expects.

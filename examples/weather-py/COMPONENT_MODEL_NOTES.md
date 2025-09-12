@@ -1,6 +1,6 @@
 # Component Model Technical Notes for Python
 
-This document explains the technical patterns and constraints in the weather-py example.
+This document explains the technical patterns and constraints in the weather-py implementation.
 
 ## Key Differences from Go
 

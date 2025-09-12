@@ -1,8 +1,7 @@
 """
-Python MCP Weather Server
+Python MCP Server
 
-A WebAssembly component that provides weather tools using the WIT bindings directly.
-This implementation follows the same clean architecture as weather-rs.
+An MCP server written in Python
 """
 
 from typing import TYPE_CHECKING

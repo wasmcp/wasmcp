@@ -97,33 +97,9 @@ View application:   https://weather-py-xxxxxxxx.fermyon.app/
 
 See [`examples/`](./examples/) for complete working servers implementing tools capabilities. Each example provides a transparent implementation that uses WIT bindings directly as the SDK.
 
-```python
-# Python example using direct WIT bindings
-class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
-    """Direct implementation of the MCP capabilities interfaces."""
-    
-    def handle_initialize(self, request: InitializeRequest) -> InitializeResponse:
-        return InitializeResponse(
-            protocol_version="v20250618",
-            capabilities=ServerCapabilities(tools=ToolsCapability()),
-            server_info=ImplementationInfo(
-                name="weather-py",
-                version="0.1.0",
-                title="weather-py Server"
-            ),
-            instructions="A Python MCP server providing weather tools"
-        )
-    
-    def handle_call_tool(self, request: CallToolRequest) -> ToolResult:
-        if request.name == "echo":
-            args = json.loads(request.arguments or "{}")
-            return text_result(f"Echo: {args.get('message', '')}")
-        # ... other tools
-```
-
 ## WIT
 
-The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/design/wit.html)) package in [`wit/`](./wit/) aims to capture a complete representation of the MCP specification. It currently reflects the 2025-06-18 version of the spec, with some additional elements from the latest draft.
+The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/design/wit.html)) package in [`wit/`](./wit/) aims to capture useful subset of the MCP specification. It currently reflects the 2025-06-18 version of the spec, with some additional elements from the latest draft.
 
 The WIT package is published as Wasm at https://github.com/orgs/wasmcp/packages/container/package/mcp. It can be fetched with `wkg wit fetch` when included as a dependency in a component's world:
 

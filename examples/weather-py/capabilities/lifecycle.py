@@ -31,11 +31,11 @@ class Lifecycle:
             server_info=lifecycle_types.Implementation(
                 name="weather-py",
                 version="0.1.0",
-                title="Weather Python Provider",
+                title="weather-py Provider",
                 icons=None,
                 website_url=None
             ),
-            instructions="A Python MCP server providing weather tools"
+            instructions="An MCP server written in Python"
         )
 
     def client_initialized(self) -> None:

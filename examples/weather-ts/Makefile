@@ -1,7 +1,7 @@
 .PHONY: build build-auth test clean run run-auth help
 
 # Component paths
-PROVIDER_WASM = weather-ts_provider.wasm
+PROVIDER_WASM = weather-ts-provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport

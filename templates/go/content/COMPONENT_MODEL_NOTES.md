@@ -4,7 +4,7 @@ This document explains the technical constraints and patterns in the weather-go 
 
 ## Key Terminology
 
-- **Wasm** - WebAssembly (not "WASM")
+- **Wasm** - WebAssembly
 - **Component Model** - Architecture for interoperable Wasm modules
 - **WIT** - WebAssembly Interface Types, the IDL for components
 - **Canonical ABI** - Defines how types are represented at the binary level
