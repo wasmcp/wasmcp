@@ -124,7 +124,7 @@ A provider with I/O, directly for outbound HTTP or indirectly via composition wi
 
 The [`components/`](./components/) directory contains published components that are useful for composing MCP servers.
 
-The HTTP transport component is published and publicly available at https://github.com/orgs/wasmcp/packages/container/package/mcp-transport-http-tools via `wasmcp:mcp-transport-http-tools@0.1.0`. This transport provides:
+The HTTP transport component is published and publicly available at https://github.com/orgs/wasmcp/packages/container/package/mcp-transport-http-tools as `wasmcp:mcp-transport-http-tools`. This transport provides:
 - JSON-RPC over HTTP
 - Built-in OAuth 2.0 authorization support
 - JWKS caching capabilities
