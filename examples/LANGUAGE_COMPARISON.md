@@ -30,29 +30,32 @@ A technical comparison of how Go, Python, and Rust integrate with the WebAssembl
 
 | Language | Pattern | Integration |
 |----------|---------|-------------|
-| **Rust** | `spin_sdk::http::run(async { ... })` | Natural async/await |
-| **Python** | `PollLoop().run_until_complete(...)` | Bridge pattern |
+| **TypeScript** | Native `async/await` with `fetch()` | Transparent async bridge |
+| **Rust** | `spin_sdk::http::run(async { ... })` | Runtime wrapper needed |
+| **Python** | `PollLoop().run_until_complete(...)` | Explicit bridge pattern |
 | **Go** | `http.Get()` via transport override | Synchronous only |
 
 ### Concurrent Requests
 
 | Language | Implementation | Why Different? |
 |----------|----------------|----------------|
-| **Rust** | `join_all(futures).await` | Native async works in Wasm |
+| **TypeScript** | `Promise.all([...])` | Native JavaScript concurrency |
+| **Rust** | `join_all(futures).await` | Futures work in Wasm |
 | **Python** | `asyncio.gather(*tasks)` | PollLoop handles concurrency |
 | **Go** | `wasihttp.RequestsConcurrently()` | Special function needed due to single-threaded Wasm |
 
-**Winner: Rust** - Most natural async story
+**Winner: TypeScript** - Most natural async story with jco's transparent bridge
 
 ## Build Tooling
 
 | Language | Tool | Complexity |
 |----------|------|------------|
 | **Rust** | `cargo-component` | Simple, integrated with cargo |
+| **TypeScript** | `jco` | Simple, good npm integration |
 | **Python** | `componentize-py` | Moderate, requires pyright setup |
 | **Go** | `wit-bindgen-go` + TinyGo | Complex, multiple tools needed |
 
-**Winner: Rust** - Best tooling integration
+**Winner: Rust/TypeScript tie** - Both have excellent tooling
 
 ## Generated Code
 

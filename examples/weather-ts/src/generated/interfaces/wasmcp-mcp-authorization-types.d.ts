@@ -1,8 +1,8 @@
-/** @module Interface wasmcp:mcp/authorization-types@0.1.0 **/
-export type MetaFields = import('./wasmcp-mcp-types.js').MetaFields;
+/** @module Interface wasmcp:mcp/authorization-types@0.2.0-alpha.27 **/
+export type MetaFields = import('./wasmcp-mcp-mcp-types.js').MetaFields;
 /**
  * Provider declares its authorization requirements
- * This is returned by core-capabilities::get-auth-config()
+ * This is returned by get-auth-config()
  * and used by the transport to enforce authorization
  */
 export interface ProviderAuthConfig {
@@ -19,7 +19,15 @@ export interface ProviderAuthConfig {
    */
   jwksUri: string,
   /**
-   * Optional Rego policy for authorization
+   * Pass raw JWT token to tools via "jwt.token" meta field.
+   */
+  passJwt: boolean,
+  /**
+   * Expected JWT subject - if set, only this exact subject is allowed
+   */
+  expectedSubject?: string,
+  /**
+   * Optional Rego policy for complex authorization rules
    */
   policy?: string,
   /**
@@ -36,115 +44,39 @@ export interface AuthContext {
    */
   clientId?: string,
   /**
-   * Subject (user ID) from the token
+   * Subject claim from the token - always present from validated JWT
    */
-  userId?: string,
+  sub: string,
   /**
    * OAuth scopes granted to this token
    */
   scopes: Array<string>,
   /**
-   * Token issuer URL
+   * Issuer claim from the token - always present from validated JWT
    */
-  issuer?: string,
+  iss: string,
   /**
-   * Audience claim from token
+   * Audience claim from token (aud) - always validated, can be multiple values
    */
-  audience?: string,
+  aud: Array<string>,
   /**
    * Additional claims from token as key-value pairs
    */
   claims: MetaFields,
   /**
-   * Expiration timestamp (Unix seconds)
+   * Expiration timestamp (Unix seconds) - always validated and required for security
    */
-  exp?: bigint,
+  exp: bigint,
   /**
    * Issued at timestamp (Unix seconds)
    */
   iat?: bigint,
-}
-/**
- * Authorization request containing all context needed for authorization decisions
- */
-export interface AuthRequest {
   /**
-   * Bearer token extracted from Authorization header
+   * Not before timestamp (Unix seconds)
    */
-  token: string,
+  nbf?: bigint,
   /**
-   * HTTP method (GET, POST, etc.)
+   * Raw JWT iff enabled by pass-jwt flag in provider-auth-config
    */
-  method: string,
-  /**
-   * Request path
-   */
-  path: string,
-  /**
-   * Request headers as key-value pairs
-   */
-  headers: Array<[string, string]>,
-  /**
-   * Request body for policy evaluation (e.g., MCP JSON-RPC payload)
-   */
-  body?: Uint8Array,
-  /**
-   * Expected issuer for validation
-   */
-  expectedIssuer: string,
-  /**
-   * Expected audiences for validation (token must match at least one)
-   */
-  expectedAudiences: Array<string>,
-  /**
-   * JWKS URI for key discovery
-   */
-  jwksUri: string,
-  /**
-   * Optional Rego policy to evaluate (if not provided, allows all authenticated requests)
-   */
-  policy?: string,
-  /**
-   * Optional data for policy evaluation (JSON string)
-   */
-  policyData?: string,
-}
-/**
- * Authorization error details
- */
-export interface AuthError {
-  /**
-   * HTTP status code (401, 403, etc.)
-   */
-  status: number,
-  /**
-   * OAuth error code (invalid_token, insufficient_scope, etc.)
-   */
-  errorCode: string,
-  /**
-   * Human-readable error description
-   */
-  description: string,
-  /**
-   * WWW-Authenticate header value for 401 responses
-   */
-  wwwAuthenticate?: string,
-}
-/**
- * Authorization response
- */
-export type AuthResponse = AuthResponseAuthorized | AuthResponseUnauthorized;
-/**
- * Request is authorized with context
- */
-export interface AuthResponseAuthorized {
-  tag: 'authorized',
-  val: AuthContext,
-}
-/**
- * Request is unauthorized with error details
- */
-export interface AuthResponseUnauthorized {
-  tag: 'unauthorized',
-  val: AuthError,
+  jwt?: string,
 }

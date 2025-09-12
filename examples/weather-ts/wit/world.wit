@@ -1,8 +1,9 @@
 package weather-ts:provider;
 
-/// MCP tools for weather-ts
+/// MCP provider for weather-ts
 world weather-ts {
     import wasi:http/outgoing-handler@0.2.3;
-    export wasmcp:mcp/core-capabilities@0.1.0;
-    export wasmcp:mcp/tools-capabilities@0.1.0;
+    export wasmcp:mcp/lifecycle@0.2.0-alpha.27;
+    export wasmcp:mcp/authorization@0.2.0-alpha.27;
+    export wasmcp:mcp/tools@0.2.0-alpha.27;
 }
