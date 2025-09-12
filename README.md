@@ -20,7 +20,6 @@ cd examples/weather-py    # Python
 cd examples/weather-go    # Go
 cd examples/weather-rs    # Rust
 cd examples/weather-ts    # TypeScript
-cd examples/weather-js    # JavaScript
 ```
 
 Ensure build dependencies are set up. The [examples/](./examples/) depend only on [wkg](https://github.com/bytecodealliance/wasm-pkg-tools) (for WIT package management), [wac](https://github.com/bytecodealliance/wac) (for component composition), and the standard toolchain of your chosen source language. Run setup to check and install these tools:
@@ -82,7 +81,6 @@ spin new -t wasmcp-python my-mcp-server    # Python
 spin new -t wasmcp-go my-mcp-server         # Go
 spin new -t wasmcp-rust my-mcp-server       # Rust
 spin new -t wasmcp-typescript my-mcp-server # TypeScript
-spin new -t wasmcp-javascript my-mcp-server # JavaScript
 ```
 
 The resulting structure will include a `spin.toml` file that you can use for composing, running, and deploying components.
@@ -99,45 +97,22 @@ View application:   https://weather-py-xxxxxxxx.fermyon.app/
 
 See [`examples/`](./examples/) for complete working servers implementing tools capabilities. Each example provides a transparent implementation that uses WIT bindings directly as the SDK.
 
-```python
-# Python example using direct WIT bindings
-class WeatherMCPCapabilities(ToolsCapabilities, CoreCapabilities):
-    """Direct implementation of the MCP capabilities interfaces."""
-    
-    def handle_initialize(self, request: InitializeRequest) -> InitializeResponse:
-        return InitializeResponse(
-            protocol_version="v20250618",
-            capabilities=ServerCapabilities(tools=ToolsCapability()),
-            server_info=ImplementationInfo(
-                name="weather-py",
-                version="0.1.0",
-                title="weather-py Server"
-            ),
-            instructions="A Python MCP server providing weather tools"
-        )
-    
-    def handle_call_tool(self, request: CallToolRequest) -> ToolResult:
-        if request.name == "echo":
-            args = json.loads(request.arguments or "{}")
-            return text_result(f"Echo: {args.get('message', '')}")
-        # ... other tools
-```
-
 ## WIT
 
-The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/design/wit.html)) package in [`wit/`](./wit/) aims to capture a complete representation of the MCP specification. It currently reflects the 2025-06-18 version of the spec, with some additional elements from the latest draft.
+The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/design/wit.html)) package in [`wit/`](./wit/) aims to capture useful subset of the MCP specification. It currently reflects the 2025-06-18 version of the spec, with some additional elements from the latest draft.
 
 The WIT package is published as Wasm at https://github.com/orgs/wasmcp/packages/container/package/mcp. It can be fetched with `wkg wit fetch` when included as a dependency in a component's world:
 
 ```wit
 // world.wit
-package weather-js:provider;
+package weather-ts:provider;
 
-// MCP tools for a JavaScript provider
-world weather-js {
+/// MCP provider for weather-ts
+world weather-ts {
     import wasi:http/outgoing-handler@0.2.3;
-    export wasmcp:mcp/core-capabilities@0.1.0;
-    export wasmcp:mcp/tools-capabilities@0.1.0;
+    export wasmcp:mcp/lifecycle@0.2.0;
+    export wasmcp:mcp/authorization@0.2.0;
+    export wasmcp:mcp/tools@0.2.0;
 }
 ```
 

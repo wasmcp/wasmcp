@@ -1,4 +1,4 @@
-# {{project-name}}
+# {{project-name | kebab_case}}
 
 {{project-description}}
 
@@ -16,7 +16,7 @@ This implementation uses WIT bindings directly as the SDK, providing transparent
 
 Components composed at build time:
 - Provider component (this code) - exports MCP capabilities
-- HTTP transport v0.4.1 (from registry) - handles JSON-RPC over HTTP
+- HTTP transport v0.2.0 (from registry) - handles JSON-RPC over HTTP
 - Optional OAuth 2.0 authorization
 
 ## Example Tools
@@ -32,42 +32,67 @@ This server implements three demonstration tools:
 ### Prerequisites
 
 - Rust 1.89+
-- cargo-component
-- wac
-- wkg
+- cargo-component 0.18.0+
+- wac (WebAssembly Composition)
+- wkg (WebAssembly package manager)
 
 ### Project Structure
 
 ```
-src/lib.rs       # MCP capabilities implementation
-wit/             # WIT interface definitions (wasmcp:mcp@0.1.0)
-Cargo.toml       # Dependencies and component metadata
-Makefile         # Build automation
+src/
+├── lib.rs           # Component entry point and exports
+├── authorization.rs # OAuth 2.0 configuration
+├── lifecycle.rs     # Server initialization and lifecycle
+├── tools.rs         # Tool implementations
+└── bindings.rs      # Generated WIT bindings (auto-generated)
+wit/                 # WIT interface definitions (wasmcp:mcp@0.2.0)
+Cargo.toml           # Dependencies and component metadata
+Makefile             # Build automation
+setup.sh             # Initial setup script
 ```
 
 ### Implementing Tools
 
-Tools are handled directly in the `handle_call_tool` function:
+Tools are implemented in `src/tools.rs` using the Guest trait:
 
 ```rust
-fn handle_call_tool(request: CallToolRequest) -> Result<ToolResult, McpError> {
-    match request.name.as_str() {
-        "echo" => spin_sdk::http::run(async move { 
-            handle_echo(request.arguments).await 
-        }),
-        "get_weather" => spin_sdk::http::run(async move { 
-            handle_get_weather(request.arguments).await 
-        }),
-        _ => Err(McpError::ToolNotFound),
+impl ToolsGuest for Component {
+    fn list_tools(_request: ListToolsRequest) -> Result<ListToolsResult, McpError> {
+        Ok(ListToolsResult {
+            tools: vec![
+                Tool {
+                    name: "get_weather".to_string(),
+                    title: Some("get_weather".to_string()),
+                    description: Some("Get current weather for a location".to_string()),
+                    input_schema: Some(serde_json::json!({
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "string",
+                                "description": "City name to get weather for"
+                            }
+                        },
+                        "required": ["location"]
+                    }).to_string()),
+                    icons: None,
+                },
+            ],
+            next_cursor: None,
+        })
     }
-}
 
-async fn handle_get_weather(args: Option<String>) -> Result<ToolResult, McpError> {
-    let params: WeatherParams = serde_json::from_str(&args.unwrap_or_default())?;
-    
-    // Fetch weather data
-    let weather = fetch_weather(&params.location).await?;
-    Ok(text_result(&weather))
+    fn call_tool(request: CallToolRequest, _context: Option<AuthContext>) -> Result<CallToolResult, McpError> {
+        match request.name.as_str() {
+            "get_weather" => {
+                spin_sdk::http::run(async move { handle_get_weather(request.arguments).await })
+            }
+            _ => Err(McpError {
+                code: ErrorCode::MethodNotFound,
+                message: format!("Unknown tool: {}", request.name),
+                data: None,
+            }),
+        }
+    }
 }
 ```
 
@@ -75,8 +100,11 @@ async fn handle_get_weather(args: Option<String>) -> Result<ToolResult, McpError
 
 ```bash
 make test-all        # Run all tests
-make test-weather    # Test weather tool
-make test-multi      # Test concurrent fetching
+make test-init       # Test initialization
+make test-tools      # Test tools/list
+make test-echo       # Test echo tool
+make test-weather    # Test get_weather tool
+make test-multi      # Test multi_weather tool
 ```
 
 ## Concurrency
@@ -84,16 +112,27 @@ make test-multi      # Test concurrent fetching
 Rust's Wasm environment uses `spin_sdk::http::run()` for async operations. Example from the multi-weather implementation:
 
 ```rust
-async fn handle_multi_weather(args: Option<String>) -> Result<ToolResult, McpError> {
-    let params: MultiWeatherParams = serde_json::from_str(&args.unwrap_or_default())?;
+async fn handle_multi_weather(args: Option<String>) -> Result<CallToolResult, McpError> {
+    let args: MultiWeatherArgs = parse_args(args.as_ref())?;
     
     // Concurrent HTTP requests using futures
-    let futures = params.cities.iter().map(|city| fetch_weather(city));
-    let results = futures::future::join_all(futures).await;
+    let futures = args.cities.iter().map(|city| {
+        let city = city.clone();
+        async move {
+            match get_weather_for_city(&city).await {
+                Ok(weather) => format!("{weather}\n"),
+                Err(e) => format!("Error fetching weather for {city}: {e}\n"),
+            }
+        }
+    });
     
-    // Format results
-    let output = format_weather_results(results);
-    Ok(text_result(&output))
+    let results = futures::future::join_all(futures).await;
+    let mut output = String::from("=== Weather Results ===\n\n");
+    for result in results {
+        output.push_str(&result);
+    }
+    
+    Ok(text_result(output))
 }
 ```
 

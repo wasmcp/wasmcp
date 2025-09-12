@@ -1,5 +1,5 @@
-# Go build artifacts
-*.wasm
+# Build artifacts
+build/
 internal/
 
 # Temporary files

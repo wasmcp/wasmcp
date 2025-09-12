@@ -1,121 +1,199 @@
-package wasmcp:mcp@0.1.0;
+/// Model Context Protocol (MCP) is an open protocol that enables seamless integration between LLM applications and external data sources and tools.
+/// https://modelcontextprotocol.io/specification/2025-06-18
+package wasmcp:mcp@0.2.0;
 
-/// World definitions for MCP transports and capabilities
-/// 
-/// This file defines paired worlds for different capability combinations:
-/// - Each transport world has a corresponding provider world
-/// - Transports import the capabilities they support
-/// - Providers export the capabilities they implement
-/// - This allows providers to only implement what they need
+/// Core type definitions for the Model Context Protocol, shared by other interfaces.
+interface mcp-types {
+    /// Role in a conversation
+    enum role {
+        user,
+        assistant,
+    }
 
-// === TOOLS ONLY ===
+    /// JSON value as a string
+    /// This is a JSON-encoded value that should be parsed/validated by implementations
+    type json-value = string;
 
-/// Minimal transport with just tools
-world tools-transport {
-    // Core types always needed
-    import types;
-    import core-types;
-    import notification-types;
+    /// JSON object as a string
+    /// This is a JSON-encoded object that should be parsed/validated by implementations
+    type json-object = string;
+
+    /// JSON Schema as a string
+    /// This is a JSON Schema document that defines structure and validation rules
+    type json-schema = string;
+
+    /// Metadata fields for extensibility
+    /// Key-value pairs where values are JSON-encoded strings
+    type meta-fields = list<tuple<string, string>>;
+
+    /// Icon specification for visual representation
+    record icon {
+        /// A standard URI pointing to an icon resource
+        src: string,
+        /// Optional override if the server's MIME type is missing or generic
+        mime-type: option<string>,
+        /// Size specification (e.g., "48x48", "any" for SVG, or "48x48 96x96")
+        sizes: option<string>,
+    }
     
-    // Core capabilities for session management (includes optional auth config)
-    import core-capabilities;
+    /// Annotations provide hints to clients about how to handle data
+    record annotations {
+        /// Who this data is intended for
+        audience: option<list<role>>,
+        /// Priority from 0.0 (least) to 1.0 (most important)
+        /// Implementations SHOULD validate this is within [0.0, 1.0] range
+        priority: option<f64>,
+        /// ISO 8601 timestamp of last modification
+        /// Format: YYYY-MM-DDTHH:mm:ss[.sss]Z or ±HH:MM offset
+        last-modified: option<string>,
+    }
+
+
+    /// Content block types that can be included in messages
+    variant content-block {
+        text(text-content),
+        image(image-content),
+        audio(audio-content),
+        %resource(embedded-resource),
+        resource-link(raw-resource),
+    }
+
+    /// Text content with optional annotations
+    record text-content {
+        text: string,
+        /// Optional protocol-level metadata for this content block
+        meta: option<json-object>,
+        annotations: option<annotations>,
+    }
+
+    /// Image content as base64-encoded string
+    record image-content {
+        /// Base64-encoded image data
+        data: string,
+        /// MIME type (e.g., "image/png", "image/jpeg")
+        mime-type: string,
+        /// Optional protocol-level metadata for this content block
+        meta: option<json-object>,
+        annotations: option<annotations>,
+    }
+
+    /// Audio content as base64-encoded string
+    record audio-content {
+        /// Base64-encoded audio data
+        data: string,
+        /// MIME type (e.g., "audio/wav", "audio/mp3")
+        mime-type: string,
+        annotations: option<annotations>,
+    }
+
+    /// Embedded resource content
+    record embedded-resource {
+        /// Optional protocol-level metadata for this content block
+        meta: option<json-object>,
+        /// The actual resource contents
+        %resource: resource-contents,
+        annotations: option<annotations>,
+    }
+
+    /// Raw resource representation (for resource links)
+    record raw-resource {
+        /// URI representing the resource location
+        uri: string,
+        /// Name of the resource
+        name: string,
+        /// Human-readable title of the resource
+        title: option<string>,
+        /// Optional description of the resource
+        description: option<string>,
+        /// MIME type of the resource content
+        mime-type: option<string>,
+        /// Size in bytes (before encoding), if known
+        size: option<u32>,
+        /// Optional list of icons for the resource
+        icons: option<list<icon>>,
+    }
+
+    /// Resource contents can be either text or binary
+    variant resource-contents {
+        text(text-resource-contents),
+        blob(blob-resource-contents),
+    }
+
+    record text-resource-contents {
+        uri: string,
+        mime-type: option<string>,
+        text: string,
+        meta: option<json-object>,
+    }
+
+    record blob-resource-contents {
+        uri: string,
+        mime-type: option<string>,
+        /// Base64-encoded binary data
+        blob: string,
+        meta: option<json-object>,
+    }
+
+    /// Standard JSON-RPC and MCP error codes
+    variant error-code {
+        /// JSON-RPC standard errors
+        parse-error,           // -32700
+        invalid-request,       // -32600
+        method-not-found,      // -32601
+        invalid-params,        // -32602
+        internal-error,        // -32603
+        /// MCP-specific errors
+        resource-not-found,
+        tool-not-found,
+        prompt-not-found,
+        unauthorized,
+        rate-limited,
+        timeout,
+        cancelled,
+        /// Custom error with specific code
+        custom-code(s32),
+    }
+
+    /// Standard error structure
+    record mcp-error {
+        code: error-code,
+        message: string,
+        /// Additional error context (JSON-encoded)
+        data: option<string>,
+    }
+
+    /// Progress token for tracking long-running operations
+    type progress-token = string;
     
-    // Tool-specific types and capabilities
-    import tool-types;
-    import tools-capabilities;
-}
-
-world tools-provider {
-    export core-capabilities;
-    export tools-capabilities;
-}
-
-// === TOOLS + RESOURCES ===
-
-/// Transport with tools and resources
-world tools-resources-transport {
-    // Core types always needed
-    import types;
-    import core-types;
-    import notification-types;
+    /// JSON-RPC request ID
+    /// Can be either a string or number in JSON-RPC
+    variant request-id {
+        str(string),
+        num(s64),
+    }
     
-    // Core capabilities for session management (includes optional auth config)
-    import core-capabilities;
+    /// Message role for LLM interactions
+    enum message-role {
+        user,
+        assistant,
+        system,
+    }
     
-    // Feature-specific types and capabilities
-    import tool-types;
-    import tools-capabilities;
-    import resource-types;
-    import resources-capabilities;
-}
-
-world tools-resources-provider {
-    export core-capabilities;
-    export tools-capabilities;
-    export resources-capabilities;
-}
-
-// === TOOLS + RESOURCES + PROMPTS ===
-
-world tools-resources-prompts-transport {
-    // Core types always needed
-    import types;
-    import core-types;
-    import notification-types;
+    /// Model selection preferences for LLM sampling
+    record model-preferences {
+        /// Hints for model selection
+        hints: option<list<model-hint>>,
+        /// Priority for cost optimization (0.0-1.0)
+        cost-priority: option<f64>,
+        /// Priority for speed (0.0-1.0)
+        speed-priority: option<f64>,
+        /// Priority for intelligence/capability (0.0-1.0)
+        intelligence-priority: option<f64>,
+    }
     
-    // Core capabilities for session management (includes optional auth config)
-    import core-capabilities;
-    
-    // Feature-specific types and capabilities
-    import tool-types;
-    import tools-capabilities;
-    import resource-types;
-    import resources-capabilities;
-    import prompt-types;
-    import prompts-capabilities;
-}
-
-world tools-resources-prompts-provider {
-    export core-capabilities;
-    export tools-capabilities;
-    export resources-capabilities;
-    export prompts-capabilities;
-}
-
-// === FULL CAPABILITIES ===
-
-/// Full transport with all server capabilities
-world full-transport {
-    // Core types always needed
-    import types;
-    import core-types;
-    import notification-types;
-    
-    // Core capabilities for session management (includes optional auth config)
-    import core-capabilities;
-    
-    // Server capability types
-    import tool-types;
-    import resource-types;
-    import prompt-types;
-    import completion-types;
-    
-    // Client capability types (for protocol marshaling only)
-    import sampling-types;
-    import elicitation-types;
-    import roots-types;
-    
-    // Import server capabilities
-    import tools-capabilities;
-    import resources-capabilities;
-    import prompts-capabilities;
-    import completion-capabilities;
-}
-
-world full-provider {
-    export core-capabilities;
-    export tools-capabilities;
-    export resources-capabilities;
-    export prompts-capabilities;
-    export completion-capabilities;
+    /// Hint for model selection
+    record model-hint {
+        /// Name pattern to match (e.g., "claude", "gpt-4")
+        name: option<string>,
+    }
 }

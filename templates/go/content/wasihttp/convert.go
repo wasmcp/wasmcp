@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"go.bytecodealliance.org/cm"
-	"{{project-name | snake_case}}/internal/wasi/http/types"
+	"weather_go/internal/wasi/http/types"
 )
 
 // toWASIRequest converts an http.Request to a WASI OutgoingRequest

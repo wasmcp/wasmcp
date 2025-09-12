@@ -1,11 +1,11 @@
 .PHONY: build build-auth test clean run run-auth help
 
 # Component paths
-PROVIDER_WASM = {{project-name}}_provider.wasm
+PROVIDER_WASM = {{project-name | kebab_case}}-provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport
-TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.1.0
+TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.2.0
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -28,7 +28,7 @@ build: ## Build and compose everything into mcp-http-server.wasm
 	@echo "Bundling TypeScript..."
 	@npm run bundle
 	@echo "Building provider component..."
-	@npx jco componentize bundled.js --wit wit --world-name {{project-name}} --out $(PROVIDER_WASM)
+	@npx jco componentize bundled.js --wit wit --world-name {{project-name | kebab_case}} --aot-min-stack-size-bytes 8388608 --out $(PROVIDER_WASM)
 	@echo "Downloading transport from registry..."
 	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
 	@echo "Plugging provider into transport..."
@@ -50,7 +50,7 @@ run: build ## Build and run
 serve: ## Serve already built mcp-http-server.wasm
 	@if command -v wasmtime >/dev/null 2>&1; then \
 		echo "Starting server with wasmtime..."; \
-		wasmtime serve -Scli mcp-http-server.wasm; \
+		wasmtime serve -Scli -Wmax-memory-size=104857600 mcp-http-server.wasm; \
 	elif command -v spin >/dev/null 2>&1; then \
 		echo "Starting server with spin..."; \
 		spin up --from mcp-http-server.wasm; \

@@ -1,0 +1,126 @@
+/// A lifecycle for client-server connections that ensures proper capability negotiation and state management.
+/// Initialization: Capability negotiation and protocol version agreement
+/// Operation: Normal protocol communication
+/// Shutdown: Graceful termination of the connection
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle
+interface lifecycle {
+    use mcp-types.{mcp-error};
+    use lifecycle-types.{initialize-request, initialize-result};
+    
+    /// Handle session initialization
+    /// Implementations should declare their capabilities here
+    initialize: func(request: initialize-request) -> result<initialize-result, mcp-error>;
+
+    /// Handle initialization complete notification
+    client-initialized: func() -> result<_, mcp-error>;
+
+    /// Handle shutdown request
+    shutdown: func() -> result<_, mcp-error>;
+}
+
+/// Type definitions for the MCP lifecycle
+interface lifecycle-types {
+    use mcp-types.{meta-fields, json-object, icon};
+
+    /// Protocol version string
+    /// Common values: "2024-11-05", "2025-03-26", "2025-06-18"
+    type protocol-version = string;
+
+    /// Information about an MCP implementation
+    record implementation {
+        /// Implementation name (e.g., "weather-server")
+        name: string,
+        /// Optional human-readable title
+        title: option<string>,
+        /// Implementation version (e.g., "1.0.0")
+        version: string,
+        /// Optional website URL for more information
+        website-url: option<string>,
+        /// Optional list of icons for the implementation
+        icons: option<list<icon>>,
+    }
+
+
+    /// Root listing capability details
+    record roots-capability {
+        /// Server will notify when roots list changes
+        list-changed: option<bool>,
+    }
+
+    /// Prompts capability details
+    record prompts-capability {
+        /// Server will notify when prompts list changes
+        list-changed: option<bool>,
+    }
+
+    /// Resources capability details
+    record resources-capability {
+        /// Server supports resource subscriptions
+        subscribe: option<bool>,
+        /// Server will notify when resource list changes
+        list-changed: option<bool>,
+    }
+
+    /// Tools capability details
+    record tools-capability {
+        /// Server will notify when tools list changes
+        list-changed: option<bool>,
+    }
+
+    /// Elicitation capability details
+    record elicitation-capability {
+        /// Whether the client supports JSON Schema validation
+        schema-validation: option<bool>,
+    }
+
+    /// Capabilities that a client supports
+    record client-capabilities {
+        /// Experimental/custom capabilities as JSON objects
+        experimental: option<json-object>,
+        /// Support for roots (directory access)
+        roots: option<roots-capability>,
+        /// Support for LLM sampling (empty object when enabled)
+        sampling: option<json-object>,
+        /// Support for user elicitation
+        elicitation: option<elicitation-capability>,
+    }
+
+    /// Capabilities that a server provides
+    record server-capabilities {
+        /// Experimental/custom capabilities as JSON objects
+        experimental: option<json-object>,
+        /// Server can send log messages (empty object when enabled)
+        logging: option<json-object>,
+        /// Server supports argument autocompletion (empty object when enabled)
+        completions: option<json-object>,
+        /// Server offers prompts
+        prompts: option<prompts-capability>,
+        /// Server offers resources
+        resources: option<resources-capability>,
+        /// Server offers tools
+        tools: option<tools-capability>,
+    }
+
+    /// Initialize request sent by client on connection
+    record initialize-request {
+        /// Protocol version the client supports
+        protocol-version: protocol-version,
+        /// Client's capabilities
+        capabilities: client-capabilities,
+        /// Client implementation details
+        client-info: implementation,
+    }
+
+    /// Initialize response from server
+    record initialize-result {
+        /// Protocol version the server supports
+        protocol-version: protocol-version,
+        /// Server's capabilities
+        capabilities: server-capabilities,
+        /// Server implementation details
+        server-info: implementation,
+        /// Optional instructions for using the server
+        instructions: option<string>,
+    }
+}

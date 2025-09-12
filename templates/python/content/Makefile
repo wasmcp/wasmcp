@@ -1,11 +1,14 @@
 .PHONY: build test clean run help setup
 
+# Build directory
+BUILD_DIR = build
+
 # Component paths
-PROVIDER_WASM = {{project-name | snake_case}}_provider.wasm
-MCP_SERVER_WASM = mcp-http-server.wasm
+PROVIDER_WASM = $(BUILD_DIR)/{{project-name | kebab_case}}-provider.wasm
+MCP_SERVER_WASM = $(BUILD_DIR)/mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport
-TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.1.0
+TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.2.0
 
 # Python virtual environment
 VENV = venv
@@ -30,7 +33,8 @@ $(VENV): ## Create virtual environment
 	@$(PIP) install -r requirements.txt --quiet
 	@echo "✅ Virtual environment ready"
 
-build: $(VENV) ## Build and compose everything into mcp-http-server.wasm
+build: $(VENV) ## Build and compose everything into build/mcp-http-server.wasm
+	@mkdir -p $(BUILD_DIR)
 	@echo "Updating WIT dependencies..."
 	@rm -rf wit/deps
 	@wkg wit fetch
@@ -40,6 +44,8 @@ build: $(VENV) ## Build and compose everything into mcp-http-server.wasm
 		--wit-path wit \
 		--world {{project-name | kebab_case}} \
 		bindings .
+	@echo "Type checking implementation..."
+	@$(VENV)/bin/pyright
 	@echo "Building provider component..."
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
@@ -49,24 +55,28 @@ build: $(VENV) ## Build and compose everything into mcp-http-server.wasm
 		app \
 		-o $(PROVIDER_WASM)
 	@echo "Downloading transport from registry..."
-	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
+	@wkg get $(TRANSPORT_PKG) -o $(BUILD_DIR)/.transport-tmp.wasm
 	@echo "Composing components..."
-	@wac plug --plug $(PROVIDER_WASM) .transport-tmp.wasm -o $(MCP_SERVER_WASM)
-	@rm -f .transport-tmp.wasm
-	@echo "✅ Created mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
+	@wac plug --plug $(PROVIDER_WASM) $(BUILD_DIR)/.transport-tmp.wasm -o $(MCP_SERVER_WASM)
+	@rm -f $(BUILD_DIR)/.transport-tmp.wasm
+	@echo "✅ Created $(MCP_SERVER_WASM) ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
 
 clean: ## Clean build artifacts
-	rm -f $(PROVIDER_WASM) $(MCP_SERVER_WASM) .transport-tmp.wasm
-	rm -rf wit_world __pycache__
+	rm -rf $(BUILD_DIR) wit_world
+	rm -rf __pycache__ capabilities/__pycache__
 	rm -rf $(VENV)
 
-serve: ## Serve already built mcp-http-server.wasm
+serve: ## Serve already built build/mcp-http-server.wasm
+	@if [ ! -f $(MCP_SERVER_WASM) ]; then \
+		echo "Error: $(MCP_SERVER_WASM) not found. Run 'make build' first."; \
+		exit 1; \
+	fi
 	@if command -v wasmtime >/dev/null 2>&1; then \
 		echo "Starting server with wasmtime..."; \
-		wasmtime serve -Scli mcp-http-server.wasm; \
+		wasmtime serve -Scli $(MCP_SERVER_WASM); \
 	elif command -v spin >/dev/null 2>&1; then \
 		echo "Starting server with spin..."; \
-		spin up --from mcp-http-server.wasm; \
+		spin up --from $(MCP_SERVER_WASM); \
 	else \
 		echo "Error: No compatible runtime found. Please install wasmtime or spin."; \
 		echo "  Install wasmtime: curl https://wasmtime.dev/install.sh -sSf | bash"; \

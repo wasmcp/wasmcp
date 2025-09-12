@@ -1,93 +1,88 @@
-/// Tool types and capabilities for MCP
+/// Tools enable models to interact with external systems, such as querying databases, calling APIs, or performing computations.
+/// Each tool is uniquely identified by a name and includes metadata describing its schema.
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+interface tools {
+    use mcp-types.{mcp-error};
+    use authorization-types.{auth-context};
+    use tools-types.{list-tools-request, list-tools-result, call-tool-request, call-tool-result};
+    
+    /// List available tools
+    list-tools: func(request: list-tools-request) -> result<list-tools-result, mcp-error>;
+    
+    /// Execute a tool
+    call-tool: func(request: call-tool-request, context: option<auth-context>) -> result<call-tool-result, mcp-error>;
+}
+
 
 /// Type definitions for tools
-interface tool-types {
-    use types.{content-block, json-value, json-schema, base-metadata, meta-fields, cursor, progress-token};
+interface tools-types {
+    use mcp-types.{content-block, json-value, json-object, icon};
+    use authorization-types.{auth-context};
 
     /// Behavioral hints about tool operations
     record tool-annotations {
         /// Human-readable title for display
         title: option<string>,
-        /// Tool does not modify environment
+        /// Tool does not modify environment (default: false)
         read-only-hint: option<bool>,
-        /// Tool may perform destructive updates (meaningful when not read-only)
+        /// Tool may perform destructive updates (default: true)
         destructive-hint: option<bool>,
-        /// Repeated calls with same args have no additional effect
+        /// Repeated calls with same args have no additional effect (default: false)
         idempotent-hint: option<bool>,
-        /// Tool interacts with external entities
+        /// Tool interacts with external entities (default: true)
         open-world-hint: option<bool>,
     }
 
     /// Tool definition with metadata and schema
     record tool {
-        /// Base metadata (name and optional title)
-        base: base-metadata,
+        /// The name of the tool
+        name: string,
+        /// A human-readable title for the tool
+        title: option<string>,
         /// Human-readable description of what the tool does
         description: option<string>,
-        /// JSON Schema for input parameters
-        input-schema: json-schema,
-        /// Optional schema for structured output
-        output-schema: option<json-schema>,
+        /// JSON Schema object for input parameters
+        input-schema: json-object,
+        /// Optional JSON Schema object for structured output
+        output-schema: option<json-object>,
         /// Behavioral hints for clients
         annotations: option<tool-annotations>,
-        /// Extension metadata
-        meta: option<meta-fields>,
-    }
-
-    /// Result from executing a tool
-    record tool-result {
-        /// Unstructured content blocks (text, images, etc.)
-        content: list<content-block>,
-        /// Optional structured JSON output
-        structured-content: option<json-value>,
-        /// Whether the tool execution resulted in an error
-        /// If true, content should contain error details
-        is-error: option<bool>,
-        /// Extension metadata
-        meta: option<meta-fields>,
-    }
-
-    /// Request to list available tools
-    record list-tools-request {
-        /// Pagination cursor from previous response
-        cursor: option<cursor>,
-        /// Optional progress tracking token
-        progress-token: option<progress-token>,
-        /// Extension metadata
-        meta: option<meta-fields>,
-    }
-
-    /// Response with list of available tools
-    record list-tools-response {
-        /// Available tools
-        tools: list<tool>,
-        /// Cursor for next page if more tools exist
-        next-cursor: option<cursor>,
-        /// Extension metadata
-        meta: option<meta-fields>,
+        /// Optional list of icons for the tool
+        icons: option<list<icon>>,
     }
 
     /// Request to execute a tool
     record call-tool-request {
         /// Name of the tool to execute
         name: string,
-        /// Arguments as JSON object
-        arguments: option<json-value>,
-        /// Optional progress tracking token
-        progress-token: option<progress-token>,
-        /// Extension metadata
-        meta: option<meta-fields>,
+        /// Arguments as JSON object (must match the tool's input schema)
+        arguments: option<json-object>,
     }
-}
 
-/// Tool capabilities - implement this to provide tools
-interface tools-capabilities {
-    use types.{mcp-error};
-    use tool-types.{list-tools-request, list-tools-response, call-tool-request, tool-result};
-    
-    /// List available tools
-    handle-list-tools: func(request: list-tools-request) -> result<list-tools-response, mcp-error>;
-    
-    /// Execute a tool
-    handle-call-tool: func(request: call-tool-request) -> result<tool-result, mcp-error>;
+    /// Result from executing a tool
+    record call-tool-result {
+        /// Unstructured content blocks (text, images, etc.)
+        content: list<content-block>,
+        /// Optional structured JSON output
+        structured-content: option<json-value>,
+        /// Whether the tool execution resulted in an error
+        is-error: option<bool>,
+        /// Optional metadata
+        meta: option<json-object>,
+    }
+
+    /// Request to list available tools
+    record list-tools-request {
+        /// Pagination cursor from previous response
+        cursor: option<string>,
+    }
+
+    /// Response with list of available tools
+    record list-tools-result {
+        /// Available tools
+        tools: list<tool>,
+        /// Cursor for next page if more tools exist
+        next-cursor: option<string>,
+    }
 }

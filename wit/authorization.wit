@@ -1,13 +1,31 @@
-/// Authorization types for MCP servers
-/// These types define the authorization configuration that providers can declare
-/// and that transports use to enforce authorization
+/// Authorization capabilities are provided at the transport level, enabling MCP clients to make requests to restricted MCP servers on behalf of resource owners.
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
+interface authorization {
+    use authorization-types.{provider-auth-config};
+
+    /// Get provider's auth configuration
+    /// The transport should enforce authorization
+    get-auth-config: func() -> option<provider-auth-config>;
+    
+    /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
+    /// Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms
+    /// The transport will call this before fetching from jwks-uri to check for cached keys
+    jwks-cache-get: func(jwks-uri: string) -> option<string>;
+    
+    /// Cache JWKS for a given URI (optional - no-op if caching not implemented)
+    /// The transport calls this after successfully fetching JWKS from jwks-uri
+    /// Providers can implement caching via WASI-KV or other persistence mechanisms
+    /// The jwks parameter contains the raw JWKS JSON string to cache
+    jwks-cache-set: func(jwks-uri: string, jwks: string);
+}
 
 /// Type definitions for authentication and authorization
 interface authorization-types {
-    use types.{meta-fields};
+    use mcp-types.{meta-fields};
     
     /// Provider declares its authorization requirements
-    /// This is returned by core-capabilities::get-auth-config()
+    /// This is returned by get-auth-config()
     /// and used by the transport to enforce authorization
     record provider-auth-config {
         /// Expected JWT issuer (REQUIRED for auth)
@@ -16,7 +34,11 @@ interface authorization-types {
         expected-audiences: list<string>,
         /// JWKS URI for key discovery (REQUIRED for auth)
         jwks-uri: string,
-        /// Optional Rego policy for authorization
+        /// Pass raw JWT token to tools via "jwt.token" meta field.
+        pass-jwt: bool,
+        /// Expected JWT subject - if set, only this exact subject is allowed
+        expected-subject: option<string>,
+        /// Optional Rego policy for complex authorization rules
         policy: option<string>,
         /// Optional data for policy evaluation
         policy-data: option<string>,
@@ -26,63 +48,23 @@ interface authorization-types {
     record auth-context {
         /// OAuth client ID that made the request
         client-id: option<string>,
-        /// Subject (user ID) from the token
-        user-id: option<string>,
+        /// Subject claim from the token - always present from validated JWT
+        sub: string,
         /// OAuth scopes granted to this token
         scopes: list<string>,
-        /// Token issuer URL
-        issuer: option<string>,
-        /// Audience claim from token
-        audience: option<string>,
+        /// Issuer claim from the token - always present from validated JWT
+        iss: string,
+        /// Audience claim from token (aud) - always validated, can be multiple values
+        aud: list<string>,
         /// Additional claims from token as key-value pairs
         claims: meta-fields,
-        /// Expiration timestamp (Unix seconds)
-        exp: option<u64>,
+        /// Expiration timestamp (Unix seconds) - always validated and required for security
+        exp: u64,
         /// Issued at timestamp (Unix seconds)  
         iat: option<u64>,
-    }
-    
-    /// Authorization request containing all context needed for authorization decisions
-    record auth-request {
-        /// Bearer token extracted from Authorization header
-        token: string,
-        /// HTTP method (GET, POST, etc.)
-        method: string,
-        /// Request path
-        path: string,
-        /// Request headers as key-value pairs
-        headers: list<tuple<string, string>>,
-        /// Request body for policy evaluation (e.g., MCP JSON-RPC payload)
-        body: option<list<u8>>,
-        /// Expected issuer for validation
-        expected-issuer: string,
-        /// Expected audiences for validation (token must match at least one)
-        expected-audiences: list<string>,
-        /// JWKS URI for key discovery
-        jwks-uri: string,
-        /// Optional Rego policy to evaluate (if not provided, allows all authenticated requests)
-        policy: option<string>,
-        /// Optional data for policy evaluation (JSON string)
-        policy-data: option<string>,
-    }
-    
-    /// Authorization response
-    variant auth-response {
-        /// Request is authorized with context
-        authorized(auth-context),
-        /// Request is unauthorized with error details
-        unauthorized(auth-error),
-    }
-    
-    /// Authorization error details
-    record auth-error {
-        /// HTTP status code (401, 403, etc.)
-        status: u16,
-        /// OAuth error code (invalid_token, insufficient_scope, etc.)
-        error-code: string,
-        /// Human-readable error description
-        description: string,
-        /// WWW-Authenticate header value for 401 responses
-        www-authenticate: option<string>,
+        /// Not before timestamp (Unix seconds)
+        nbf: option<u64>,
+        /// Raw JWT iff enabled by pass-jwt flag in provider-auth-config
+        jwt: option<string>,
     }
 }

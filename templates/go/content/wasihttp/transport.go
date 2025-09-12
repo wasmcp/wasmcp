@@ -7,8 +7,8 @@ import (
 	"net/http"
 
 	"go.bytecodealliance.org/cm"
-	outgoinghandler "{{project-name | snake_case}}/internal/wasi/http/outgoing-handler"
-	"{{project-name | snake_case}}/internal/wasi/http/types"
+	outgoinghandler "weather_go/internal/wasi/http/outgoing-handler"
+	"weather_go/internal/wasi/http/types"
 )
 
 // Transport implements http.RoundTripper using WASI HTTP bindings
@@ -77,4 +77,3 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	return httpResp, nil
 }
-

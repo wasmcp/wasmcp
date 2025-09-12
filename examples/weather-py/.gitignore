@@ -9,11 +9,13 @@ ENV/
 env/
 .env
 
-# WebAssembly
-*.wasm
+# Build artifacts
+build/
 
-# Generated
+# Generated code
 wit_world/
+
+# WIT dependencies
 wit/deps/
 
 # IDE
@@ -27,5 +29,3 @@ wit/deps/
 .DS_Store
 Thumbs.db
 
-# Temporary files
-.transport-tmp.wasm

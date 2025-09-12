@@ -1,6 +1,6 @@
 [package]
 name = "mcp_transport_http"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.89"
 
@@ -14,7 +14,7 @@ serde_json = "1.0"
 anyhow = "1.0"
 base64 = "0.22"
 wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
-rmcp = { version = "0.6.1", default-features = false, features = ["server", "macros", "base64"] }
+rmcp = { version = "0.6.4", default-features = false, features = ["server", "macros", "base64"] }
 once_cell = "1.21"
 thiserror = "2.0"
 
@@ -36,21 +36,7 @@ default = ["tools"]
 tools = []
 resources = []
 prompts = []
-sampling = []
-elicitation = []
-roots = []
 completion = []
-
-# Common combinations
-basic = ["tools", "resources"]
-standard = ["tools", "resources", "prompts"]
-full = ["tools", "resources", "prompts", "sampling", "elicitation", "roots", "completion"]
-
-# Note: auth is now always available - providers control it via get-auth-config()
-
-# Future features:
-# sse = []  # Server-Sent Events for subscriptions and notifications
-# sessions = ["dep:wasi-keyvalue"]  # Stateful session support
 
 [package.metadata.component]
 package = "mcp:transport-http"
@@ -60,6 +46,5 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "wasmcp:mcp"
-version = "0.1.0"
-# All transports now support optional auth - providers control it via get-auth-config()
+version = "0.2.0"
 world = "tools-transport"

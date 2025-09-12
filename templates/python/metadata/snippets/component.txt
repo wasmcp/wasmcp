@@ -1,15 +1,5 @@
-[[trigger.http]]
-route = "{{route}}"
-component = "wasmcp-server-{{project-name | kebab_case}}"
-
-[component.wasmcp-server-{{project-name | kebab_case}}]
-# Using the published gateway component
-source = { registry = "ghcr.io", package = "wasmcp:wasmcp-server", version = "0.1.0" }
-
-[component.wasmcp-server-{{project-name | kebab_case}}.build]
-command = "cd {{project-name | kebab_case}} && make build"
-watch = ["{{project-name | kebab_case}}/app.py", "{{project-name | kebab_case}}/requirements.txt"]
-
-[component.wasmcp-server-{{project-name | kebab_case}}.dependencies]
-# Link to the local handler component
-"wasmcp:mcp/handler" = { path = "{{project-name | kebab_case}}/{{project-name | snake_case}}-handler.wasm" }
+# Python MCP component
+[component.{{project-name | snake_case}}]
+source = "{{project-name | snake_case}}/build/mcp-http-server.wasm"
+[component.{{project-name | snake_case}}.build]
+command = "cd {{project-name | snake_case}} && make build"

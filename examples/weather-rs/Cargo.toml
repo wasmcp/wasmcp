@@ -19,20 +19,21 @@ futures = "0.3"
 urlencoding = "2.1"
 lazy_static = "1.5"
 
-[package.metadata.component]
-package = "weather-rs:provider"
-
-[package.metadata.component.bindings]
-derives = ["Clone"]
-
-[package.metadata.component.target]
-package = "wasmcp:mcp"
-version = "0.1.0"
-world = "tools-provider"
-
 [profile.release]
 # Optimize for small binary size
 opt-level = "s"
 lto = true
 strip = true
 
+[package.metadata.component]
+package = "wasmcp:mcp-transport-http"
+
+[package.metadata.component.target]
+path = "wit"
+world = "weather-rs"
+
+[package.metadata.component.target.dependencies]
+"wasmcp:mcp" = { version = "0.2.0" }
+
+[package.metadata.component.bindings]
+derives = ["serde::Serialize", "serde::Deserialize", "Clone"]

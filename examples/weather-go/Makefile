@@ -1,11 +1,14 @@
 .PHONY: build test clean serve help setup deps-check
 
+# Build directory
+BUILD_DIR = build
+
 # Component paths
-PROVIDER_WASM = weather_go-provider.wasm
-MCP_SERVER_WASM = mcp-http-server.wasm
+PROVIDER_WASM = $(BUILD_DIR)/weather-go-provider.wasm
+MCP_SERVER_WASM = $(BUILD_DIR)/mcp-http-server.wasm
 
 # Registry packages
-TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.1.0
+TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.2.0
 
 # Go/TinyGo configuration
 TINYGO = tinygo
@@ -67,18 +70,20 @@ build-provider: bindgen ## Build the provider component
 		.
 	@echo "✅ Provider component built"
 
-build: ## Build and compose everything into mcp-http-server.wasm
+build: ## Build and compose everything into build/mcp-http-server.wasm
+	@mkdir -p $(BUILD_DIR)
 	@$(MAKE) deps
 	@$(MAKE) build-provider
 	@echo "Downloading transport from registry..."
-	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
+	@wkg get $(TRANSPORT_PKG) -o $(BUILD_DIR)/.transport-tmp.wasm
 	@echo "Composing components..."
-	@wac plug --plug $(PROVIDER_WASM) .transport-tmp.wasm -o $(MCP_SERVER_WASM)
-	@rm -f .transport-tmp.wasm
-	@echo "✅ Created mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
+	@wac plug --plug $(PROVIDER_WASM) $(BUILD_DIR)/.transport-tmp.wasm -o $(MCP_SERVER_WASM)
+	@rm -f $(BUILD_DIR)/.transport-tmp.wasm
+	@echo "✅ Created $(MCP_SERVER_WASM) ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
 
 
 build-optimized: ## Build optimized version without debug info
+	@mkdir -p $(BUILD_DIR)
 	@$(MAKE) deps
 	@echo "Building optimized provider component..."
 	@$(TINYGO) build -target=wasip2 -o $(PROVIDER_WASM) \
@@ -88,14 +93,14 @@ build-optimized: ## Build optimized version without debug info
 		-no-debug \
 		.
 	@echo "Downloading transport from registry..."
-	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm
+	@wkg get $(TRANSPORT_PKG) -o $(BUILD_DIR)/.transport-tmp.wasm
 	@echo "Plugging provider into transport..."
-	@wac plug --plug $(PROVIDER_WASM) .transport-tmp.wasm -o $(MCP_SERVER_WASM)
-	@rm -f .transport-tmp.wasm
-	@echo "✅ Created optimized mcp-http-server.wasm ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
+	@wac plug --plug $(PROVIDER_WASM) $(BUILD_DIR)/.transport-tmp.wasm -o $(MCP_SERVER_WASM)
+	@rm -f $(BUILD_DIR)/.transport-tmp.wasm
+	@echo "✅ Created optimized $(MCP_SERVER_WASM) ($$( ls -lh $(MCP_SERVER_WASM) | awk '{print $$5}' ))"
 
 clean: ## Clean build artifacts
-	@rm -f $(PROVIDER_WASM) $(MCP_SERVER_WASM) .transport-tmp.wasm
+	@rm -rf $(BUILD_DIR)
 	@rm -rf internal
 	@rm -f *.wasm
 	@echo "✅ Build artifacts cleaned"

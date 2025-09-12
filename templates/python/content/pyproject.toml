@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0", "componentize-py>=0.13.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "{{project-name | kebab_case}}"
+version = "0.1.0"
+description = "{{project-description}}"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "{{project-name | kebab_case}} Contributors"},
+]
+keywords = ["mcp", "wasm", "component-model"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "componentize-py>=0.13.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyright==1.1.405",
+]
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["capabilities*"]
