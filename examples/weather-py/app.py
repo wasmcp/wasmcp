@@ -22,8 +22,3 @@ if TYPE_CHECKING:
     _lifecycle: LifecycleProtocol = Lifecycle()
     _authorization: AuthorizationProtocol = Authorization()
     _tools: ToolsProtocol = Tools()
-
-# Export for componentize-py - it expects these class names
-Lifecycle = Lifecycle
-Authorization = Authorization
-Tools = Tools

@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 
 # PollLoop is part of componentize-py
 # https://github.com/bytecodealliance/componentize-py/blob/main/bundled/poll_loop.py
-from poll_loop import PollLoop, Stream, send  # pyright: ignore[reportMissingImports]
+from poll_loop import PollLoop, Stream, send
 
 from wit_world.imports.mcp_types import ContentBlock_Text, TextContent
 from wit_world.imports.authorization_types import AuthContext
@@ -89,7 +89,7 @@ class Tools:
         context: Optional[AuthContext]
     ) -> CallToolResult:        
         # Parse arguments
-        args = {}
+        args: Dict[str, Any] = {}
         if request.arguments:
             try:
                 args = json.loads(request.arguments)
@@ -198,12 +198,12 @@ async def fetch_weather(city: str) -> Dict[str, Any]:
     }
 
 
-async def fetch_json(url: str) -> dict:
+async def fetch_json(url: str) -> Dict[str, Any]:
     """Fetch JSON from a URL using WASI HTTP."""
     parsed = urllib.parse.urlparse(url)
     
     # Create HTTP request
-    request = OutgoingRequest(Fields.from_list([]))
+    request = OutgoingRequest(Fields.from_list([]))  # type: ignore[no-untyped-call]
     
     if parsed.scheme == "https":
         request.set_scheme(Scheme_Https())
@@ -223,13 +223,13 @@ async def fetch_json(url: str) -> dict:
     response = await send(request)
     
     # Check status
-    status = response.status()
+    status = response.status()  # type: ignore[no-untyped-call]
     if status < 200 or status >= 300:
         raise Exception(f"HTTP {status} from {url}")
     
     # Read response body
-    stream = Stream(response.consume())
-    chunks = []
+    stream = Stream(response.consume())  # type: ignore[no-untyped-call]
+    chunks: List[bytes] = []
     while True:
         chunk = await stream.next()
         if chunk is None:
