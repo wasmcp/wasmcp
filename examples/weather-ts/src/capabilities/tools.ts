@@ -35,57 +35,19 @@ const WeatherSchema = z.object({
 type WeatherArgs = z.infer<typeof WeatherSchema>;
 
 const MultiWeatherSchema = z.object({
-  cities: z.array(z.string()).max(5).describe('List of city names (max 5)'),
+  cities: z.array(z.string()).min(1).max(5).describe('List of city names (1-5)'),
 });
 type MultiWeatherArgs = z.infer<typeof MultiWeatherSchema>;
 
 /**
  * Convert a Zod schema to JSON Schema for the WIT interface.
- * This gives us type safety AND proper schema generation.
+ * Zod v4 has built-in JSON Schema generation via z.toJSONSchema().
+ * This gives us type safety AND proper schema generation!
  */
 function zodToJsonSchema(schema: z.ZodType<any>): string {
-  // For now, we'll use a simple approach. In production, you might use
-  // zod-to-json-schema package for complete conversion.
-  if (schema instanceof z.ZodObject) {
-    const shape = schema.shape;
-    const properties: Record<string, any> = {};
-    const required: string[] = [];
-    
-    for (const [key, value] of Object.entries(shape)) {
-      const zodField = value as z.ZodType<any>;
-      properties[key] = getFieldSchema(zodField);
-      
-      // Check if field is required
-      if (!zodField.isOptional()) {
-        required.push(key);
-      }
-    }
-    
-    return JSON.stringify({
-      type: 'object',
-      properties,
-      required,
-    });
-  }
-  
-  return JSON.stringify({ type: 'object' });
-}
-
-function getFieldSchema(field: z.ZodType<any>): any {
-  if (field instanceof z.ZodString) {
-    return { 
-      type: 'string',
-      description: field.description,
-    };
-  } else if (field instanceof z.ZodArray) {
-    const itemType = (field as any)._def.type;
-    return {
-      type: 'array',
-      description: field.description,
-      items: getFieldSchema(itemType),
-    };
-  }
-  return { type: 'string' };
+  // Use Zod v4's built-in JSON Schema generation
+  const jsonSchema = z.toJSONSchema(schema);
+  return JSON.stringify(jsonSchema);
 }
 
 /**
