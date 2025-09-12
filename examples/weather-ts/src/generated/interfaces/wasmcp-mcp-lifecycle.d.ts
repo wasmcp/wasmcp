@@ -1,4 +1,4 @@
-/** @module Interface wasmcp:mcp/lifecycle@0.2.0-alpha.27 **/
+/** @module Interface wasmcp:mcp/lifecycle@0.2.0 **/
 /**
  * Handle session initialization
  * Implementations should declare their capabilities here

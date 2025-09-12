@@ -1,4 +1,4 @@
-/** @module Interface wasmcp:mcp/tools-types@0.2.0-alpha.27 **/
+/** @module Interface wasmcp:mcp/tools-types@0.2.0 **/
 export type ContentBlock = import('./wasmcp-mcp-mcp-types.js').ContentBlock;
 export type JsonValue = import('./wasmcp-mcp-mcp-types.js').JsonValue;
 export type JsonObject = import('./wasmcp-mcp-mcp-types.js').JsonObject;

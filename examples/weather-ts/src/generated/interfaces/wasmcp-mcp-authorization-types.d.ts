@@ -1,4 +1,4 @@
-/** @module Interface wasmcp:mcp/authorization-types@0.2.0-alpha.27 **/
+/** @module Interface wasmcp:mcp/authorization-types@0.2.0 **/
 export type MetaFields = import('./wasmcp-mcp-mcp-types.js').MetaFields;
 /**
  * Provider declares its authorization requirements

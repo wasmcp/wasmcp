@@ -1,7 +1,7 @@
 package weather-rs:capabilities;
 
 world weather-rs {
-    export wasmcp:mcp/lifecycle@0.2.0-alpha.27;
-    export wasmcp:mcp/authorization@0.2.0-alpha.27;
-    export wasmcp:mcp/tools@0.2.0-alpha.27;
+    export wasmcp:mcp/lifecycle@0.2.0;
+    export wasmcp:mcp/authorization@0.2.0;
+    export wasmcp:mcp/tools@0.2.0;
 }

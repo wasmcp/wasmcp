@@ -1,4 +1,4 @@
-/** @module Interface wasmcp:mcp/lifecycle-types@0.2.0-alpha.27 **/
+/** @module Interface wasmcp:mcp/lifecycle-types@0.2.0 **/
 export type MetaFields = import('./wasmcp-mcp-mcp-types.js').MetaFields;
 export type JsonObject = import('./wasmcp-mcp-mcp-types.js').JsonObject;
 export type Icon = import('./wasmcp-mcp-mcp-types.js').Icon;

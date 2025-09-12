@@ -7,8 +7,8 @@ BUILD_DIR = build
 PROVIDER_WASM = $(BUILD_DIR)/weather_go_provider.wasm
 MCP_SERVER_WASM = $(BUILD_DIR)/mcp-http-server.wasm
 
-# Registry packages - updated to alpha.27
-TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.2.0-alpha.27
+# Registry packages
+TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.2.0
 
 # Go/TinyGo configuration
 TINYGO = tinygo

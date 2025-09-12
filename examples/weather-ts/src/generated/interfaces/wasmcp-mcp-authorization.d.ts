@@ -1,4 +1,4 @@
-/** @module Interface wasmcp:mcp/authorization@0.2.0-alpha.27 **/
+/** @module Interface wasmcp:mcp/authorization@0.2.0 **/
 /**
  * Get provider's auth configuration
  * The transport should enforce authorization

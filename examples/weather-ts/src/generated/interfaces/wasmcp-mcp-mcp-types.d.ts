@@ -1,4 +1,4 @@
-/** @module Interface wasmcp:mcp/mcp-types@0.2.0-alpha.27 **/
+/** @module Interface wasmcp:mcp/mcp-types@0.2.0 **/
 /**
  * Role in a conversation
  * # Variants

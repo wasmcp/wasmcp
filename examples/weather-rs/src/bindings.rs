@@ -2350,36 +2350,36 @@ pub mod exports {
                     fn shutdown() -> Result<(), McpError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_lifecycle_0_2_0_alpha_27_cabi {
+                macro_rules! __export_wasmcp_mcp_lifecycle_0_2_0_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/lifecycle@0.2.0-alpha.27#initialize")] unsafe extern
-                        "C" fn export_initialize(arg0 : * mut u8,) -> * mut u8 { unsafe {
+                        "wasmcp:mcp/lifecycle@0.2.0#initialize")] unsafe extern "C" fn
+                        export_initialize(arg0 : * mut u8,) -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_initialize_cabi::<$ty > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/lifecycle@0.2.0-alpha.27#initialize")]
-                        unsafe extern "C" fn _post_return_initialize(arg0 : * mut u8,) {
-                        unsafe { $($path_to_types)*:: __post_return_initialize::<$ty >
-                        (arg0) } } #[unsafe (export_name =
-                        "wasmcp:mcp/lifecycle@0.2.0-alpha.27#client-initialized")] unsafe
-                        extern "C" fn export_client_initialized() -> * mut u8 { unsafe {
+                        "cabi_post_wasmcp:mcp/lifecycle@0.2.0#initialize")] unsafe extern
+                        "C" fn _post_return_initialize(arg0 : * mut u8,) { unsafe {
+                        $($path_to_types)*:: __post_return_initialize::<$ty > (arg0) } }
+                        #[unsafe (export_name =
+                        "wasmcp:mcp/lifecycle@0.2.0#client-initialized")] unsafe extern
+                        "C" fn export_client_initialized() -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_client_initialized_cabi::<$ty > () }
                         } #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/lifecycle@0.2.0-alpha.27#client-initialized")]
+                        "cabi_post_wasmcp:mcp/lifecycle@0.2.0#client-initialized")]
                         unsafe extern "C" fn _post_return_client_initialized(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_client_initialized::<$ty > (arg0) } } #[unsafe
-                        (export_name = "wasmcp:mcp/lifecycle@0.2.0-alpha.27#shutdown")]
-                        unsafe extern "C" fn export_shutdown() -> * mut u8 { unsafe {
+                        (export_name = "wasmcp:mcp/lifecycle@0.2.0#shutdown")] unsafe
+                        extern "C" fn export_shutdown() -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_shutdown_cabi::<$ty > () } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/lifecycle@0.2.0-alpha.27#shutdown")] unsafe
-                        extern "C" fn _post_return_shutdown(arg0 : * mut u8,) { unsafe {
+                        "cabi_post_wasmcp:mcp/lifecycle@0.2.0#shutdown")] unsafe extern
+                        "C" fn _post_return_shutdown(arg0 : * mut u8,) { unsafe {
                         $($path_to_types)*:: __post_return_shutdown::<$ty > (arg0) } } };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_lifecycle_0_2_0_alpha_27_cabi;
+                pub(crate) use __export_wasmcp_mcp_lifecycle_0_2_0_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -2735,37 +2735,35 @@ pub mod exports {
                     fn jwks_cache_set(jwks_uri: _rt::String, jwks: _rt::String) -> ();
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_authorization_0_2_0_alpha_27_cabi {
+                macro_rules! __export_wasmcp_mcp_authorization_0_2_0_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/authorization@0.2.0-alpha.27#get-auth-config")]
-                        unsafe extern "C" fn export_get_auth_config() -> * mut u8 {
-                        unsafe { $($path_to_types)*:: _export_get_auth_config_cabi::<$ty
-                        > () } } #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/authorization@0.2.0-alpha.27#get-auth-config")]
+                        "wasmcp:mcp/authorization@0.2.0#get-auth-config")] unsafe extern
+                        "C" fn export_get_auth_config() -> * mut u8 { unsafe {
+                        $($path_to_types)*:: _export_get_auth_config_cabi::<$ty > () } }
+                        #[unsafe (export_name =
+                        "cabi_post_wasmcp:mcp/authorization@0.2.0#get-auth-config")]
                         unsafe extern "C" fn _post_return_get_auth_config(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_get_auth_config::<$ty > (arg0) } } #[unsafe
-                        (export_name =
-                        "wasmcp:mcp/authorization@0.2.0-alpha.27#jwks-cache-get")] unsafe
-                        extern "C" fn export_jwks_cache_get(arg0 : * mut u8, arg1 :
-                        usize,) -> * mut u8 { unsafe { $($path_to_types)*::
+                        (export_name = "wasmcp:mcp/authorization@0.2.0#jwks-cache-get")]
+                        unsafe extern "C" fn export_jwks_cache_get(arg0 : * mut u8, arg1
+                        : usize,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_jwks_cache_get_cabi::<$ty > (arg0, arg1) } } #[unsafe
                         (export_name =
-                        "cabi_post_wasmcp:mcp/authorization@0.2.0-alpha.27#jwks-cache-get")]
+                        "cabi_post_wasmcp:mcp/authorization@0.2.0#jwks-cache-get")]
                         unsafe extern "C" fn _post_return_jwks_cache_get(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_jwks_cache_get::<$ty > (arg0) } } #[unsafe
-                        (export_name =
-                        "wasmcp:mcp/authorization@0.2.0-alpha.27#jwks-cache-set")] unsafe
-                        extern "C" fn export_jwks_cache_set(arg0 : * mut u8, arg1 :
-                        usize, arg2 : * mut u8, arg3 : usize,) { unsafe {
+                        (export_name = "wasmcp:mcp/authorization@0.2.0#jwks-cache-set")]
+                        unsafe extern "C" fn export_jwks_cache_set(arg0 : * mut u8, arg1
+                        : usize, arg2 : * mut u8, arg3 : usize,) { unsafe {
                         $($path_to_types)*:: _export_jwks_cache_set_cabi::<$ty > (arg0,
                         arg1, arg2, arg3) } } };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_authorization_0_2_0_alpha_27_cabi;
+                pub(crate) use __export_wasmcp_mcp_authorization_0_2_0_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -5518,30 +5516,29 @@ pub mod exports {
                     ) -> Result<CallToolResult, McpError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_tools_0_2_0_alpha_27_cabi {
+                macro_rules! __export_wasmcp_mcp_tools_0_2_0_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/tools@0.2.0-alpha.27#list-tools")] unsafe extern "C"
-                        fn export_list_tools(arg0 : i32, arg1 : * mut u8, arg2 : usize,)
-                        -> * mut u8 { unsafe { $($path_to_types)*::
+                        "wasmcp:mcp/tools@0.2.0#list-tools")] unsafe extern "C" fn
+                        export_list_tools(arg0 : i32, arg1 : * mut u8, arg2 : usize,) ->
+                        * mut u8 { unsafe { $($path_to_types)*::
                         _export_list_tools_cabi::<$ty > (arg0, arg1, arg2) } } #[unsafe
-                        (export_name =
-                        "cabi_post_wasmcp:mcp/tools@0.2.0-alpha.27#list-tools")] unsafe
-                        extern "C" fn _post_return_list_tools(arg0 : * mut u8,) { unsafe
-                        { $($path_to_types)*:: __post_return_list_tools::<$ty > (arg0) }
-                        } #[unsafe (export_name =
-                        "wasmcp:mcp/tools@0.2.0-alpha.27#call-tool")] unsafe extern "C"
-                        fn export_call_tool(arg0 : * mut u8,) -> * mut u8 { unsafe {
+                        (export_name = "cabi_post_wasmcp:mcp/tools@0.2.0#list-tools")]
+                        unsafe extern "C" fn _post_return_list_tools(arg0 : * mut u8,) {
+                        unsafe { $($path_to_types)*:: __post_return_list_tools::<$ty >
+                        (arg0) } } #[unsafe (export_name =
+                        "wasmcp:mcp/tools@0.2.0#call-tool")] unsafe extern "C" fn
+                        export_call_tool(arg0 : * mut u8,) -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_call_tool_cabi::<$ty > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/tools@0.2.0-alpha.27#call-tool")] unsafe
-                        extern "C" fn _post_return_call_tool(arg0 : * mut u8,) { unsafe {
+                        "cabi_post_wasmcp:mcp/tools@0.2.0#call-tool")] unsafe extern "C"
+                        fn _post_return_call_tool(arg0 : * mut u8,) { unsafe {
                         $($path_to_types)*:: __post_return_call_tool::<$ty > (arg0) } }
                         };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_tools_0_2_0_alpha_27_cabi;
+                pub(crate) use __export_wasmcp_mcp_tools_0_2_0_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -5701,13 +5698,13 @@ macro_rules! __export_weather_rs_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::wasmcp::mcp::lifecycle::__export_wasmcp_mcp_lifecycle_0_2_0_alpha_27_cabi!($ty
+        exports::wasmcp::mcp::lifecycle::__export_wasmcp_mcp_lifecycle_0_2_0_cabi!($ty
         with_types_in $($path_to_types_root)*:: exports::wasmcp::mcp::lifecycle);
         $($path_to_types_root)*::
-        exports::wasmcp::mcp::authorization::__export_wasmcp_mcp_authorization_0_2_0_alpha_27_cabi!($ty
+        exports::wasmcp::mcp::authorization::__export_wasmcp_mcp_authorization_0_2_0_cabi!($ty
         with_types_in $($path_to_types_root)*:: exports::wasmcp::mcp::authorization);
         $($path_to_types_root)*::
-        exports::wasmcp::mcp::tools::__export_wasmcp_mcp_tools_0_2_0_alpha_27_cabi!($ty
+        exports::wasmcp::mcp::tools::__export_wasmcp_mcp_tools_0_2_0_cabi!($ty
         with_types_in $($path_to_types_root)*:: exports::wasmcp::mcp::tools);
     };
 }
@@ -5719,8 +5716,8 @@ pub(crate) use __export_weather_rs_impl as export;
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3994] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x99\x1e\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3931] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xda\x1d\x01A\x02\x01\
 A\x1c\x01B:\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajs\
 on-value\x03\0\x02\x01s\x04\0\x0bjson-object\x03\0\x04\x01s\x04\0\x0bjson-schema\
 \x03\0\x06\x01o\x02ss\x01p\x08\x04\0\x0bmeta-fields\x03\0\x09\x01ks\x01r\x03\x03\
@@ -5746,66 +5743,65 @@ a\x0b\x04\0\x09mcp-error\x03\0,\x01s\x04\0\x0eprogress-token\x03\0.\x01q\x02\x03
 str\x01s\0\x03num\x01x\0\x04\0\x0arequest-id\x03\00\x01m\x03\x04user\x09assistan\
 t\x06system\x04\0\x0cmessage-role\x03\02\x01r\x01\x04name\x0b\x04\0\x0amodel-hin\
 t\x03\04\x01p5\x01k6\x01r\x04\x05hints7\x0dcost-priority\x10\x0espeed-priority\x10\
-\x15intelligence-priority\x10\x04\0\x11model-preferences\x03\08\x03\0#wasmcp:mcp\
-/mcp-types@0.2.0-alpha.27\x05\0\x02\x03\0\0\x0bmeta-fields\x02\x03\0\0\x0bjson-o\
-bject\x02\x03\0\0\x04icon\x01B&\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\
-\x02\x03\x02\x01\x02\x04\0\x0bjson-object\x03\0\x02\x02\x03\x02\x01\x03\x04\0\x04\
-icon\x03\0\x04\x01s\x04\0\x10protocol-version\x03\0\x06\x01ks\x01p\x05\x01k\x09\x01\
-r\x05\x04names\x05title\x08\x07versions\x0bwebsite-url\x08\x05icons\x0a\x04\0\x0e\
-implementation\x03\0\x0b\x01k\x7f\x01r\x01\x0clist-changed\x0d\x04\0\x10roots-ca\
-pability\x03\0\x0e\x01r\x01\x0clist-changed\x0d\x04\0\x12prompts-capability\x03\0\
-\x10\x01r\x02\x09subscribe\x0d\x0clist-changed\x0d\x04\0\x14resources-capability\
-\x03\0\x12\x01r\x01\x0clist-changed\x0d\x04\0\x10tools-capability\x03\0\x14\x01r\
-\x01\x11schema-validation\x0d\x04\0\x16elicitation-capability\x03\0\x16\x01k\x03\
-\x01k\x0f\x01k\x17\x01r\x04\x0cexperimental\x18\x05roots\x19\x08sampling\x18\x0b\
-elicitation\x1a\x04\0\x13client-capabilities\x03\0\x1b\x01k\x11\x01k\x13\x01k\x15\
-\x01r\x06\x0cexperimental\x18\x07logging\x18\x0bcompletions\x18\x07prompts\x1d\x09\
-resources\x1e\x05tools\x1f\x04\0\x13server-capabilities\x03\0\x20\x01r\x03\x10pr\
-otocol-version\x07\x0ccapabilities\x1c\x0bclient-info\x0c\x04\0\x12initialize-re\
-quest\x03\0\"\x01r\x04\x10protocol-version\x07\x0ccapabilities!\x0bserver-info\x0c\
-\x0cinstructions\x08\x04\0\x11initialize-result\x03\0$\x03\0)wasmcp:mcp/lifecycl\
-e-types@0.2.0-alpha.27\x05\x04\x01B\x09\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\
-\x03\0\0\x01ps\x01ks\x01r\x07\x0fexpected-issuers\x12expected-audiences\x02\x08j\
-wks-uris\x08pass-jwt\x7f\x10expected-subject\x03\x06policy\x03\x0bpolicy-data\x03\
-\x04\0\x14provider-auth-config\x03\0\x04\x01kw\x01r\x0a\x09client-id\x03\x03subs\
-\x06scopes\x02\x03isss\x03aud\x02\x06claims\x01\x03expw\x03iat\x06\x03nbf\x06\x03\
-jwt\x03\x04\0\x0cauth-context\x03\0\x07\x03\0-wasmcp:mcp/authorization-types@0.2\
-.0-alpha.27\x05\x05\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\x03\
-\0\x02\x0cauth-context\x01B\x1f\x02\x03\x02\x01\x06\x04\0\x0dcontent-block\x03\0\
-\0\x02\x03\x02\x01\x07\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x02\x04\0\x0b\
-json-object\x03\0\x04\x02\x03\x02\x01\x03\x04\0\x04icon\x03\0\x06\x02\x03\x02\x01\
-\x08\x04\0\x0cauth-context\x03\0\x08\x01ks\x01k\x7f\x01r\x05\x05title\x0a\x0erea\
-d-only-hint\x0b\x10destructive-hint\x0b\x0fidempotent-hint\x0b\x0fopen-world-hin\
-t\x0b\x04\0\x10tool-annotations\x03\0\x0c\x01k\x05\x01k\x0d\x01p\x07\x01k\x10\x01\
-r\x07\x04names\x05title\x0a\x0bdescription\x0a\x0cinput-schema\x05\x0doutput-sch\
-ema\x0e\x0bannotations\x0f\x05icons\x11\x04\0\x04tool\x03\0\x12\x01r\x02\x04name\
-s\x09arguments\x0e\x04\0\x11call-tool-request\x03\0\x14\x01p\x01\x01k\x03\x01r\x04\
-\x07content\x16\x12structured-content\x17\x08is-error\x0b\x04meta\x0e\x04\0\x10c\
-all-tool-result\x03\0\x18\x01r\x01\x06cursor\x0a\x04\0\x12list-tools-request\x03\
-\0\x1a\x01p\x13\x01r\x02\x05tools\x1c\x0bnext-cursor\x0a\x04\0\x11list-tools-res\
-ult\x03\0\x1d\x03\0%wasmcp:mcp/tools-types@0.2.0-alpha.27\x05\x09\x02\x03\0\0\x09\
-mcp-error\x02\x03\0\x01\x12initialize-request\x02\x03\0\x01\x11initialize-result\
-\x01B\x0d\x02\x03\x02\x01\x0a\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x0b\x04\
-\0\x12initialize-request\x03\0\x02\x02\x03\x02\x01\x0c\x04\0\x11initialize-resul\
-t\x03\0\x04\x01j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x06\x04\0\x0ainitiali\
-ze\x01\x07\x01j\0\x01\x01\x01@\0\0\x08\x04\0\x12client-initialized\x01\x09\x04\0\
-\x08shutdown\x01\x09\x04\0#wasmcp:mcp/lifecycle@0.2.0-alpha.27\x05\x0d\x02\x03\0\
-\x02\x14provider-auth-config\x01B\x0a\x02\x03\x02\x01\x0e\x04\0\x14provider-auth\
--config\x03\0\0\x01k\x01\x01@\0\0\x02\x04\0\x0fget-auth-config\x01\x03\x01ks\x01\
-@\x01\x08jwks-uris\0\x04\x04\0\x0ejwks-cache-get\x01\x05\x01@\x02\x08jwks-uris\x04\
-jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\x06\x04\0'wasmcp:mcp/authorization@0.2.0\
--alpha.27\x05\x0f\x02\x03\0\x03\x12list-tools-request\x02\x03\0\x03\x11list-tool\
-s-result\x02\x03\0\x03\x11call-tool-request\x02\x03\0\x03\x10call-tool-result\x01\
-B\x13\x02\x03\x02\x01\x0a\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x08\x04\0\x0c\
-auth-context\x03\0\x02\x02\x03\x02\x01\x10\x04\0\x12list-tools-request\x03\0\x04\
-\x02\x03\x02\x01\x11\x04\0\x11list-tools-result\x03\0\x06\x02\x03\x02\x01\x12\x04\
-\0\x11call-tool-request\x03\0\x08\x02\x03\x02\x01\x13\x04\0\x10call-tool-result\x03\
-\0\x0a\x01j\x01\x07\x01\x01\x01@\x01\x07request\x05\0\x0c\x04\0\x0alist-tools\x01\
-\x0d\x01k\x03\x01j\x01\x0b\x01\x01\x01@\x02\x07request\x09\x07context\x0e\0\x0f\x04\
-\0\x09call-tool\x01\x10\x04\0\x1fwasmcp:mcp/tools@0.2.0-alpha.27\x05\x14\x04\0\"\
-weather-rs:capabilities/weather-rs\x04\0\x0b\x10\x01\0\x0aweather-rs\x03\0\0\0G\x09\
-producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rus\
-t\x060.41.0";
+\x15intelligence-priority\x10\x04\0\x11model-preferences\x03\08\x03\0\x1awasmcp:\
+mcp/mcp-types@0.2.0\x05\0\x02\x03\0\0\x0bmeta-fields\x02\x03\0\0\x0bjson-object\x02\
+\x03\0\0\x04icon\x01B&\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x02\x03\x02\
+\x01\x02\x04\0\x0bjson-object\x03\0\x02\x02\x03\x02\x01\x03\x04\0\x04icon\x03\0\x04\
+\x01s\x04\0\x10protocol-version\x03\0\x06\x01ks\x01p\x05\x01k\x09\x01r\x05\x04na\
+mes\x05title\x08\x07versions\x0bwebsite-url\x08\x05icons\x0a\x04\0\x0eimplementa\
+tion\x03\0\x0b\x01k\x7f\x01r\x01\x0clist-changed\x0d\x04\0\x10roots-capability\x03\
+\0\x0e\x01r\x01\x0clist-changed\x0d\x04\0\x12prompts-capability\x03\0\x10\x01r\x02\
+\x09subscribe\x0d\x0clist-changed\x0d\x04\0\x14resources-capability\x03\0\x12\x01\
+r\x01\x0clist-changed\x0d\x04\0\x10tools-capability\x03\0\x14\x01r\x01\x11schema\
+-validation\x0d\x04\0\x16elicitation-capability\x03\0\x16\x01k\x03\x01k\x0f\x01k\
+\x17\x01r\x04\x0cexperimental\x18\x05roots\x19\x08sampling\x18\x0belicitation\x1a\
+\x04\0\x13client-capabilities\x03\0\x1b\x01k\x11\x01k\x13\x01k\x15\x01r\x06\x0ce\
+xperimental\x18\x07logging\x18\x0bcompletions\x18\x07prompts\x1d\x09resources\x1e\
+\x05tools\x1f\x04\0\x13server-capabilities\x03\0\x20\x01r\x03\x10protocol-versio\
+n\x07\x0ccapabilities\x1c\x0bclient-info\x0c\x04\0\x12initialize-request\x03\0\"\
+\x01r\x04\x10protocol-version\x07\x0ccapabilities!\x0bserver-info\x0c\x0cinstruc\
+tions\x08\x04\0\x11initialize-result\x03\0$\x03\0\x20wasmcp:mcp/lifecycle-types@\
+0.2.0\x05\x04\x01B\x09\x02\x03\x02\x01\x01\x04\0\x0bmeta-fields\x03\0\0\x01ps\x01\
+ks\x01r\x07\x0fexpected-issuers\x12expected-audiences\x02\x08jwks-uris\x08pass-j\
+wt\x7f\x10expected-subject\x03\x06policy\x03\x0bpolicy-data\x03\x04\0\x14provide\
+r-auth-config\x03\0\x04\x01kw\x01r\x0a\x09client-id\x03\x03subs\x06scopes\x02\x03\
+isss\x03aud\x02\x06claims\x01\x03expw\x03iat\x06\x03nbf\x06\x03jwt\x03\x04\0\x0c\
+auth-context\x03\0\x07\x03\0$wasmcp:mcp/authorization-types@0.2.0\x05\x05\x02\x03\
+\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-value\x02\x03\0\x02\x0cauth-context\x01\
+B\x1f\x02\x03\x02\x01\x06\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\x07\x04\
+\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x02\x04\0\x0bjson-object\x03\0\x04\x02\
+\x03\x02\x01\x03\x04\0\x04icon\x03\0\x06\x02\x03\x02\x01\x08\x04\0\x0cauth-conte\
+xt\x03\0\x08\x01ks\x01k\x7f\x01r\x05\x05title\x0a\x0eread-only-hint\x0b\x10destr\
+uctive-hint\x0b\x0fidempotent-hint\x0b\x0fopen-world-hint\x0b\x04\0\x10tool-anno\
+tations\x03\0\x0c\x01k\x05\x01k\x0d\x01p\x07\x01k\x10\x01r\x07\x04names\x05title\
+\x0a\x0bdescription\x0a\x0cinput-schema\x05\x0doutput-schema\x0e\x0bannotations\x0f\
+\x05icons\x11\x04\0\x04tool\x03\0\x12\x01r\x02\x04names\x09arguments\x0e\x04\0\x11\
+call-tool-request\x03\0\x14\x01p\x01\x01k\x03\x01r\x04\x07content\x16\x12structu\
+red-content\x17\x08is-error\x0b\x04meta\x0e\x04\0\x10call-tool-result\x03\0\x18\x01\
+r\x01\x06cursor\x0a\x04\0\x12list-tools-request\x03\0\x1a\x01p\x13\x01r\x02\x05t\
+ools\x1c\x0bnext-cursor\x0a\x04\0\x11list-tools-result\x03\0\x1d\x03\0\x1cwasmcp\
+:mcp/tools-types@0.2.0\x05\x09\x02\x03\0\0\x09mcp-error\x02\x03\0\x01\x12initial\
+ize-request\x02\x03\0\x01\x11initialize-result\x01B\x0d\x02\x03\x02\x01\x0a\x04\0\
+\x09mcp-error\x03\0\0\x02\x03\x02\x01\x0b\x04\0\x12initialize-request\x03\0\x02\x02\
+\x03\x02\x01\x0c\x04\0\x11initialize-result\x03\0\x04\x01j\x01\x05\x01\x01\x01@\x01\
+\x07request\x03\0\x06\x04\0\x0ainitialize\x01\x07\x01j\0\x01\x01\x01@\0\0\x08\x04\
+\0\x12client-initialized\x01\x09\x04\0\x08shutdown\x01\x09\x04\0\x1awasmcp:mcp/l\
+ifecycle@0.2.0\x05\x0d\x02\x03\0\x02\x14provider-auth-config\x01B\x0a\x02\x03\x02\
+\x01\x0e\x04\0\x14provider-auth-config\x03\0\0\x01k\x01\x01@\0\0\x02\x04\0\x0fge\
+t-auth-config\x01\x03\x01ks\x01@\x01\x08jwks-uris\0\x04\x04\0\x0ejwks-cache-get\x01\
+\x05\x01@\x02\x08jwks-uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\x06\x04\0\x1e\
+wasmcp:mcp/authorization@0.2.0\x05\x0f\x02\x03\0\x03\x12list-tools-request\x02\x03\
+\0\x03\x11list-tools-result\x02\x03\0\x03\x11call-tool-request\x02\x03\0\x03\x10\
+call-tool-result\x01B\x13\x02\x03\x02\x01\x0a\x04\0\x09mcp-error\x03\0\0\x02\x03\
+\x02\x01\x08\x04\0\x0cauth-context\x03\0\x02\x02\x03\x02\x01\x10\x04\0\x12list-t\
+ools-request\x03\0\x04\x02\x03\x02\x01\x11\x04\0\x11list-tools-result\x03\0\x06\x02\
+\x03\x02\x01\x12\x04\0\x11call-tool-request\x03\0\x08\x02\x03\x02\x01\x13\x04\0\x10\
+call-tool-result\x03\0\x0a\x01j\x01\x07\x01\x01\x01@\x01\x07request\x05\0\x0c\x04\
+\0\x0alist-tools\x01\x0d\x01k\x03\x01j\x01\x0b\x01\x01\x01@\x02\x07request\x09\x07\
+context\x0e\0\x0f\x04\0\x09call-tool\x01\x10\x04\0\x16wasmcp:mcp/tools@0.2.0\x05\
+\x14\x04\0\"weather-rs:capabilities/weather-rs\x04\0\x0b\x10\x01\0\x0aweather-rs\
+\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10\
+wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

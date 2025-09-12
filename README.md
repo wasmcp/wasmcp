@@ -136,7 +136,7 @@ world weather-ts {
     import wasi:http/outgoing-handler@0.2.3;
     export wasmcp:mcp/lifecycle@0.2.0;
     export wasmcp:mcp/authorization@0.2.0;
-    export wasmcp:mcp/tools@0.2.0-alpha.0.2.0;
+    export wasmcp:mcp/tools@0.2.0;
 }
 ```
 

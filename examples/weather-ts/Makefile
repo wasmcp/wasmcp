@@ -5,7 +5,7 @@ PROVIDER_WASM = weather-ts_provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport
-TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.2.0-alpha.27
+TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.2.0
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -28,8 +28,6 @@ build: ## Build and compose everything into mcp-http-server.wasm
 	@echo "Bundling TypeScript..."
 	@npm run bundle
 	@echo "Building provider component..."
-	# Increase stack size to 8MB to handle concurrent fetch operations
-	# Without this, multi_weather fails with memory faults when Promise.all() makes concurrent requests
 	@npx jco componentize bundled.js --wit wit --world-name weather-ts --aot-min-stack-size-bytes 8388608 --out $(PROVIDER_WASM)
 	@echo "Downloading transport from registry..."
 	@wkg get $(TRANSPORT_PKG) -o .transport-tmp.wasm

@@ -761,7 +761,7 @@ pub mod wasmcp {
                     };
                     let ptr3 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0-alpha.27")]
+                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "list-tools"]
                         fn wit_import4(_: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -1536,7 +1536,7 @@ pub mod wasmcp {
                     };
                     let ptr17 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0-alpha.27")]
+                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "call-tool"]
                         fn wit_import18(_: *mut u8, _: *mut u8);
@@ -3263,7 +3263,7 @@ pub mod wasmcp {
                     };
                     let ptr18 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0-alpha.27")]
+                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "initialize"]
                         fn wit_import19(_: *mut u8, _: *mut u8);
@@ -3821,7 +3821,7 @@ pub mod wasmcp {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0-alpha.27")]
+                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "client-initialized"]
                         fn wit_import1(_: *mut u8);
@@ -3935,7 +3935,7 @@ pub mod wasmcp {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0-alpha.27")]
+                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "shutdown"]
                         fn wit_import1(_: *mut u8);
@@ -4061,9 +4061,7 @@ pub mod wasmcp {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/authorization@0.2.0-alpha.27"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/authorization@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "get-auth-config"]
                         fn wit_import1(_: *mut u8);
@@ -4256,9 +4254,7 @@ pub mod wasmcp {
                     let len0 = vec0.len();
                     let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/authorization@0.2.0-alpha.27"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/authorization@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "jwks-cache-get"]
                         fn wit_import2(_: *mut u8, _: usize, _: *mut u8);
@@ -4308,9 +4304,7 @@ pub mod wasmcp {
                     let ptr1 = vec1.as_ptr().cast::<u8>();
                     let len1 = vec1.len();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/authorization@0.2.0-alpha.27"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/authorization@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "jwks-cache-set"]
                         fn wit_import2(_: *mut u8, _: usize, _: *mut u8, _: usize);
@@ -4395,12 +4389,12 @@ mod _rt {
 }
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.2.0-alpha.27:tools-transport:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.2.0:tools-transport:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4006] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xa0\x1e\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3934] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xd8\x1d\x01A\x02\x01\
 A\x1c\x01B:\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajs\
 on-value\x03\0\x02\x01s\x04\0\x0bjson-object\x03\0\x04\x01s\x04\0\x0bjson-schema\
 \x03\0\x06\x01o\x02ss\x01p\x08\x04\0\x0bmeta-fields\x03\0\x09\x01ks\x01r\x03\x03\
@@ -4426,66 +4420,65 @@ a\x0b\x04\0\x09mcp-error\x03\0,\x01s\x04\0\x0eprogress-token\x03\0.\x01q\x02\x03
 str\x01s\0\x03num\x01x\0\x04\0\x0arequest-id\x03\00\x01m\x03\x04user\x09assistan\
 t\x06system\x04\0\x0cmessage-role\x03\02\x01r\x01\x04name\x0b\x04\0\x0amodel-hin\
 t\x03\04\x01p5\x01k6\x01r\x04\x05hints7\x0dcost-priority\x10\x0espeed-priority\x10\
-\x15intelligence-priority\x10\x04\0\x11model-preferences\x03\08\x03\0#wasmcp:mcp\
-/mcp-types@0.2.0-alpha.27\x05\0\x02\x03\0\0\x0bmeta-fields\x01B\x09\x02\x03\x02\x01\
-\x01\x04\0\x0bmeta-fields\x03\0\0\x01ps\x01ks\x01r\x07\x0fexpected-issuers\x12ex\
-pected-audiences\x02\x08jwks-uris\x08pass-jwt\x7f\x10expected-subject\x03\x06pol\
-icy\x03\x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01kw\x01r\x0a\
-\x09client-id\x03\x03subs\x06scopes\x02\x03isss\x03aud\x02\x06claims\x01\x03expw\
-\x03iat\x06\x03nbf\x06\x03jwt\x03\x04\0\x0cauth-context\x03\0\x07\x03\0-wasmcp:m\
-cp/authorization-types@0.2.0-alpha.27\x05\x02\x02\x03\0\0\x0dcontent-block\x02\x03\
-\0\0\x0ajson-value\x02\x03\0\0\x0bjson-object\x02\x03\0\0\x04icon\x02\x03\0\x01\x0c\
-auth-context\x01B\x1f\x02\x03\x02\x01\x03\x04\0\x0dcontent-block\x03\0\0\x02\x03\
-\x02\x01\x04\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x05\x04\0\x0bjson-obj\
-ect\x03\0\x04\x02\x03\x02\x01\x06\x04\0\x04icon\x03\0\x06\x02\x03\x02\x01\x07\x04\
-\0\x0cauth-context\x03\0\x08\x01ks\x01k\x7f\x01r\x05\x05title\x0a\x0eread-only-h\
-int\x0b\x10destructive-hint\x0b\x0fidempotent-hint\x0b\x0fopen-world-hint\x0b\x04\
-\0\x10tool-annotations\x03\0\x0c\x01k\x05\x01k\x0d\x01p\x07\x01k\x10\x01r\x07\x04\
-names\x05title\x0a\x0bdescription\x0a\x0cinput-schema\x05\x0doutput-schema\x0e\x0b\
-annotations\x0f\x05icons\x11\x04\0\x04tool\x03\0\x12\x01r\x02\x04names\x09argume\
-nts\x0e\x04\0\x11call-tool-request\x03\0\x14\x01p\x01\x01k\x03\x01r\x04\x07conte\
-nt\x16\x12structured-content\x17\x08is-error\x0b\x04meta\x0e\x04\0\x10call-tool-\
-result\x03\0\x18\x01r\x01\x06cursor\x0a\x04\0\x12list-tools-request\x03\0\x1a\x01\
-p\x13\x01r\x02\x05tools\x1c\x0bnext-cursor\x0a\x04\0\x11list-tools-result\x03\0\x1d\
-\x03\0%wasmcp:mcp/tools-types@0.2.0-alpha.27\x05\x08\x02\x03\0\0\x09mcp-error\x02\
-\x03\0\x02\x12list-tools-request\x02\x03\0\x02\x11list-tools-result\x02\x03\0\x02\
-\x11call-tool-request\x02\x03\0\x02\x10call-tool-result\x01B\x13\x02\x03\x02\x01\
-\x09\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x07\x04\0\x0cauth-context\x03\0\x02\
-\x02\x03\x02\x01\x0a\x04\0\x12list-tools-request\x03\0\x04\x02\x03\x02\x01\x0b\x04\
-\0\x11list-tools-result\x03\0\x06\x02\x03\x02\x01\x0c\x04\0\x11call-tool-request\
-\x03\0\x08\x02\x03\x02\x01\x0d\x04\0\x10call-tool-result\x03\0\x0a\x01j\x01\x07\x01\
-\x01\x01@\x01\x07request\x05\0\x0c\x04\0\x0alist-tools\x01\x0d\x01k\x03\x01j\x01\
-\x0b\x01\x01\x01@\x02\x07request\x09\x07context\x0e\0\x0f\x04\0\x09call-tool\x01\
-\x10\x03\0\x1fwasmcp:mcp/tools@0.2.0-alpha.27\x05\x0e\x01B&\x02\x03\x02\x01\x01\x04\
-\0\x0bmeta-fields\x03\0\0\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\x02\x02\
-\x03\x02\x01\x06\x04\0\x04icon\x03\0\x04\x01s\x04\0\x10protocol-version\x03\0\x06\
-\x01ks\x01p\x05\x01k\x09\x01r\x05\x04names\x05title\x08\x07versions\x0bwebsite-u\
-rl\x08\x05icons\x0a\x04\0\x0eimplementation\x03\0\x0b\x01k\x7f\x01r\x01\x0clist-\
-changed\x0d\x04\0\x10roots-capability\x03\0\x0e\x01r\x01\x0clist-changed\x0d\x04\
-\0\x12prompts-capability\x03\0\x10\x01r\x02\x09subscribe\x0d\x0clist-changed\x0d\
-\x04\0\x14resources-capability\x03\0\x12\x01r\x01\x0clist-changed\x0d\x04\0\x10t\
-ools-capability\x03\0\x14\x01r\x01\x11schema-validation\x0d\x04\0\x16elicitation\
--capability\x03\0\x16\x01k\x03\x01k\x0f\x01k\x17\x01r\x04\x0cexperimental\x18\x05\
-roots\x19\x08sampling\x18\x0belicitation\x1a\x04\0\x13client-capabilities\x03\0\x1b\
-\x01k\x11\x01k\x13\x01k\x15\x01r\x06\x0cexperimental\x18\x07logging\x18\x0bcompl\
-etions\x18\x07prompts\x1d\x09resources\x1e\x05tools\x1f\x04\0\x13server-capabili\
-ties\x03\0\x20\x01r\x03\x10protocol-version\x07\x0ccapabilities\x1c\x0bclient-in\
-fo\x0c\x04\0\x12initialize-request\x03\0\"\x01r\x04\x10protocol-version\x07\x0cc\
-apabilities!\x0bserver-info\x0c\x0cinstructions\x08\x04\0\x11initialize-result\x03\
-\0$\x03\0)wasmcp:mcp/lifecycle-types@0.2.0-alpha.27\x05\x0f\x02\x03\0\x04\x12ini\
-tialize-request\x02\x03\0\x04\x11initialize-result\x01B\x0d\x02\x03\x02\x01\x09\x04\
-\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x10\x04\0\x12initialize-request\x03\0\x02\
-\x02\x03\x02\x01\x11\x04\0\x11initialize-result\x03\0\x04\x01j\x01\x05\x01\x01\x01\
-@\x01\x07request\x03\0\x06\x04\0\x0ainitialize\x01\x07\x01j\0\x01\x01\x01@\0\0\x08\
-\x04\0\x12client-initialized\x01\x09\x04\0\x08shutdown\x01\x09\x03\0#wasmcp:mcp/\
-lifecycle@0.2.0-alpha.27\x05\x12\x02\x03\0\x01\x14provider-auth-config\x01B\x0a\x02\
-\x03\x02\x01\x13\x04\0\x14provider-auth-config\x03\0\0\x01k\x01\x01@\0\0\x02\x04\
-\0\x0fget-auth-config\x01\x03\x01ks\x01@\x01\x08jwks-uris\0\x04\x04\0\x0ejwks-ca\
-che-get\x01\x05\x01@\x02\x08jwks-uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\
-\x06\x03\0'wasmcp:mcp/authorization@0.2.0-alpha.27\x05\x14\x04\0)wasmcp:mcp/tool\
-s-transport@0.2.0-alpha.27\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\0\0\0G\x09\
-producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rus\
-t\x060.41.0";
+\x15intelligence-priority\x10\x04\0\x11model-preferences\x03\08\x03\0\x1awasmcp:\
+mcp/mcp-types@0.2.0\x05\0\x02\x03\0\0\x0bmeta-fields\x01B\x09\x02\x03\x02\x01\x01\
+\x04\0\x0bmeta-fields\x03\0\0\x01ps\x01ks\x01r\x07\x0fexpected-issuers\x12expect\
+ed-audiences\x02\x08jwks-uris\x08pass-jwt\x7f\x10expected-subject\x03\x06policy\x03\
+\x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01kw\x01r\x0a\x09cl\
+ient-id\x03\x03subs\x06scopes\x02\x03isss\x03aud\x02\x06claims\x01\x03expw\x03ia\
+t\x06\x03nbf\x06\x03jwt\x03\x04\0\x0cauth-context\x03\0\x07\x03\0$wasmcp:mcp/aut\
+horization-types@0.2.0\x05\x02\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-\
+value\x02\x03\0\0\x0bjson-object\x02\x03\0\0\x04icon\x02\x03\0\x01\x0cauth-conte\
+xt\x01B\x1f\x02\x03\x02\x01\x03\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\x04\
+\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\x04\
+\x02\x03\x02\x01\x06\x04\0\x04icon\x03\0\x06\x02\x03\x02\x01\x07\x04\0\x0cauth-c\
+ontext\x03\0\x08\x01ks\x01k\x7f\x01r\x05\x05title\x0a\x0eread-only-hint\x0b\x10d\
+estructive-hint\x0b\x0fidempotent-hint\x0b\x0fopen-world-hint\x0b\x04\0\x10tool-\
+annotations\x03\0\x0c\x01k\x05\x01k\x0d\x01p\x07\x01k\x10\x01r\x07\x04names\x05t\
+itle\x0a\x0bdescription\x0a\x0cinput-schema\x05\x0doutput-schema\x0e\x0bannotati\
+ons\x0f\x05icons\x11\x04\0\x04tool\x03\0\x12\x01r\x02\x04names\x09arguments\x0e\x04\
+\0\x11call-tool-request\x03\0\x14\x01p\x01\x01k\x03\x01r\x04\x07content\x16\x12s\
+tructured-content\x17\x08is-error\x0b\x04meta\x0e\x04\0\x10call-tool-result\x03\0\
+\x18\x01r\x01\x06cursor\x0a\x04\0\x12list-tools-request\x03\0\x1a\x01p\x13\x01r\x02\
+\x05tools\x1c\x0bnext-cursor\x0a\x04\0\x11list-tools-result\x03\0\x1d\x03\0\x1cw\
+asmcp:mcp/tools-types@0.2.0\x05\x08\x02\x03\0\0\x09mcp-error\x02\x03\0\x02\x12li\
+st-tools-request\x02\x03\0\x02\x11list-tools-result\x02\x03\0\x02\x11call-tool-r\
+equest\x02\x03\0\x02\x10call-tool-result\x01B\x13\x02\x03\x02\x01\x09\x04\0\x09m\
+cp-error\x03\0\0\x02\x03\x02\x01\x07\x04\0\x0cauth-context\x03\0\x02\x02\x03\x02\
+\x01\x0a\x04\0\x12list-tools-request\x03\0\x04\x02\x03\x02\x01\x0b\x04\0\x11list\
+-tools-result\x03\0\x06\x02\x03\x02\x01\x0c\x04\0\x11call-tool-request\x03\0\x08\
+\x02\x03\x02\x01\x0d\x04\0\x10call-tool-result\x03\0\x0a\x01j\x01\x07\x01\x01\x01\
+@\x01\x07request\x05\0\x0c\x04\0\x0alist-tools\x01\x0d\x01k\x03\x01j\x01\x0b\x01\
+\x01\x01@\x02\x07request\x09\x07context\x0e\0\x0f\x04\0\x09call-tool\x01\x10\x03\
+\0\x16wasmcp:mcp/tools@0.2.0\x05\x0e\x01B&\x02\x03\x02\x01\x01\x04\0\x0bmeta-fie\
+lds\x03\0\0\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\x02\x02\x03\x02\x01\x06\
+\x04\0\x04icon\x03\0\x04\x01s\x04\0\x10protocol-version\x03\0\x06\x01ks\x01p\x05\
+\x01k\x09\x01r\x05\x04names\x05title\x08\x07versions\x0bwebsite-url\x08\x05icons\
+\x0a\x04\0\x0eimplementation\x03\0\x0b\x01k\x7f\x01r\x01\x0clist-changed\x0d\x04\
+\0\x10roots-capability\x03\0\x0e\x01r\x01\x0clist-changed\x0d\x04\0\x12prompts-c\
+apability\x03\0\x10\x01r\x02\x09subscribe\x0d\x0clist-changed\x0d\x04\0\x14resou\
+rces-capability\x03\0\x12\x01r\x01\x0clist-changed\x0d\x04\0\x10tools-capability\
+\x03\0\x14\x01r\x01\x11schema-validation\x0d\x04\0\x16elicitation-capability\x03\
+\0\x16\x01k\x03\x01k\x0f\x01k\x17\x01r\x04\x0cexperimental\x18\x05roots\x19\x08s\
+ampling\x18\x0belicitation\x1a\x04\0\x13client-capabilities\x03\0\x1b\x01k\x11\x01\
+k\x13\x01k\x15\x01r\x06\x0cexperimental\x18\x07logging\x18\x0bcompletions\x18\x07\
+prompts\x1d\x09resources\x1e\x05tools\x1f\x04\0\x13server-capabilities\x03\0\x20\
+\x01r\x03\x10protocol-version\x07\x0ccapabilities\x1c\x0bclient-info\x0c\x04\0\x12\
+initialize-request\x03\0\"\x01r\x04\x10protocol-version\x07\x0ccapabilities!\x0b\
+server-info\x0c\x0cinstructions\x08\x04\0\x11initialize-result\x03\0$\x03\0\x20w\
+asmcp:mcp/lifecycle-types@0.2.0\x05\x0f\x02\x03\0\x04\x12initialize-request\x02\x03\
+\0\x04\x11initialize-result\x01B\x0d\x02\x03\x02\x01\x09\x04\0\x09mcp-error\x03\0\
+\0\x02\x03\x02\x01\x10\x04\0\x12initialize-request\x03\0\x02\x02\x03\x02\x01\x11\
+\x04\0\x11initialize-result\x03\0\x04\x01j\x01\x05\x01\x01\x01@\x01\x07request\x03\
+\0\x06\x04\0\x0ainitialize\x01\x07\x01j\0\x01\x01\x01@\0\0\x08\x04\0\x12client-i\
+nitialized\x01\x09\x04\0\x08shutdown\x01\x09\x03\0\x1awasmcp:mcp/lifecycle@0.2.0\
+\x05\x12\x02\x03\0\x01\x14provider-auth-config\x01B\x0a\x02\x03\x02\x01\x13\x04\0\
+\x14provider-auth-config\x03\0\0\x01k\x01\x01@\0\0\x02\x04\0\x0fget-auth-config\x01\
+\x03\x01ks\x01@\x01\x08jwks-uris\0\x04\x04\0\x0ejwks-cache-get\x01\x05\x01@\x02\x08\
+jwks-uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\x06\x03\0\x1ewasmcp:mcp/aut\
+horization@0.2.0\x05\x14\x04\0\x20wasmcp:mcp/tools-transport@0.2.0\x04\0\x0b\x15\
+\x01\0\x0ftools-transport\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit\
+-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

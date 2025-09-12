@@ -1,4 +1,4 @@
-/** @module Interface wasmcp:mcp/tools@0.2.0-alpha.27 **/
+/** @module Interface wasmcp:mcp/tools@0.2.0 **/
 /**
  * List available tools
  */
