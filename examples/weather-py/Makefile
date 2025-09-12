@@ -5,7 +5,7 @@ PROVIDER_WASM = weather_py_provider.wasm
 MCP_SERVER_WASM = mcp-http-server.wasm
 
 # Registry packages - auth is now built into transport
-TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.2.0-alpha.6
+TRANSPORT_PKG = wasmcp:mcp-transport-http-tools@0.2.0-alpha.27
 
 # Python virtual environment
 VENV = venv
@@ -40,6 +40,8 @@ build: $(VENV) ## Build and compose everything into mcp-http-server.wasm
 		--wit-path wit \
 		--world weather-py \
 		bindings .
+	@echo "Type checking implementation..."
+	@$(VENV)/bin/pyright app.py capabilities/*.py --pythonpath $(VENV)/bin/python3
 	@echo "Building provider component..."
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \

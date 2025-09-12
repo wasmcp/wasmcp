@@ -1,0 +1,1 @@
+"""MCP capability implementations for weather-py."""
