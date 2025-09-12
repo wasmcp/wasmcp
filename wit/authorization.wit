@@ -25,7 +25,7 @@ interface authorization-types {
     use mcp-types.{meta-fields};
     
     /// Provider declares its authorization requirements
-    /// This is returned by lifecycle::get-auth-config()
+    /// This is returned by get-auth-config()
     /// and used by the transport to enforce authorization
     record provider-auth-config {
         /// Expected JWT issuer (REQUIRED for auth)
@@ -64,7 +64,7 @@ interface authorization-types {
         iat: option<u64>,
         /// Not before timestamp (Unix seconds)
         nbf: option<u64>,
-        /// Raw JWT iff enabled by authorization-types::pass-jwt
+        /// Raw JWT iff enabled by pass-jwt flag in provider-auth-config
         jwt: option<string>,
     }
 }

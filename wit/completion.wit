@@ -11,45 +11,63 @@ interface completion {
 
 /// Type definitions for completion
 interface completion-types {
-    use mcp-types.{meta-fields};
+    use mcp-types.{json-object};
 
     /// Request for completion suggestions
     record complete-request {
-        /// What we're completing for (prompt or resource)
-        ref: completion-reference,
-        /// Name of the argument being completed
-        argument-name: string,
-        /// Current partial value of the argument
-        argument-value: string,
-        /// Additional context for completion
+        /// What we're completing for
+        ref: reference,
+        /// Argument information
+        argument: argument-info,
+        /// Optional context containing previously resolved argument values
         context: option<completion-context>,
-        /// Extension metadata
-        meta: option<meta-fields>,
     }
 
     /// Reference to what we're completing
-    variant completion-reference {
+    variant reference {
+        /// Completing for a resource
+        %resource(resource-reference),
         /// Completing for a prompt
-        prompt(string),
-        /// Completing for a resource template
-        resource-template(string),
+        prompt(prompt-reference),
+    }
+
+    /// Resource reference
+    record resource-reference {
+        uri: string,
+    }
+
+    /// Prompt reference
+    record prompt-reference {
+        name: string,
+    }
+
+    /// Argument information
+    record argument-info {
+        /// Name of the argument being completed
+        name: string,
+        /// Current partial value of the argument
+        value: string,
     }
 
     /// Additional context for generating completions
     record completion-context {
-        /// Previously resolved arguments
-        arguments: option<list<tuple<string, string>>>,
+        /// Previously resolved argument values
+        arguments: option<json-object>,
     }
 
-    /// Completion suggestions
+    /// Completion result
     record complete-result {
+        /// Completion information
+        completion: completion-info,
+    }
+
+    /// Completion information
+    record completion-info {
         /// Suggested completion values
         values: list<string>,
         /// Total number of possible completions (may exceed returned values)
-        total: option<s64>,
+        total: option<u32>,
         /// Whether more completions are available
         has-more: option<bool>,
-        /// Extension metadata
-        meta: option<meta-fields>,
     }
 }

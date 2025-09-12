@@ -21,24 +21,26 @@ interface lifecycle {
 
 /// Type definitions for the MCP lifecycle
 interface lifecycle-types {
-    use mcp-types.{meta-fields};
+    use mcp-types.{meta-fields, json-object, icon};
 
-    /// Protocol versions supported by MCP
-    /// These correspond to official MCP specification versions
-    enum protocol-version {
-        /// MCP 2025-06-18 specification (latest)
-        v20250618,
-    }
+    /// Protocol version string
+    /// Common values: "2024-11-05", "2025-03-26", "2025-06-18"
+    type protocol-version = string;
 
     /// Information about an MCP implementation
-    record implementation-info {
+    record implementation {
         /// Implementation name (e.g., "weather-server")
         name: string,
-        /// Implementation version (e.g., "1.0.0")
-        version: string,
         /// Optional human-readable title
         title: option<string>,
+        /// Implementation version (e.g., "1.0.0")
+        version: string,
+        /// Optional website URL for more information
+        website-url: option<string>,
+        /// Optional list of icons for the implementation
+        icons: option<list<icon>>,
     }
+
 
     /// Root listing capability details
     record roots-capability {
@@ -66,26 +68,32 @@ interface lifecycle-types {
         list-changed: option<bool>,
     }
 
+    /// Elicitation capability details
+    record elicitation-capability {
+        /// Whether the client supports JSON Schema validation
+        schema-validation: option<bool>,
+    }
+
     /// Capabilities that a client supports
     record client-capabilities {
-        /// Experimental/custom capabilities
-        experimental: option<meta-fields>,
+        /// Experimental/custom capabilities as JSON objects
+        experimental: option<json-object>,
         /// Support for roots (directory access)
         roots: option<roots-capability>,
-        /// Support for LLM sampling
-        sampling: option<bool>,
+        /// Support for LLM sampling (empty object when enabled)
+        sampling: option<json-object>,
         /// Support for user elicitation
-        elicitation: option<bool>,
+        elicitation: option<elicitation-capability>,
     }
 
     /// Capabilities that a server provides
     record server-capabilities {
-        /// Experimental/custom capabilities
-        experimental: option<meta-fields>,
-        /// Server can send log messages
-        logging: option<bool>,
-        /// Server supports argument autocompletion
-        completions: option<bool>,
+        /// Experimental/custom capabilities as JSON objects
+        experimental: option<json-object>,
+        /// Server can send log messages (empty object when enabled)
+        logging: option<json-object>,
+        /// Server supports argument autocompletion (empty object when enabled)
+        completions: option<json-object>,
         /// Server offers prompts
         prompts: option<prompts-capability>,
         /// Server offers resources
@@ -101,18 +109,18 @@ interface lifecycle-types {
         /// Client's capabilities
         capabilities: client-capabilities,
         /// Client implementation details
-        client-info: implementation-info,
-        /// Optional metadata
-        meta: option<meta-fields>,
+        client-info: implementation,
     }
 
     /// Initialize response from server
     record initialize-result {
+        /// Protocol version the server supports
+        protocol-version: protocol-version,
+        /// Server's capabilities
+        capabilities: server-capabilities,
         /// Server implementation details
-        server-info: implementation-info,
+        server-info: implementation,
         /// Optional instructions for using the server
         instructions: option<string>,
-        /// Optional metadata
-        meta: option<meta-fields>,
     }
 }

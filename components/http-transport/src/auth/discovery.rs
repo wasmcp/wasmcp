@@ -1,4 +1,4 @@
-use crate::auth_types::{ResourceMetadata, ServerMetadata};
+use super::types::{ResourceMetadata, ServerMetadata};
 use crate::bindings::wasmcp::mcp::authorization_types::ProviderAuthConfig;
 
 /// Get OAuth 2.0 Protected Resource Metadata
@@ -8,7 +8,7 @@ pub fn get_resource_metadata(
     server_url: &str,
 ) -> ResourceMetadata {
     // Extract the authorization server URL from the JWKS URI
-    // e.g., "https://divine-lion-50-staging.authkit.app/oauth2/jwks" -> "https://divine-lion-50-staging.authkit.app"
+    // e.g., "https://divine-xxx-staging.authkit.app/oauth2/jwks" -> "https://divine-xxx-staging.authkit.app"
     let auth_server = provider_config
         .jwks_uri
         .rsplit_once("/oauth2/jwks")

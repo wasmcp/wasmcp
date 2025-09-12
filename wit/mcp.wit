@@ -1,6 +1,6 @@
 /// Model Context Protocol (MCP) is an open protocol that enables seamless integration between LLM applications and external data sources and tools.
 /// https://modelcontextprotocol.io/specification/2025-06-18
-package wasmcp:mcp@0.2.0-alpha.20;
+package wasmcp:mcp@0.2.0-alpha.25;
 
 /// Core type definitions for the Model Context Protocol, shared by other interfaces.
 interface mcp-types {
@@ -14,9 +14,27 @@ interface mcp-types {
     /// This is a JSON-encoded value that should be parsed/validated by implementations
     type json-value = string;
 
+    /// JSON object as a string
+    /// This is a JSON-encoded object that should be parsed/validated by implementations
+    type json-object = string;
+
+    /// JSON Schema as a string
+    /// This is a JSON Schema document that defines structure and validation rules
+    type json-schema = string;
+
     /// Metadata fields for extensibility
     /// Key-value pairs where values are JSON-encoded strings
     type meta-fields = list<tuple<string, string>>;
+
+    /// Icon specification for visual representation
+    record icon {
+        /// A standard URI pointing to an icon resource
+        src: string,
+        /// Optional override if the server's MIME type is missing or generic
+        mime-type: option<string>,
+        /// Size specification (e.g., "48x48", "any" for SVG, or "48x48 96x96")
+        sizes: option<string>,
+    }
     
     /// Annotations provide hints to clients about how to handle data
     record annotations {
@@ -30,80 +48,69 @@ interface mcp-types {
         last-modified: option<string>,
     }
 
-    /// Base metadata pattern used throughout the protocol
-    record base-metadata {
-        /// Programmatic identifier
-        name: string,
-        /// Human-readable display name
-        title: option<string>,
-    }
 
     /// Content block types that can be included in messages
     variant content-block {
         text(text-content),
         image(image-content),
         audio(audio-content),
-        resource-link(resource-link),
-        embedded-resource(embedded-resource),
+        %resource(embedded-resource),
+        resource-link(raw-resource),
     }
 
     /// Text content with optional annotations
     record text-content {
         text: string,
+        /// Optional protocol-level metadata for this content block
+        meta: option<json-object>,
         annotations: option<annotations>,
-        meta: option<meta-fields>,
     }
 
-    /// Image content as binary data
+    /// Image content as base64-encoded string
     record image-content {
         /// Base64-encoded image data
-        data: list<u8>,
+        data: string,
         /// MIME type (e.g., "image/png", "image/jpeg")
         mime-type: string,
+        /// Optional protocol-level metadata for this content block
+        meta: option<json-object>,
         annotations: option<annotations>,
-        meta: option<meta-fields>,
     }
 
-    /// Audio content as binary data
+    /// Audio content as base64-encoded string
     record audio-content {
         /// Base64-encoded audio data
-        data: list<u8>,
+        data: string,
         /// MIME type (e.g., "audio/wav", "audio/mp3")
         mime-type: string,
         annotations: option<annotations>,
-        meta: option<meta-fields>,
-    }
-
-    /// Reference to a resource that the server can read
-    /// Resource links included in prompts or tool results may not appear in resources/list
-    record resource-link {
-        /// URI of the resource
-        uri: string,
-        /// Programmatic identifier for the resource
-        name: string,
-        /// Human-readable display title (preferred for UI display)
-        title: option<string>,
-        /// Description of what this resource represents
-        description: option<string>,
-        /// MIME type of the resource, if known
-        mime-type: option<string>,
-        /// Size in bytes (before encoding), if known
-        size: option<u64>,
-        /// Client hints for handling
-        annotations: option<annotations>,
-        /// Extension metadata
-        meta: option<meta-fields>,
     }
 
     /// Embedded resource content
-    /// The contents of a resource, embedded into a prompt or tool call result
     record embedded-resource {
-        /// The actual resource contents (text or binary)
-        contents: resource-contents,
-        /// Client hints for handling
+        /// Optional protocol-level metadata for this content block
+        meta: option<json-object>,
+        /// The actual resource contents
+        %resource: resource-contents,
         annotations: option<annotations>,
-        /// Extension metadata
-        meta: option<meta-fields>,
+    }
+
+    /// Raw resource representation (for resource links)
+    record raw-resource {
+        /// URI representing the resource location
+        uri: string,
+        /// Name of the resource
+        name: string,
+        /// Human-readable title of the resource
+        title: option<string>,
+        /// Optional description of the resource
+        description: option<string>,
+        /// MIME type of the resource content
+        mime-type: option<string>,
+        /// Size in bytes (before encoding), if known
+        size: option<u32>,
+        /// Optional list of icons for the resource
+        icons: option<list<icon>>,
     }
 
     /// Resource contents can be either text or binary
@@ -116,22 +123,16 @@ interface mcp-types {
         uri: string,
         mime-type: option<string>,
         text: string,
-        meta: option<meta-fields>,
+        meta: option<json-object>,
     }
 
     record blob-resource-contents {
         uri: string,
         mime-type: option<string>,
-        /// Binary data
-        blob: list<u8>,
-        meta: option<meta-fields>,
+        /// Base64-encoded binary data
+        blob: string,
+        meta: option<json-object>,
     }
-
-    /// JSON Schema representation
-    /// Kept as a string since JSON Schema is complex
-    /// and typically validated by specialized libraries
-    type json-schema = string;
-    
 
     /// Standard JSON-RPC and MCP error codes
     variant error-code {
@@ -160,9 +161,6 @@ interface mcp-types {
         /// Additional error context (JSON-encoded)
         data: option<string>,
     }
-
-    /// Pagination cursor for list operations
-    type cursor = string;
 
     /// Progress token for tracking long-running operations
     type progress-token = string;

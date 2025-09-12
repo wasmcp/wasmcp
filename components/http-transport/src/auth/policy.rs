@@ -1,6 +1,6 @@
 use regorus::{Engine, Value};
 
-use crate::auth_types::{PolicyRequest, PolicyResult};
+use super::types::{PolicyRequest, PolicyResult};
 
 pub fn evaluate(request: PolicyRequest) -> PolicyResult {
     // Create a new Regorus engine

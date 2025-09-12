@@ -27,7 +27,7 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "wasmcp:mcp"
-version = "0.2.0-alpha.20"
+version = "0.2.0-alpha.22"
 world = "tools-provider"
 
 [profile.release]

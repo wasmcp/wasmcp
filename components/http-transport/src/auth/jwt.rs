@@ -9,7 +9,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use spin_sdk::http::{Method, Request, send};
 
-use crate::auth_types::{JwtClaims, JwtError, JwtRequest, JwtResult};
+use super::types::{JwtClaims, JwtError, JwtRequest, JwtResult};
 
 /// Standard JWT claims structure
 #[derive(Debug, Clone, Serialize, Deserialize)]

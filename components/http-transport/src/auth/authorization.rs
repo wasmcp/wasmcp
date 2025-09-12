@@ -1,5 +1,5 @@
-use crate::auth_types::*;
-use crate::{jwt, policy};
+use super::types::*;
+use super::{jwt, policy};
 
 /// Main authorization function - checks JWT token and applies policy
 pub fn authorize(request: AuthRequest) -> AuthResponse {

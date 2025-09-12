@@ -26,24 +26,26 @@ interface resources {
 
 /// Type definitions for resources
 interface resources-types {
-    use mcp-types.{base-metadata, annotations, meta-fields, cursor, resource-contents, progress-token};
+    use mcp-types.{annotations, resource-contents, icon};
     
     /// A resource that can be read by the client
     record mcp-resource {
-        /// Base metadata (name and optional title)
-        base: base-metadata,
         /// URI identifying the resource
         uri: string,
+        /// Name of the resource
+        name: string,
+        /// Human-readable title
+        title: option<string>,
         /// Human-readable description
         description: option<string>,
         /// MIME type if known
         mime-type: option<string>,
         /// Size in bytes (before encoding)
-        size: option<u64>,
+        size: option<u32>,
+        /// Optional list of icons for the resource
+        icons: option<list<icon>>,
         /// Client hints
         annotations: option<annotations>,
-        /// Extension metadata
-        meta: option<meta-fields>,
     }
 
     /// Resource template with URI template support (RFC 6570)
@@ -52,20 +54,20 @@ interface resources-types {
         uri-template: string,
         /// Identifier for the template
         name: string,
+        /// Human-readable title
+        title: option<string>,
         /// Human-readable description
         description: option<string>,
         /// Expected MIME type of resources
         mime-type: option<string>,
+        /// Client hints
+        annotations: option<annotations>,
     }
 
     /// Request to list available resources
     record list-resources-request {
         /// Pagination cursor
-        cursor: option<cursor>,
-        /// Progress tracking token
-        progress-token: option<progress-token>,
-        /// Extension metadata
-        meta: option<meta-fields>,
+        cursor: option<string>,
     }
 
     /// Response with list of resources
@@ -73,63 +75,45 @@ interface resources-types {
         /// Available resources
         resources: list<mcp-resource>,
         /// Cursor for next page
-        next-cursor: option<cursor>,
-        /// Extension metadata
-        meta: option<meta-fields>,
+        next-cursor: option<string>,
     }
 
     /// Request to list resource templates
     record list-resource-templates-request {
         /// Pagination cursor
-        cursor: option<cursor>,
-        /// Progress tracking token
-        progress-token: option<progress-token>,
-        /// Extension metadata
-        meta: option<meta-fields>,
+        cursor: option<string>,
     }
 
     /// Response with list of resource templates
     record list-resource-templates-result {
         /// Available templates
-        templates: list<resource-template>,
+        resource-templates: list<resource-template>,
         /// Cursor for next page
-        next-cursor: option<cursor>,
-        /// Extension metadata
-        meta: option<meta-fields>,
+        next-cursor: option<string>,
     }
 
     /// Request to read a specific resource
     record read-resource-request {
         /// URI of the resource to read
         uri: string,
-        /// Progress tracking token
-        progress-token: option<progress-token>,
-        /// Extension metadata
-        meta: option<meta-fields>,
     }
 
     /// Response with resource contents
     record read-resource-result {
         /// Resource contents (may be multiple for sub-resources)
         contents: list<resource-contents>,
-        /// Extension metadata
-        meta: option<meta-fields>,
     }
 
     /// Request to subscribe to resource updates
     record subscribe-request {
         /// URI of the resource to monitor
         uri: string,
-        /// Extension metadata
-        meta: option<meta-fields>,
     }
 
     /// Request to unsubscribe from resource updates
     record unsubscribe-request {
         /// URI of the resource to stop monitoring
         uri: string,
-        /// Extension metadata
-        meta: option<meta-fields>,
     }
 }
 
