@@ -7,12 +7,18 @@ This implementation follows the same clean architecture as weather-rs.
 
 from typing import TYPE_CHECKING
 
-# Import our implementations
+# Import our capability implementations.
+# These classes will be instantiated by componentize-py and their methods
+# will be called directly by the WebAssembly runtime when handling MCP requests.
 from capabilities.lifecycle import Lifecycle
 from capabilities.authorization import Authorization  
 from capabilities.tools import Tools
 
-# Verify our implementations satisfy the WIT protocols (for type checking only)
+# Protocol verification (compile-time only).
+# This block ensures our implementations match the WIT-generated Protocol classes.
+# The Protocol pattern (PEP 544) provides structural typing - if our classes have
+# the right methods with the right signatures, they satisfy the protocol.
+# This catches errors at build time via pyright, not at runtime.
 if TYPE_CHECKING:
     from wit_world.exports import (
         Lifecycle as LifecycleProtocol,

@@ -1,3 +1,5 @@
+// Tools implementation using the Guest trait pattern.
+// This demonstrates how Rust handles async operations in the Component Model.
 use crate::bindings::exports::wasmcp::mcp::tools::Guest as ToolsGuest;
 use crate::bindings::wasmcp::mcp::{
     authorization_types::AuthContext,
@@ -8,9 +10,17 @@ use crate::Component;
 use futures::future::join_all;
 use serde::Deserialize;
 use serde_json::json;
+// Spin SDK provides WebAssembly-compatible HTTP client.
+// Unlike standard reqwest or hyper, spin_sdk works in the WebAssembly environment
+// by using the Component Model's HTTP imports.
 use spin_sdk::http::{send, Request, Response};
 
 impl ToolsGuest for Component {
+    /// List available tools.
+    ///
+    /// Tools are defined inline as a Vec, similar to Python's list approach.
+    /// The json! macro creates JSON schemas that are converted to strings
+    /// for WIT's json-object type.
     fn list_tools(_request: ListToolsRequest) -> Result<ListToolsResult, McpError> {
         let tools = vec![
             Tool {
@@ -81,6 +91,14 @@ impl ToolsGuest for Component {
         })
     }
 
+    /// Execute a tool with the given request.
+    ///
+    /// The _ctx parameter is Option<AuthContext>, naturally mapping to WIT's option<auth-context>.
+    /// 
+    /// Key pattern: spin_sdk::http::run() bridges async/sync:
+    /// - Component Model exports are synchronous
+    /// - spin_sdk::http::run() executes an async block to completion
+    /// - This is similar to Python's PollLoop but more integrated
     fn call_tool(
         request: CallToolRequest,
         _ctx: Option<AuthContext>,
@@ -89,6 +107,7 @@ impl ToolsGuest for Component {
         eprintln!("Arguments: {:?}", request.arguments);
         eprintln!("Context: {:?}", _ctx);
         match request.name.as_str() {
+            // Each tool handler runs in an async context via spin_sdk
             "echo" => spin_sdk::http::run(async move { handle_echo(request.arguments.as_ref()) }),
             "get_weather" => {
                 spin_sdk::http::run(async move { handle_get_weather(request.arguments).await })
@@ -149,6 +168,12 @@ async fn handle_multi_weather(args: Option<String>) -> Result<CallToolResult, Mc
         return Ok(error_result("Maximum 5 cities allowed".to_string()));
     }
 
+    // Concurrent HTTP in Rust WebAssembly:
+    // Unlike Go which needs special handling (wasihttp.RequestsConcurrently),
+    // Rust's async/await works naturally with futures::join_all.
+    // The spin_sdk runtime handles the WebAssembly poll-based I/O,
+    // similar to Python's PollLoop but fully integrated with Rust's async ecosystem.
+    
     // Create futures for all cities
     let futures = args.cities.iter().map(|city| {
         let city = city.clone();
@@ -160,7 +185,7 @@ async fn handle_multi_weather(args: Option<String>) -> Result<CallToolResult, Mc
         })
     });
 
-    // Execute all requests concurrently
+    // Execute all requests concurrently - true parallelism via the host runtime
     let results = join_all(futures).await;
 
     let mut output = String::from("=== Weather Results ===\n\n");
@@ -211,6 +236,9 @@ async fn get_weather_for_city(city: &str) -> Result<String, String> {
         city
     );
 
+    // spin_sdk::http::send() uses Component Model HTTP imports under the hood.
+    // This is not a regular network call - it goes through the WebAssembly runtime
+    // which handles the actual HTTP via the host's networking stack.
     let response: Response = send(Request::get(&geocoding_url)).await.map_err(|e| e.to_string())?;
 
     if *response.status() != 200 {

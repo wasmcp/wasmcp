@@ -3,6 +3,11 @@ use crate::bindings::wasmcp::mcp::authorization_types::ProviderAuthConfig;
 use crate::Component;
 
 impl AuthorizationGuest for Component {
+    /// Return OAuth configuration if authentication is required.
+    ///
+    /// Option<T> maps directly to WIT's option<T>. Returning None means
+    /// no authentication is required. This is cleaner than Go's cm.None[]
+    /// or Python's None with type hints.
     fn get_auth_config() -> Option<ProviderAuthConfig> {
         // Uncomment and configure to enable OAuth authorization:
         // Some(ProviderAuthConfig {

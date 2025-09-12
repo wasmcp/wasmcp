@@ -1,5 +1,3 @@
-// Package wasihttp provides HTTP client implementations for WebAssembly System Interface (WASI)
-// It includes both standard http.RoundTripper implementation and concurrent request capabilities
 package wasihttp
 
 import (
@@ -14,62 +12,19 @@ import (
 	"weather_go/internal/wasi/io/poll"
 )
 
-// Client provides HTTP client capabilities using WASI HTTP bindings
-type Client struct {
-	// MaxConcurrency limits the number of concurrent requests (0 = unlimited)
-	MaxConcurrency int
-}
-
-// DefaultClient is the default WASI HTTP client
-var DefaultClient = &Client{}
-
-// init replaces the standard library's HTTP transport with WASI implementation
-func init() {
-	transport := &Transport{}
-	http.DefaultTransport = transport
-	if http.DefaultClient != nil {
-		http.DefaultClient.Transport = transport
-	}
-}
-
-// Get performs a GET request (convenience method)
-func (c *Client) Get(url string) (*http.Response, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	return c.Do(req)
-}
-
-// Do performs a single HTTP request
-func (c *Client) Do(req *http.Request) (*http.Response, error) {
-	transport := &Transport{}
-	return transport.RoundTrip(req)
-}
-
-// GetConcurrently fetches multiple URLs concurrently
-func (c *Client) GetConcurrently(urls []string) []*Response {
-	requests := make([]*http.Request, len(urls))
-	for i, u := range urls {
-		req, err := http.NewRequest("GET", u, nil)
-		if err != nil {
-			requests[i] = nil
-		} else {
-			requests[i] = req
-		}
-	}
-	return c.DoConcurrently(requests)
-}
-
 // Response wraps an HTTP response with error information
 type Response struct {
 	*http.Response
 	Error error
-	Index int // Original request index for ordering
 }
 
-// DoConcurrently performs multiple HTTP requests concurrently
-func (c *Client) DoConcurrently(requests []*http.Request) []*Response {
+// RequestsConcurrently executes multiple HTTP requests concurrently using WASI HTTP.
+//
+// This function leverages WASI's poll.Poll() to wait on multiple I/O operations
+// simultaneously. The actual concurrent networking happens in the host runtime,
+// outside the single-threaded Wasm module. This is similar to how Node.js handles
+// async I/O - single-threaded JavaScript with the event loop in the runtime.
+func RequestsConcurrently(requests []*http.Request) []*Response {
 	if len(requests) == 0 {
 		return nil
 	}
@@ -82,7 +37,7 @@ func (c *Client) DoConcurrently(requests []*http.Request) []*Response {
 
 	// Start all requests
 	for i, req := range requests {
-		results[i] = &Response{Index: i}
+		results[i] = &Response{}
 		
 		if req == nil {
 			results[i].Error = fmt.Errorf("nil request")
@@ -188,12 +143,17 @@ func (c *Client) DoConcurrently(requests []*http.Request) []*Response {
 	return results
 }
 
-// Get performs a GET request using the default client
-func Get(url string) (*http.Response, error) {
-	return DefaultClient.Get(url)
-}
-
-// GetConcurrently fetches multiple URLs concurrently using the default client
+// GetConcurrently is a convenience function for concurrent GET requests
 func GetConcurrently(urls []string) []*Response {
-	return DefaultClient.GetConcurrently(urls)
+	requests := make([]*http.Request, len(urls))
+	for i, url := range urls {
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			// Will be handled in RequestsConcurrently
+			requests[i] = nil
+		} else {
+			requests[i] = req
+		}
+	}
+	return RequestsConcurrently(requests)
 }
