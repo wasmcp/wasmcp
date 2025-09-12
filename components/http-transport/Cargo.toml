@@ -1,6 +1,6 @@
 [package]
 name = "mcp_transport_http"
-version = "0.2.0-alpha.25"
+version = "0.2.0-alpha.27"
 edition = "2024"
 rust-version = "1.89"
 
@@ -46,5 +46,5 @@ derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "wasmcp:mcp"
-version = "0.2.0-alpha.25"
+version = "0.2.0-alpha.27"
 world = "tools-transport"

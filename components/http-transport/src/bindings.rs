@@ -761,7 +761,7 @@ pub mod wasmcp {
                     };
                     let ptr3 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0-alpha.25")]
+                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0-alpha.27")]
                     unsafe extern "C" {
                         #[link_name = "list-tools"]
                         fn wit_import4(_: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -1536,7 +1536,7 @@ pub mod wasmcp {
                     };
                     let ptr17 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0-alpha.25")]
+                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0-alpha.27")]
                     unsafe extern "C" {
                         #[link_name = "call-tool"]
                         fn wit_import18(_: *mut u8, _: *mut u8);
@@ -3263,7 +3263,7 @@ pub mod wasmcp {
                     };
                     let ptr18 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0-alpha.25")]
+                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0-alpha.27")]
                     unsafe extern "C" {
                         #[link_name = "initialize"]
                         fn wit_import19(_: *mut u8, _: *mut u8);
@@ -3821,7 +3821,7 @@ pub mod wasmcp {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0-alpha.25")]
+                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0-alpha.27")]
                     unsafe extern "C" {
                         #[link_name = "client-initialized"]
                         fn wit_import1(_: *mut u8);
@@ -3935,7 +3935,7 @@ pub mod wasmcp {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0-alpha.25")]
+                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0-alpha.27")]
                     unsafe extern "C" {
                         #[link_name = "shutdown"]
                         fn wit_import1(_: *mut u8);
@@ -4062,7 +4062,7 @@ pub mod wasmcp {
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/authorization@0.2.0-alpha.25"
+                        wasm_import_module = "wasmcp:mcp/authorization@0.2.0-alpha.27"
                     )]
                     unsafe extern "C" {
                         #[link_name = "get-auth-config"]
@@ -4257,7 +4257,7 @@ pub mod wasmcp {
                     let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/authorization@0.2.0-alpha.25"
+                        wasm_import_module = "wasmcp:mcp/authorization@0.2.0-alpha.27"
                     )]
                     unsafe extern "C" {
                         #[link_name = "jwks-cache-get"]
@@ -4309,7 +4309,7 @@ pub mod wasmcp {
                     let len1 = vec1.len();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/authorization@0.2.0-alpha.25"
+                        wasm_import_module = "wasmcp:mcp/authorization@0.2.0-alpha.27"
                     )]
                     unsafe extern "C" {
                         #[link_name = "jwks-cache-set"]
@@ -4395,7 +4395,7 @@ mod _rt {
 }
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.2.0-alpha.25:tools-transport:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.2.0-alpha.27:tools-transport:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
@@ -4427,13 +4427,13 @@ str\x01s\0\x03num\x01x\0\x04\0\x0arequest-id\x03\00\x01m\x03\x04user\x09assistan
 t\x06system\x04\0\x0cmessage-role\x03\02\x01r\x01\x04name\x0b\x04\0\x0amodel-hin\
 t\x03\04\x01p5\x01k6\x01r\x04\x05hints7\x0dcost-priority\x10\x0espeed-priority\x10\
 \x15intelligence-priority\x10\x04\0\x11model-preferences\x03\08\x03\0#wasmcp:mcp\
-/mcp-types@0.2.0-alpha.25\x05\0\x02\x03\0\0\x0bmeta-fields\x01B\x09\x02\x03\x02\x01\
+/mcp-types@0.2.0-alpha.27\x05\0\x02\x03\0\0\x0bmeta-fields\x01B\x09\x02\x03\x02\x01\
 \x01\x04\0\x0bmeta-fields\x03\0\0\x01ps\x01ks\x01r\x07\x0fexpected-issuers\x12ex\
 pected-audiences\x02\x08jwks-uris\x08pass-jwt\x7f\x10expected-subject\x03\x06pol\
 icy\x03\x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01kw\x01r\x0a\
 \x09client-id\x03\x03subs\x06scopes\x02\x03isss\x03aud\x02\x06claims\x01\x03expw\
 \x03iat\x06\x03nbf\x06\x03jwt\x03\x04\0\x0cauth-context\x03\0\x07\x03\0-wasmcp:m\
-cp/authorization-types@0.2.0-alpha.25\x05\x02\x02\x03\0\0\x0dcontent-block\x02\x03\
+cp/authorization-types@0.2.0-alpha.27\x05\x02\x02\x03\0\0\x0dcontent-block\x02\x03\
 \0\0\x0ajson-value\x02\x03\0\0\x0bjson-object\x02\x03\0\0\x04icon\x02\x03\0\x01\x0c\
 auth-context\x01B\x1f\x02\x03\x02\x01\x03\x04\0\x0dcontent-block\x03\0\0\x02\x03\
 \x02\x01\x04\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x05\x04\0\x0bjson-obj\
@@ -4447,7 +4447,7 @@ nts\x0e\x04\0\x11call-tool-request\x03\0\x14\x01p\x01\x01k\x03\x01r\x04\x07conte
 nt\x16\x12structured-content\x17\x08is-error\x0b\x04meta\x0e\x04\0\x10call-tool-\
 result\x03\0\x18\x01r\x01\x06cursor\x0a\x04\0\x12list-tools-request\x03\0\x1a\x01\
 p\x13\x01r\x02\x05tools\x1c\x0bnext-cursor\x0a\x04\0\x11list-tools-result\x03\0\x1d\
-\x03\0%wasmcp:mcp/tools-types@0.2.0-alpha.25\x05\x08\x02\x03\0\0\x09mcp-error\x02\
+\x03\0%wasmcp:mcp/tools-types@0.2.0-alpha.27\x05\x08\x02\x03\0\0\x09mcp-error\x02\
 \x03\0\x02\x12list-tools-request\x02\x03\0\x02\x11list-tools-result\x02\x03\0\x02\
 \x11call-tool-request\x02\x03\0\x02\x10call-tool-result\x01B\x13\x02\x03\x02\x01\
 \x09\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x07\x04\0\x0cauth-context\x03\0\x02\
@@ -4456,7 +4456,7 @@ p\x13\x01r\x02\x05tools\x1c\x0bnext-cursor\x0a\x04\0\x11list-tools-result\x03\0\
 \x03\0\x08\x02\x03\x02\x01\x0d\x04\0\x10call-tool-result\x03\0\x0a\x01j\x01\x07\x01\
 \x01\x01@\x01\x07request\x05\0\x0c\x04\0\x0alist-tools\x01\x0d\x01k\x03\x01j\x01\
 \x0b\x01\x01\x01@\x02\x07request\x09\x07context\x0e\0\x0f\x04\0\x09call-tool\x01\
-\x10\x03\0\x1fwasmcp:mcp/tools@0.2.0-alpha.25\x05\x0e\x01B&\x02\x03\x02\x01\x01\x04\
+\x10\x03\0\x1fwasmcp:mcp/tools@0.2.0-alpha.27\x05\x0e\x01B&\x02\x03\x02\x01\x01\x04\
 \0\x0bmeta-fields\x03\0\0\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\x02\x02\
 \x03\x02\x01\x06\x04\0\x04icon\x03\0\x04\x01s\x04\0\x10protocol-version\x03\0\x06\
 \x01ks\x01p\x05\x01k\x09\x01r\x05\x04names\x05title\x08\x07versions\x0bwebsite-u\
@@ -4472,18 +4472,18 @@ etions\x18\x07prompts\x1d\x09resources\x1e\x05tools\x1f\x04\0\x13server-capabili
 ties\x03\0\x20\x01r\x03\x10protocol-version\x07\x0ccapabilities\x1c\x0bclient-in\
 fo\x0c\x04\0\x12initialize-request\x03\0\"\x01r\x04\x10protocol-version\x07\x0cc\
 apabilities!\x0bserver-info\x0c\x0cinstructions\x08\x04\0\x11initialize-result\x03\
-\0$\x03\0)wasmcp:mcp/lifecycle-types@0.2.0-alpha.25\x05\x0f\x02\x03\0\x04\x12ini\
+\0$\x03\0)wasmcp:mcp/lifecycle-types@0.2.0-alpha.27\x05\x0f\x02\x03\0\x04\x12ini\
 tialize-request\x02\x03\0\x04\x11initialize-result\x01B\x0d\x02\x03\x02\x01\x09\x04\
 \0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x10\x04\0\x12initialize-request\x03\0\x02\
 \x02\x03\x02\x01\x11\x04\0\x11initialize-result\x03\0\x04\x01j\x01\x05\x01\x01\x01\
 @\x01\x07request\x03\0\x06\x04\0\x0ainitialize\x01\x07\x01j\0\x01\x01\x01@\0\0\x08\
 \x04\0\x12client-initialized\x01\x09\x04\0\x08shutdown\x01\x09\x03\0#wasmcp:mcp/\
-lifecycle@0.2.0-alpha.25\x05\x12\x02\x03\0\x01\x14provider-auth-config\x01B\x0a\x02\
+lifecycle@0.2.0-alpha.27\x05\x12\x02\x03\0\x01\x14provider-auth-config\x01B\x0a\x02\
 \x03\x02\x01\x13\x04\0\x14provider-auth-config\x03\0\0\x01k\x01\x01@\0\0\x02\x04\
 \0\x0fget-auth-config\x01\x03\x01ks\x01@\x01\x08jwks-uris\0\x04\x04\0\x0ejwks-ca\
 che-get\x01\x05\x01@\x02\x08jwks-uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\
-\x06\x03\0'wasmcp:mcp/authorization@0.2.0-alpha.25\x05\x14\x04\0)wasmcp:mcp/tool\
-s-transport@0.2.0-alpha.25\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\0\0\0G\x09\
+\x06\x03\0'wasmcp:mcp/authorization@0.2.0-alpha.27\x05\x14\x04\0)wasmcp:mcp/tool\
+s-transport@0.2.0-alpha.27\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\0\0\0G\x09\
 producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rus\
 t\x060.41.0";
 #[inline(never)]

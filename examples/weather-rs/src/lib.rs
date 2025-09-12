@@ -12,12 +12,11 @@ use bindings::exports::wasmcp::mcp::authorization::Guest as AuthorizationGuest;
 use bindings::wasmcp::mcp::{
     authorization_types::{AuthContext, ProviderAuthConfig},
     lifecycle_types::{
-        ImplementationInfo,
+        Implementation,
         InitializeRequest,
         InitializeResult,
     },
     tools_types::{
-        BaseMetadata,
         CallToolRequest,
         CallToolResult,
         ListToolsRequest,
@@ -50,13 +49,25 @@ pub struct Component;
 impl LifecycleGuest for Component {
     fn initialize(_request: InitializeRequest) -> Result<InitializeResult, McpError> {
         Ok(InitializeResult {
-            server_info: ImplementationInfo {
+            protocol_version: "0.1.0".to_string(),
+            capabilities: bindings::wasmcp::mcp::lifecycle_types::ServerCapabilities {
+                experimental: None,
+                logging: None,
+                completions: None,
+                prompts: None,
+                resources: None,
+                tools: Some(bindings::wasmcp::mcp::lifecycle_types::ToolsCapability {
+                    list_changed: None,
+                }),
+            },
+            server_info: Implementation {
                 name: "weather-rs".to_string(),
                 version: "0.1.0".to_string(),
                 title: Some("Weather RS Provider".to_string()),
+                icons: None,
+                website_url: None,
             },
             instructions: Some("A Rust MCP server providing weather tools".to_string()),
-            meta: None,
         })
     }
 
@@ -96,11 +107,10 @@ impl ToolsGuest for Component {
     fn list_tools(_request: ListToolsRequest) -> Result<ListToolsResult, McpError> {
         let tools = vec![
             Tool {
-                base: BaseMetadata {
-                    name: "echo".to_string(),
-                    title: Some("echo".to_string()),
-                },
+                name: "echo".to_string(),
+                title: Some("echo".to_string()),
                 description: Some("Echo a message back to the user".to_string()),
+                icons: None,
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -114,14 +124,12 @@ impl ToolsGuest for Component {
                 .to_string(),
                 output_schema: None,
                 annotations: None,
-                meta: None,
             },
             Tool {
-                base: BaseMetadata {
-                    name: "get_weather".to_string(),
-                    title: Some("get_weather".to_string()),
-                },
+                name: "get_weather".to_string(),
+                title: Some("get_weather".to_string()),
                 description: Some("Get current weather for a location".to_string()),
+                icons: None,
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -135,14 +143,12 @@ impl ToolsGuest for Component {
                 .to_string(),
                 output_schema: None,
                 annotations: None,
-                meta: None,
             },
             Tool {
-                base: BaseMetadata {
-                    name: "multi_weather".to_string(),
-                    title: Some("multi_weather".to_string()),
-                },
+                name: "multi_weather".to_string(),
+                title: Some("multi_weather".to_string()),
                 description: Some("Get weather for multiple cities concurrently".to_string()),
+                icons: None,
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -159,18 +165,16 @@ impl ToolsGuest for Component {
                 .to_string(),
                 output_schema: None,
                 annotations: None,
-                meta: None,
             },
         ];
 
         Ok(ListToolsResult {
             tools,
             next_cursor: None,
-            meta: None,
         })
     }
 
-    fn call_tool(request: CallToolRequest, _: Option<AuthContext>) -> Result<CallToolResult, McpError> {
+    fn call_tool(request: CallToolRequest, _ctx: Option<AuthContext>) -> Result<CallToolResult, McpError> {
         match request.name.as_str() {
             "echo" => spin_sdk::http::run(async move { handle_echo(request.arguments.as_ref()) }),
             "get_weather" => {
