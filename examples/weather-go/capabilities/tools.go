@@ -22,8 +22,6 @@ import (
 // The Result type with McpErrorShape is necessary because WIT functions can return
 // result<list-tools-result, mcp-error>. The Shape type is for internal storage.
 func ListTools(request tooltypes.ListToolsRequest) cm.Result[tools.McpErrorShape, tooltypes.ListToolsResult, mcptypes.McpError] {
-	// Define tools directly as a slice, matching the Python pattern.
-	// Each tool maps to a WIT record with required and optional fields.
 	toolsList := []tooltypes.Tool{
 		{
 			Name:        "echo",

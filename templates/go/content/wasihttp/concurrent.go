@@ -21,9 +21,7 @@ type Response struct {
 // RequestsConcurrently executes multiple HTTP requests concurrently using WASI HTTP.
 //
 // This function leverages WASI's poll.Poll() to wait on multiple I/O operations
-// simultaneously. The actual concurrent networking happens in the host runtime,
-// outside the single-threaded Wasm module. This is similar to how Node.js handles
-// async I/O - single-threaded JavaScript with the event loop in the runtime.
+// simultaneously.
 func RequestsConcurrently(requests []*http.Request) []*Response {
 	if len(requests) == 0 {
 		return nil
