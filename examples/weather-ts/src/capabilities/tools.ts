@@ -1,9 +1,5 @@
 /**
  * Tools capability implementation for weather-ts MCP server.
- * 
- * This module provides tools for weather information retrieval, including
- * concurrent fetching for multiple cities. TypeScript/JavaScript's native
- * async/await and Promise.all() provide natural concurrency support.
  */
 
 import { z } from 'zod';
@@ -20,9 +16,7 @@ import type {
 } from '../generated/interfaces/wasmcp-mcp-mcp-types.js';
 import type { AuthContext } from '../generated/interfaces/wasmcp-mcp-authorization-types.js';
 
-// -------------------------------------------------------------------------
-// Tool Schemas with Zod - Type-safe and idiomatic TypeScript
-// -------------------------------------------------------------------------
+// Tool Schemas
 
 const EchoSchema = z.object({
   message: z.string().describe('The message to echo'),
@@ -41,8 +35,6 @@ type MultiWeatherArgs = z.infer<typeof MultiWeatherSchema>;
 
 /**
  * Convert a Zod schema to JSON Schema for the WIT interface.
- * Zod v4 has built-in JSON Schema generation via z.toJSONSchema().
- * This gives us type safety AND proper schema generation!
  */
 function zodToJsonSchema(schema: z.ZodType<any>): string {
   // Use Zod v4's built-in JSON Schema generation
@@ -52,9 +44,6 @@ function zodToJsonSchema(schema: z.ZodType<any>): string {
 
 /**
  * List available tools.
- * 
- * Now using Zod schemas as the single source of truth for both
- * TypeScript types AND JSON Schema generation. Much more idiomatic!
  */
 export function listTools(_request: ListToolsRequest): ListToolsResult {
   const tools: Tool[] = [
@@ -95,12 +84,6 @@ export function listTools(_request: ListToolsRequest): ListToolsResult {
 
 /**
  * Execute a tool with the given request.
- * 
- * The context parameter is optional (AuthContext | undefined), mapping to
- * WIT's option<auth-context>. This allows authentication to be optional.
- * 
- * jco handles the async-to-sync bridge transparently,
- * allowing us to use native JavaScript async/await with fetch.
  */
 export async function callTool(
   request: CallToolRequest,
@@ -139,9 +122,7 @@ export async function callTool(
   }
 }
 
-// -------------------------------------------------------------------------
-// Tool Implementations - Now with proper typed arguments!
-// -------------------------------------------------------------------------
+// Tool Implementations
 
 async function handleEcho(args: EchoArgs): Promise<CallToolResult> {
   return textResult(`Echo: ${args.message}`);
@@ -179,9 +160,7 @@ async function handleMultiWeather(args: MultiWeatherArgs): Promise<CallToolResul
   return textResult(output);
 }
 
-// -------------------------------------------------------------------------
 // Weather API Functions
-// -------------------------------------------------------------------------
 
 interface GeocodingResponse {
   results?: Array<{
@@ -285,9 +264,7 @@ function weatherCodeToString(code: number): string {
   return conditions[code] ?? 'Unknown';
 }
 
-// -------------------------------------------------------------------------
 // Helper Functions
-// -------------------------------------------------------------------------
 
 function textResult(text: string): CallToolResult {
   const textContent: TextContent = {
@@ -296,9 +273,7 @@ function textResult(text: string): CallToolResult {
     meta: undefined,
   };
   
-  // TypeScript's variant types from WIT are represented as tagged unions.
-  // This is different from Rust's enum variants but similar to how
-  // discriminated unions work in TypeScript.
+  // WIT variant types are represented as tagged unions.
   const contentBlock: ContentBlock = {
     tag: 'text',
     val: textContent,

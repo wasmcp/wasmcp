@@ -4,12 +4,7 @@ from wit_world.imports import lifecycle_types
 
 
 class Lifecycle:
-    """Handle MCP lifecycle methods.
-    
-    This class is instantiated by componentize-py and its methods are called
-    directly by the WebAssembly runtime. Unlike Go, Python doesn't need special
-    Result types - componentize-py handles the WIT result<T, E> mapping transparently.
-    """
+    """Handle MCP lifecycle methods."""
     
     def initialize(self, request: lifecycle_types.InitializeRequest) -> lifecycle_types.InitializeResult:
         """Initialize the MCP server.
