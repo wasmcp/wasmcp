@@ -158,10 +158,6 @@ async function handleGetWeather(args: WeatherArgs): Promise<CallToolResult> {
 
 async function handleMultiWeather(args: MultiWeatherArgs): Promise<CallToolResult> {
   // Zod already validated the array length, so we know it's 1-5 cities
-  
-  // JavaScript's Promise.all() provides natural concurrency.
-  // Unlike Go which needs wasihttp.RequestsConcurrently() or Python
-  // which needs PollLoop, JavaScript's async model works naturally with jco.
   const results = await Promise.all(
     args.cities.map(async (city) => {
       try {
@@ -212,9 +208,7 @@ async function getWeatherForCity(city: string): Promise<string> {
   // Get coordinates for the city
   const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
   
-  // JavaScript's fetch API works in the WebAssembly environment through
-  // the Component Model's HTTP imports. jco handles the bridging between
-  // JavaScript's fetch and WASI HTTP, providing seamless async support!
+  // fetch API through Component Model's HTTP imports
   const geoResponse = await fetch(geoUrl);
   if (!geoResponse.ok) {
     throw new Error(`Geocoding failed with status: ${geoResponse.status}`);

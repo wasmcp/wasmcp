@@ -11,7 +11,7 @@ world weather-go {
     import wasi:io/poll@0.2.3;
     import wasi:io/streams@0.2.3;
     
-    /// Export the new MCP capability interfaces
+    /// Export MCP capability interfaces
     export wasmcp:mcp/lifecycle@0.2.0;
     export wasmcp:mcp/authorization@0.2.0;
     export wasmcp:mcp/tools@0.2.0;

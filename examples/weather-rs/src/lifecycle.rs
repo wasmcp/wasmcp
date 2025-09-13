@@ -41,17 +41,11 @@ impl LifecycleGuest for Component {
     }
 
     /// Called when the client has initialized.
-    ///
-    /// Note: These are associated functions (no self parameter) because
-    /// the Component Model is stateless - each call is independent.
     fn client_initialized() -> Result<(), McpError> {
         Ok(())
     }
 
     /// Shutdown the server.
-    ///
-    /// The Component Model manages the component lifecycle. This method
-    /// is called by the runtime, not by dropping the Component struct.
     fn shutdown() -> Result<(), McpError> {
         Ok(())
     }

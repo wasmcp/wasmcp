@@ -39,18 +39,9 @@ class Lifecycle:
         )
 
     def client_initialized(self) -> None:
-        """Called when client has initialized.
-        
-        Note: Unlike traditional Python servers, there's no event loop or
-        async context here. Each method call is synchronous and stateless -
-        the Component Model handles all the async transport details.
-        """
+        """Called when client has initialized."""
         pass
 
     def shutdown(self) -> None:
-        """Shutdown the server.
-        
-        In the Component Model, the runtime manages the component lifecycle.
-        This method allows for graceful cleanup if needed.
-        """
+        """Shutdown the server."""
         pass
