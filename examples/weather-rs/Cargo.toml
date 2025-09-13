@@ -26,7 +26,7 @@ lto = true
 strip = true
 
 [package.metadata.component]
-package = "wasmcp:mcp-transport-http"
+package = "weather-rs:capabilities"
 
 [package.metadata.component.target]
 path = "wit"
