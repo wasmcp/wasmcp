@@ -54,9 +54,6 @@ export function initialize(_request: InitializeRequest): InitializeResult {
 
 /**
  * Called when the client has initialized.
- * 
- * Note: jco handles the Component Model's stateless nature - each function
- * call is independent with no shared state between calls.
  */
 export function clientInitialized(): void {
   // No-op for this example
@@ -64,9 +61,6 @@ export function clientInitialized(): void {
 
 /**
  * Shutdown the server.
- * 
- * The Component Model manages the component lifecycle. This method
- * allows for graceful cleanup if needed.
  */
 export function shutdown(): void {
   // No-op for this example

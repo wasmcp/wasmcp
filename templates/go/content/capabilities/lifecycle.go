@@ -8,11 +8,6 @@ import (
 )
 
 // Initialize handles session initialization.
-//
-// Technical Note: We return a cm.Result instead of Go's idiomatic (value, error)
-// because WebAssembly core modules can only return a single value. The Result type
-// is defined in WIT as result<T, E> and represents either success (T) or error (E).
-// The InitializeResultShape is wit-bindgen-go's internal storage type for the result.
 func Initialize(request lifecycletypes.InitializeRequest) cm.Result[lifecycle.InitializeResultShape, lifecycletypes.InitializeResult, mcptypes.McpError] {
 	result := lifecycletypes.InitializeResult{
 		ProtocolVersion: lifecycletypes.ProtocolVersion("0.1.0"),
