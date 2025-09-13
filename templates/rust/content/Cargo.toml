@@ -26,7 +26,7 @@ lto = true
 strip = true
 
 [package.metadata.component]
-package = "wasmcp:mcp-transport-http"
+package = "{{project-name | kebab_case}}:capabilities"
 
 [package.metadata.component.target]
 path = "wit"
