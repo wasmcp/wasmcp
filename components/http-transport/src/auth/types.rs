@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 // Use WIT AuthContext directly from bindings and re-export it
-pub use crate::bindings::wasmcp::mcp::authorization_types::AuthContext;
+pub use crate::bindings::wasmcp::transport::authorization_types::AuthContext;
 
 // Internal auth types for transport implementation
 

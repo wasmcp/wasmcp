@@ -13,11 +13,11 @@ pub fn list_resources(params: Option<Value>) -> Result<Value, McpError> {
             data: None,
         })?;
 
-    let request = bindings::wasmcp::mcp::resources_types::ListResourcesRequest {
+    let request = bindings::wasmcp::transport::resources_types::ListResourcesRequest {
         cursor: None,
     };
 
-    let response = bindings::wasmcp::mcp::resources::list_resources(&request)?;
+    let response = bindings::wasmcp::transport::resources::list_resources(&request)?;
     
     // Convert WIT ListResourcesResult to rmcp
     let result = ListResourcesResult {
@@ -39,8 +39,8 @@ pub fn list_resources(params: Option<Value>) -> Result<Value, McpError> {
             }, r.annotations.map(|a| rmcp::model::Annotations {
                 audience: a.audience.map(|roles| {
                     roles.into_iter().map(|role| match role {
-                        bindings::wasmcp::mcp::mcp_types::Role::User => rmcp::model::Role::User,
-                        bindings::wasmcp::mcp::mcp_types::Role::Assistant => rmcp::model::Role::Assistant,
+                        wasmcp_core::wasmcp::mcp::mcp_types::Role::User => rmcp::model::Role::User,
+                        wasmcp_core::wasmcp::mcp::mcp_types::Role::Assistant => rmcp::model::Role::Assistant,
                     }).collect()
                 }),
                 priority: a.priority.map(|p| p as f32),
@@ -70,16 +70,16 @@ pub fn read_resource(params: Option<Value>) -> Result<Value, McpError> {
         data: None,
     })?;
 
-    let request = bindings::wasmcp::mcp::resources_types::ReadResourceRequest {
+    let request = bindings::wasmcp::transport::resources_types::ReadResourceRequest {
         uri: uri.to_string(),
     };
 
-    let response = bindings::wasmcp::mcp::resources::read_resource(&request)?;
+    let response = bindings::wasmcp::transport::resources::read_resource(&request)?;
     
     // Convert WIT ReadResourceResult to rmcp
     let result = ReadResourceResult {
         contents: response.contents.into_iter().map(|c| {
-            use bindings::wasmcp::mcp::mcp_types::ResourceContents;
+            use wasmcp_core::wasmcp::mcp::mcp_types::ResourceContents;
             match c {
                 ResourceContents::Text(t) => rmcp::model::ResourceContents::TextResourceContents {
                     uri: t.uri,

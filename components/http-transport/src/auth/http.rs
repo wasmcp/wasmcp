@@ -5,7 +5,7 @@ use spin_sdk::http::{Request, Response};
 
 use super::types::{AuthContext, AuthRequest, AuthResponse};
 use super::{authorize, get_resource_metadata, get_server_metadata};
-use crate::bindings::wasmcp::mcp::authorization_types::ProviderAuthConfig;
+use crate::bindings::wasmcp::transport::authorization_types::ProviderAuthConfig;
 use crate::error::{ErrorCode, ErrorCodeExt, McpError};
 
 /// Authorize an HTTP request using the authorization component

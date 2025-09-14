@@ -1,5 +1,5 @@
 use super::types::{ResourceMetadata, ServerMetadata};
-use crate::bindings::wasmcp::mcp::authorization_types::ProviderAuthConfig;
+use crate::bindings::wasmcp::transport::authorization_types::ProviderAuthConfig;
 
 /// Get OAuth 2.0 Protected Resource Metadata
 /// Uses the provider's auth configuration to build the metadata

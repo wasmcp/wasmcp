@@ -13,11 +13,11 @@ pub fn list_prompts(params: Option<Value>) -> Result<Value, McpError> {
             data: None,
         })?;
 
-    let request = bindings::wasmcp::mcp::prompts_types::ListPromptsRequest {
+    let request = bindings::wasmcp::transport::prompts_types::ListPromptsRequest {
         cursor: None,
     };
 
-    let response = bindings::wasmcp::mcp::prompts::list_prompts(&request)?;
+    let response = bindings::wasmcp::transport::prompts::list_prompts(&request)?;
     
     // Convert WIT ListPromptsResult to rmcp
     let result = ListPromptsResult {
@@ -67,12 +67,12 @@ pub fn get_prompt(params: Option<Value>) -> Result<Value, McpError> {
         .and_then(|v| v.as_object())
         .map(|obj| serde_json::to_string(obj).unwrap_or_else(|_| "{}".to_string()));
 
-    let request = bindings::wasmcp::mcp::prompts_types::GetPromptRequest {
+    let request = bindings::wasmcp::transport::prompts_types::GetPromptRequest {
         name: name.to_string(),
         arguments,
     };
 
-    let response = bindings::wasmcp::mcp::prompts::get_prompt(&request)?;
+    let response = bindings::wasmcp::transport::prompts::get_prompt(&request)?;
     
     // Convert WIT GetPromptResult to rmcp
     let result = GetPromptResult {
@@ -86,8 +86,8 @@ pub fn get_prompt(params: Option<Value>) -> Result<Value, McpError> {
 }
 
 /// Helper function to convert WIT PromptMessage to rmcp PromptMessage
-fn convert_prompt_message(m: bindings::wasmcp::mcp::prompts_types::PromptMessage) -> PromptMessage {
-    use bindings::wasmcp::mcp::prompts_types::{PromptMessageContent, PromptMessageRole};
+fn convert_prompt_message(m: bindings::wasmcp::transport::prompts_types::PromptMessage) -> PromptMessage {
+    use bindings::wasmcp::transport::prompts_types::{PromptMessageContent, PromptMessageRole};
     
     PromptMessage {
         role: match m.role {

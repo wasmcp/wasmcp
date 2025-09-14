@@ -8,13 +8,14 @@ use spin_sdk::http::{IntoResponse, Request, Response};
 #[allow(warnings)]
 mod bindings;
 
-use bindings::wasmcp::mcp::authorization;
-use bindings::wasmcp::mcp::authorization_types::ProviderAuthConfig;
+use bindings::wasmcp::transport::authorization;
+use bindings::wasmcp::transport::authorization_types::ProviderAuthConfig;
 
 mod capabilities;
 mod auth;
 mod error;
 mod constants;
+mod provider;
 use error::{ErrorCode, ErrorCodeExt, McpError};
 use constants::{methods, oauth};
 use auth::AuthContext;

@@ -2,477 +2,14 @@
 // Options used:
 //   * runtime_path: "wit_bindgen_rt"
 //   * additional derives ["serde::Serialize", "serde::Deserialize", "Clone"]
+//   * with "wasmcp:mcp/lifecycle-types@0.2.0" = "wasmcp_core"
+//   * with "wasmcp:mcp/mcp-types@0.2.0" = "wasmcp_core"
+use wasmcp_core as __with_name0;
+use wasmcp_core as __with_name1;
 #[rustfmt::skip]
 #[allow(dead_code, clippy::all)]
 pub mod wasmcp {
-    pub mod mcp {
-        /// Core type definitions for the Model Context Protocol, shared by other interfaces.
-        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod mcp_types {
-            #[used]
-            #[doc(hidden)]
-            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            /// Role in a conversation
-            #[repr(u8)]
-            #[derive(
-                Clone,
-                Copy,
-                Eq,
-                Ord,
-                PartialEq,
-                PartialOrd,
-                serde::Deserialize,
-                serde::Serialize
-            )]
-            pub enum Role {
-                User,
-                Assistant,
-            }
-            impl ::core::fmt::Debug for Role {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    match self {
-                        Role::User => f.debug_tuple("Role::User").finish(),
-                        Role::Assistant => f.debug_tuple("Role::Assistant").finish(),
-                    }
-                }
-            }
-            impl Role {
-                #[doc(hidden)]
-                pub unsafe fn _lift(val: u8) -> Role {
-                    if !cfg!(debug_assertions) {
-                        return ::core::mem::transmute(val);
-                    }
-                    match val {
-                        0 => Role::User,
-                        1 => Role::Assistant,
-                        _ => panic!("invalid enum discriminant"),
-                    }
-                }
-            }
-            /// JSON value as a string
-            /// This is a JSON-encoded value that should be parsed/validated by implementations
-            pub type JsonValue = _rt::String;
-            /// JSON object as a string
-            /// This is a JSON-encoded object that should be parsed/validated by implementations
-            pub type JsonObject = _rt::String;
-            /// Metadata fields for extensibility
-            /// Key-value pairs where values are JSON-encoded strings
-            pub type MetaFields = _rt::Vec<(_rt::String, _rt::String)>;
-            /// Icon specification for visual representation
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct Icon {
-                /// A standard URI pointing to an icon resource
-                pub src: _rt::String,
-                /// Optional override if the server's MIME type is missing or generic
-                pub mime_type: Option<_rt::String>,
-                /// Size specification (e.g., "48x48", "any" for SVG, or "48x48 96x96")
-                pub sizes: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for Icon {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("Icon")
-                        .field("src", &self.src)
-                        .field("mime-type", &self.mime_type)
-                        .field("sizes", &self.sizes)
-                        .finish()
-                }
-            }
-            /// Annotations provide hints to clients about how to handle data
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct Annotations {
-                /// Who this data is intended for
-                pub audience: Option<_rt::Vec<Role>>,
-                /// Priority from 0.0 (least) to 1.0 (most important)
-                /// Implementations SHOULD validate this is within [0.0, 1.0] range
-                pub priority: Option<f64>,
-                /// ISO 8601 timestamp of last modification
-                /// Format: YYYY-MM-DDTHH:mm:ss[.sss]Z or ±HH:MM offset
-                pub last_modified: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for Annotations {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("Annotations")
-                        .field("audience", &self.audience)
-                        .field("priority", &self.priority)
-                        .field("last-modified", &self.last_modified)
-                        .finish()
-                }
-            }
-            /// Text content with optional annotations
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct TextContent {
-                pub text: _rt::String,
-                /// Optional protocol-level metadata for this content block
-                pub meta: Option<JsonObject>,
-                pub annotations: Option<Annotations>,
-            }
-            impl ::core::fmt::Debug for TextContent {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("TextContent")
-                        .field("text", &self.text)
-                        .field("meta", &self.meta)
-                        .field("annotations", &self.annotations)
-                        .finish()
-                }
-            }
-            /// Image content as base64-encoded string
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ImageContent {
-                /// Base64-encoded image data
-                pub data: _rt::String,
-                /// MIME type (e.g., "image/png", "image/jpeg")
-                pub mime_type: _rt::String,
-                /// Optional protocol-level metadata for this content block
-                pub meta: Option<JsonObject>,
-                pub annotations: Option<Annotations>,
-            }
-            impl ::core::fmt::Debug for ImageContent {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ImageContent")
-                        .field("data", &self.data)
-                        .field("mime-type", &self.mime_type)
-                        .field("meta", &self.meta)
-                        .field("annotations", &self.annotations)
-                        .finish()
-                }
-            }
-            /// Audio content as base64-encoded string
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct AudioContent {
-                /// Base64-encoded audio data
-                pub data: _rt::String,
-                /// MIME type (e.g., "audio/wav", "audio/mp3")
-                pub mime_type: _rt::String,
-                pub annotations: Option<Annotations>,
-            }
-            impl ::core::fmt::Debug for AudioContent {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("AudioContent")
-                        .field("data", &self.data)
-                        .field("mime-type", &self.mime_type)
-                        .field("annotations", &self.annotations)
-                        .finish()
-                }
-            }
-            /// Raw resource representation (for resource links)
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct RawResource {
-                /// URI representing the resource location
-                pub uri: _rt::String,
-                /// Name of the resource
-                pub name: _rt::String,
-                /// Human-readable title of the resource
-                pub title: Option<_rt::String>,
-                /// Optional description of the resource
-                pub description: Option<_rt::String>,
-                /// MIME type of the resource content
-                pub mime_type: Option<_rt::String>,
-                /// Size in bytes (before encoding), if known
-                pub size: Option<u32>,
-                /// Optional list of icons for the resource
-                pub icons: Option<_rt::Vec<Icon>>,
-            }
-            impl ::core::fmt::Debug for RawResource {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("RawResource")
-                        .field("uri", &self.uri)
-                        .field("name", &self.name)
-                        .field("title", &self.title)
-                        .field("description", &self.description)
-                        .field("mime-type", &self.mime_type)
-                        .field("size", &self.size)
-                        .field("icons", &self.icons)
-                        .finish()
-                }
-            }
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct TextResourceContents {
-                pub uri: _rt::String,
-                pub mime_type: Option<_rt::String>,
-                pub text: _rt::String,
-                pub meta: Option<JsonObject>,
-            }
-            impl ::core::fmt::Debug for TextResourceContents {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("TextResourceContents")
-                        .field("uri", &self.uri)
-                        .field("mime-type", &self.mime_type)
-                        .field("text", &self.text)
-                        .field("meta", &self.meta)
-                        .finish()
-                }
-            }
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct BlobResourceContents {
-                pub uri: _rt::String,
-                pub mime_type: Option<_rt::String>,
-                /// Base64-encoded binary data
-                pub blob: _rt::String,
-                pub meta: Option<JsonObject>,
-            }
-            impl ::core::fmt::Debug for BlobResourceContents {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("BlobResourceContents")
-                        .field("uri", &self.uri)
-                        .field("mime-type", &self.mime_type)
-                        .field("blob", &self.blob)
-                        .field("meta", &self.meta)
-                        .finish()
-                }
-            }
-            /// Resource contents can be either text or binary
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub enum ResourceContents {
-                Text(TextResourceContents),
-                Blob(BlobResourceContents),
-            }
-            impl ::core::fmt::Debug for ResourceContents {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    match self {
-                        ResourceContents::Text(e) => {
-                            f.debug_tuple("ResourceContents::Text").field(e).finish()
-                        }
-                        ResourceContents::Blob(e) => {
-                            f.debug_tuple("ResourceContents::Blob").field(e).finish()
-                        }
-                    }
-                }
-            }
-            /// Embedded resource content
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct EmbeddedResource {
-                /// Optional protocol-level metadata for this content block
-                pub meta: Option<JsonObject>,
-                /// The actual resource contents
-                pub resource: ResourceContents,
-                pub annotations: Option<Annotations>,
-            }
-            impl ::core::fmt::Debug for EmbeddedResource {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("EmbeddedResource")
-                        .field("meta", &self.meta)
-                        .field("resource", &self.resource)
-                        .field("annotations", &self.annotations)
-                        .finish()
-                }
-            }
-            /// Content block types that can be included in messages
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub enum ContentBlock {
-                Text(TextContent),
-                Image(ImageContent),
-                Audio(AudioContent),
-                Resource(EmbeddedResource),
-                ResourceLink(RawResource),
-            }
-            impl ::core::fmt::Debug for ContentBlock {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    match self {
-                        ContentBlock::Text(e) => {
-                            f.debug_tuple("ContentBlock::Text").field(e).finish()
-                        }
-                        ContentBlock::Image(e) => {
-                            f.debug_tuple("ContentBlock::Image").field(e).finish()
-                        }
-                        ContentBlock::Audio(e) => {
-                            f.debug_tuple("ContentBlock::Audio").field(e).finish()
-                        }
-                        ContentBlock::Resource(e) => {
-                            f.debug_tuple("ContentBlock::Resource").field(e).finish()
-                        }
-                        ContentBlock::ResourceLink(e) => {
-                            f.debug_tuple("ContentBlock::ResourceLink").field(e).finish()
-                        }
-                    }
-                }
-            }
-            /// Standard JSON-RPC and MCP error codes
-            #[derive(Clone, Copy, serde::Deserialize, serde::Serialize)]
-            pub enum ErrorCode {
-                /// JSON-RPC standard errors
-                ParseError,
-                /// -32700
-                InvalidRequest,
-                /// -32600
-                MethodNotFound,
-                /// -32601
-                InvalidParams,
-                /// -32602
-                InternalError,
-                /// -32603
-                /// MCP-specific errors
-                ResourceNotFound,
-                ToolNotFound,
-                PromptNotFound,
-                Unauthorized,
-                RateLimited,
-                Timeout,
-                Cancelled,
-                /// Custom error with specific code
-                CustomCode(i32),
-            }
-            impl ::core::fmt::Debug for ErrorCode {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    match self {
-                        ErrorCode::ParseError => {
-                            f.debug_tuple("ErrorCode::ParseError").finish()
-                        }
-                        ErrorCode::InvalidRequest => {
-                            f.debug_tuple("ErrorCode::InvalidRequest").finish()
-                        }
-                        ErrorCode::MethodNotFound => {
-                            f.debug_tuple("ErrorCode::MethodNotFound").finish()
-                        }
-                        ErrorCode::InvalidParams => {
-                            f.debug_tuple("ErrorCode::InvalidParams").finish()
-                        }
-                        ErrorCode::InternalError => {
-                            f.debug_tuple("ErrorCode::InternalError").finish()
-                        }
-                        ErrorCode::ResourceNotFound => {
-                            f.debug_tuple("ErrorCode::ResourceNotFound").finish()
-                        }
-                        ErrorCode::ToolNotFound => {
-                            f.debug_tuple("ErrorCode::ToolNotFound").finish()
-                        }
-                        ErrorCode::PromptNotFound => {
-                            f.debug_tuple("ErrorCode::PromptNotFound").finish()
-                        }
-                        ErrorCode::Unauthorized => {
-                            f.debug_tuple("ErrorCode::Unauthorized").finish()
-                        }
-                        ErrorCode::RateLimited => {
-                            f.debug_tuple("ErrorCode::RateLimited").finish()
-                        }
-                        ErrorCode::Timeout => {
-                            f.debug_tuple("ErrorCode::Timeout").finish()
-                        }
-                        ErrorCode::Cancelled => {
-                            f.debug_tuple("ErrorCode::Cancelled").finish()
-                        }
-                        ErrorCode::CustomCode(e) => {
-                            f.debug_tuple("ErrorCode::CustomCode").field(e).finish()
-                        }
-                    }
-                }
-            }
-            /// Standard error structure
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct McpError {
-                pub code: ErrorCode,
-                pub message: _rt::String,
-                /// Additional error context (JSON-encoded)
-                pub data: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for McpError {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("McpError")
-                        .field("code", &self.code)
-                        .field("message", &self.message)
-                        .field("data", &self.data)
-                        .finish()
-                }
-            }
-            impl ::core::fmt::Display for McpError {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    write!(f, "{:?}", self)
-                }
-            }
-            impl std::error::Error for McpError {}
-            /// Message role for LLM interactions
-            #[repr(u8)]
-            #[derive(
-                Clone,
-                Copy,
-                Eq,
-                Ord,
-                PartialEq,
-                PartialOrd,
-                serde::Deserialize,
-                serde::Serialize
-            )]
-            pub enum MessageRole {
-                User,
-                Assistant,
-                System,
-            }
-            impl ::core::fmt::Debug for MessageRole {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    match self {
-                        MessageRole::User => f.debug_tuple("MessageRole::User").finish(),
-                        MessageRole::Assistant => {
-                            f.debug_tuple("MessageRole::Assistant").finish()
-                        }
-                        MessageRole::System => {
-                            f.debug_tuple("MessageRole::System").finish()
-                        }
-                    }
-                }
-            }
-            impl MessageRole {
-                #[doc(hidden)]
-                pub unsafe fn _lift(val: u8) -> MessageRole {
-                    if !cfg!(debug_assertions) {
-                        return ::core::mem::transmute(val);
-                    }
-                    match val {
-                        0 => MessageRole::User,
-                        1 => MessageRole::Assistant,
-                        2 => MessageRole::System,
-                        _ => panic!("invalid enum discriminant"),
-                    }
-                }
-            }
-        }
+    pub mod transport {
         /// Type definitions for authentication and authorization
         #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
         pub mod authorization_types {
@@ -480,7 +17,7 @@ pub mod wasmcp {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type MetaFields = super::super::super::wasmcp::mcp::mcp_types::MetaFields;
+            pub type MetaFields = super::super::super::__with_name0::MetaFields;
             /// Provider declares its authorization requirements
             /// This is returned by get-auth-config()
             /// and used by the transport to enforce authorization
@@ -568,10 +105,10 @@ pub mod wasmcp {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type ContentBlock = super::super::super::wasmcp::mcp::mcp_types::ContentBlock;
-            pub type JsonValue = super::super::super::wasmcp::mcp::mcp_types::JsonValue;
-            pub type JsonObject = super::super::super::wasmcp::mcp::mcp_types::JsonObject;
-            pub type Icon = super::super::super::wasmcp::mcp::mcp_types::Icon;
+            pub type ContentBlock = super::super::super::__with_name0::ContentBlock;
+            pub type JsonValue = super::super::super::__with_name0::JsonValue;
+            pub type JsonObject = super::super::super::__with_name0::JsonObject;
+            pub type Icon = super::super::super::__with_name0::Icon;
             /// Behavioral hints about tool operations
             #[derive(Clone, serde::Deserialize, serde::Serialize)]
             pub struct ToolAnnotations {
@@ -724,12 +261,12 @@ pub mod wasmcp {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type McpError = super::super::super::wasmcp::mcp::mcp_types::McpError;
-            pub type AuthContext = super::super::super::wasmcp::mcp::authorization_types::AuthContext;
-            pub type ListToolsRequest = super::super::super::wasmcp::mcp::tools_types::ListToolsRequest;
-            pub type ListToolsResult = super::super::super::wasmcp::mcp::tools_types::ListToolsResult;
-            pub type CallToolRequest = super::super::super::wasmcp::mcp::tools_types::CallToolRequest;
-            pub type CallToolResult = super::super::super::wasmcp::mcp::tools_types::CallToolResult;
+            pub type McpError = super::super::super::__with_name0::McpError;
+            pub type AuthContext = super::super::super::wasmcp::transport::authorization_types::AuthContext;
+            pub type ListToolsRequest = super::super::super::wasmcp::transport::tools_types::ListToolsRequest;
+            pub type ListToolsResult = super::super::super::wasmcp::transport::tools_types::ListToolsResult;
+            pub type CallToolRequest = super::super::super::wasmcp::transport::tools_types::CallToolRequest;
+            pub type CallToolResult = super::super::super::wasmcp::transport::tools_types::CallToolResult;
             #[allow(unused_unsafe, clippy::all)]
             /// List available tools
             pub fn list_tools(
@@ -747,7 +284,7 @@ pub mod wasmcp {
                         [::core::mem::MaybeUninit::uninit(); 8
                             + 6 * ::core::mem::size_of::<*const u8>()],
                     );
-                    let super::super::super::wasmcp::mcp::tools_types::ListToolsRequest {
+                    let super::super::super::wasmcp::transport::tools_types::ListToolsRequest {
                         cursor: cursor0,
                     } = request;
                     let (result2_0, result2_1, result2_2) = match cursor0 {
@@ -761,7 +298,7 @@ pub mod wasmcp {
                     };
                     let ptr3 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0")]
+                    #[link(wasm_import_module = "wasmcp:transport/tools@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "list-tools"]
                         fn wit_import4(_: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -840,7 +377,7 @@ pub mod wasmcp {
                                                 .add(8 + 17 * ::core::mem::size_of::<*const u8>())
                                                 .cast::<u8>(),
                                         );
-                                        super::super::super::wasmcp::mcp::tools_types::Tool {
+                                        super::super::super::wasmcp::transport::tools_types::Tool {
                                             name: _rt::string_lift(bytes10),
                                             title: match l11 {
                                                 0 => None,
@@ -938,7 +475,7 @@ pub mod wasmcp {
                                                                 .add(6 + 17 * ::core::mem::size_of::<*const u8>())
                                                                 .cast::<u8>(),
                                                         );
-                                                        super::super::super::wasmcp::mcp::tools_types::ToolAnnotations {
+                                                        super::super::super::wasmcp::transport::tools_types::ToolAnnotations {
                                                             title: match l27 {
                                                                 0 => None,
                                                                 1 => {
@@ -1064,7 +601,7 @@ pub mod wasmcp {
                                                                         .add(5 * ::core::mem::size_of::<*const u8>())
                                                                         .cast::<u8>(),
                                                                 );
-                                                                super::super::super::wasmcp::mcp::mcp_types::Icon {
+                                                                super::super::super::__with_name0::Icon {
                                                                     src: _rt::string_lift(bytes44),
                                                                     mime_type: match l45 {
                                                                         0 => None,
@@ -1139,7 +676,7 @@ pub mod wasmcp {
                                         .add(3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::tools_types::ListToolsResult {
+                                super::super::super::wasmcp::transport::tools_types::ListToolsResult {
                                     tools: result54,
                                     next_cursor: match l55 {
                                         0 => None,
@@ -1172,7 +709,7 @@ pub mod wasmcp {
                                 let l59 = i32::from(
                                     *ptr3.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::wasmcp::mcp::mcp_types::ErrorCode as V61;
+                                use super::super::super::__with_name0::ErrorCode as V61;
                                 let v61 = match l59 {
                                     0 => V61::ParseError,
                                     1 => V61::InvalidRequest,
@@ -1214,7 +751,7 @@ pub mod wasmcp {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::mcp_types::McpError {
+                                super::super::super::__with_name0::McpError {
                                     code: v61,
                                     message: _rt::string_lift(bytes64),
                                     data: match l65 {
@@ -1267,7 +804,7 @@ pub mod wasmcp {
                             + 18 * ::core::mem::size_of::<*const u8>()],
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    let super::super::super::wasmcp::mcp::tools_types::CallToolRequest {
+                    let super::super::super::wasmcp::transport::tools_types::CallToolRequest {
                         name: name1,
                         arguments: arguments1,
                     } = request;
@@ -1302,7 +839,7 @@ pub mod wasmcp {
                             *ptr0
                                 .add(8 + 4 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (1i32) as u8;
-                            let super::super::super::wasmcp::mcp::authorization_types::AuthContext {
+                            let super::super::super::wasmcp::transport::authorization_types::AuthContext {
                                 client_id: client_id4,
                                 sub: sub4,
                                 scopes: scopes4,
@@ -1536,7 +1073,7 @@ pub mod wasmcp {
                     };
                     let ptr17 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.2.0")]
+                    #[link(wasm_import_module = "wasmcp:transport/tools@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "call-tool"]
                         fn wit_import18(_: *mut u8, _: *mut u8);
@@ -1564,7 +1101,7 @@ pub mod wasmcp {
                                         .add(i * (48 + 18 * ::core::mem::size_of::<*const u8>()));
                                     let e164 = {
                                         let l22 = i32::from(*base.add(0).cast::<u8>());
-                                        use super::super::super::wasmcp::mcp::mcp_types::ContentBlock as V163;
+                                        use super::super::super::__with_name0::ContentBlock as V163;
                                         let v163 = match l22 {
                                             0 => {
                                                 let e163 = {
@@ -1588,7 +1125,7 @@ pub mod wasmcp {
                                                             .add(16 + 4 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::mcp_types::TextContent {
+                                                    super::super::super::__with_name0::TextContent {
                                                         text: _rt::string_lift(bytes25),
                                                         meta: match l26 {
                                                             0 => None,
@@ -1631,7 +1168,7 @@ pub mod wasmcp {
                                                                             .add(48 + 6 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::wasmcp::mcp::mcp_types::Annotations {
+                                                                    super::super::super::__with_name0::Annotations {
                                                                         audience: match l31 {
                                                                             0 => None,
                                                                             1 => {
@@ -1649,9 +1186,7 @@ pub mod wasmcp {
                                                                                         let base = base35.add(i * 1);
                                                                                         let e35 = {
                                                                                             let l34 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::wasmcp::mcp::mcp_types::Role::_lift(
-                                                                                                l34 as u8,
-                                                                                            )
+                                                                                            super::super::super::__with_name0::Role::_lift(l34 as u8)
                                                                                         };
                                                                                         result35.push(e35);
                                                                                     }
@@ -1741,7 +1276,7 @@ pub mod wasmcp {
                                                             .add(16 + 6 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::mcp_types::ImageContent {
+                                                    super::super::super::__with_name0::ImageContent {
                                                         data: _rt::string_lift(bytes44),
                                                         mime_type: _rt::string_lift(bytes47),
                                                         meta: match l48 {
@@ -1785,7 +1320,7 @@ pub mod wasmcp {
                                                                             .add(48 + 8 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::wasmcp::mcp::mcp_types::Annotations {
+                                                                    super::super::super::__with_name0::Annotations {
                                                                         audience: match l53 {
                                                                             0 => None,
                                                                             1 => {
@@ -1803,9 +1338,7 @@ pub mod wasmcp {
                                                                                         let base = base57.add(i * 1);
                                                                                         let e57 = {
                                                                                             let l56 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::wasmcp::mcp::mcp_types::Role::_lift(
-                                                                                                l56 as u8,
-                                                                                            )
+                                                                                            super::super::super::__with_name0::Role::_lift(l56 as u8)
                                                                                         };
                                                                                         result57.push(e57);
                                                                                     }
@@ -1890,7 +1423,7 @@ pub mod wasmcp {
                                                             .add(8 + 4 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::mcp_types::AudioContent {
+                                                    super::super::super::__with_name0::AudioContent {
                                                         data: _rt::string_lift(bytes66),
                                                         mime_type: _rt::string_lift(bytes69),
                                                         annotations: match l70 {
@@ -1912,7 +1445,7 @@ pub mod wasmcp {
                                                                             .add(40 + 6 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::wasmcp::mcp::mcp_types::Annotations {
+                                                                    super::super::super::__with_name0::Annotations {
                                                                         audience: match l71 {
                                                                             0 => None,
                                                                             1 => {
@@ -1930,9 +1463,7 @@ pub mod wasmcp {
                                                                                         let base = base75.add(i * 1);
                                                                                         let e75 = {
                                                                                             let l74 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::wasmcp::mcp::mcp_types::Role::_lift(
-                                                                                                l74 as u8,
-                                                                                            )
+                                                                                            super::super::super::__with_name0::Role::_lift(l74 as u8)
                                                                                         };
                                                                                         result75.push(e75);
                                                                                     }
@@ -1996,7 +1527,7 @@ pub mod wasmcp {
                                                             .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    use super::super::super::wasmcp::mcp::mcp_types::ResourceContents as V115;
+                                                    use super::super::super::__with_name0::ResourceContents as V115;
                                                     let v115 = match l86 {
                                                         0 => {
                                                             let e115 = {
@@ -2034,7 +1565,7 @@ pub mod wasmcp {
                                                                         .add(8 + 11 * ::core::mem::size_of::<*const u8>())
                                                                         .cast::<u8>(),
                                                                 );
-                                                                super::super::super::wasmcp::mcp::mcp_types::TextResourceContents {
+                                                                super::super::super::__with_name0::TextResourceContents {
                                                                     uri: _rt::string_lift(bytes89),
                                                                     mime_type: match l90 {
                                                                         0 => None,
@@ -2122,7 +1653,7 @@ pub mod wasmcp {
                                                                         .add(8 + 11 * ::core::mem::size_of::<*const u8>())
                                                                         .cast::<u8>(),
                                                                 );
-                                                                super::super::super::wasmcp::mcp::mcp_types::BlobResourceContents {
+                                                                super::super::super::__with_name0::BlobResourceContents {
                                                                     uri: _rt::string_lift(bytes103),
                                                                     mime_type: match l104 {
                                                                         0 => None,
@@ -2179,7 +1710,7 @@ pub mod wasmcp {
                                                             .add(8 + 14 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::mcp_types::EmbeddedResource {
+                                                    super::super::super::__with_name0::EmbeddedResource {
                                                         meta: match l82 {
                                                             0 => None,
                                                             1 => {
@@ -2222,7 +1753,7 @@ pub mod wasmcp {
                                                                             .add(40 + 16 * ::core::mem::size_of::<*const u8>())
                                                                             .cast::<u8>(),
                                                                     );
-                                                                    super::super::super::wasmcp::mcp::mcp_types::Annotations {
+                                                                    super::super::super::__with_name0::Annotations {
                                                                         audience: match l117 {
                                                                             0 => None,
                                                                             1 => {
@@ -2240,9 +1771,7 @@ pub mod wasmcp {
                                                                                         let base = base121.add(i * 1);
                                                                                         let e121 = {
                                                                                             let l120 = i32::from(*base.add(0).cast::<u8>());
-                                                                                            super::super::super::wasmcp::mcp::mcp_types::Role::_lift(
-                                                                                                l120 as u8,
-                                                                                            )
+                                                                                            super::super::super::__with_name0::Role::_lift(l120 as u8)
                                                                                         };
                                                                                         result121.push(e121);
                                                                                     }
@@ -2348,7 +1877,7 @@ pub mod wasmcp {
                                                             .add(16 + 13 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::mcp_types::RawResource {
+                                                    super::super::super::__with_name0::RawResource {
                                                         uri: _rt::string_lift(bytes130),
                                                         name: _rt::string_lift(bytes133),
                                                         title: match l134 {
@@ -2467,7 +1996,7 @@ pub mod wasmcp {
                                                                                     .add(5 * ::core::mem::size_of::<*const u8>())
                                                                                     .cast::<u8>(),
                                                                             );
-                                                                            super::super::super::wasmcp::mcp::mcp_types::Icon {
+                                                                            super::super::super::__with_name0::Icon {
                                                                                 src: _rt::string_lift(bytes153),
                                                                                 mime_type: match l154 {
                                                                                     0 => None,
@@ -2557,7 +2086,7 @@ pub mod wasmcp {
                                         .add(7 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::tools_types::CallToolResult {
+                                super::super::super::wasmcp::transport::tools_types::CallToolResult {
                                     content: result164,
                                     structured_content: match l165 {
                                         0 => None,
@@ -2627,7 +2156,7 @@ pub mod wasmcp {
                                 let l175 = i32::from(
                                     *ptr17.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::wasmcp::mcp::mcp_types::ErrorCode as V177;
+                                use super::super::super::__with_name0::ErrorCode as V177;
                                 let v177 = match l175 {
                                     0 => V177::ParseError,
                                     1 => V177::InvalidRequest,
@@ -2669,7 +2198,7 @@ pub mod wasmcp {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::mcp_types::McpError {
+                                super::super::super::__with_name0::McpError {
                                     code: v177,
                                     message: _rt::string_lift(bytes180),
                                     data: match l181 {
@@ -2709,238 +2238,6 @@ pub mod wasmcp {
                 }
             }
         }
-        /// Type definitions for the MCP lifecycle
-        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod lifecycle_types {
-            #[used]
-            #[doc(hidden)]
-            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            pub type JsonObject = super::super::super::wasmcp::mcp::mcp_types::JsonObject;
-            pub type Icon = super::super::super::wasmcp::mcp::mcp_types::Icon;
-            /// Protocol version string
-            /// Common values: "2024-11-05", "2025-03-26", "2025-06-18"
-            pub type ProtocolVersion = _rt::String;
-            /// Information about an MCP implementation
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct Implementation {
-                /// Implementation name (e.g., "weather-server")
-                pub name: _rt::String,
-                /// Optional human-readable title
-                pub title: Option<_rt::String>,
-                /// Implementation version (e.g., "1.0.0")
-                pub version: _rt::String,
-                /// Optional website URL for more information
-                pub website_url: Option<_rt::String>,
-                /// Optional list of icons for the implementation
-                pub icons: Option<_rt::Vec<Icon>>,
-            }
-            impl ::core::fmt::Debug for Implementation {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("Implementation")
-                        .field("name", &self.name)
-                        .field("title", &self.title)
-                        .field("version", &self.version)
-                        .field("website-url", &self.website_url)
-                        .field("icons", &self.icons)
-                        .finish()
-                }
-            }
-            /// Root listing capability details
-            #[repr(C)]
-            #[derive(Clone, Copy, serde::Deserialize, serde::Serialize)]
-            pub struct RootsCapability {
-                /// Server will notify when roots list changes
-                pub list_changed: Option<bool>,
-            }
-            impl ::core::fmt::Debug for RootsCapability {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("RootsCapability")
-                        .field("list-changed", &self.list_changed)
-                        .finish()
-                }
-            }
-            /// Prompts capability details
-            #[repr(C)]
-            #[derive(Clone, Copy, serde::Deserialize, serde::Serialize)]
-            pub struct PromptsCapability {
-                /// Server will notify when prompts list changes
-                pub list_changed: Option<bool>,
-            }
-            impl ::core::fmt::Debug for PromptsCapability {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("PromptsCapability")
-                        .field("list-changed", &self.list_changed)
-                        .finish()
-                }
-            }
-            /// Resources capability details
-            #[repr(C)]
-            #[derive(Clone, Copy, serde::Deserialize, serde::Serialize)]
-            pub struct ResourcesCapability {
-                /// Server supports resource subscriptions
-                pub subscribe: Option<bool>,
-                /// Server will notify when resource list changes
-                pub list_changed: Option<bool>,
-            }
-            impl ::core::fmt::Debug for ResourcesCapability {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ResourcesCapability")
-                        .field("subscribe", &self.subscribe)
-                        .field("list-changed", &self.list_changed)
-                        .finish()
-                }
-            }
-            /// Tools capability details
-            #[repr(C)]
-            #[derive(Clone, Copy, serde::Deserialize, serde::Serialize)]
-            pub struct ToolsCapability {
-                /// Server will notify when tools list changes
-                pub list_changed: Option<bool>,
-            }
-            impl ::core::fmt::Debug for ToolsCapability {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ToolsCapability")
-                        .field("list-changed", &self.list_changed)
-                        .finish()
-                }
-            }
-            /// Elicitation capability details
-            #[repr(C)]
-            #[derive(Clone, Copy, serde::Deserialize, serde::Serialize)]
-            pub struct ElicitationCapability {
-                /// Whether the client supports JSON Schema validation
-                pub schema_validation: Option<bool>,
-            }
-            impl ::core::fmt::Debug for ElicitationCapability {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ElicitationCapability")
-                        .field("schema-validation", &self.schema_validation)
-                        .finish()
-                }
-            }
-            /// Capabilities that a client supports
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ClientCapabilities {
-                /// Experimental/custom capabilities as JSON objects
-                pub experimental: Option<JsonObject>,
-                /// Support for roots (directory access)
-                pub roots: Option<RootsCapability>,
-                /// Support for LLM sampling (empty object when enabled)
-                pub sampling: Option<JsonObject>,
-                /// Support for user elicitation
-                pub elicitation: Option<ElicitationCapability>,
-            }
-            impl ::core::fmt::Debug for ClientCapabilities {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ClientCapabilities")
-                        .field("experimental", &self.experimental)
-                        .field("roots", &self.roots)
-                        .field("sampling", &self.sampling)
-                        .field("elicitation", &self.elicitation)
-                        .finish()
-                }
-            }
-            /// Capabilities that a server provides
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ServerCapabilities {
-                /// Experimental/custom capabilities as JSON objects
-                pub experimental: Option<JsonObject>,
-                /// Server can send log messages (empty object when enabled)
-                pub logging: Option<JsonObject>,
-                /// Server supports argument autocompletion (empty object when enabled)
-                pub completions: Option<JsonObject>,
-                /// Server offers prompts
-                pub prompts: Option<PromptsCapability>,
-                /// Server offers resources
-                pub resources: Option<ResourcesCapability>,
-                /// Server offers tools
-                pub tools: Option<ToolsCapability>,
-            }
-            impl ::core::fmt::Debug for ServerCapabilities {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ServerCapabilities")
-                        .field("experimental", &self.experimental)
-                        .field("logging", &self.logging)
-                        .field("completions", &self.completions)
-                        .field("prompts", &self.prompts)
-                        .field("resources", &self.resources)
-                        .field("tools", &self.tools)
-                        .finish()
-                }
-            }
-            /// Initialize request sent by client on connection
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct InitializeRequest {
-                /// Protocol version the client supports
-                pub protocol_version: ProtocolVersion,
-                /// Client's capabilities
-                pub capabilities: ClientCapabilities,
-                /// Client implementation details
-                pub client_info: Implementation,
-            }
-            impl ::core::fmt::Debug for InitializeRequest {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("InitializeRequest")
-                        .field("protocol-version", &self.protocol_version)
-                        .field("capabilities", &self.capabilities)
-                        .field("client-info", &self.client_info)
-                        .finish()
-                }
-            }
-            /// Initialize response from server
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct InitializeResult {
-                /// Protocol version the server supports
-                pub protocol_version: ProtocolVersion,
-                /// Server's capabilities
-                pub capabilities: ServerCapabilities,
-                /// Server implementation details
-                pub server_info: Implementation,
-                /// Optional instructions for using the server
-                pub instructions: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for InitializeResult {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("InitializeResult")
-                        .field("protocol-version", &self.protocol_version)
-                        .field("capabilities", &self.capabilities)
-                        .field("server-info", &self.server_info)
-                        .field("instructions", &self.instructions)
-                        .finish()
-                }
-            }
-        }
         /// A lifecycle for client-server connections that ensures proper capability negotiation and state management.
         /// Initialization: Capability negotiation and protocol version agreement
         /// Operation: Normal protocol communication
@@ -2953,9 +2250,9 @@ pub mod wasmcp {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type McpError = super::super::super::wasmcp::mcp::mcp_types::McpError;
-            pub type InitializeRequest = super::super::super::wasmcp::mcp::lifecycle_types::InitializeRequest;
-            pub type InitializeResult = super::super::super::wasmcp::mcp::lifecycle_types::InitializeResult;
+            pub type McpError = super::super::super::__with_name0::McpError;
+            pub type InitializeRequest = super::super::super::__with_name1::InitializeRequest;
+            pub type InitializeResult = super::super::super::__with_name1::InitializeResult;
             #[allow(unused_unsafe, clippy::all)]
             /// Handle session initialization
             /// Implementations should declare their capabilities here
@@ -2976,7 +2273,7 @@ pub mod wasmcp {
                             + 29 * ::core::mem::size_of::<*const u8>()],
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    let super::super::super::wasmcp::mcp::lifecycle_types::InitializeRequest {
+                    let super::super::super::__with_name1::InitializeRequest {
                         protocol_version: protocol_version1,
                         capabilities: capabilities1,
                         client_info: client_info1,
@@ -2986,7 +2283,7 @@ pub mod wasmcp {
                     let len2 = vec2.len();
                     *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<usize>() = len2;
                     *ptr0.add(0).cast::<*mut u8>() = ptr2.cast_mut();
-                    let super::super::super::wasmcp::mcp::lifecycle_types::ClientCapabilities {
+                    let super::super::super::__with_name1::ClientCapabilities {
                         experimental: experimental3,
                         roots: roots3,
                         sampling: sampling3,
@@ -3018,7 +2315,7 @@ pub mod wasmcp {
                             *ptr0
                                 .add(5 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (1i32) as u8;
-                            let super::super::super::wasmcp::mcp::lifecycle_types::RootsCapability {
+                            let super::super::super::__with_name1::RootsCapability {
                                 list_changed: list_changed5,
                             } = e;
                             match list_changed5 {
@@ -3072,7 +2369,7 @@ pub mod wasmcp {
                             *ptr0
                                 .add(9 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (1i32) as u8;
-                            let super::super::super::wasmcp::mcp::lifecycle_types::ElicitationCapability {
+                            let super::super::super::__with_name1::ElicitationCapability {
                                 schema_validation: schema_validation7,
                             } = e;
                             match schema_validation7 {
@@ -3100,7 +2397,7 @@ pub mod wasmcp {
                                 .cast::<u8>() = (0i32) as u8;
                         }
                     };
-                    let super::super::super::wasmcp::mcp::lifecycle_types::Implementation {
+                    let super::super::super::__with_name1::Implementation {
                         name: name8,
                         title: title8,
                         version: version8,
@@ -3191,7 +2488,7 @@ pub mod wasmcp {
                                 let base = result17
                                     .add(i * (8 * ::core::mem::size_of::<*const u8>()));
                                 {
-                                    let super::super::super::wasmcp::mcp::mcp_types::Icon {
+                                    let super::super::super::__with_name0::Icon {
                                         src: src13,
                                         mime_type: mime_type13,
                                         sizes: sizes13,
@@ -3263,7 +2560,7 @@ pub mod wasmcp {
                     };
                     let ptr18 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0")]
+                    #[link(wasm_import_module = "wasmcp:transport/lifecycle@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "initialize"]
                         fn wit_import19(_: *mut u8, _: *mut u8);
@@ -3363,9 +2660,9 @@ pub mod wasmcp {
                                         .add(8 + 26 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::lifecycle_types::InitializeResult {
+                                super::super::super::__with_name1::InitializeResult {
                                     protocol_version: _rt::string_lift(bytes23),
-                                    capabilities: super::super::super::wasmcp::mcp::lifecycle_types::ServerCapabilities {
+                                    capabilities: super::super::super::__with_name1::ServerCapabilities {
                                         experimental: match l24 {
                                             0 => None,
                                             1 => {
@@ -3441,7 +2738,7 @@ pub mod wasmcp {
                                                             .add(1 + 12 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::lifecycle_types::PromptsCapability {
+                                                    super::super::super::__with_name1::PromptsCapability {
                                                         list_changed: match l37 {
                                                             0 => None,
                                                             1 => {
@@ -3477,7 +2774,7 @@ pub mod wasmcp {
                                                             .add(6 + 12 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::lifecycle_types::ResourcesCapability {
+                                                    super::super::super::__with_name1::ResourcesCapability {
                                                         subscribe: match l40 {
                                                             0 => None,
                                                             1 => {
@@ -3523,7 +2820,7 @@ pub mod wasmcp {
                                                             .add(9 + 12 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::wasmcp::mcp::lifecycle_types::ToolsCapability {
+                                                    super::super::super::__with_name1::ToolsCapability {
                                                         list_changed: match l45 {
                                                             0 => None,
                                                             1 => {
@@ -3546,7 +2843,7 @@ pub mod wasmcp {
                                             _ => _rt::invalid_enum_discriminant(),
                                         },
                                     },
-                                    server_info: super::super::super::wasmcp::mcp::lifecycle_types::Implementation {
+                                    server_info: super::super::super::__with_name1::Implementation {
                                         name: _rt::string_lift(bytes49),
                                         title: match l50 {
                                             0 => None,
@@ -3630,7 +2927,7 @@ pub mod wasmcp {
                                                                     .add(5 * ::core::mem::size_of::<*const u8>())
                                                                     .cast::<u8>(),
                                                             );
-                                                            super::super::super::wasmcp::mcp::mcp_types::Icon {
+                                                            super::super::super::__with_name0::Icon {
                                                                 src: _rt::string_lift(bytes66),
                                                                 mime_type: match l67 {
                                                                     0 => None,
@@ -3723,7 +3020,7 @@ pub mod wasmcp {
                                 let l80 = i32::from(
                                     *ptr18.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::wasmcp::mcp::mcp_types::ErrorCode as V82;
+                                use super::super::super::__with_name0::ErrorCode as V82;
                                 let v82 = match l80 {
                                     0 => V82::ParseError,
                                     1 => V82::InvalidRequest,
@@ -3765,7 +3062,7 @@ pub mod wasmcp {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::mcp_types::McpError {
+                                super::super::super::__with_name0::McpError {
                                     code: v82,
                                     message: _rt::string_lift(bytes85),
                                     data: match l86 {
@@ -3821,7 +3118,7 @@ pub mod wasmcp {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0")]
+                    #[link(wasm_import_module = "wasmcp:transport/lifecycle@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "client-initialized"]
                         fn wit_import1(_: *mut u8);
@@ -3842,7 +3139,7 @@ pub mod wasmcp {
                                 let l3 = i32::from(
                                     *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::wasmcp::mcp::mcp_types::ErrorCode as V5;
+                                use super::super::super::__with_name0::ErrorCode as V5;
                                 let v5 = match l3 {
                                     0 => V5::ParseError,
                                     1 => V5::InvalidRequest,
@@ -3884,7 +3181,7 @@ pub mod wasmcp {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::mcp_types::McpError {
+                                super::super::super::__with_name0::McpError {
                                     code: v5,
                                     message: _rt::string_lift(bytes8),
                                     data: match l9 {
@@ -3935,7 +3232,7 @@ pub mod wasmcp {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.2.0")]
+                    #[link(wasm_import_module = "wasmcp:transport/lifecycle@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "shutdown"]
                         fn wit_import1(_: *mut u8);
@@ -3956,7 +3253,7 @@ pub mod wasmcp {
                                 let l3 = i32::from(
                                     *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<u8>(),
                                 );
-                                use super::super::super::wasmcp::mcp::mcp_types::ErrorCode as V5;
+                                use super::super::super::__with_name0::ErrorCode as V5;
                                 let v5 = match l3 {
                                     0 => V5::ParseError,
                                     1 => V5::InvalidRequest,
@@ -3998,7 +3295,7 @@ pub mod wasmcp {
                                         .add(8 + 3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::mcp_types::McpError {
+                                super::super::super::__with_name0::McpError {
                                     code: v5,
                                     message: _rt::string_lift(bytes8),
                                     data: match l9 {
@@ -4042,7 +3339,7 @@ pub mod wasmcp {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type ProviderAuthConfig = super::super::super::wasmcp::mcp::authorization_types::ProviderAuthConfig;
+            pub type ProviderAuthConfig = super::super::super::wasmcp::transport::authorization_types::ProviderAuthConfig;
             #[allow(unused_unsafe, clippy::all)]
             /// Get provider's auth configuration
             /// The transport should enforce authorization
@@ -4061,7 +3358,7 @@ pub mod wasmcp {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/authorization@0.2.0")]
+                    #[link(wasm_import_module = "wasmcp:transport/authorization@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "get-auth-config"]
                         fn wit_import1(_: *mut u8);
@@ -4152,7 +3449,7 @@ pub mod wasmcp {
                                         .add(14 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::mcp::authorization_types::ProviderAuthConfig {
+                                super::super::super::wasmcp::transport::authorization_types::ProviderAuthConfig {
                                     expected_issuer: _rt::string_lift(bytes5),
                                     expected_audiences: result11,
                                     jwks_uri: _rt::string_lift(bytes14),
@@ -4254,7 +3551,7 @@ pub mod wasmcp {
                     let len0 = vec0.len();
                     let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/authorization@0.2.0")]
+                    #[link(wasm_import_module = "wasmcp:transport/authorization@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "jwks-cache-get"]
                         fn wit_import2(_: *mut u8, _: usize, _: *mut u8);
@@ -4304,7 +3601,7 @@ pub mod wasmcp {
                     let ptr1 = vec1.as_ptr().cast::<u8>();
                     let len1 = vec1.len();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/authorization@0.2.0")]
+                    #[link(wasm_import_module = "wasmcp:transport/authorization@0.2.0")]
                     unsafe extern "C" {
                         #[link_name = "jwks-cache-set"]
                         fn wit_import2(_: *mut u8, _: usize, _: *mut u8, _: usize);
@@ -4389,12 +3686,12 @@ mod _rt {
 }
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.2.0:tools-transport:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:transport@0.2.0:tools-transport:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3934] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xd8\x1d\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3948] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xe6\x1d\x01A\x02\x01\
 A\x1c\x01B:\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajs\
 on-value\x03\0\x02\x01s\x04\0\x0bjson-object\x03\0\x04\x01s\x04\0\x0bjson-schema\
 \x03\0\x06\x01o\x02ss\x01p\x08\x04\0\x0bmeta-fields\x03\0\x09\x01ks\x01r\x03\x03\
@@ -4426,59 +3723,59 @@ mcp/mcp-types@0.2.0\x05\0\x02\x03\0\0\x0bmeta-fields\x01B\x09\x02\x03\x02\x01\x0
 ed-audiences\x02\x08jwks-uris\x08pass-jwt\x7f\x10expected-subject\x03\x06policy\x03\
 \x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01kw\x01r\x0a\x09cl\
 ient-id\x03\x03subs\x06scopes\x02\x03isss\x03aud\x02\x06claims\x01\x03expw\x03ia\
-t\x06\x03nbf\x06\x03jwt\x03\x04\0\x0cauth-context\x03\0\x07\x03\0$wasmcp:mcp/aut\
-horization-types@0.2.0\x05\x02\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-\
-value\x02\x03\0\0\x0bjson-object\x02\x03\0\0\x04icon\x02\x03\0\x01\x0cauth-conte\
-xt\x01B\x1f\x02\x03\x02\x01\x03\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\x04\
-\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\x04\
-\x02\x03\x02\x01\x06\x04\0\x04icon\x03\0\x06\x02\x03\x02\x01\x07\x04\0\x0cauth-c\
-ontext\x03\0\x08\x01ks\x01k\x7f\x01r\x05\x05title\x0a\x0eread-only-hint\x0b\x10d\
-estructive-hint\x0b\x0fidempotent-hint\x0b\x0fopen-world-hint\x0b\x04\0\x10tool-\
-annotations\x03\0\x0c\x01k\x05\x01k\x0d\x01p\x07\x01k\x10\x01r\x07\x04names\x05t\
-itle\x0a\x0bdescription\x0a\x0cinput-schema\x05\x0doutput-schema\x0e\x0bannotati\
-ons\x0f\x05icons\x11\x04\0\x04tool\x03\0\x12\x01r\x02\x04names\x09arguments\x0e\x04\
-\0\x11call-tool-request\x03\0\x14\x01p\x01\x01k\x03\x01r\x04\x07content\x16\x12s\
-tructured-content\x17\x08is-error\x0b\x04meta\x0e\x04\0\x10call-tool-result\x03\0\
-\x18\x01r\x01\x06cursor\x0a\x04\0\x12list-tools-request\x03\0\x1a\x01p\x13\x01r\x02\
-\x05tools\x1c\x0bnext-cursor\x0a\x04\0\x11list-tools-result\x03\0\x1d\x03\0\x1cw\
-asmcp:mcp/tools-types@0.2.0\x05\x08\x02\x03\0\0\x09mcp-error\x02\x03\0\x02\x12li\
-st-tools-request\x02\x03\0\x02\x11list-tools-result\x02\x03\0\x02\x11call-tool-r\
-equest\x02\x03\0\x02\x10call-tool-result\x01B\x13\x02\x03\x02\x01\x09\x04\0\x09m\
-cp-error\x03\0\0\x02\x03\x02\x01\x07\x04\0\x0cauth-context\x03\0\x02\x02\x03\x02\
-\x01\x0a\x04\0\x12list-tools-request\x03\0\x04\x02\x03\x02\x01\x0b\x04\0\x11list\
--tools-result\x03\0\x06\x02\x03\x02\x01\x0c\x04\0\x11call-tool-request\x03\0\x08\
-\x02\x03\x02\x01\x0d\x04\0\x10call-tool-result\x03\0\x0a\x01j\x01\x07\x01\x01\x01\
-@\x01\x07request\x05\0\x0c\x04\0\x0alist-tools\x01\x0d\x01k\x03\x01j\x01\x0b\x01\
-\x01\x01@\x02\x07request\x09\x07context\x0e\0\x0f\x04\0\x09call-tool\x01\x10\x03\
-\0\x16wasmcp:mcp/tools@0.2.0\x05\x0e\x01B&\x02\x03\x02\x01\x01\x04\0\x0bmeta-fie\
-lds\x03\0\0\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\x02\x02\x03\x02\x01\x06\
-\x04\0\x04icon\x03\0\x04\x01s\x04\0\x10protocol-version\x03\0\x06\x01ks\x01p\x05\
-\x01k\x09\x01r\x05\x04names\x05title\x08\x07versions\x0bwebsite-url\x08\x05icons\
-\x0a\x04\0\x0eimplementation\x03\0\x0b\x01k\x7f\x01r\x01\x0clist-changed\x0d\x04\
-\0\x10roots-capability\x03\0\x0e\x01r\x01\x0clist-changed\x0d\x04\0\x12prompts-c\
-apability\x03\0\x10\x01r\x02\x09subscribe\x0d\x0clist-changed\x0d\x04\0\x14resou\
-rces-capability\x03\0\x12\x01r\x01\x0clist-changed\x0d\x04\0\x10tools-capability\
-\x03\0\x14\x01r\x01\x11schema-validation\x0d\x04\0\x16elicitation-capability\x03\
-\0\x16\x01k\x03\x01k\x0f\x01k\x17\x01r\x04\x0cexperimental\x18\x05roots\x19\x08s\
-ampling\x18\x0belicitation\x1a\x04\0\x13client-capabilities\x03\0\x1b\x01k\x11\x01\
-k\x13\x01k\x15\x01r\x06\x0cexperimental\x18\x07logging\x18\x0bcompletions\x18\x07\
-prompts\x1d\x09resources\x1e\x05tools\x1f\x04\0\x13server-capabilities\x03\0\x20\
-\x01r\x03\x10protocol-version\x07\x0ccapabilities\x1c\x0bclient-info\x0c\x04\0\x12\
-initialize-request\x03\0\"\x01r\x04\x10protocol-version\x07\x0ccapabilities!\x0b\
-server-info\x0c\x0cinstructions\x08\x04\0\x11initialize-result\x03\0$\x03\0\x20w\
-asmcp:mcp/lifecycle-types@0.2.0\x05\x0f\x02\x03\0\x04\x12initialize-request\x02\x03\
-\0\x04\x11initialize-result\x01B\x0d\x02\x03\x02\x01\x09\x04\0\x09mcp-error\x03\0\
-\0\x02\x03\x02\x01\x10\x04\0\x12initialize-request\x03\0\x02\x02\x03\x02\x01\x11\
-\x04\0\x11initialize-result\x03\0\x04\x01j\x01\x05\x01\x01\x01@\x01\x07request\x03\
-\0\x06\x04\0\x0ainitialize\x01\x07\x01j\0\x01\x01\x01@\0\0\x08\x04\0\x12client-i\
-nitialized\x01\x09\x04\0\x08shutdown\x01\x09\x03\0\x1awasmcp:mcp/lifecycle@0.2.0\
-\x05\x12\x02\x03\0\x01\x14provider-auth-config\x01B\x0a\x02\x03\x02\x01\x13\x04\0\
-\x14provider-auth-config\x03\0\0\x01k\x01\x01@\0\0\x02\x04\0\x0fget-auth-config\x01\
-\x03\x01ks\x01@\x01\x08jwks-uris\0\x04\x04\0\x0ejwks-cache-get\x01\x05\x01@\x02\x08\
-jwks-uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\x06\x03\0\x1ewasmcp:mcp/aut\
-horization@0.2.0\x05\x14\x04\0\x20wasmcp:mcp/tools-transport@0.2.0\x04\0\x0b\x15\
-\x01\0\x0ftools-transport\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit\
--component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+t\x06\x03nbf\x06\x03jwt\x03\x04\0\x0cauth-context\x03\0\x07\x03\0*wasmcp:transpo\
+rt/authorization-types@0.2.0\x05\x02\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0a\
+json-value\x02\x03\0\0\x0bjson-object\x02\x03\0\0\x04icon\x02\x03\0\x01\x0cauth-\
+context\x01B\x1f\x02\x03\x02\x01\x03\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\
+\x04\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\
+\x04\x02\x03\x02\x01\x06\x04\0\x04icon\x03\0\x06\x02\x03\x02\x01\x07\x04\0\x0cau\
+th-context\x03\0\x08\x01ks\x01k\x7f\x01r\x05\x05title\x0a\x0eread-only-hint\x0b\x10\
+destructive-hint\x0b\x0fidempotent-hint\x0b\x0fopen-world-hint\x0b\x04\0\x10tool\
+-annotations\x03\0\x0c\x01k\x05\x01k\x0d\x01p\x07\x01k\x10\x01r\x07\x04names\x05\
+title\x0a\x0bdescription\x0a\x0cinput-schema\x05\x0doutput-schema\x0e\x0bannotat\
+ions\x0f\x05icons\x11\x04\0\x04tool\x03\0\x12\x01r\x02\x04names\x09arguments\x0e\
+\x04\0\x11call-tool-request\x03\0\x14\x01p\x01\x01k\x03\x01r\x04\x07content\x16\x12\
+structured-content\x17\x08is-error\x0b\x04meta\x0e\x04\0\x10call-tool-result\x03\
+\0\x18\x01r\x01\x06cursor\x0a\x04\0\x12list-tools-request\x03\0\x1a\x01p\x13\x01\
+r\x02\x05tools\x1c\x0bnext-cursor\x0a\x04\0\x11list-tools-result\x03\0\x1d\x03\0\
+\"wasmcp:transport/tools-types@0.2.0\x05\x08\x02\x03\0\0\x09mcp-error\x02\x03\0\x02\
+\x12list-tools-request\x02\x03\0\x02\x11list-tools-result\x02\x03\0\x02\x11call-\
+tool-request\x02\x03\0\x02\x10call-tool-result\x01B\x13\x02\x03\x02\x01\x09\x04\0\
+\x09mcp-error\x03\0\0\x02\x03\x02\x01\x07\x04\0\x0cauth-context\x03\0\x02\x02\x03\
+\x02\x01\x0a\x04\0\x12list-tools-request\x03\0\x04\x02\x03\x02\x01\x0b\x04\0\x11\
+list-tools-result\x03\0\x06\x02\x03\x02\x01\x0c\x04\0\x11call-tool-request\x03\0\
+\x08\x02\x03\x02\x01\x0d\x04\0\x10call-tool-result\x03\0\x0a\x01j\x01\x07\x01\x01\
+\x01@\x01\x07request\x05\0\x0c\x04\0\x0alist-tools\x01\x0d\x01k\x03\x01j\x01\x0b\
+\x01\x01\x01@\x02\x07request\x09\x07context\x0e\0\x0f\x04\0\x09call-tool\x01\x10\
+\x03\0\x1cwasmcp:transport/tools@0.2.0\x05\x0e\x01B$\x02\x03\x02\x01\x06\x04\0\x04\
+icon\x03\0\0\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\x02\x01s\x04\0\x10pr\
+otocol-version\x03\0\x04\x01ks\x01p\x01\x01k\x07\x01r\x05\x04names\x05title\x06\x07\
+versions\x0bwebsite-url\x06\x05icons\x08\x04\0\x0eimplementation\x03\0\x09\x01k\x7f\
+\x01r\x01\x0clist-changed\x0b\x04\0\x10roots-capability\x03\0\x0c\x01r\x01\x0cli\
+st-changed\x0b\x04\0\x12prompts-capability\x03\0\x0e\x01r\x02\x09subscribe\x0b\x0c\
+list-changed\x0b\x04\0\x14resources-capability\x03\0\x10\x01r\x01\x0clist-change\
+d\x0b\x04\0\x10tools-capability\x03\0\x12\x01r\x01\x11schema-validation\x0b\x04\0\
+\x16elicitation-capability\x03\0\x14\x01k\x03\x01k\x0d\x01k\x15\x01r\x04\x0cexpe\
+rimental\x16\x05roots\x17\x08sampling\x16\x0belicitation\x18\x04\0\x13client-cap\
+abilities\x03\0\x19\x01k\x0f\x01k\x11\x01k\x13\x01r\x06\x0cexperimental\x16\x07l\
+ogging\x16\x0bcompletions\x16\x07prompts\x1b\x09resources\x1c\x05tools\x1d\x04\0\
+\x13server-capabilities\x03\0\x1e\x01r\x03\x10protocol-version\x05\x0ccapabiliti\
+es\x1a\x0bclient-info\x0a\x04\0\x12initialize-request\x03\0\x20\x01r\x04\x10prot\
+ocol-version\x05\x0ccapabilities\x1f\x0bserver-info\x0a\x0cinstructions\x06\x04\0\
+\x11initialize-result\x03\0\"\x03\0\x20wasmcp:mcp/lifecycle-types@0.2.0\x05\x0f\x02\
+\x03\0\x04\x12initialize-request\x02\x03\0\x04\x11initialize-result\x01B\x0d\x02\
+\x03\x02\x01\x09\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x10\x04\0\x12initial\
+ize-request\x03\0\x02\x02\x03\x02\x01\x11\x04\0\x11initialize-result\x03\0\x04\x01\
+j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x06\x04\0\x0ainitialize\x01\x07\x01j\
+\0\x01\x01\x01@\0\0\x08\x04\0\x12client-initialized\x01\x09\x04\0\x08shutdown\x01\
+\x09\x03\0\x20wasmcp:transport/lifecycle@0.2.0\x05\x12\x02\x03\0\x01\x14provider\
+-auth-config\x01B\x0a\x02\x03\x02\x01\x13\x04\0\x14provider-auth-config\x03\0\0\x01\
+k\x01\x01@\0\0\x02\x04\0\x0fget-auth-config\x01\x03\x01ks\x01@\x01\x08jwks-uris\0\
+\x04\x04\0\x0ejwks-cache-get\x01\x05\x01@\x02\x08jwks-uris\x04jwkss\x01\0\x04\0\x0e\
+jwks-cache-set\x01\x06\x03\0$wasmcp:transport/authorization@0.2.0\x05\x14\x04\0&\
+wasmcp:transport/tools-transport@0.2.0\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\
+\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-\
+bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

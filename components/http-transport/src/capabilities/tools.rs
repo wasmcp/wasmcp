@@ -14,11 +14,11 @@ pub fn list_tools(params: Option<Value>) -> Result<Value, McpError> {
             data: None,
         })?;
 
-    let request = bindings::wasmcp::mcp::tools_types::ListToolsRequest {
+    let request = bindings::wasmcp::transport::tools_types::ListToolsRequest {
         cursor: None,
     };
 
-    let response = bindings::wasmcp::mcp::tools::list_tools(&request)?;
+    let response = bindings::wasmcp::transport::tools::list_tools(&request)?;
     
     // Convert WIT ListToolsResult to rmcp ListToolsResult
     let result = ListToolsResult {
@@ -73,7 +73,7 @@ pub fn call_tool(params: Option<Value>, auth_context: Option<&AuthContext>) -> R
         })?;
 
     // Convert request to WIT types
-    let request = bindings::wasmcp::mcp::tools_types::CallToolRequest {
+    let request = bindings::wasmcp::transport::tools_types::CallToolRequest {
         name: params.name.to_string(),
         arguments: params.arguments.map(|args| {
             serde_json::to_string(&args).unwrap_or_else(|_| "{}".to_string())
@@ -81,7 +81,7 @@ pub fn call_tool(params: Option<Value>, auth_context: Option<&AuthContext>) -> R
     };
 
     // Call WIT binding directly with auth context if available (None if auth disabled)
-    let response = bindings::wasmcp::mcp::tools::call_tool(&request, auth_context)
+    let response = bindings::wasmcp::transport::tools::call_tool(&request, auth_context)
         .map_err(|e| McpError {
             code: ErrorCode::InternalError,
             message: e.message,
@@ -91,7 +91,7 @@ pub fn call_tool(params: Option<Value>, auth_context: Option<&AuthContext>) -> R
     // Convert WIT response to rmcp result
     let result = CallToolResult {
         content: response.content.into_iter().map(|c| {
-            use bindings::wasmcp::mcp::mcp_types::ContentBlock;
+            use wasmcp_core::wasmcp::mcp::mcp_types::ContentBlock;
             match c {
                 ContentBlock::Text(t) => rmcp::model::Content::text(t.text),
                 ContentBlock::Image(i) => rmcp::model::Content::image(i.data, i.mime_type),
@@ -100,7 +100,7 @@ pub fn call_tool(params: Option<Value>, auth_context: Option<&AuthContext>) -> R
                     rmcp::model::Content::text(format!("[Audio: {} - {} bytes]", a.mime_type, a.data.len()))
                 },
                 ContentBlock::Resource(r) => {
-                    use bindings::wasmcp::mcp::mcp_types::ResourceContents;
+                    use wasmcp_core::wasmcp::mcp::mcp_types::ResourceContents;
                     let resource_contents = match r.resource {
                         ResourceContents::Text(t) => rmcp::model::ResourceContents::TextResourceContents {
                             uri: t.uri,
