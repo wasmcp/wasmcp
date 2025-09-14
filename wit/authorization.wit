@@ -25,7 +25,7 @@ interface jwt-validation {
 }
 
 
-/// Caches JWKS for a given URI
+/// Caches JWKS
 interface jwks-cache {
     /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
     /// Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms
