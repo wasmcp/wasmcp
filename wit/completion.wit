@@ -5,71 +5,8 @@ package wasmcp:transport@0.2.0;
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion
 interface completion {
     use wasmcp:mcp/mcp-types@0.2.0.{mcp-error};
-    use completion-types.{complete-request, complete-result};
-    
+    use wasmcp:mcp/completion-types@0.2.0.{complete-request, complete-result};
+
     /// Handle request for completion suggestions
     complete: func(request: complete-request) -> result<complete-result, mcp-error>;
-}
-
-/// Type definitions for completion
-interface completion-types {
-    use wasmcp:mcp/mcp-types@0.2.0.{json-object};
-
-    /// Request for completion suggestions
-    record complete-request {
-        /// What we're completing for
-        ref: reference,
-        /// Argument information
-        argument: argument-info,
-        /// Optional context containing previously resolved argument values
-        context: option<completion-context>,
-    }
-
-    /// Reference to what we're completing
-    variant reference {
-        /// Completing for a resource
-        %resource(resource-reference),
-        /// Completing for a prompt
-        prompt(prompt-reference),
-    }
-
-    /// Resource reference
-    record resource-reference {
-        uri: string,
-    }
-
-    /// Prompt reference
-    record prompt-reference {
-        name: string,
-    }
-
-    /// Argument information
-    record argument-info {
-        /// Name of the argument being completed
-        name: string,
-        /// Current partial value of the argument
-        value: string,
-    }
-
-    /// Additional context for generating completions
-    record completion-context {
-        /// Previously resolved argument values
-        arguments: option<json-object>,
-    }
-
-    /// Completion result
-    record complete-result {
-        /// Completion information
-        completion: completion-info,
-    }
-
-    /// Completion information
-    record completion-info {
-        /// Suggested completion values
-        values: list<string>,
-        /// Total number of possible completions (may exceed returned values)
-        total: option<u32>,
-        /// Whether more completions are available
-        has-more: option<bool>,
-    }
 }

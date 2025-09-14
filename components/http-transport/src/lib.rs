@@ -9,7 +9,7 @@ use spin_sdk::http::{IntoResponse, Request, Response};
 mod bindings;
 
 use bindings::wasmcp::transport::authorization;
-use bindings::wasmcp::transport::authorization_types::ProviderAuthConfig;
+use bindings::wasmcp::transport::authorization::ProviderAuthConfig;
 
 mod capabilities;
 mod auth;

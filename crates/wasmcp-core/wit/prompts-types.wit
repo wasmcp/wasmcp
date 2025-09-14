@@ -1,0 +1,131 @@
+package wasmcp:mcp@0.2.0;
+
+/// Type definitions for prompts
+interface prompts-types {
+    use mcp-types.{annotations, resource-contents, json-object, icon};
+
+    /// Argument definition for a prompt template
+    record prompt-argument {
+        /// The name of the argument
+        name: string,
+        /// A human-readable title for the argument
+        title: option<string>,
+        /// A description of what the argument is used for
+        description: option<string>,
+        /// Whether this argument is required
+        required: option<bool>,
+    }
+
+    /// Prompt template definition
+    record prompt {
+        /// The name of the prompt
+        name: string,
+        /// A human-readable title
+        title: option<string>,
+        /// Description of what this prompt does
+        description: option<string>,
+        /// Arguments that can be passed to the prompt
+        arguments: option<list<prompt-argument>>,
+        /// Optional list of icons for the prompt
+        icons: option<list<icon>>,
+    }
+
+    /// Role of a message sender in a prompt conversation
+    enum prompt-message-role {
+        user,
+        assistant,
+    }
+
+    /// Content types that can be included in prompt messages
+    variant prompt-message-content {
+        text(text-content),
+        image(image-content),
+        %resource(embedded-resource),
+        resource-link(resource-link),
+    }
+
+    /// Plain text content in a prompt message
+    record text-content {
+        text: string,
+    }
+
+    /// Image content in a prompt message
+    record image-content {
+        /// Base64-encoded image data
+        data: string,
+        /// MIME type of the image
+        mime-type: string,
+        /// Optional metadata
+        meta: option<json-object>,
+        /// Optional annotations
+        annotations: option<annotations>,
+    }
+
+    /// Embedded resource in a prompt message
+    record embedded-resource {
+        /// The resource contents
+        %resource: resource-contents,
+        /// Optional metadata
+        meta: option<json-object>,
+        /// Optional annotations
+        annotations: option<annotations>,
+    }
+
+    /// Link to a resource in a prompt message
+    record resource-link {
+        /// URI of the resource
+        uri: string,
+        /// Name of the resource
+        name: string,
+        /// Optional title
+        title: option<string>,
+        /// Optional description
+        description: option<string>,
+        /// Optional MIME type
+        mime-type: option<string>,
+        /// Optional size in bytes
+        size: option<u32>,
+        /// Optional list of icons for the resource
+        icons: option<list<icon>>,
+        /// Optional annotations
+        annotations: option<annotations>,
+    }
+
+    /// Message in a prompt conversation
+    record prompt-message {
+        /// The role of the message sender
+        role: prompt-message-role,
+        /// The content of the message
+        content: prompt-message-content,
+    }
+
+    /// Request to list available prompts
+    record list-prompts-request {
+        /// Pagination cursor
+        cursor: option<string>,
+    }
+
+    /// Response with list of prompts
+    record list-prompts-result {
+        /// Available prompts
+        prompts: list<prompt>,
+        /// Cursor for next page
+        next-cursor: option<string>,
+    }
+
+    /// Request to get a specific prompt
+    record get-prompt-request {
+        /// Name of the prompt to retrieve
+        name: string,
+        /// Arguments for template substitution as JSON object
+        arguments: option<json-object>,
+    }
+
+    /// Response with rendered prompt messages
+    record get-prompt-result {
+        /// Optional description of the rendered prompt
+        description: option<string>,
+        /// Messages that make up the prompt
+        messages: list<prompt-message>,
+    }
+}

@@ -1,0 +1,72 @@
+package wasmcp:mcp@0.2.0;
+
+/// Type definitions for tools
+interface tools-types {
+    use mcp-types.{content-block, json-value, json-object, icon};
+
+    /// Behavioral hints about tool operations
+    record tool-annotations {
+        /// Human-readable title for display
+        title: option<string>,
+        /// Tool does not modify environment (default: false)
+        read-only-hint: option<bool>,
+        /// Tool may perform destructive updates (default: true)
+        destructive-hint: option<bool>,
+        /// Repeated calls with same args have no additional effect (default: false)
+        idempotent-hint: option<bool>,
+        /// Tool interacts with external entities (default: true)
+        open-world-hint: option<bool>,
+    }
+
+    /// Tool definition with metadata and schema
+    record tool {
+        /// The name of the tool
+        name: string,
+        /// A human-readable title for the tool
+        title: option<string>,
+        /// Human-readable description of what the tool does
+        description: option<string>,
+        /// JSON Schema object for input parameters
+        input-schema: json-object,
+        /// Optional JSON Schema object for structured output
+        output-schema: option<json-object>,
+        /// Behavioral hints for clients
+        annotations: option<tool-annotations>,
+        /// Optional list of icons for the tool
+        icons: option<list<icon>>,
+    }
+
+    /// Request to execute a tool
+    record call-tool-request {
+        /// Name of the tool to execute
+        name: string,
+        /// Arguments as JSON object (must match the tool's input schema)
+        arguments: option<json-object>,
+    }
+
+    /// Result from executing a tool
+    record call-tool-result {
+        /// Unstructured content blocks (text, images, etc.)
+        content: list<content-block>,
+        /// Optional structured JSON output
+        structured-content: option<json-value>,
+        /// Whether the tool execution resulted in an error
+        is-error: option<bool>,
+        /// Optional metadata
+        meta: option<json-object>,
+    }
+
+    /// Request to list available tools
+    record list-tools-request {
+        /// Pagination cursor from previous response
+        cursor: option<string>,
+    }
+
+    /// Response with list of available tools
+    record list-tools-result {
+        /// Available tools
+        tools: list<tool>,
+        /// Cursor for next page if more tools exist
+        next-cursor: option<string>,
+    }
+}

@@ -2,255 +2,18 @@
 // Options used:
 //   * runtime_path: "wit_bindgen_rt"
 //   * additional derives ["serde::Serialize", "serde::Deserialize", "Clone"]
+//   * with "wasmcp:mcp/authorization-types@0.2.0" = "wasmcp_core"
 //   * with "wasmcp:mcp/lifecycle-types@0.2.0" = "wasmcp_core"
 //   * with "wasmcp:mcp/mcp-types@0.2.0" = "wasmcp_core"
+//   * with "wasmcp:mcp/tools-types@0.2.0" = "wasmcp_core"
 use wasmcp_core as __with_name0;
 use wasmcp_core as __with_name1;
+use wasmcp_core as __with_name2;
+use wasmcp_core as __with_name3;
 #[rustfmt::skip]
 #[allow(dead_code, clippy::all)]
 pub mod wasmcp {
     pub mod transport {
-        /// Type definitions for authentication and authorization
-        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod authorization_types {
-            #[used]
-            #[doc(hidden)]
-            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            pub type MetaFields = super::super::super::__with_name0::MetaFields;
-            /// Provider declares its authorization requirements
-            /// This is returned by get-auth-config()
-            /// and used by the transport to enforce authorization
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ProviderAuthConfig {
-                /// Expected JWT issuer (REQUIRED for auth)
-                pub expected_issuer: _rt::String,
-                /// Expected JWT audiences (REQUIRED for auth - must have at least one)
-                pub expected_audiences: _rt::Vec<_rt::String>,
-                /// JWKS URI for key discovery (REQUIRED for auth)
-                pub jwks_uri: _rt::String,
-                /// Pass raw JWT token to tools via "jwt.token" meta field.
-                pub pass_jwt: bool,
-                /// Expected JWT subject - if set, only this exact subject is allowed
-                pub expected_subject: Option<_rt::String>,
-                /// Optional Rego policy for complex authorization rules
-                pub policy: Option<_rt::String>,
-                /// Optional data for policy evaluation
-                pub policy_data: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for ProviderAuthConfig {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ProviderAuthConfig")
-                        .field("expected-issuer", &self.expected_issuer)
-                        .field("expected-audiences", &self.expected_audiences)
-                        .field("jwks-uri", &self.jwks_uri)
-                        .field("pass-jwt", &self.pass_jwt)
-                        .field("expected-subject", &self.expected_subject)
-                        .field("policy", &self.policy)
-                        .field("policy-data", &self.policy_data)
-                        .finish()
-                }
-            }
-            /// Authorization context passed between components after successful authorization
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct AuthContext {
-                /// OAuth client ID that made the request
-                pub client_id: Option<_rt::String>,
-                /// Subject claim from the token - always present from validated JWT
-                pub sub: _rt::String,
-                /// OAuth scopes granted to this token
-                pub scopes: _rt::Vec<_rt::String>,
-                /// Issuer claim from the token - always present from validated JWT
-                pub iss: _rt::String,
-                /// Audience claim from token (aud) - always validated, can be multiple values
-                pub aud: _rt::Vec<_rt::String>,
-                /// Additional claims from token as key-value pairs
-                pub claims: MetaFields,
-                /// Expiration timestamp (Unix seconds) - always validated and required for security
-                pub exp: u64,
-                /// Issued at timestamp (Unix seconds)
-                pub iat: Option<u64>,
-                /// Not before timestamp (Unix seconds)
-                pub nbf: Option<u64>,
-                /// Raw JWT iff enabled by pass-jwt flag in provider-auth-config
-                pub jwt: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for AuthContext {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("AuthContext")
-                        .field("client-id", &self.client_id)
-                        .field("sub", &self.sub)
-                        .field("scopes", &self.scopes)
-                        .field("iss", &self.iss)
-                        .field("aud", &self.aud)
-                        .field("claims", &self.claims)
-                        .field("exp", &self.exp)
-                        .field("iat", &self.iat)
-                        .field("nbf", &self.nbf)
-                        .field("jwt", &self.jwt)
-                        .finish()
-                }
-            }
-        }
-        /// Type definitions for tools
-        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
-        pub mod tools_types {
-            #[used]
-            #[doc(hidden)]
-            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            pub type ContentBlock = super::super::super::__with_name0::ContentBlock;
-            pub type JsonValue = super::super::super::__with_name0::JsonValue;
-            pub type JsonObject = super::super::super::__with_name0::JsonObject;
-            pub type Icon = super::super::super::__with_name0::Icon;
-            /// Behavioral hints about tool operations
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ToolAnnotations {
-                /// Human-readable title for display
-                pub title: Option<_rt::String>,
-                /// Tool does not modify environment (default: false)
-                pub read_only_hint: Option<bool>,
-                /// Tool may perform destructive updates (default: true)
-                pub destructive_hint: Option<bool>,
-                /// Repeated calls with same args have no additional effect (default: false)
-                pub idempotent_hint: Option<bool>,
-                /// Tool interacts with external entities (default: true)
-                pub open_world_hint: Option<bool>,
-            }
-            impl ::core::fmt::Debug for ToolAnnotations {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ToolAnnotations")
-                        .field("title", &self.title)
-                        .field("read-only-hint", &self.read_only_hint)
-                        .field("destructive-hint", &self.destructive_hint)
-                        .field("idempotent-hint", &self.idempotent_hint)
-                        .field("open-world-hint", &self.open_world_hint)
-                        .finish()
-                }
-            }
-            /// Tool definition with metadata and schema
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct Tool {
-                /// The name of the tool
-                pub name: _rt::String,
-                /// A human-readable title for the tool
-                pub title: Option<_rt::String>,
-                /// Human-readable description of what the tool does
-                pub description: Option<_rt::String>,
-                /// JSON Schema object for input parameters
-                pub input_schema: JsonObject,
-                /// Optional JSON Schema object for structured output
-                pub output_schema: Option<JsonObject>,
-                /// Behavioral hints for clients
-                pub annotations: Option<ToolAnnotations>,
-                /// Optional list of icons for the tool
-                pub icons: Option<_rt::Vec<Icon>>,
-            }
-            impl ::core::fmt::Debug for Tool {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("Tool")
-                        .field("name", &self.name)
-                        .field("title", &self.title)
-                        .field("description", &self.description)
-                        .field("input-schema", &self.input_schema)
-                        .field("output-schema", &self.output_schema)
-                        .field("annotations", &self.annotations)
-                        .field("icons", &self.icons)
-                        .finish()
-                }
-            }
-            /// Request to execute a tool
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct CallToolRequest {
-                /// Name of the tool to execute
-                pub name: _rt::String,
-                /// Arguments as JSON object (must match the tool's input schema)
-                pub arguments: Option<JsonObject>,
-            }
-            impl ::core::fmt::Debug for CallToolRequest {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("CallToolRequest")
-                        .field("name", &self.name)
-                        .field("arguments", &self.arguments)
-                        .finish()
-                }
-            }
-            /// Result from executing a tool
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct CallToolResult {
-                /// Unstructured content blocks (text, images, etc.)
-                pub content: _rt::Vec<ContentBlock>,
-                /// Optional structured JSON output
-                pub structured_content: Option<JsonValue>,
-                /// Whether the tool execution resulted in an error
-                pub is_error: Option<bool>,
-                /// Optional metadata
-                pub meta: Option<JsonObject>,
-            }
-            impl ::core::fmt::Debug for CallToolResult {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("CallToolResult")
-                        .field("content", &self.content)
-                        .field("structured-content", &self.structured_content)
-                        .field("is-error", &self.is_error)
-                        .field("meta", &self.meta)
-                        .finish()
-                }
-            }
-            /// Request to list available tools
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ListToolsRequest {
-                /// Pagination cursor from previous response
-                pub cursor: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for ListToolsRequest {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ListToolsRequest")
-                        .field("cursor", &self.cursor)
-                        .finish()
-                }
-            }
-            /// Response with list of available tools
-            #[derive(Clone, serde::Deserialize, serde::Serialize)]
-            pub struct ListToolsResult {
-                /// Available tools
-                pub tools: _rt::Vec<Tool>,
-                /// Cursor for next page if more tools exist
-                pub next_cursor: Option<_rt::String>,
-            }
-            impl ::core::fmt::Debug for ListToolsResult {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("ListToolsResult")
-                        .field("tools", &self.tools)
-                        .field("next-cursor", &self.next_cursor)
-                        .finish()
-                }
-            }
-        }
         /// Tools enable models to interact with external systems, such as querying databases, calling APIs, or performing computations.
         /// Each tool is uniquely identified by a name and includes metadata describing its schema.
         ///
@@ -262,11 +25,11 @@ pub mod wasmcp {
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
             pub type McpError = super::super::super::__with_name0::McpError;
-            pub type AuthContext = super::super::super::wasmcp::transport::authorization_types::AuthContext;
-            pub type ListToolsRequest = super::super::super::wasmcp::transport::tools_types::ListToolsRequest;
-            pub type ListToolsResult = super::super::super::wasmcp::transport::tools_types::ListToolsResult;
-            pub type CallToolRequest = super::super::super::wasmcp::transport::tools_types::CallToolRequest;
-            pub type CallToolResult = super::super::super::wasmcp::transport::tools_types::CallToolResult;
+            pub type AuthContext = super::super::super::__with_name1::AuthContext;
+            pub type ListToolsRequest = super::super::super::__with_name2::ListToolsRequest;
+            pub type ListToolsResult = super::super::super::__with_name2::ListToolsResult;
+            pub type CallToolRequest = super::super::super::__with_name2::CallToolRequest;
+            pub type CallToolResult = super::super::super::__with_name2::CallToolResult;
             #[allow(unused_unsafe, clippy::all)]
             /// List available tools
             pub fn list_tools(
@@ -284,7 +47,7 @@ pub mod wasmcp {
                         [::core::mem::MaybeUninit::uninit(); 8
                             + 6 * ::core::mem::size_of::<*const u8>()],
                     );
-                    let super::super::super::wasmcp::transport::tools_types::ListToolsRequest {
+                    let super::super::super::__with_name2::ListToolsRequest {
                         cursor: cursor0,
                     } = request;
                     let (result2_0, result2_1, result2_2) = match cursor0 {
@@ -377,7 +140,7 @@ pub mod wasmcp {
                                                 .add(8 + 17 * ::core::mem::size_of::<*const u8>())
                                                 .cast::<u8>(),
                                         );
-                                        super::super::super::wasmcp::transport::tools_types::Tool {
+                                        super::super::super::__with_name2::Tool {
                                             name: _rt::string_lift(bytes10),
                                             title: match l11 {
                                                 0 => None,
@@ -475,7 +238,7 @@ pub mod wasmcp {
                                                                 .add(6 + 17 * ::core::mem::size_of::<*const u8>())
                                                                 .cast::<u8>(),
                                                         );
-                                                        super::super::super::wasmcp::transport::tools_types::ToolAnnotations {
+                                                        super::super::super::__with_name2::ToolAnnotations {
                                                             title: match l27 {
                                                                 0 => None,
                                                                 1 => {
@@ -676,7 +439,7 @@ pub mod wasmcp {
                                         .add(3 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::transport::tools_types::ListToolsResult {
+                                super::super::super::__with_name2::ListToolsResult {
                                     tools: result54,
                                     next_cursor: match l55 {
                                         0 => None,
@@ -804,7 +567,7 @@ pub mod wasmcp {
                             + 18 * ::core::mem::size_of::<*const u8>()],
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    let super::super::super::wasmcp::transport::tools_types::CallToolRequest {
+                    let super::super::super::__with_name2::CallToolRequest {
                         name: name1,
                         arguments: arguments1,
                     } = request;
@@ -839,7 +602,7 @@ pub mod wasmcp {
                             *ptr0
                                 .add(8 + 4 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (1i32) as u8;
-                            let super::super::super::wasmcp::transport::authorization_types::AuthContext {
+                            let super::super::super::__with_name1::AuthContext {
                                 client_id: client_id4,
                                 sub: sub4,
                                 scopes: scopes4,
@@ -2086,7 +1849,7 @@ pub mod wasmcp {
                                         .add(7 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::transport::tools_types::CallToolResult {
+                                super::super::super::__with_name2::CallToolResult {
                                     content: result164,
                                     structured_content: match l165 {
                                         0 => None,
@@ -2251,8 +2014,8 @@ pub mod wasmcp {
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
             pub type McpError = super::super::super::__with_name0::McpError;
-            pub type InitializeRequest = super::super::super::__with_name1::InitializeRequest;
-            pub type InitializeResult = super::super::super::__with_name1::InitializeResult;
+            pub type InitializeRequest = super::super::super::__with_name3::InitializeRequest;
+            pub type InitializeResult = super::super::super::__with_name3::InitializeResult;
             #[allow(unused_unsafe, clippy::all)]
             /// Handle session initialization
             /// Implementations should declare their capabilities here
@@ -2273,7 +2036,7 @@ pub mod wasmcp {
                             + 29 * ::core::mem::size_of::<*const u8>()],
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    let super::super::super::__with_name1::InitializeRequest {
+                    let super::super::super::__with_name3::InitializeRequest {
                         protocol_version: protocol_version1,
                         capabilities: capabilities1,
                         client_info: client_info1,
@@ -2283,7 +2046,7 @@ pub mod wasmcp {
                     let len2 = vec2.len();
                     *ptr0.add(::core::mem::size_of::<*const u8>()).cast::<usize>() = len2;
                     *ptr0.add(0).cast::<*mut u8>() = ptr2.cast_mut();
-                    let super::super::super::__with_name1::ClientCapabilities {
+                    let super::super::super::__with_name3::ClientCapabilities {
                         experimental: experimental3,
                         roots: roots3,
                         sampling: sampling3,
@@ -2315,7 +2078,7 @@ pub mod wasmcp {
                             *ptr0
                                 .add(5 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (1i32) as u8;
-                            let super::super::super::__with_name1::RootsCapability {
+                            let super::super::super::__with_name3::RootsCapability {
                                 list_changed: list_changed5,
                             } = e;
                             match list_changed5 {
@@ -2369,7 +2132,7 @@ pub mod wasmcp {
                             *ptr0
                                 .add(9 * ::core::mem::size_of::<*const u8>())
                                 .cast::<u8>() = (1i32) as u8;
-                            let super::super::super::__with_name1::ElicitationCapability {
+                            let super::super::super::__with_name3::ElicitationCapability {
                                 schema_validation: schema_validation7,
                             } = e;
                             match schema_validation7 {
@@ -2397,7 +2160,7 @@ pub mod wasmcp {
                                 .cast::<u8>() = (0i32) as u8;
                         }
                     };
-                    let super::super::super::__with_name1::Implementation {
+                    let super::super::super::__with_name3::Implementation {
                         name: name8,
                         title: title8,
                         version: version8,
@@ -2660,9 +2423,9 @@ pub mod wasmcp {
                                         .add(8 + 26 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::__with_name1::InitializeResult {
+                                super::super::super::__with_name3::InitializeResult {
                                     protocol_version: _rt::string_lift(bytes23),
-                                    capabilities: super::super::super::__with_name1::ServerCapabilities {
+                                    capabilities: super::super::super::__with_name3::ServerCapabilities {
                                         experimental: match l24 {
                                             0 => None,
                                             1 => {
@@ -2738,7 +2501,7 @@ pub mod wasmcp {
                                                             .add(1 + 12 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::__with_name1::PromptsCapability {
+                                                    super::super::super::__with_name3::PromptsCapability {
                                                         list_changed: match l37 {
                                                             0 => None,
                                                             1 => {
@@ -2774,7 +2537,7 @@ pub mod wasmcp {
                                                             .add(6 + 12 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::__with_name1::ResourcesCapability {
+                                                    super::super::super::__with_name3::ResourcesCapability {
                                                         subscribe: match l40 {
                                                             0 => None,
                                                             1 => {
@@ -2820,7 +2583,7 @@ pub mod wasmcp {
                                                             .add(9 + 12 * ::core::mem::size_of::<*const u8>())
                                                             .cast::<u8>(),
                                                     );
-                                                    super::super::super::__with_name1::ToolsCapability {
+                                                    super::super::super::__with_name3::ToolsCapability {
                                                         list_changed: match l45 {
                                                             0 => None,
                                                             1 => {
@@ -2843,7 +2606,7 @@ pub mod wasmcp {
                                             _ => _rt::invalid_enum_discriminant(),
                                         },
                                     },
-                                    server_info: super::super::super::__with_name1::Implementation {
+                                    server_info: super::super::super::__with_name3::Implementation {
                                         name: _rt::string_lift(bytes49),
                                         title: match l50 {
                                             0 => None,
@@ -3339,7 +3102,7 @@ pub mod wasmcp {
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
-            pub type ProviderAuthConfig = super::super::super::wasmcp::transport::authorization_types::ProviderAuthConfig;
+            pub type ProviderAuthConfig = super::super::super::__with_name1::ProviderAuthConfig;
             #[allow(unused_unsafe, clippy::all)]
             /// Get provider's auth configuration
             /// The transport should enforce authorization
@@ -3449,7 +3212,7 @@ pub mod wasmcp {
                                         .add(14 * ::core::mem::size_of::<*const u8>())
                                         .cast::<u8>(),
                                 );
-                                super::super::super::wasmcp::transport::authorization_types::ProviderAuthConfig {
+                                super::super::super::__with_name1::ProviderAuthConfig {
                                     expected_issuer: _rt::string_lift(bytes5),
                                     expected_audiences: result11,
                                     jwks_uri: _rt::string_lift(bytes14),
@@ -3624,7 +3387,6 @@ pub mod wasmcp {
 #[rustfmt::skip]
 mod _rt {
     #![allow(dead_code, clippy::all)]
-    pub use alloc_crate::string::String;
     pub use alloc_crate::vec::Vec;
     pub unsafe fn string_lift(bytes: Vec<u8>) -> String {
         if cfg!(debug_assertions) {
@@ -3682,6 +3444,7 @@ mod _rt {
             self as i64
         }
     }
+    pub use alloc_crate::string::String;
     extern crate alloc as alloc_crate;
 }
 #[cfg(target_arch = "wasm32")]
@@ -3690,8 +3453,8 @@ mod _rt {
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3948] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xe6\x1d\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3913] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc3\x1d\x01A\x02\x01\
 A\x1c\x01B:\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\0\x01s\x04\0\x0ajs\
 on-value\x03\0\x02\x01s\x04\0\x0bjson-object\x03\0\x04\x01s\x04\0\x0bjson-schema\
 \x03\0\x06\x01o\x02ss\x01p\x08\x04\0\x0bmeta-fields\x03\0\x09\x01ks\x01r\x03\x03\
@@ -3723,59 +3486,58 @@ mcp/mcp-types@0.2.0\x05\0\x02\x03\0\0\x0bmeta-fields\x01B\x09\x02\x03\x02\x01\x0
 ed-audiences\x02\x08jwks-uris\x08pass-jwt\x7f\x10expected-subject\x03\x06policy\x03\
 \x0bpolicy-data\x03\x04\0\x14provider-auth-config\x03\0\x04\x01kw\x01r\x0a\x09cl\
 ient-id\x03\x03subs\x06scopes\x02\x03isss\x03aud\x02\x06claims\x01\x03expw\x03ia\
-t\x06\x03nbf\x06\x03jwt\x03\x04\0\x0cauth-context\x03\0\x07\x03\0*wasmcp:transpo\
-rt/authorization-types@0.2.0\x05\x02\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0a\
-json-value\x02\x03\0\0\x0bjson-object\x02\x03\0\0\x04icon\x02\x03\0\x01\x0cauth-\
-context\x01B\x1f\x02\x03\x02\x01\x03\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\
-\x04\x04\0\x0ajson-value\x03\0\x02\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\
-\x04\x02\x03\x02\x01\x06\x04\0\x04icon\x03\0\x06\x02\x03\x02\x01\x07\x04\0\x0cau\
-th-context\x03\0\x08\x01ks\x01k\x7f\x01r\x05\x05title\x0a\x0eread-only-hint\x0b\x10\
-destructive-hint\x0b\x0fidempotent-hint\x0b\x0fopen-world-hint\x0b\x04\0\x10tool\
--annotations\x03\0\x0c\x01k\x05\x01k\x0d\x01p\x07\x01k\x10\x01r\x07\x04names\x05\
-title\x0a\x0bdescription\x0a\x0cinput-schema\x05\x0doutput-schema\x0e\x0bannotat\
-ions\x0f\x05icons\x11\x04\0\x04tool\x03\0\x12\x01r\x02\x04names\x09arguments\x0e\
-\x04\0\x11call-tool-request\x03\0\x14\x01p\x01\x01k\x03\x01r\x04\x07content\x16\x12\
-structured-content\x17\x08is-error\x0b\x04meta\x0e\x04\0\x10call-tool-result\x03\
-\0\x18\x01r\x01\x06cursor\x0a\x04\0\x12list-tools-request\x03\0\x1a\x01p\x13\x01\
-r\x02\x05tools\x1c\x0bnext-cursor\x0a\x04\0\x11list-tools-result\x03\0\x1d\x03\0\
-\"wasmcp:transport/tools-types@0.2.0\x05\x08\x02\x03\0\0\x09mcp-error\x02\x03\0\x02\
-\x12list-tools-request\x02\x03\0\x02\x11list-tools-result\x02\x03\0\x02\x11call-\
-tool-request\x02\x03\0\x02\x10call-tool-result\x01B\x13\x02\x03\x02\x01\x09\x04\0\
-\x09mcp-error\x03\0\0\x02\x03\x02\x01\x07\x04\0\x0cauth-context\x03\0\x02\x02\x03\
-\x02\x01\x0a\x04\0\x12list-tools-request\x03\0\x04\x02\x03\x02\x01\x0b\x04\0\x11\
-list-tools-result\x03\0\x06\x02\x03\x02\x01\x0c\x04\0\x11call-tool-request\x03\0\
-\x08\x02\x03\x02\x01\x0d\x04\0\x10call-tool-result\x03\0\x0a\x01j\x01\x07\x01\x01\
-\x01@\x01\x07request\x05\0\x0c\x04\0\x0alist-tools\x01\x0d\x01k\x03\x01j\x01\x0b\
-\x01\x01\x01@\x02\x07request\x09\x07context\x0e\0\x0f\x04\0\x09call-tool\x01\x10\
-\x03\0\x1cwasmcp:transport/tools@0.2.0\x05\x0e\x01B$\x02\x03\x02\x01\x06\x04\0\x04\
-icon\x03\0\0\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\x02\x01s\x04\0\x10pr\
-otocol-version\x03\0\x04\x01ks\x01p\x01\x01k\x07\x01r\x05\x04names\x05title\x06\x07\
-versions\x0bwebsite-url\x06\x05icons\x08\x04\0\x0eimplementation\x03\0\x09\x01k\x7f\
-\x01r\x01\x0clist-changed\x0b\x04\0\x10roots-capability\x03\0\x0c\x01r\x01\x0cli\
-st-changed\x0b\x04\0\x12prompts-capability\x03\0\x0e\x01r\x02\x09subscribe\x0b\x0c\
-list-changed\x0b\x04\0\x14resources-capability\x03\0\x10\x01r\x01\x0clist-change\
-d\x0b\x04\0\x10tools-capability\x03\0\x12\x01r\x01\x11schema-validation\x0b\x04\0\
-\x16elicitation-capability\x03\0\x14\x01k\x03\x01k\x0d\x01k\x15\x01r\x04\x0cexpe\
-rimental\x16\x05roots\x17\x08sampling\x16\x0belicitation\x18\x04\0\x13client-cap\
-abilities\x03\0\x19\x01k\x0f\x01k\x11\x01k\x13\x01r\x06\x0cexperimental\x16\x07l\
-ogging\x16\x0bcompletions\x16\x07prompts\x1b\x09resources\x1c\x05tools\x1d\x04\0\
-\x13server-capabilities\x03\0\x1e\x01r\x03\x10protocol-version\x05\x0ccapabiliti\
-es\x1a\x0bclient-info\x0a\x04\0\x12initialize-request\x03\0\x20\x01r\x04\x10prot\
-ocol-version\x05\x0ccapabilities\x1f\x0bserver-info\x0a\x0cinstructions\x06\x04\0\
-\x11initialize-result\x03\0\"\x03\0\x20wasmcp:mcp/lifecycle-types@0.2.0\x05\x0f\x02\
-\x03\0\x04\x12initialize-request\x02\x03\0\x04\x11initialize-result\x01B\x0d\x02\
-\x03\x02\x01\x09\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x10\x04\0\x12initial\
-ize-request\x03\0\x02\x02\x03\x02\x01\x11\x04\0\x11initialize-result\x03\0\x04\x01\
-j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x06\x04\0\x0ainitialize\x01\x07\x01j\
-\0\x01\x01\x01@\0\0\x08\x04\0\x12client-initialized\x01\x09\x04\0\x08shutdown\x01\
-\x09\x03\0\x20wasmcp:transport/lifecycle@0.2.0\x05\x12\x02\x03\0\x01\x14provider\
--auth-config\x01B\x0a\x02\x03\x02\x01\x13\x04\0\x14provider-auth-config\x03\0\0\x01\
-k\x01\x01@\0\0\x02\x04\0\x0fget-auth-config\x01\x03\x01ks\x01@\x01\x08jwks-uris\0\
-\x04\x04\0\x0ejwks-cache-get\x01\x05\x01@\x02\x08jwks-uris\x04jwkss\x01\0\x04\0\x0e\
-jwks-cache-set\x01\x06\x03\0$wasmcp:transport/authorization@0.2.0\x05\x14\x04\0&\
-wasmcp:transport/tools-transport@0.2.0\x04\0\x0b\x15\x01\0\x0ftools-transport\x03\
-\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-\
-bindgen-rust\x060.41.0";
+t\x06\x03nbf\x06\x03jwt\x03\x04\0\x0cauth-context\x03\0\x07\x03\0$wasmcp:mcp/aut\
+horization-types@0.2.0\x05\x02\x02\x03\0\0\x0dcontent-block\x02\x03\0\0\x0ajson-\
+value\x02\x03\0\0\x0bjson-object\x02\x03\0\0\x04icon\x01B\x1d\x02\x03\x02\x01\x03\
+\x04\0\x0dcontent-block\x03\0\0\x02\x03\x02\x01\x04\x04\0\x0ajson-value\x03\0\x02\
+\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\x04\x02\x03\x02\x01\x06\x04\0\x04\
+icon\x03\0\x06\x01ks\x01k\x7f\x01r\x05\x05title\x08\x0eread-only-hint\x09\x10des\
+tructive-hint\x09\x0fidempotent-hint\x09\x0fopen-world-hint\x09\x04\0\x10tool-an\
+notations\x03\0\x0a\x01k\x05\x01k\x0b\x01p\x07\x01k\x0e\x01r\x07\x04names\x05tit\
+le\x08\x0bdescription\x08\x0cinput-schema\x05\x0doutput-schema\x0c\x0bannotation\
+s\x0d\x05icons\x0f\x04\0\x04tool\x03\0\x10\x01r\x02\x04names\x09arguments\x0c\x04\
+\0\x11call-tool-request\x03\0\x12\x01p\x01\x01k\x03\x01r\x04\x07content\x14\x12s\
+tructured-content\x15\x08is-error\x09\x04meta\x0c\x04\0\x10call-tool-result\x03\0\
+\x16\x01r\x01\x06cursor\x08\x04\0\x12list-tools-request\x03\0\x18\x01p\x11\x01r\x02\
+\x05tools\x1a\x0bnext-cursor\x08\x04\0\x11list-tools-result\x03\0\x1b\x03\0\x1cw\
+asmcp:mcp/tools-types@0.2.0\x05\x07\x02\x03\0\0\x09mcp-error\x02\x03\0\x01\x0cau\
+th-context\x02\x03\0\x02\x12list-tools-request\x02\x03\0\x02\x11list-tools-resul\
+t\x02\x03\0\x02\x11call-tool-request\x02\x03\0\x02\x10call-tool-result\x01B\x13\x02\
+\x03\x02\x01\x08\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\x09\x04\0\x0cauth-co\
+ntext\x03\0\x02\x02\x03\x02\x01\x0a\x04\0\x12list-tools-request\x03\0\x04\x02\x03\
+\x02\x01\x0b\x04\0\x11list-tools-result\x03\0\x06\x02\x03\x02\x01\x0c\x04\0\x11c\
+all-tool-request\x03\0\x08\x02\x03\x02\x01\x0d\x04\0\x10call-tool-result\x03\0\x0a\
+\x01j\x01\x07\x01\x01\x01@\x01\x07request\x05\0\x0c\x04\0\x0alist-tools\x01\x0d\x01\
+k\x03\x01j\x01\x0b\x01\x01\x01@\x02\x07request\x09\x07context\x0e\0\x0f\x04\0\x09\
+call-tool\x01\x10\x03\0\x1cwasmcp:transport/tools@0.2.0\x05\x0e\x01B$\x02\x03\x02\
+\x01\x06\x04\0\x04icon\x03\0\0\x02\x03\x02\x01\x05\x04\0\x0bjson-object\x03\0\x02\
+\x01s\x04\0\x10protocol-version\x03\0\x04\x01ks\x01p\x01\x01k\x07\x01r\x05\x04na\
+mes\x05title\x06\x07versions\x0bwebsite-url\x06\x05icons\x08\x04\0\x0eimplementa\
+tion\x03\0\x09\x01k\x7f\x01r\x01\x0clist-changed\x0b\x04\0\x10roots-capability\x03\
+\0\x0c\x01r\x01\x0clist-changed\x0b\x04\0\x12prompts-capability\x03\0\x0e\x01r\x02\
+\x09subscribe\x0b\x0clist-changed\x0b\x04\0\x14resources-capability\x03\0\x10\x01\
+r\x01\x0clist-changed\x0b\x04\0\x10tools-capability\x03\0\x12\x01r\x01\x11schema\
+-validation\x0b\x04\0\x16elicitation-capability\x03\0\x14\x01k\x03\x01k\x0d\x01k\
+\x15\x01r\x04\x0cexperimental\x16\x05roots\x17\x08sampling\x16\x0belicitation\x18\
+\x04\0\x13client-capabilities\x03\0\x19\x01k\x0f\x01k\x11\x01k\x13\x01r\x06\x0ce\
+xperimental\x16\x07logging\x16\x0bcompletions\x16\x07prompts\x1b\x09resources\x1c\
+\x05tools\x1d\x04\0\x13server-capabilities\x03\0\x1e\x01r\x03\x10protocol-versio\
+n\x05\x0ccapabilities\x1a\x0bclient-info\x0a\x04\0\x12initialize-request\x03\0\x20\
+\x01r\x04\x10protocol-version\x05\x0ccapabilities\x1f\x0bserver-info\x0a\x0cinst\
+ructions\x06\x04\0\x11initialize-result\x03\0\"\x03\0\x20wasmcp:mcp/lifecycle-ty\
+pes@0.2.0\x05\x0f\x02\x03\0\x04\x12initialize-request\x02\x03\0\x04\x11initializ\
+e-result\x01B\x0d\x02\x03\x02\x01\x08\x04\0\x09mcp-error\x03\0\0\x02\x03\x02\x01\
+\x10\x04\0\x12initialize-request\x03\0\x02\x02\x03\x02\x01\x11\x04\0\x11initiali\
+ze-result\x03\0\x04\x01j\x01\x05\x01\x01\x01@\x01\x07request\x03\0\x06\x04\0\x0a\
+initialize\x01\x07\x01j\0\x01\x01\x01@\0\0\x08\x04\0\x12client-initialized\x01\x09\
+\x04\0\x08shutdown\x01\x09\x03\0\x20wasmcp:transport/lifecycle@0.2.0\x05\x12\x02\
+\x03\0\x01\x14provider-auth-config\x01B\x0a\x02\x03\x02\x01\x13\x04\0\x14provide\
+r-auth-config\x03\0\0\x01k\x01\x01@\0\0\x02\x04\0\x0fget-auth-config\x01\x03\x01\
+ks\x01@\x01\x08jwks-uris\0\x04\x04\0\x0ejwks-cache-get\x01\x05\x01@\x02\x08jwks-\
+uris\x04jwkss\x01\0\x04\0\x0ejwks-cache-set\x01\x06\x03\0$wasmcp:transport/autho\
+rization@0.2.0\x05\x14\x04\0&wasmcp:transport/tools-transport@0.2.0\x04\0\x0b\x15\
+\x01\0\x0ftools-transport\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit\
+-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

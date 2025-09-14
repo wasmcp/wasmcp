@@ -4,4 +4,9 @@ package wasmcp:mcp@0.2.0;
 world types {
     import mcp-types;
     import lifecycle-types;
+    import authorization-types;
+    import completion-types;
+    import prompts-types;
+    import resources-types;
+    import tools-types;
 }

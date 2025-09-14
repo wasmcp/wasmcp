@@ -14,7 +14,7 @@ pub fn list_tools(params: Option<Value>) -> Result<Value, McpError> {
             data: None,
         })?;
 
-    let request = bindings::wasmcp::transport::tools_types::ListToolsRequest {
+    let request = bindings::wasmcp::transport::tools::ListToolsRequest {
         cursor: None,
     };
 
@@ -73,7 +73,7 @@ pub fn call_tool(params: Option<Value>, auth_context: Option<&AuthContext>) -> R
         })?;
 
     // Convert request to WIT types
-    let request = bindings::wasmcp::transport::tools_types::CallToolRequest {
+    let request = bindings::wasmcp::transport::tools::CallToolRequest {
         name: params.name.to_string(),
         arguments: params.arguments.map(|args| {
             serde_json::to_string(&args).unwrap_or_else(|_| "{}".to_string())
