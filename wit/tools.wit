@@ -3,22 +3,20 @@
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/tools
 interface tools {
-    use mcp-types.{mcp-error};
-    use authorization-types.{auth-context};
+    use types.{mcp-error, json};
     use tools-types.{list-tools-request, list-tools-result, call-tool-request, call-tool-result};
     
     /// List available tools
-    list-tools: func(request: list-tools-request) -> result<list-tools-result, mcp-error>;
+    list-tools: func(request: list-tools-request, ctx: option<json>) -> result<list-tools-result, mcp-error>;
     
     /// Execute a tool
-    call-tool: func(request: call-tool-request, context: option<auth-context>) -> result<call-tool-result, mcp-error>;
+    call-tool: func(request: call-tool-request, ctx: option<json>) -> result<call-tool-result, mcp-error>;
 }
 
 
 /// Type definitions for tools
 interface tools-types {
-    use mcp-types.{content-block, json-value, json-object, icon};
-    use authorization-types.{auth-context};
+    use types.{content-block, json, icon};
 
     /// Behavioral hints about tool operations
     record tool-annotations {
@@ -43,9 +41,9 @@ interface tools-types {
         /// Human-readable description of what the tool does
         description: option<string>,
         /// JSON Schema object for input parameters
-        input-schema: json-object,
+        input-schema: json,
         /// Optional JSON Schema object for structured output
-        output-schema: option<json-object>,
+        output-schema: option<json>,
         /// Behavioral hints for clients
         annotations: option<tool-annotations>,
         /// Optional list of icons for the tool
@@ -57,7 +55,7 @@ interface tools-types {
         /// Name of the tool to execute
         name: string,
         /// Arguments as JSON object (must match the tool's input schema)
-        arguments: option<json-object>,
+        arguments: option<json>,
     }
 
     /// Result from executing a tool
@@ -65,11 +63,11 @@ interface tools-types {
         /// Unstructured content blocks (text, images, etc.)
         content: list<content-block>,
         /// Optional structured JSON output
-        structured-content: option<json-value>,
+        structured-content: option<json>,
         /// Whether the tool execution resulted in an error
         is-error: option<bool>,
         /// Optional metadata
-        meta: option<json-object>,
+        meta: option<json>,
     }
 
     /// Request to list available tools

@@ -3,19 +3,19 @@
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
 interface prompts {
-    use mcp-types.{mcp-error};
+    use types.{mcp-error, json};
     use prompts-types.{list-prompts-request, list-prompts-result, get-prompt-request, get-prompt-result};
     
     /// List available prompts
-    list-prompts: func(request: list-prompts-request) -> result<list-prompts-result, mcp-error>;
+    list-prompts: func(request: list-prompts-request, ctx: option<json>) -> result<list-prompts-result, mcp-error>;
     
     /// Get a specific prompt
-    get-prompt: func(request: get-prompt-request) -> result<get-prompt-result, mcp-error>;
+    get-prompt: func(request: get-prompt-request, ctx: option<json>) -> result<get-prompt-result, mcp-error>;
 }
 
 /// Type definitions for prompts
 interface prompts-types {
-    use mcp-types.{annotations, resource-contents, json-object, icon};
+    use types.{annotations, resource-contents, json, icon};
 
     /// Argument definition for a prompt template
     record prompt-argument {
@@ -69,7 +69,7 @@ interface prompts-types {
         /// MIME type of the image
         mime-type: string,
         /// Optional metadata
-        meta: option<json-object>,
+        meta: option<json>,
         /// Optional annotations
         annotations: option<annotations>,
     }
@@ -79,7 +79,7 @@ interface prompts-types {
         /// The resource contents
         %resource: resource-contents,
         /// Optional metadata
-        meta: option<json-object>,
+        meta: option<json>,
         /// Optional annotations
         annotations: option<annotations>,
     }
@@ -131,7 +131,7 @@ interface prompts-types {
         /// Name of the prompt to retrieve
         name: string,
         /// Arguments for template substitution as JSON object
-        arguments: option<json-object>,
+        arguments: option<json>,
     }
 
     /// Response with rendered prompt messages

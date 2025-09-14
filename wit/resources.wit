@@ -3,30 +3,30 @@
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/resources
 interface resources {
-    use mcp-types.{mcp-error};
+    use types.{mcp-error, json};
     use resources-types.{list-resources-request, list-resources-result, list-resource-templates-request, 
                         list-resource-templates-result, read-resource-request, read-resource-result,
                         subscribe-request, unsubscribe-request};
     
     /// List available resources
-    list-resources: func(request: list-resources-request) -> result<list-resources-result, mcp-error>;
+    list-resources: func(request: list-resources-request, ctx: option<json>) -> result<list-resources-result, mcp-error>;
     
     /// List resource templates
-    list-resource-templates: func(request: list-resource-templates-request) -> result<list-resource-templates-result, mcp-error>;
+    list-resource-templates: func(request: list-resource-templates-request, ctx: option<json>) -> result<list-resource-templates-result, mcp-error>;
     
     /// Read a specific resource
-    read-resource: func(request: read-resource-request) -> result<read-resource-result, mcp-error>;
+    read-resource: func(request: read-resource-request, ctx: option<json>) -> result<read-resource-result, mcp-error>;
     
     /// Subscribe to resource changes
-    subscribe-resource: func(request: subscribe-request) -> result<_, mcp-error>;
+    subscribe-resource: func(request: subscribe-request, ctx: option<json>) -> result<_, mcp-error>;
     
     /// Unsubscribe from resource changes
-    unsubscribe-resource: func(request: unsubscribe-request) -> result<_, mcp-error>;
+    unsubscribe-resource: func(request: unsubscribe-request, ctx: option<json>) -> result<_, mcp-error>;
 } 
 
 /// Type definitions for resources
 interface resources-types {
-    use mcp-types.{annotations, resource-contents, icon};
+    use types.{annotations, resource-contents, icon};
     
     /// A resource that can be read by the client
     record mcp-resource {

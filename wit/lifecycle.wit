@@ -5,7 +5,7 @@
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle
 interface lifecycle {
-    use mcp-types.{mcp-error};
+    use types.{mcp-error};
     use lifecycle-types.{initialize-request, initialize-result};
     
     /// Handle session initialization
@@ -21,7 +21,7 @@ interface lifecycle {
 
 /// Type definitions for the MCP lifecycle
 interface lifecycle-types {
-    use mcp-types.{meta-fields, json-object, icon};
+    use types.{json, icon};
 
     /// Protocol version string
     /// Common values: "2024-11-05", "2025-03-26", "2025-06-18"
@@ -77,11 +77,11 @@ interface lifecycle-types {
     /// Capabilities that a client supports
     record client-capabilities {
         /// Experimental/custom capabilities as JSON objects
-        experimental: option<json-object>,
+        experimental: option<json>,
         /// Support for roots (directory access)
         roots: option<roots-capability>,
         /// Support for LLM sampling (empty object when enabled)
-        sampling: option<json-object>,
+        sampling: option<json>,
         /// Support for user elicitation
         elicitation: option<elicitation-capability>,
     }
@@ -89,11 +89,11 @@ interface lifecycle-types {
     /// Capabilities that a server provides
     record server-capabilities {
         /// Experimental/custom capabilities as JSON objects
-        experimental: option<json-object>,
+        experimental: option<json>,
         /// Server can send log messages (empty object when enabled)
-        logging: option<json-object>,
+        logging: option<json>,
         /// Server supports argument autocompletion (empty object when enabled)
-        completions: option<json-object>,
+        completions: option<json>,
         /// Server offers prompts
         prompts: option<prompts-capability>,
         /// Server offers resources

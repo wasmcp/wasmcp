@@ -1,70 +1,165 @@
-/// Authorization capabilities are provided at the transport level, enabling MCP clients to make requests to restricted MCP servers on behalf of resource owners.
+/// Provides the relevant subset of [RFC9728] resource metatadata used by MCP clients
+/// Additional metadata parameters may be exposed in the future
 ///
+/// https://datatracker.ietf.org/doc/html/rfc9728
 /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
-interface authorization {
-    use authorization-types.{provider-auth-config};
+interface oauth2-protected-resource {
+    use authorization-types.{protected-resource-metadata};
 
-    /// Get provider's auth configuration
-    /// The transport should enforce authorization
-    get-auth-config: func() -> option<provider-auth-config>;
-    
+    /// Gets the relevant subset of [RFC9728] resource metatadata used by MCP clients
+    get-protected-resource-metadata: func() -> protected-resource-metadata;
+}
+
+
+/// Validates an incoming JWT
+interface jwt-validation {
+    use authorization-types.{deny-reason, post-validate-context, validation-config};
+
+    /// Gets the validations that are applied after decoding a JWT. 
+    get-validation-config: func() -> validation-config;
+
+    /// Called after successful validation
+    ///
+    /// Additional access control may be enforced here
+    post-validate: func(context: post-validate-context) -> result<_, deny-reason>;
+}
+
+
+/// Caches JWKS for a given URI
+interface jwks-cache {
     /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
     /// Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms
     /// The transport will call this before fetching from jwks-uri to check for cached keys
-    jwks-cache-get: func(jwks-uri: string) -> option<string>;
+    get-jwks: func(jwks-uri: string) -> option<string>;
     
     /// Cache JWKS for a given URI (optional - no-op if caching not implemented)
     /// The transport calls this after successfully fetching JWKS from jwks-uri
     /// Providers can implement caching via WASI-KV or other persistence mechanisms
     /// The jwks parameter contains the raw JWKS JSON string to cache
-    jwks-cache-set: func(jwks-uri: string, jwks: string);
+    set-jwks: func(jwks-uri: string, jwks: string);
 }
 
-/// Type definitions for authentication and authorization
+/// Authorization types
 interface authorization-types {
-    use mcp-types.{meta-fields};
-    
-    /// Provider declares its authorization requirements
-    /// This is returned by get-auth-config()
-    /// and used by the transport to enforce authorization
-    record provider-auth-config {
-        /// Expected JWT issuer (REQUIRED for auth)
-        expected-issuer: string,
-        /// Expected JWT audiences (REQUIRED for auth - must have at least one)
-        expected-audiences: list<string>,
-        /// JWKS URI for key discovery (REQUIRED for auth)
-        jwks-uri: string,
-        /// Pass raw JWT token to tools via "jwt.token" meta field.
-        pass-jwt: bool,
-        /// Expected JWT subject - if set, only this exact subject is allowed
-        expected-subject: option<string>,
-        /// Optional Rego policy for complex authorization rules
-        policy: option<string>,
-        /// Optional data for policy evaluation
-        policy-data: option<string>,
+    /// The relevant subset of [RFC9728] resource metatadata used by MCP clients
+    /// Additional metadata parameters may be exposed in the future
+    ///
+    /// https://datatracker.ietf.org/doc/html/rfc9728
+    /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
+    record protected-resource-metadata {
+        /// The protected resource's identifier, as defined in [RFC9728] Section 1.2
+        ///
+        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization#resource-parameter-implementation
+        %resource: string,
+
+        /// List of OAuth authorization server issuer identifiers, as defined in [RFC8414], for authorization servers that can be used with this protected resource
+        /// Optional in [RFC9728] but REQUIRED by the MCP spec
+        /// MUST contain at least one authorization server
+        ///
+        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization#authorization-server-location
+        authorization-servers: list<string>,
     }
-    
-    /// Authorization context passed between components after successful authorization
-    record auth-context {
-        /// OAuth client ID that made the request
-        client-id: option<string>,
-        /// Subject claim from the token - always present from validated JWT
-        sub: string,
-        /// OAuth scopes granted to this token
-        scopes: list<string>,
-        /// Issuer claim from the token - always present from validated JWT
-        iss: string,
-        /// Audience claim from token (aud) - always validated, can be multiple values
-        aud: list<string>,
-        /// Additional claims from token as key-value pairs
-        claims: meta-fields,
-        /// Expiration timestamp (Unix seconds) - always validated and required for security
-        exp: u64,
-        /// Issued at timestamp (Unix seconds)  
-        iat: option<u64>,
-        /// Not before timestamp (Unix seconds)
-        nbf: option<u64>,
-        /// Raw JWT iff enabled by pass-jwt flag in provider-auth-config
-        jwt: option<string>,
+
+    /// Optional reason for access denial in the post-validate hook
+    type deny-reason = option<string>;
+
+    /// Request context passed to the post-validate hook
+    record post-validate-context {
+        method: string,
+        path: string,
+        headers: list<string>,
+        claims: string,
+    }
+
+    /// The validations that are applied after decoding a JWT
+    /// Derived from https://github.com/Keats/jsonwebtoken, which implements validation in the reference Streamable HTTP transport component.
+    record validation-config {
+        /// `iss` is a collection of one or more acceptable issuers members
+        issuer: list<string>,
+        /// `aud` is a collection of one or more acceptable audience members
+        audience: list<string>,
+        options: option<validation-options>,
+    }
+
+    /// Optional validations that are applied after decoding a JWT.
+    ///
+    /// All time validation happen on UTC timestamps as seconds.
+    ///
+    /// Derived from https://github.com/Keats/jsonwebtoken, which implements validation in the reference Streamable HTTP transport component.
+    record validation-options {
+        /// Which claims are required to be present before starting the validation.
+        /// This does not interact with the various `validate_*`. If you remove `exp` from that list, you still need
+        /// to set `validate_exp` to `false`.
+        /// The only value that will be used are "exp", "nbf", "aud", "iss", "sub". Anything else will be ignored.
+        ///
+        /// Defaults to `{"exp"}`
+        required-spec-claims: option<list<string>>,
+        /// Add some leeway (in seconds) to the `exp` and `nbf` validation to
+        /// account for clock skew.
+        ///
+        /// Defaults to `60`.
+        leeway: option<u64>,
+        /// Reject a token some time (in seconds) before the `exp` to prevent
+        /// expiration in transit over the network.
+        ///
+        /// The value is the inverse of `leeway`, subtracting from the validation time.
+        ///
+        /// Defaults to `0`.
+        reject-tokens-expiring-in-less-than: option<u64>,
+        /// Whether to validate the `exp` field.
+        ///
+        /// It will return an error if the time in the `exp` field is past.
+        ///
+        /// Defaults to `true`.
+        validate-exp: option<bool>,
+        /// Whether to validate the `nbf` field.
+        ///
+        /// It will return an error if the current timestamp is before the time in the `nbf` field.
+        ///
+        /// Validation only happens if `nbf` claim is present in the token.
+        /// Adding `nbf` to `required_spec_claims` will make it required.
+        ///
+        /// Defaults to `false`.
+        validate-nbf: option<bool>,
+        /// If it contains a value, the validation will check that the `sub` field is the same as the
+        /// one provided and will error otherwise.
+        ///
+        /// Validation only happens if `sub` claim is present in the token.
+        /// Adding `sub` to `required_spec_claims` will make it required.
+        ///
+        /// Defaults to `None`.
+        sub: option<string>,
+        /// The validation will check that the `alg` of the header is contained
+        /// in the ones provided and will error otherwise. Will error if it is empty.
+        ///
+        /// Defaults to HMAC using SHA-256
+        algorithms: option<list<algorithm>>,
+    }
+
+    enum algorithm {
+        /// HMAC using SHA-256
+        HS256,
+        /// HMAC using SHA-384
+        HS384,
+        /// HMAC using SHA-512
+        HS512,
+        /// ECDSA using SHA-256
+        ES256,
+        /// ECDSA using SHA-384
+        ES384,
+        /// RSASSA-PKCS1-v1_5 using SHA-256
+        RS256,
+        /// RSASSA-PKCS1-v1_5 using SHA-384
+        RS384,
+        /// RSASSA-PKCS1-v1_5 using SHA-512
+        RS512,
+        /// RSASSA-PSS using SHA-256
+        PS256,
+        /// RSASSA-PSS using SHA-384
+        PS384,
+        /// RSASSA-PSS using SHA-512
+        PS512,
+        /// Edwards-curve Digital Signature Algorithm (EdDSA)
+        EDDSA,
     }
 }
