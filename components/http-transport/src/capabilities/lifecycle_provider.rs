@@ -7,9 +7,9 @@ use wasmcp_core::{
 
 /// A concrete implementation of the lifecycle provider that communicates with the WASM host
 /// through the generated WIT bindings.
-pub struct WasmProvider;
+pub struct LifecycleProvider;
 
-impl McpLifecycleHandler for WasmProvider {
+impl McpLifecycleHandler for LifecycleProvider {
     /// Handle the initialize request by converting rmcp types to WIT types,
     /// calling the WIT binding, and converting the response back.
     fn initialize(&self, params: InitializeRequestParam) -> Result<InitializeResult, McpError> {

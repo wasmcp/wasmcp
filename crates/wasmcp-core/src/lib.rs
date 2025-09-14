@@ -45,5 +45,13 @@ pub use wasmcp::mcp::tools_types::{
     ToolAnnotations, Tool, CallToolRequest, CallToolResult, ListToolsRequest, ListToolsResult
 };
 
-pub use traits::McpLifecycleHandler;
+pub use traits::{
+    McpLifecycleHandler, McpAuthorizationHandler, McpToolsHandler,
+    McpResourcesHandler, McpPromptsHandler, McpCompletionHandler
+};
 pub use handlers::lifecycle;
+pub use handlers::tools;
+pub use handlers::resources;
+pub use handlers::prompts;
+pub use handlers::completion;
+pub use handlers::authorization;

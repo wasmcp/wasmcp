@@ -1,11 +1,8 @@
-use crate::error::{ErrorCode, McpError};
+use crate::capabilities::completion_provider::CompletionProvider;
 use serde_json::Value;
+use wasmcp_core::{handlers::completion, McpError};
 
-pub fn complete(_params: Option<Value>) -> Result<Value, McpError> {
-    // TODO: Implement completion when WIT interface is defined
-    Err(McpError {
-        code: ErrorCode::InternalError,
-        message: "Completion not yet implemented".to_string(),
-        data: None,
-    })
+pub fn complete(params: Option<Value>) -> Result<Value, McpError> {
+    let provider = CompletionProvider;
+    completion::complete(&provider, params)
 }

@@ -8,9 +8,6 @@ use serde_json::Value;
 /// 1. Deserialize the incoming JSON `Value` into a strongly-typed `InitializeRequestParam`.
 /// 2. Delegate the core logic to a provider via the `McpLifecycleHandler` trait.
 /// 3. Serialize the resulting `InitializeResult` back into a JSON `Value`.
-///
-/// This function is essential because it prevents code duplication. The logic for
-/// handling JSON is written once here and is reused by both the WASM and native targets.
 pub fn initialize(
     provider: &dyn McpLifecycleHandler,
     params: Option<Value>,

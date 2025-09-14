@@ -3,8 +3,8 @@
 //   * runtime_path: "wit_bindgen_rt"
 //   * additional derives ["serde::Serialize", "serde::Deserialize", "Clone"]
 //   * with "wasmcp:mcp/authorization-types@0.2.0" = "wasmcp_core"
-//   * with "wasmcp:mcp/lifecycle-types@0.2.0" = "wasmcp_core"
 //   * with "wasmcp:mcp/mcp-types@0.2.0" = "wasmcp_core"
+//   * with "wasmcp:mcp/lifecycle-types@0.2.0" = "wasmcp_core"
 //   * with "wasmcp:mcp/tools-types@0.2.0" = "wasmcp_core"
 use wasmcp_core as __with_name0;
 use wasmcp_core as __with_name1;

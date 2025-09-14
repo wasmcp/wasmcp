@@ -15,7 +15,6 @@ mod capabilities;
 mod auth;
 mod error;
 mod constants;
-mod provider;
 use error::{ErrorCode, ErrorCodeExt, McpError};
 use constants::{methods, oauth};
 use auth::AuthContext;
