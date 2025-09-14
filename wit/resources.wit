@@ -1,10 +1,12 @@
+package wasmcp:transport@0.2.0;
+
 /// Resources allow servers to share data that provides context to language models, such as files, database schemas, or application-specific information.
 /// Each resource is uniquely identified by a URI.
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/resources
 interface resources {
-    use mcp-types.{mcp-error};
-    use resources-types.{list-resources-request, list-resources-result, list-resource-templates-request, 
+    use wasmcp:mcp/mcp-types@0.2.0.{mcp-error};
+    use resources-types.{list-resources-request, list-resources-result, list-resource-templates-request,
                         list-resource-templates-result, read-resource-request, read-resource-result,
                         subscribe-request, unsubscribe-request};
     
@@ -26,7 +28,7 @@ interface resources {
 
 /// Type definitions for resources
 interface resources-types {
-    use mcp-types.{annotations, resource-contents, icon};
+    use wasmcp:mcp/mcp-types@0.2.0.{annotations, resource-contents, icon};
     
     /// A resource that can be read by the client
     record mcp-resource {

@@ -1,3 +1,5 @@
+package wasmcp:transport@0.2.0;
+
 /// Authorization capabilities are provided at the transport level, enabling MCP clients to make requests to restricted MCP servers on behalf of resource owners.
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
@@ -22,7 +24,7 @@ interface authorization {
 
 /// Type definitions for authentication and authorization
 interface authorization-types {
-    use mcp-types.{meta-fields};
+    use wasmcp:mcp/mcp-types@0.2.0.{meta-fields};
     
     /// Provider declares its authorization requirements
     /// This is returned by get-auth-config()

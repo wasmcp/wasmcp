@@ -1,8 +1,10 @@
+package wasmcp:transport@0.2.0;
+
 /// Provides a standardized way for servers to offer argument autocompletion suggestions for prompts and resource URIs
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion
 interface completion {
-    use mcp-types.{mcp-error};
+    use wasmcp:mcp/mcp-types@0.2.0.{mcp-error};
     use completion-types.{complete-request, complete-result};
     
     /// Handle request for completion suggestions
@@ -11,7 +13,7 @@ interface completion {
 
 /// Type definitions for completion
 interface completion-types {
-    use mcp-types.{json-object};
+    use wasmcp:mcp/mcp-types@0.2.0.{json-object};
 
     /// Request for completion suggestions
     record complete-request {

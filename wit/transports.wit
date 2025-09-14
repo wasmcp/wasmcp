@@ -1,3 +1,5 @@
+package wasmcp:transport@0.2.0;
+
 // World definitions for MCP transports
 
 world streamable-http-transport {

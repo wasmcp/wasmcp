@@ -1,0 +1,14 @@
+[package]
+name = "wasmcp-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+rmcp.workspace = true
+wit-bindgen = "0.41.0"
+

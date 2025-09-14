@@ -1,0 +1,7 @@
+package wasmcp:mcp@0.2.0;
+
+/// World that imports MCP types for native Rust generation
+world types {
+    import mcp-types;
+    import lifecycle-types;
+}

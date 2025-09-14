@@ -1,0 +1,53 @@
+[package]
+name = "wasmcp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+spin-sdk.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+base64.workspace = true
+wit-bindgen-rt.workspace = true
+rmcp.workspace = true
+once_cell.workspace = true
+thiserror.workspace = true
+
+# JWT validation
+jsonwebtoken.workspace = true
+sha2.workspace = true
+hmac.workspace = true
+
+# Time handling
+chrono.workspace = true
+
+# Policy engine
+regorus.workspace = true
+
+# Internal dependencies
+wasmcp-core.workspace = true
+
+[features]
+default = ["tools"]
+
+# Capabilities - choose which capabilities this transport will support
+tools = []
+resources = []
+prompts = []
+completion = []
+
+[package.metadata.component]
+package = "mcp:wasmcp"
+
+[package.metadata.component.bindings]
+derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
+
+[package.metadata.component.target]
+package = "wasmcp:mcp"
+version = "0.2.0"
+world = "tools-transport"

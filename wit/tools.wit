@@ -1,9 +1,11 @@
+package wasmcp:transport@0.2.0;
+
 /// Tools enable models to interact with external systems, such as querying databases, calling APIs, or performing computations.
 /// Each tool is uniquely identified by a name and includes metadata describing its schema.
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/tools
 interface tools {
-    use mcp-types.{mcp-error};
+    use wasmcp:mcp/mcp-types@0.2.0.{mcp-error};
     use authorization-types.{auth-context};
     use tools-types.{list-tools-request, list-tools-result, call-tool-request, call-tool-result};
     
@@ -17,7 +19,7 @@ interface tools {
 
 /// Type definitions for tools
 interface tools-types {
-    use mcp-types.{content-block, json-value, json-object, icon};
+    use wasmcp:mcp/mcp-types@0.2.0.{content-block, json-value, json-object, icon};
     use authorization-types.{auth-context};
 
     /// Behavioral hints about tool operations

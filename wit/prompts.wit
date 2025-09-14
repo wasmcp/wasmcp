@@ -1,9 +1,11 @@
+package wasmcp:transport@0.2.0;
+
 /// Prompts allow servers to provide structured messages and instructions for interacting with language models.
 /// Clients can discover available prompts, retrieve their contents, and provide arguments to customize them.
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
 interface prompts {
-    use mcp-types.{mcp-error};
+    use wasmcp:mcp/mcp-types@0.2.0.{mcp-error};
     use prompts-types.{list-prompts-request, list-prompts-result, get-prompt-request, get-prompt-result};
     
     /// List available prompts
@@ -15,7 +17,7 @@ interface prompts {
 
 /// Type definitions for prompts
 interface prompts-types {
-    use mcp-types.{annotations, resource-contents, json-object, icon};
+    use wasmcp:mcp/mcp-types@0.2.0.{annotations, resource-contents, json-object, icon};
 
     /// Argument definition for a prompt template
     record prompt-argument {
