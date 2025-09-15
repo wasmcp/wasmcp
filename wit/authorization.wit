@@ -27,6 +27,9 @@ interface jwt-validation {
 
 /// Caches JWKS
 interface jwks-cache {
+    /// Get the JWKS URI
+    get-jwks-uri: func() -> string;
+
     /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
     /// Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms
     /// The transport will call this before fetching from jwks-uri to check for cached keys

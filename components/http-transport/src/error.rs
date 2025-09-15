@@ -1,5 +1,5 @@
 /// Re-export error types from bindings for convenience
-pub use crate::bindings::wasmcp::mcp::mcp_types::{ErrorCode, McpError};
+pub use crate::bindings::wasmcp::mcp::types::{ErrorCode, McpError};
 
 /// Extension trait for converting ErrorCode to numeric codes
 pub trait ErrorCodeExt {

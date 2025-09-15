@@ -3,22 +3,20 @@ use anyhow::Result;
 use serde_json::json;
 use spin_sdk::http::{Request, Response};
 
-use super::types::{AuthContext, AuthRequest, AuthResponse};
-use super::{authorize, get_resource_metadata, get_server_metadata};
-use crate::bindings::wasmcp::mcp::authorization_types::ProviderAuthConfig;
+use super::types::{AuthContext, AuthResponse};
+use super::{authorize};
+use crate::bindings::wasmcp::mcp::jwt_validation::{get_validation_config};
+use crate::bindings::wasmcp::mcp::jwks_cache::{get_jwks_uri};
 use crate::error::{ErrorCode, ErrorCodeExt, McpError};
 
 /// Authorize an HTTP request using the authorization component
 pub async fn authorize_request(
     req: &Request,
-    provider_config: &ProviderAuthConfig,
 ) -> Result<AuthContext, McpError> {
     // Extract bearer token from Authorization header
     let token = req
-        .headers()
-        .find(|(name, _)| name.eq_ignore_ascii_case("authorization"))
-        .and_then(|(_, value)| value.as_str())
-        .and_then(|auth| auth.strip_prefix("Bearer "))
+        .header("Authorization")
+        .and_then(|auth_header| auth_header.as_str().and_then(|auth| auth.strip_prefix("Bearer ")))
         .ok_or_else(|| McpError {
             code: ErrorCode::Unauthorized,
             message: "Missing or invalid Authorization header".to_string(),
@@ -31,24 +29,27 @@ pub async fn authorize_request(
         .map(|(name, value)| (name.to_string(), value.as_str().unwrap_or("").to_string()))
         .collect();
 
+    let validation_config = get_validation_config();
+    let jwks_uri = get_jwks_uri();
+
     // Validate that the provider gave us valid auth config
-    if provider_config.expected_issuer.is_empty() {
+    if validation_config.issuer.is_empty() {
         return Err(McpError {
             code: ErrorCode::InternalError,
-            message: "Provider returned invalid auth config: expected_issuer cannot be empty"
+            message: "Provider returned invalid auth config: issuer cannot be empty"
                 .to_string(),
             data: None,
         });
     }
-    if provider_config.expected_audiences.is_empty() {
+    if validation_config.audience.is_empty() {
         return Err(McpError {
             code: ErrorCode::InternalError,
-            message: "Provider returned invalid auth config: expected_audiences cannot be empty"
+            message: "Provider returned invalid auth config: audience cannot be empty"
                 .to_string(),
             data: None,
         });
     }
-    if provider_config.jwks_uri.is_empty() {
+    if jwks_uri.is_empty() {
         return Err(McpError {
             code: ErrorCode::InternalError,
             message: "Provider returned invalid auth config: jwks_uri cannot be empty".to_string(),
@@ -56,24 +57,24 @@ pub async fn authorize_request(
         });
     }
 
-    // Build authorization request with provider's required configuration
-    let auth_request = AuthRequest {
-        token: token.to_string(),
-        method: req.method().to_string(),
-        path: req.uri().to_string(),
-        headers,
-        body: Some(req.body().to_vec()),
-        expected_issuer: provider_config.expected_issuer.clone(),
-        expected_audiences: provider_config.expected_audiences.clone(),
-        expected_subject: provider_config.expected_subject.clone(),
-        jwks_uri: provider_config.jwks_uri.clone(),
-        policy: provider_config.policy.clone(),
-        policy_data: provider_config.policy_data.clone(),
-        pass_jwt: provider_config.pass_jwt,
-    };
+    // // Build authorization request with provider's required configuration
+    // let auth_request = AuthRequest {
+    //     token: token.to_string(),
+    //     method: req.method().to_string(),
+    //     path: req.uri().to_string(),
+    //     headers,
+    //     body: Some(req.body().to_vec()),
+    //     expected_issuer: validation_config.issuer.clone(),
+    //     expected_audiences: validation_config.audience.clone(),
+    //     expected_subject: validation_config.subject.clone(),
+    //     jwks_uri: jwks_uri.clone(),
+    //     policy: validation_config.policy.clone(),
+    //     policy_data: validation_config.policy_data.clone(),
+    //     pass_jwt: validation_config.pass_jwt,
+    // };
 
     // Call the internal authorization function
-    match authorize(auth_request) {
+    match authorize(token.to_string(), validation_config) {
         AuthResponse::Authorized(context) => Ok(context),
         AuthResponse::Unauthorized(error) => Err(McpError {
             code: if error.status == 403 {
@@ -85,61 +86,6 @@ pub async fn authorize_request(
             data: error.www_authenticate,
         }),
     }
-}
-
-/// Handle OAuth resource metadata discovery endpoint
-pub fn handle_resource_metadata(
-    request_uri: &str,
-    provider_config: &ProviderAuthConfig,
-) -> Result<Response> {
-    // Build the server URL from the request
-    let server_url = if request_uri.contains("://") {
-        request_uri
-            .split_once("/.well-known")
-            .map(|(base, _)| base.to_string())
-            .unwrap_or_else(|| "http://localhost:8080".to_string())
-    } else {
-        "http://localhost:8080".to_string()
-    };
-
-    let metadata = get_resource_metadata(provider_config, &server_url);
-    let json = json!({
-        "resource": metadata.resource_url,
-        "authorization_servers": metadata.authorization_servers,
-        "scopes_supported": metadata.scopes_supported,
-        "bearer_methods_supported": metadata.bearer_methods_supported,
-        "resource_documentation": metadata.resource_documentation,
-    });
-
-    Ok(Response::builder()
-        .status(200)
-        .header("content-type", "application/json")
-        .body(json.to_string())
-        .build())
-}
-
-/// Handle OAuth server metadata discovery endpoint
-pub fn handle_server_metadata(provider_config: &ProviderAuthConfig) -> Result<Response> {
-    let metadata = get_server_metadata(provider_config);
-    let json = json!({
-        "issuer": metadata.issuer,
-        "authorization_endpoint": metadata.authorization_endpoint,
-        "token_endpoint": metadata.token_endpoint,
-        "jwks_uri": metadata.jwks_uri,
-        "response_types_supported": metadata.response_types_supported,
-        "grant_types_supported": metadata.grant_types_supported,
-        "code_challenge_methods_supported": metadata.code_challenge_methods_supported,
-        "scopes_supported": metadata.scopes_supported,
-        "token_endpoint_auth_methods_supported": metadata.token_endpoint_auth_methods_supported,
-        "service_documentation": metadata.service_documentation,
-        "registration_endpoint": metadata.registration_endpoint,
-    });
-
-    Ok(Response::builder()
-        .status(200)
-        .header("content-type", "application/json")
-        .body(json.to_string())
-        .build())
 }
 
 /// Create an HTTP error response for auth failures

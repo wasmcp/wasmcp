@@ -1,27 +1,30 @@
+use crate::bindings::wasmcp::mcp::authorization_types::ValidationConfig;
+use crate::bindings::wasmcp::mcp::jwks_cache::{get_jwks_uri};
+
 use super::types::*;
 use super::{jwt, policy};
 
 /// Main authorization function - checks JWT token and applies policy
-pub fn authorize(request: AuthRequest) -> AuthResponse {
+pub fn authorize(token: String, validation: ValidationConfig) -> AuthResponse {
     // All configuration comes from the request (required fields)
-    let expected_issuer = request.expected_issuer.clone();
-    let expected_audiences = request.expected_audiences.clone();
-    let expected_subject = request.expected_subject.clone();
-    let jwks_uri = request.jwks_uri.clone();
+    let iss = validation.issuer.clone();
+    let aud = validation.audience.clone();
+    let sub = validation.options.clone().and_then(|options| options.sub.clone());
+    let jwks_uri = get_jwks_uri();
 
     // Default clock skew to 60 seconds
     let clock_skew = 60;
 
-    // First validate the JWT token
-    let jwt_request = JwtRequest {
-        token: request.token.clone(),
-        expected_issuer,
-        expected_audiences,
-        expected_subject,
-        jwks_uri,
-        jwks_json: None,
-        clock_skew: Some(clock_skew),
-    };
+    // // First validate the JWT token
+    // let jwt_request = JwtRequest {
+    //     token: token.clone(),
+    //     expected_issuer,
+    //     expected_audiences,
+    //     expected_subject,
+    //     jwks_uri,
+    //     jwks_json: None,
+    //     clock_skew: Some(clock_skew),
+    // };
 
     let jwt_result = jwt::validate(jwt_request);
 

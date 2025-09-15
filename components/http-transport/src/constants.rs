@@ -28,8 +28,7 @@ pub mod methods {
     pub const COMPLETION_COMPLETE: &str = "completion/complete";
 }
 
-pub mod oauth {
-    // OAuth 2.0 discovery endpoints
+pub mod routes {
     pub const WELL_KNOWN_RESOURCE_METADATA: &str = "/.well-known/oauth-protected-resource";
-    pub const WELL_KNOWN_SERVER_METADATA: &str = "/.well-known/oauth-authorization-server";
+    pub const MCP: &str = "/mcp";
 }
