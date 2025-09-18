@@ -1,0 +1,18 @@
+package wasmcp:otel-exporter@0.1.0;
+
+interface api {
+    use wasi:otel/tracing@0.2.0-draft.{span-context};
+
+    resource span {
+        constructor(name: string, parent-context: option<span-context>);
+
+        add-event: func(name: string);
+        finish: func();
+    }
+
+    get-context: func(s: borrow<span>) -> span-context;
+}
+
+world otel-exporter {
+    export api;
+}
