@@ -970,3 +970,573 @@ fn build_annotations(annotations: Annotations) -> Value {
 
     ann
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    // ==========================================
+    // ListToolsResult Tests
+    // ==========================================
+
+    #[test]
+    fn test_list_tools_result_empty() {
+        let result = ListToolsResult::new();
+        let wrapper = ListToolsResultWrapper::new(result);
+        let json = ListToolsResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed, json!({
+            "tools": []
+        }));
+    }
+
+    #[test]
+    fn test_list_tools_result_with_tools() {
+        let result = ListToolsResult::new();
+
+        // Add a simple tool
+        result.add_tool(
+            "get_weather".to_string(),
+            r#"{"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}"#.to_string(),
+            None
+        );
+
+        // Add a tool with all options
+        let options = ToolOptions {
+            meta: Some(vec![("version".to_string(), "1.0".to_string())]),
+            annotations: Some(ToolAnnotations {
+                hints: ToolHints::READ_ONLY | ToolHints::IDEMPOTENT,
+                title: Some("Calculator Tool".to_string()),
+            }),
+            description: Some("Performs calculations".to_string()),
+            output_schema: Some(r#"{"type": "number"}"#.to_string()),
+            title: Some("Calculator".to_string()),
+        };
+
+        result.add_tool(
+            "calculate".to_string(),
+            r#"{"type": "object"}"#.to_string(),
+            Some(options)
+        );
+
+        result.set_next_cursor("cursor123".to_string());
+        result.add_meta("request_id".to_string(), "req123".to_string()).unwrap();
+
+        let wrapper = ListToolsResultWrapper::new(result);
+        let json = ListToolsResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["tools"].as_array().unwrap().len(), 2);
+        assert_eq!(parsed["tools"][0]["name"], "get_weather");
+        assert_eq!(parsed["tools"][1]["name"], "calculate");
+        assert_eq!(parsed["tools"][1]["description"], "Performs calculations");
+        assert_eq!(parsed["tools"][1]["annotations"]["readOnlyHint"], true);
+        assert_eq!(parsed["tools"][1]["annotations"]["idempotentHint"], true);
+        assert_eq!(parsed["tools"][1]["annotations"]["destructiveHint"], false);
+        assert_eq!(parsed["nextCursor"], "cursor123");
+        assert_eq!(parsed["_meta"]["request_id"], "req123");
+    }
+
+    // ==========================================
+    // InitializeResult Tests
+    // ==========================================
+
+    #[test]
+    fn test_initialize_result_basic() {
+        let capabilities = ServerCapabilities::TOOLS | ServerCapabilities::RESOURCES;
+        let result = InitializeResult::new(
+            "test-server".to_string(),
+            "1.0.0".to_string(),
+            capabilities
+        );
+
+        let wrapper = InitializeResultWrapper::new(result);
+        let json = InitializeResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["protocolVersion"], "0.1.0");
+        assert_eq!(parsed["serverInfo"]["name"], "test-server");
+        assert_eq!(parsed["serverInfo"]["version"], "1.0.0");
+        assert!(parsed["capabilities"]["tools"].is_object());
+        assert!(parsed["capabilities"]["resources"].is_object());
+        assert!(parsed["capabilities"]["prompts"].is_null());
+    }
+
+    #[test]
+    fn test_initialize_result_with_optional_fields() {
+        let capabilities = ServerCapabilities::all();
+        let result = InitializeResult::new(
+            "my-server".to_string(),
+            "2.0.0".to_string(),
+            capabilities
+        );
+
+        result.set_title("My Awesome Server".to_string());
+        result.set_instructions("Use this server for awesome things".to_string());
+        result.add_meta("session_id".to_string(), "sess123".to_string()).unwrap();
+
+        let wrapper = InitializeResultWrapper::new(result);
+        let json = InitializeResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["serverInfo"]["title"], "My Awesome Server");
+        assert_eq!(parsed["instructions"], "Use this server for awesome things");
+        assert_eq!(parsed["_meta"]["session_id"], "sess123");
+    }
+
+    // ==========================================
+    // CallToolResult Tests
+    // ==========================================
+
+    #[test]
+    fn test_call_tool_result_text_content() {
+        let result = CallToolResult::new();
+
+        result.add_text("Hello, world!".to_string(), None);
+
+        let content_options = ContentOptions {
+            meta: Some(vec![("key".to_string(), "value".to_string())]),
+            annotations: Some(Annotations {
+                audience: Some(vec![Role::User]),
+                priority: Some(0.8),
+                last_modified: Some("2024-01-01T00:00:00Z".to_string()),
+            }),
+        };
+        result.add_text("Annotated text".to_string(), Some(content_options));
+
+        let wrapper = CallToolResultWrapper::new(result);
+        let json = CallToolResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["content"].as_array().unwrap().len(), 2);
+        assert_eq!(parsed["content"][0]["type"], "text");
+        assert_eq!(parsed["content"][0]["text"], "Hello, world!");
+        assert_eq!(parsed["content"][1]["annotations"]["priority"], 0.8);
+        assert_eq!(parsed["content"][1]["annotations"]["audience"][0], "user");
+    }
+
+    #[test]
+    fn test_call_tool_result_mixed_content() {
+        let result = CallToolResult::new();
+
+        // Add different content types
+        result.add_text("Some text".to_string(), None);
+        result.add_image("image/png".to_string(), "base64data".to_string(), None);
+        result.add_audio("audio/mp3".to_string(), "audiodata".to_string(), None);
+
+        let resource_options = ResourceOptions {
+            meta: None,
+            annotations: None,
+            description: Some("A helpful resource".to_string()),
+            mime_type: Some("text/plain".to_string()),
+            size: Some(1024),
+            title: Some("Resource Title".to_string()),
+        };
+        result.add_resource_link("my-resource".to_string(), "file:///path/to/resource".to_string(), Some(resource_options));
+
+        result.add_text_resource("file:///doc.txt".to_string(), "Document content".to_string(), None);
+        result.add_blob_resource("file:///image.png".to_string(), "blobdata".to_string(), None);
+
+        let wrapper = CallToolResultWrapper::new(result);
+        let json = CallToolResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["content"].as_array().unwrap().len(), 6);
+        assert_eq!(parsed["content"][1]["type"], "image");
+        assert_eq!(parsed["content"][2]["type"], "audio");
+        assert_eq!(parsed["content"][3]["type"], "resource_link");
+        assert_eq!(parsed["content"][3]["description"], "A helpful resource");
+        assert_eq!(parsed["content"][4]["type"], "resource");
+        assert_eq!(parsed["content"][4]["resource"]["text"], "Document content");
+    }
+
+    #[test]
+    fn test_call_tool_result_with_error() {
+        let result = CallToolResult::new();
+
+        result.add_text("Error occurred".to_string(), None);
+        result.set_error();
+        result.set_structured_content(r#"{"error": "Something went wrong"}"#.to_string());
+
+        let wrapper = CallToolResultWrapper::new(result);
+        let json = CallToolResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["isError"], true);
+        assert_eq!(parsed["structuredContent"]["error"], "Something went wrong");
+    }
+
+    // ==========================================
+    // Resource-related Results Tests
+    // ==========================================
+
+    #[test]
+    fn test_list_resources_result() {
+        let result = ListResourcesResult::new();
+
+        result.add_resource("config.json".to_string(), "file:///config.json".to_string(), None);
+
+        let resource_options = ResourceOptions {
+            meta: Some(vec![("version".to_string(), "2".to_string())]),
+            annotations: Some(Annotations {
+                audience: Some(vec![Role::Assistant]),
+                priority: Some(1.0),
+                last_modified: None,
+            }),
+            description: Some("Database schema".to_string()),
+            mime_type: Some("application/sql".to_string()),
+            size: Some(2048),
+            title: Some("DB Schema".to_string()),
+        };
+        result.add_resource("schema.sql".to_string(), "file:///schema.sql".to_string(), Some(resource_options));
+
+        result.set_next_cursor("res_cursor".to_string());
+
+        let wrapper = ListResourcesResultWrapper::new(result);
+        let json = ListResourcesResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["resources"].as_array().unwrap().len(), 2);
+        assert_eq!(parsed["resources"][0]["name"], "config.json");
+        assert_eq!(parsed["resources"][1]["title"], "DB Schema");
+        assert_eq!(parsed["resources"][1]["size"], 2048);
+        assert_eq!(parsed["nextCursor"], "res_cursor");
+    }
+
+    #[test]
+    fn test_list_resource_templates_result() {
+        let result = ListResourceTemplatesResult::new();
+
+        let template_options = ResourceTemplateOptions {
+            meta: None,
+            annotations: None,
+            description: Some("Template for user files".to_string()),
+            mime_type: Some("text/plain".to_string()),
+            title: Some("User Files".to_string()),
+        };
+
+        result.add_resource_template(
+            "user-file".to_string(),
+            "file:///users/{userId}/files/{fileId}".to_string(),
+            Some(template_options)
+        );
+
+        let wrapper = ListResourceTemplatesResultWrapper::new(result);
+        let json = ListResourceTemplatesResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["resourceTemplates"][0]["name"], "user-file");
+        assert_eq!(parsed["resourceTemplates"][0]["uriTemplate"], "file:///users/{userId}/files/{fileId}");
+        assert_eq!(parsed["resourceTemplates"][0]["description"], "Template for user files");
+    }
+
+    #[test]
+    fn test_read_resource_result() {
+        let result = ReadResourceResult::new();
+
+        result.add_text_resource(
+            "file:///readme.txt".to_string(),
+            "This is the readme content".to_string(),
+            Some(ResourceContentsOptions {
+                meta: None,
+                mime_type: Some("text/plain".to_string()),
+            })
+        );
+
+        result.add_blob_resource(
+            "file:///image.jpg".to_string(),
+            "base64imagedata".to_string(),
+            Some(ResourceContentsOptions {
+                meta: Some(vec![("size".to_string(), "1024".to_string())]),
+                mime_type: Some("image/jpeg".to_string()),
+            })
+        );
+
+        let wrapper = ReadResourceResultWrapper::new(result);
+        let json = ReadResourceResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["contents"].as_array().unwrap().len(), 2);
+        assert_eq!(parsed["contents"][0]["text"], "This is the readme content");
+        assert_eq!(parsed["contents"][0]["mimeType"], "text/plain");
+        assert_eq!(parsed["contents"][1]["blob"], "base64imagedata");
+        assert_eq!(parsed["contents"][1]["_meta"]["size"], "1024");
+    }
+
+    // ==========================================
+    // Prompt-related Results Tests
+    // ==========================================
+
+    #[test]
+    fn test_list_prompts_result() {
+        let result = ListPromptsResult::new();
+
+        result.add_prompt("simple-prompt".to_string(), None);
+
+        let prompt_options = PromptOptions {
+            meta: None,
+            arguments: Some(vec![
+                PromptArgument {
+                    name: "topic".to_string(),
+                    description: Some("The topic to write about".to_string()),
+                    required: Some(true),
+                    title: Some("Topic".to_string()),
+                },
+                PromptArgument {
+                    name: "style".to_string(),
+                    description: Some("Writing style".to_string()),
+                    required: Some(false),
+                    title: None,
+                },
+            ]),
+            description: Some("Generate content on a topic".to_string()),
+            title: Some("Content Generator".to_string()),
+        };
+
+        result.add_prompt("content-generator".to_string(), Some(prompt_options));
+
+        let wrapper = ListPromptsResultWrapper::new(result);
+        let json = ListPromptsResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["prompts"].as_array().unwrap().len(), 2);
+        assert_eq!(parsed["prompts"][1]["arguments"].as_array().unwrap().len(), 2);
+        assert_eq!(parsed["prompts"][1]["arguments"][0]["required"], true);
+        assert_eq!(parsed["prompts"][1]["title"], "Content Generator");
+    }
+
+    #[test]
+    fn test_get_prompt_result() {
+        let result = GetPromptResult::new();
+
+        result.set_description("A helpful prompt".to_string());
+
+        // Add various message types
+        result.add_text_message(Role::User, "Hello AI".to_string(), None);
+        result.add_text_message(
+            Role::Assistant,
+            "Hello! How can I help?".to_string(),
+            Some(ContentOptions {
+                meta: None,
+                annotations: Some(Annotations {
+                    audience: Some(vec![Role::User, Role::Assistant]),
+                    priority: None,
+                    last_modified: None,
+                }),
+            })
+        );
+
+        result.add_image_message(
+            Role::User,
+            "image/png".to_string(),
+            "imagedata".to_string(),
+            None
+        );
+
+        result.add_resource_link_message(
+            Role::Assistant,
+            "doc".to_string(),
+            "file:///doc.txt".to_string(),
+            None
+        );
+
+        let wrapper = GetPromptResultWrapper::new(result);
+        let json = GetPromptResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["description"], "A helpful prompt");
+        assert_eq!(parsed["messages"].as_array().unwrap().len(), 4);
+        assert_eq!(parsed["messages"][0]["role"], "user");
+        assert_eq!(parsed["messages"][0]["content"]["text"], "Hello AI");
+        assert_eq!(parsed["messages"][1]["content"]["annotations"]["audience"].as_array().unwrap().len(), 2);
+    }
+
+    // ==========================================
+    // CompleteResult Tests
+    // ==========================================
+
+    #[test]
+    fn test_complete_result_basic() {
+        let initial_values = vec!["option1".to_string(), "option2".to_string()];
+        let result = CompleteResult::new(initial_values);
+
+        result.add_value("option3".to_string());
+
+        let wrapper = CompleteResultWrapper::new(result);
+        let json = CompleteResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["completion"]["values"].as_array().unwrap().len(), 3);
+        assert_eq!(parsed["completion"]["values"][2], "option3");
+    }
+
+    #[test]
+    fn test_complete_result_with_pagination() {
+        let initial_values = vec!["value1".to_string()];
+        let result = CompleteResult::new(initial_values);
+
+        result.set_has_more();
+        result.set_total(100);
+        result.add_meta("context".to_string(), "search".to_string()).unwrap();
+
+        for i in 2..=10 {
+            result.add_value(format!("value{}", i));
+        }
+
+        let wrapper = CompleteResultWrapper::new(result);
+        let json = CompleteResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["completion"]["hasMore"], true);
+        assert_eq!(parsed["completion"]["total"], 100);
+        assert_eq!(parsed["completion"]["values"].as_array().unwrap().len(), 10);
+        assert_eq!(parsed["_meta"]["context"], "search");
+    }
+
+    // ==========================================
+    // Context Tests
+    // ==========================================
+
+    #[test]
+    fn test_context_basic() {
+        let context = Context::new(
+            "req-123".to_string(),
+            Some("client-456".to_string()),
+            Some("session-789".to_string())
+        );
+
+        assert_eq!(context.request_id(), "req-123");
+        assert_eq!(context.client_id(), Some("client-456".to_string()));
+        assert_eq!(context.session_id(), Some("session-789".to_string()));
+    }
+
+    #[test]
+    fn test_context_state_management() {
+        let context = Context::new(
+            "req-abc".to_string(),
+            None,
+            None
+        );
+
+        // Initially empty
+        assert_eq!(context.get_state("key1".to_string()), None);
+
+        // Set and get state
+        context.set_state("key1".to_string(), "value1".to_string()).unwrap();
+        context.set_state("key2".to_string(), "value2".to_string()).unwrap();
+
+        assert_eq!(context.get_state("key1".to_string()), Some("value1".to_string()));
+        assert_eq!(context.get_state("key2".to_string()), Some("value2".to_string()));
+
+        // Update existing key
+        context.set_state("key1".to_string(), "updated_value".to_string()).unwrap();
+        assert_eq!(context.get_state("key1".to_string()), Some("updated_value".to_string()));
+    }
+
+    // ==========================================
+    // Edge Cases and Special Characters Tests
+    // ==========================================
+
+    #[test]
+    fn test_special_characters_in_strings() {
+        let result = ListToolsResult::new();
+
+        // Test with special characters and unicode
+        result.add_tool(
+            "test_tool_😀".to_string(),
+            r#"{"type": "object", "description": "Tool with \"quotes\" and \n newlines"}"#.to_string(),
+            Some(ToolOptions {
+                meta: None,
+                annotations: None,
+                description: Some("Description with special chars: <>&\"'".to_string()),
+                output_schema: None,
+                title: Some("Title with emoji 🚀".to_string()),
+            })
+        );
+
+        let wrapper = ListToolsResultWrapper::new(result);
+        let json = ListToolsResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["tools"][0]["name"], "test_tool_😀");
+        assert_eq!(parsed["tools"][0]["title"], "Title with emoji 🚀");
+        assert_eq!(parsed["tools"][0]["description"], "Description with special chars: <>&\"'");
+    }
+
+    #[test]
+    fn test_empty_optional_fields() {
+        let result = CallToolResult::new();
+
+        // Test with all None options
+        result.add_text("text".to_string(), Some(ContentOptions {
+            meta: None,
+            annotations: None,
+        }));
+
+        result.add_resource_link("res".to_string(), "uri".to_string(), Some(ResourceOptions {
+            meta: None,
+            annotations: None,
+            description: None,
+            mime_type: None,
+            size: None,
+            title: None,
+        }));
+
+        let wrapper = CallToolResultWrapper::new(result);
+        let json = CallToolResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        // Verify that empty options don't add unnecessary fields
+        assert_eq!(parsed["content"][0].get("_meta"), None);
+        assert_eq!(parsed["content"][0].get("annotations"), None);
+        assert_eq!(parsed["content"][1].get("description"), None);
+    }
+
+    #[test]
+    fn test_large_data_handling() {
+        let result = CallToolResult::new();
+
+        // Create a large string (1MB)
+        let large_text = "a".repeat(1024 * 1024);
+        result.add_text(large_text.clone(), None);
+
+        let wrapper = CallToolResultWrapper::new(result);
+        let json = CallToolResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["content"][0]["text"].as_str().unwrap().len(), 1024 * 1024);
+    }
+
+    #[test]
+    fn test_json_schema_validation() {
+        let result = ListToolsResult::new();
+
+        // Valid JSON schema
+        let valid_schema = r#"{
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "age": {"type": "number", "minimum": 0}
+            },
+            "required": ["name"]
+        }"#;
+
+        result.add_tool("valid_tool".to_string(), valid_schema.to_string(), None);
+
+        // Invalid JSON (will fallback to string)
+        result.add_tool("invalid_tool".to_string(), "not valid json".to_string(), None);
+
+        let wrapper = ListToolsResultWrapper::new(result);
+        let json = ListToolsResult::finish_json(wrapper).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+
+        // Valid schema should be parsed as object
+        assert!(parsed["tools"][0]["inputSchema"].is_object());
+        assert_eq!(parsed["tools"][0]["inputSchema"]["type"], "object");
+
+        // Invalid JSON should fallback to default object
+        assert_eq!(parsed["tools"][1]["inputSchema"]["type"], "object");
+    }
+}

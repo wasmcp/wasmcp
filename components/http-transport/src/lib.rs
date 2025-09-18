@@ -17,7 +17,7 @@ mod capabilities;
 mod auth;
 mod error;
 mod constants;
-mod type_implementations;
+mod mcp_impl;
 use error::{ErrorCode, ErrorCodeExt, McpError};
 use constants::{methods, routes};
 
