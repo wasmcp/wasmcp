@@ -1,7 +1,7 @@
 /// Model Context Protocol (MCP) is an open protocol that enables seamless integration between LLM applications and external data sources and tools.
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18
-package wasmcp:mcp@0.3.0-alpha.22;
+package wasmcp:mcp@0.3.0-alpha.23;
 
 /// Transports serve MCP server features that are implemented by guests
 ///
@@ -18,6 +18,8 @@ world transport {
     import prompts;
     // Argument autocompletion suggestions for prompts and resource URIs
     import completion;
+
+    export types;
 }
 
 /// The Streamable HTTP transport with authorization

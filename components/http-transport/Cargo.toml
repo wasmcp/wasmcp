@@ -1,6 +1,6 @@
 [package]
 name = "mcp_transport_http"
-version = "0.3.0-alpha.3"
+version = "0.3.0-alpha.23"
 edition = "2024"
 rust-version = "1.89"
 
@@ -42,10 +42,10 @@ authorization = []
 [package.metadata.component]
 package = "mcp:transport-http"
 
-[package.metadata.component.bindings]
-derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
+# [package.metadata.component.bindings]
+# derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
 
 [package.metadata.component.target]
 package = "wasmcp:mcp"
-version = "0.3.0-alpha.3"
+version = "0.3.0-alpha.23"
 world = "authorized-transport"

@@ -318,6 +318,6 @@ interface types {
         add-value: func(value: string);
 
         /// Drop this after producing the JSON-RPC response
-        finish: static func(this: complete-result) -> result<json>;
+        finish-json: static func(this: complete-result) -> result<json>;
     }
 }
