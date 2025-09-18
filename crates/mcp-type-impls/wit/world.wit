@@ -1,0 +1,5 @@
+package wasmcp:mcp-type-impls;
+
+world mcp-type-impls {
+    export wasmcp:mcp/types@0.3.0-alpha.24;
+}
