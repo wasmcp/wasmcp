@@ -43,6 +43,7 @@ build: $(VENV) ## Build and compose everything into build/mcp-http-server.wasm
 	@$(COMPONENTIZE_PY) \
 		--wit-path wit \
 		--world weather-py \
+		--import-interface-name "wasi:http/types@0.2.3=types" \
 		bindings .
 	@echo "Type checking implementation..."
 	@$(VENV)/bin/pyright

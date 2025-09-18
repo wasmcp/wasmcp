@@ -4,7 +4,6 @@
 #[allow(warnings)]
 mod bindings;
 
-mod authorization;
 mod lifecycle;
 mod tools;
 

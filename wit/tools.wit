@@ -3,84 +3,11 @@
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18/server/tools
 interface tools {
-    use types.{mcp-error, json};
-    use tools-types.{list-tools-request, list-tools-result, call-tool-request, call-tool-result};
+    use types.{call-tool-result, list-tools-result, context, json, mcp-error};
     
     /// List available tools
-    list-tools: func(request: list-tools-request, ctx: option<json>) -> result<list-tools-result, mcp-error>;
+    list-tools: func(ctx: borrow<context>, cursor: option<string>) -> result<list-tools-result, mcp-error>;
     
     /// Execute a tool
-    call-tool: func(request: call-tool-request, ctx: option<json>) -> result<call-tool-result, mcp-error>;
-}
-
-
-/// Type definitions for tools
-interface tools-types {
-    use types.{content-block, json, icon};
-
-    /// Behavioral hints about tool operations
-    record tool-annotations {
-        /// Human-readable title for display
-        title: option<string>,
-        /// Tool does not modify environment (default: false)
-        read-only-hint: option<bool>,
-        /// Tool may perform destructive updates (default: true)
-        destructive-hint: option<bool>,
-        /// Repeated calls with same args have no additional effect (default: false)
-        idempotent-hint: option<bool>,
-        /// Tool interacts with external entities (default: true)
-        open-world-hint: option<bool>,
-    }
-
-    /// Tool definition with metadata and schema
-    record tool {
-        /// The name of the tool
-        name: string,
-        /// A human-readable title for the tool
-        title: option<string>,
-        /// Human-readable description of what the tool does
-        description: option<string>,
-        /// JSON Schema object for input parameters
-        input-schema: json,
-        /// Optional JSON Schema object for structured output
-        output-schema: option<json>,
-        /// Behavioral hints for clients
-        annotations: option<tool-annotations>,
-        /// Optional list of icons for the tool
-        icons: option<list<icon>>,
-    }
-
-    /// Request to execute a tool
-    record call-tool-request {
-        /// Name of the tool to execute
-        name: string,
-        /// Arguments as JSON object (must match the tool's input schema)
-        arguments: option<json>,
-    }
-
-    /// Result from executing a tool
-    record call-tool-result {
-        /// Unstructured content blocks (text, images, etc.)
-        content: list<content-block>,
-        /// Optional structured JSON output
-        structured-content: option<json>,
-        /// Whether the tool execution resulted in an error
-        is-error: option<bool>,
-        /// Optional metadata
-        meta: option<json>,
-    }
-
-    /// Request to list available tools
-    record list-tools-request {
-        /// Pagination cursor from previous response
-        cursor: option<string>,
-    }
-
-    /// Response with list of available tools
-    record list-tools-result {
-        /// Available tools
-        tools: list<tool>,
-        /// Cursor for next page if more tools exist
-        next-cursor: option<string>,
-    }
+    call-tool: func(ctx: borrow<context>, name: string, arguments: option<json>) -> result<call-tool-result, mcp-error>;
 }

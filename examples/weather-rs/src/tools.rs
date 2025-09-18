@@ -1,9 +1,7 @@
 // Tools implementation using the Guest trait pattern.
 use crate::bindings::exports::wasmcp::mcp::tools::Guest as ToolsGuest;
 use crate::bindings::wasmcp::mcp::{
-    authorization_types::AuthContext,
-    mcp_types::{ContentBlock, ErrorCode, McpError, TextContent},
-    tools_types::{CallToolRequest, CallToolResult, ListToolsRequest, ListToolsResult, Tool},
+    types::{Context, ErrorCode, McpError, ListToolsResult, CallToolResult, ToolOptions, ToolAnnotations, ToolHints, Json},
 };
 use crate::Component;
 use futures::future::join_all;
@@ -14,92 +12,104 @@ use spin_sdk::http::{send, Request, Response};
 
 impl ToolsGuest for Component {
     /// List available tools.
-    fn list_tools(_request: ListToolsRequest) -> Result<ListToolsResult, McpError> {
-        let tools = vec![
-            Tool {
-                name: "echo".to_string(),
-                title: Some("echo".to_string()),
-                description: Some("Echo a message back to the user".to_string()),
-                icons: None,
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "message": {
-                            "type": "string",
-                            "description": "The message to echo"
-                        }
-                    },
-                    "required": ["message"]
-                })
-                .to_string(),
-                output_schema: None,
-                annotations: None,
-            },
-            Tool {
-                name: "get_weather".to_string(),
-                title: Some("get_weather".to_string()),
-                description: Some("Get current weather for a location".to_string()),
-                icons: None,
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "location": {
-                            "type": "string",
-                            "description": "City name to get weather for"
-                        }
-                    },
-                    "required": ["location"]
-                })
-                .to_string(),
-                output_schema: None,
-                annotations: None,
-            },
-            Tool {
-                name: "multi_weather".to_string(),
-                title: Some("multi_weather".to_string()),
-                description: Some("Get weather for multiple cities concurrently".to_string()),
-                icons: None,
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "cities": {
-                            "type": "array",
-                            "description": "List of city names (max 5)",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "required": ["cities"]
-                })
-                .to_string(),
-                output_schema: None,
-                annotations: None,
-            },
-        ];
+    fn list_tools(_ctx: &Context, _cursor: Option<String>) -> Result<ListToolsResult, McpError> {
+        // let tools = vec![
+        //     Tool {
+        //         name: "echo".to_string(),
+        //         title: Some("echo".to_string()),
+        //         description: Some("Echo a message back to the user".to_string()),
+        //         icons: None,
+                // input_schema: json!({
+                //     "type": "object",
+                //     "properties": {
+                //         "message": {
+                //             "type": "string",
+                //             "description": "The message to echo"
+                //         }
+                //     },
+                //     "required": ["message"]
+                // })
+                // .to_string(),
+        //         output_schema: None,
+        //         annotations: None,
+        //     },
+        //     Tool {
+        //         name: "get_weather".to_string(),
+        //         title: Some("get_weather".to_string()),
+        //         description: Some("Get current weather for a location".to_string()),
+        //         icons: None,
+        //         input_schema: json!({
+        //             "type": "object",
+        //             "properties": {
+        //                 "location": {
+        //                     "type": "string",
+        //                     "description": "City name to get weather for"
+        //                 }
+        //             },
+        //             "required": ["location"]
+        //         })
+        //         .to_string(),
+        //         output_schema: None,
+        //         annotations: None,
+        //     },
+        //     Tool {
+        //         name: "multi_weather".to_string(),
+        //         title: Some("multi_weather".to_string()),
+        //         description: Some("Get weather for multiple cities concurrently".to_string()),
+        //         icons: None,
+        //         input_schema: json!({
+        //             "type": "object",
+        //             "properties": {
+        //                 "cities": {
+        //                     "type": "array",
+        //                     "description": "List of city names (max 5)",
+        //                     "items": {
+        //                         "type": "string"
+        //                     }
+        //                 }
+        //             },
+        //             "required": ["cities"]
+        //         })
+        //         .to_string(),
+        //         output_schema: None,
+        //         annotations: None,
+        //     },
+        // ];
 
-        Ok(ListToolsResult {
-            tools,
-            next_cursor: None,
+        let result = ListToolsResult::new();
+
+        result.add_tool("echo", &json!({
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "The message to echo"
+                }
+            },
+            "required": ["message"]
         })
+        .to_string(), None);
+
+        Ok(result)
     }
 
     /// Execute a tool with the given request.
     fn call_tool(
-        request: CallToolRequest,
-        _ctx: Option<AuthContext>,
+        _ctx: &Context,
+        name: String,
+        arguments: Option<Json>,
     ) -> Result<CallToolResult, McpError> {
-        match request.name.as_str() {
-            "echo" => spin_sdk::http::run(async move { handle_echo(request.arguments.as_ref()) }),
-            "get_weather" => {
-                spin_sdk::http::run(async move { handle_get_weather(request.arguments).await })
-            }
-            "multi_weather" => {
-                spin_sdk::http::run(async move { handle_multi_weather(request.arguments).await })
-            }
+        match name.as_str() {
+            "echo" => spin_sdk::http::run(async move { handle_echo(&arguments.unwrap()) }),
+            // "get_weather" => {
+            //     spin_sdk::http::run(async move { handle_get_weather(request.arguments()).await })
+            // }
+            // "multi_weather" => {
+            //     spin_sdk::http::run(async move { handle_multi_weather(request.arguments()).await })
+            // }
             _ => Err(McpError {
                 code: ErrorCode::MethodNotFound,
-                message: format!("Unknown tool: {}", request.name),
+                message: format!("Unknown tool: {}", name),
                 data: None,
             }),
         }
@@ -113,9 +123,11 @@ struct EchoArgs {
     message: String,
 }
 
-fn handle_echo(args: Option<&String>) -> Result<CallToolResult, McpError> {
+fn handle_echo(args: &String) -> Result<CallToolResult, McpError> {
     let args: EchoArgs = parse_args(args)?;
-    Ok(text_result(format!("Echo: {}", args.message)))
+    let result = CallToolResult::new();
+    result.add_text(format!("Echo: {}", args.message).as_str(), None);
+    Ok(result)
 }
 
 #[derive(Deserialize)]
@@ -123,60 +135,60 @@ struct WeatherArgs {
     location: String,
 }
 
-async fn handle_get_weather(args: Option<String>) -> Result<CallToolResult, McpError> {
-    let args: WeatherArgs = parse_args(args.as_ref())?;
+// async fn handle_get_weather(args: Option<String>) -> Result<CallToolResult, McpError> {
+//     let args: WeatherArgs = parse_args(args.as_ref())?;
 
-    match get_weather_for_city(&args.location).await {
-        Ok(weather) => Ok(text_result(weather)),
-        Err(e) => Ok(error_result(format!("Error fetching weather: {e}"))),
-    }
-}
+//     match get_weather_for_city(&args.location).await {
+//         Ok(weather) => Ok(text_result(weather)),
+//         Err(e) => Ok(error_result(format!("Error fetching weather: {e}"))),
+//     }
+// }
 
 #[derive(Deserialize)]
 struct MultiWeatherArgs {
     cities: Vec<String>,
 }
 
-async fn handle_multi_weather(args: Option<String>) -> Result<CallToolResult, McpError> {
-    let args: MultiWeatherArgs = parse_args(args.as_ref())?;
+// async fn handle_multi_weather(args: Option<String>) -> Result<CallToolResult, McpError> {
+//     let args: MultiWeatherArgs = parse_args(args.as_ref())?;
 
-    if args.cities.is_empty() {
-        return Ok(error_result("No cities provided".to_string()));
-    }
+//     if args.cities.is_empty() {
+//         return Ok(error_result("No cities provided".to_string()));
+//     }
 
-    if args.cities.len() > 5 {
-        return Ok(error_result("Maximum 5 cities allowed".to_string()));
-    }
+//     if args.cities.len() > 5 {
+//         return Ok(error_result("Maximum 5 cities allowed".to_string()));
+//     }
 
-    // Concurrent HTTP in Rust WebAssembly:
-    // Unlike Go which needs special handling (wasihttp.RequestsConcurrently),
-    // Rust's async/await works naturally with futures::join_all.
-    // The spin_sdk runtime handles the WebAssembly poll-based I/O,
-    // similar to Python's PollLoop but fully integrated with Rust's async ecosystem.
+//     // Concurrent HTTP in Rust WebAssembly:
+//     // Unlike Go which needs special handling (wasihttp.RequestsConcurrently),
+//     // Rust's async/await works naturally with futures::join_all.
+//     // The spin_sdk runtime handles the WebAssembly poll-based I/O,
+//     // similar to Python's PollLoop but fully integrated with Rust's async ecosystem.
     
-    // Create futures for all cities
-    let futures = args.cities.iter().map(|city| {
-        let city = city.clone();
-        Box::pin(async move {
-            match get_weather_for_city(&city).await {
-                Ok(weather) => format!("{weather}\n"),
-                Err(e) => format!("Error fetching weather for {city}: {e}\n"),
-            }
-        })
-    });
+//     // Create futures for all cities
+//     let futures = args.cities.iter().map(|city| {
+//         let city = city.clone();
+//         Box::pin(async move {
+//             match get_weather_for_city(&city).await {
+//                 Ok(weather) => format!("{weather}\n"),
+//                 Err(e) => format!("Error fetching weather for {city}: {e}\n"),
+//             }
+//         })
+//     });
 
-    // Execute all requests concurrently - true parallelism via the host runtime
-    let results = join_all(futures).await;
+//     // Execute all requests concurrently - true parallelism via the host runtime
+//     let results = join_all(futures).await;
 
-    let mut output = String::from("=== Weather Results ===\n\n");
-    for result in results {
-        output.push_str(&result);
-        output.push('\n');
-    }
-    output.push_str("=== All requests completed ===");
+//     let mut output = String::from("=== Weather Results ===\n\n");
+//     for result in results {
+//         output.push_str(&result);
+//         output.push('\n');
+//     }
+//     output.push_str("=== All requests completed ===");
 
-    Ok(text_result(output))
-}
+//     Ok(text_result(output))
+// }
 
 // Weather API Functions
 
@@ -295,37 +307,11 @@ fn weather_code_to_string(code: u32) -> &'static str {
 
 // Helper Functions
 
-fn parse_args<T: for<'a> Deserialize<'a>>(args: Option<&String>) -> Result<T, McpError> {
-    let args_str = args.map_or("{}", String::as_str);
+fn parse_args<T: for<'a> Deserialize<'a>>(args: &String) -> Result<T, McpError> {
+    let args_str = args.as_str();
     serde_json::from_str(args_str).map_err(|e| McpError {
         code: ErrorCode::InvalidParams,
         message: format!("Failed to parse arguments: {e}"),
         data: None,
     })
-}
-
-fn text_result(text: String) -> CallToolResult {
-    CallToolResult {
-        content: vec![ContentBlock::Text(TextContent {
-            text,
-            annotations: None,
-            meta: None,
-        })],
-        structured_content: None,
-        is_error: Some(false),
-        meta: None,
-    }
-}
-
-fn error_result(message: String) -> CallToolResult {
-    CallToolResult {
-        content: vec![ContentBlock::Text(TextContent {
-            text: message,
-            annotations: None,
-            meta: None,
-        })],
-        structured_content: None,
-        is_error: Some(true),
-        meta: None,
-    }
 }

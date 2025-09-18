@@ -33,7 +33,7 @@ path = "wit"
 world = "weather-rs"
 
 [package.metadata.component.target.dependencies]
-"wasmcp:mcp" = { version = "0.2.0" }
+"wasmcp:mcp" = { version = "0.3.0-alpha.22" }
 
-[package.metadata.component.bindings]
-derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
+#[package.metadata.component.bindings]
+#derives = ["serde::Serialize", "serde::Deserialize", "Clone"]

@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 # These classes will be instantiated by componentize-py and their methods
 # will be called directly by the WebAssembly runtime when handling MCP requests.
 from capabilities.lifecycle import Lifecycle
-from capabilities.authorization import Authorization  
 from capabilities.tools import Tools
 
 # Protocol verification (compile-time only).
@@ -21,9 +20,7 @@ from capabilities.tools import Tools
 if TYPE_CHECKING:
     from wit_world.exports import (
         Lifecycle as LifecycleProtocol,
-        Authorization as AuthorizationProtocol,
-        Tools as ToolsProtocol
+        Tools as ToolsProtocol,
     )
     _lifecycle: LifecycleProtocol = Lifecycle()
-    _authorization: AuthorizationProtocol = Authorization()
     _tools: ToolsProtocol = Tools()

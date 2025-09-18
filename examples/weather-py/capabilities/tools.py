@@ -3,16 +3,15 @@
 import json
 import asyncio
 import urllib.parse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Protocol, cast
 
 # PollLoop: async event loop for WebAssembly components
 # Bridges Python's asyncio with WebAssembly's poll-based I/O model
 from poll_loop import PollLoop, Stream, send
 
 # WIT-generated types from Component Model interfaces
-from wit_world.imports.mcp_types import ContentBlock_Text, TextContent
-from wit_world.imports.authorization_types import AuthContext
-from wit_world.imports.tools_types import Tool, ListToolsRequest, ListToolsResult, CallToolRequest, CallToolResult
+from wit_world.imports.wasmcp_mcp_types import Tool, ToolAnnotations, ToolHints, ToolResult, Context
+from wit_world import exports
 from wit_world.imports.types import (
     OutgoingRequest,
     Fields,
@@ -22,76 +21,116 @@ from wit_world.imports.types import (
 )
 
 
-class Tools:
+class _ToolResultFactory(Protocol):
+    @classmethod
+    def text(cls, text: str) -> ToolResult: ...
+    @classmethod
+    def error(cls, message: str) -> ToolResult: ...
+
+
+_ToolResult = cast(_ToolResultFactory, ToolResult)
+
+
+class Tools(exports.Tools):
     """MCP tools implementation.
     
     Bridges synchronous WIT interfaces with Python's async HTTP.
     """
 
-    def list_tools(self, request: ListToolsRequest) -> ListToolsResult:
+    def list(self, ctx: Context) -> List[Tool]:
         """List available tools."""
-        tools = [
-            Tool(
-                name="echo",
-                title="echo",
-                description="Echo a message back to the user",
-                icons=None,
-                input_schema=json.dumps({
-                    "type": "object",
-                    "properties": {
-                        "message": {"type": "string", "description": "Message to echo"}
-                    },
-                    "required": ["message"]
-                }),
-                output_schema=None,
-                annotations=None
-            ),
-            Tool(
-                name="get_weather",
-                title="get_weather",
-                description="Get current weather for a location",
-                icons=None,
-                input_schema=json.dumps({
-                    "type": "object",
-                    "properties": {
-                        "location": {"type": "string", "description": "City name or location"}
-                    },
-                    "required": ["location"]
-                }),
-                output_schema=None,
-                annotations=None
-            ),
-            Tool(
-                name="multi_weather",
-                title="multi_weather",
-                description="Get weather for multiple locations concurrently",
-                icons=None,
-                input_schema=json.dumps({
-                    "type": "object",
-                    "properties": {
-                        "cities": {
-                            "type": "array",
-                            "description": "List of city names (max 5)",
-                            "items": {"type": "string"}
-                        }
-                    },
-                    "required": ["cities"]
-                }),
-                output_schema=None,
-                annotations=None
-            ),
+        # tools = [
+            # Tool(
+            #     name="echo",
+            #     title="echo",
+            #     description="Echo a message back to the user",
+            #     icons=None,
+            #     input_schema=json.dumps({
+            #         "type": "object",
+            #         "properties": {
+            #             "message": {"type": "string", "description": "Message to echo"}
+            #         },
+            #         "required": ["message"]
+            #     }),
+            #     output_schema=None,
+            #     annotations=None
+            # ),
+        #     Tool(
+        #         name="get_weather",
+        #         title="get_weather",
+        #         description="Get current weather for a location",
+        #         icons=None,
+        #         input_schema=json.dumps({
+        #             "type": "object",
+        #             "properties": {
+        #                 "location": {"type": "string", "description": "City name or location"}
+        #             },
+        #             "required": ["location"]
+        #         }),
+        #         output_schema=None,
+        #         annotations=None
+        #     ),
+        #     Tool(
+        #         name="multi_weather",
+        #         title="multi_weather",
+        #         description="Get weather for multiple locations concurrently",
+        #         icons=None,
+        #         input_schema=json.dumps({
+        #             "type": "object",
+        #             "properties": {
+        #                 "cities": {
+        #                     "type": "array",
+        #                     "description": "List of city names (max 5)",
+        #                     "items": {"type": "string"}
+        #                 }
+        #             },
+        #             "required": ["cities"]
+        #         }),
+        #         output_schema=None,
+        #         annotations=None
+        #     ),
+        # ]
+
+        if (ctx.client_id() == "test"):
+            print("test")
+            ctx.set_state("test", "test")
+
+        
+        echo_tool = Tool("echo", json.dumps({
+            "type": "object",
+            "properties": {
+                "message": {"type": "string", "description": "Message to echo"}
+            },
+            "required": ["message"]
+        }))
+
+
+        echo_tool.input_schema
+
+        
+        echo_tool.set_annotations(ToolAnnotations(title="echo", hints=[ToolHints.READ_ONLY, ToolHints.OPEN_WORLD]))
+
+        def which_hints(hints: List[ToolHints]) -> str:
+            if hints[0].value == false
+            if ToolHints.READ_ONLY in hints:
+                return "READ_ONLY"
+            if ToolHints.DESTRUCTIVE in hints:
+                return "DESTRUCTIVE"
+            if ToolHints.IDEMPOTENT in hints:
+                return "IDEMPOTENT"
+            if hints & ToolHints.OPEN_WORLD:
+                return "OPEN_WORLD"
+
+        return [
+            echo_tool
         ]
 
-        return ListToolsResult(
-            tools=tools,
-            next_cursor=None
-        )
-
-    def call_tool(
+    def call(
         self, 
-        request: CallToolRequest,
-        context: Optional[AuthContext]
-    ) -> CallToolResult:
+        ctx: Context,
+        name: str,
+        arguments: Optional[str],
+    ) -> ToolResult:
         """Execute a tool with the given request.
         
         The context parameter is Optional[AuthContext] mapping to WIT's option<auth-context>.
@@ -99,27 +138,27 @@ class Tools:
         """        
         # Parse arguments from JSON string (WIT json-object type)
         args: Dict[str, Any] = {}
-        if request.arguments:
+        if arguments:
             try:
-                args = json.loads(request.arguments)
+                args = json.loads(arguments)
             except json.JSONDecodeError as e:
-                return error_result(f"Invalid JSON arguments: {e}")
+                return _ToolResult.error(f"Invalid JSON arguments: {e}")
 
         # Route to tool handler
         try:
-            if request.name == "echo":
+            if name == "echo":
                 result_text = execute_echo(args)
-            elif request.name == "get_weather":
+            elif name == "get_weather":
                 result_text = execute_weather_sync(args)
-            elif request.name == "multi_weather":
+            elif name == "multi_weather":
                 result_text = execute_multi_weather_sync(args)
             else:
-                return error_result(f"Unknown tool: {request.name}")
+                return _ToolResult.error(f"Unknown tool: {name}")
             
-            return text_result(result_text)
+            return _ToolResult.text(result_text)
             
         except Exception as e:
-            return error_result(f"Tool execution failed: {str(e)}")
+            return _ToolResult.error(f"Tool execution failed: {str(e)}")
 
 def execute_echo(args: Dict[str, Any]) -> str:
     """Simple synchronous echo tool."""
@@ -257,6 +296,7 @@ async def fetch_json(url: str) -> Dict[str, Any]:
     return json.loads(body)
 
 
+
 def format_weather(data: Dict[str, Any]) -> str:
     """Format weather data as human-readable text."""
     return (
@@ -267,6 +307,7 @@ def format_weather(data: Dict[str, Any]) -> str:
         f"Humidity: {data['humidity']}%\n"
         f"Wind: {data['wind_speed']:.1f} km/h"
     )
+
 
 
 def weather_condition(code: int) -> str:
@@ -297,38 +338,3 @@ def weather_condition(code: int) -> str:
         99: "Thunderstorm with heavy hail",
     }
     return conditions.get(code, "Unknown")
-
-def text_result(text: str) -> CallToolResult:
-    """Create a successful text result."""
-    return CallToolResult(
-        content=[
-            ContentBlock_Text(
-                value=TextContent(
-                    text=text,
-                    annotations=None,
-                    meta=None
-                )
-            )
-        ],
-        structured_content=None,
-        is_error=False,
-        meta=None
-    )
-
-
-def error_result(message: str) -> CallToolResult:
-    """Create an error result."""
-    return CallToolResult(
-        content=[
-            ContentBlock_Text(
-                value=TextContent(
-                    text=message,
-                    annotations=None,
-                    meta=None
-                )
-            )
-        ],
-        structured_content=None,
-        is_error=True,
-        meta=None
-    )
