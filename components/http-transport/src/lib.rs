@@ -11,13 +11,11 @@ mod bindings;
 use bindings::wasmcp::mcp::oauth2_protected_resource::{get_protected_resource_metadata};
 use bindings::wasmcp::mcp::jwt_validation::{get_validation_config};
 use bindings::wasmcp::mcp::jwks_cache::{get_jwks_uri};
-use bindings::exports::wasmcp::mcp::types::{GuestListToolsResult};
 
 mod capabilities;
 mod auth;
 mod error;
 mod constants;
-mod mcp_impl;
 use error::{ErrorCode, ErrorCodeExt, McpError};
 use constants::{methods, routes};
 

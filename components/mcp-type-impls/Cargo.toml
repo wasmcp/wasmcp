@@ -1,0 +1,21 @@
+[package]
+name = "mcp-type-impls"
+version = "0.3.0-alpha.24"
+edition = "2024"
+rust-version = "1.89"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
+
+[package.metadata.component]
+package = "mcp:type-impls"
+
+[package.metadata.component.target]
+package = "wasmcp:mcp"
+version = "0.3.0-alpha.24"
+world = "authorized-transport"

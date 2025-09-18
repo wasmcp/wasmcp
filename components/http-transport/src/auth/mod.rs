@@ -10,3 +10,4 @@ mod types;
 // Re-export the main authorization function
 pub use authorization::authorize;
 pub use http::authorize_request;
+pub use types::AuthContext;
