@@ -140,7 +140,7 @@ impl GuestInitializeResult for InitializeResult {
     fn new(name: String, version: String, capabilities: ServerCapabilities) -> Self {
         Self {
             internal: RefCell::new(json!({
-                "protocolVersion": "0.1.0", // MCP protocol version
+                "protocolVersion": "2025-06-18", // MCP protocol version
                 "capabilities": build_capabilities(capabilities),
                 "serverInfo": {
                     "name": name,
