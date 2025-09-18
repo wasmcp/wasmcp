@@ -263,7 +263,7 @@ pub mod wasmcp {
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/oauth2-protected-resource@0.3.0-alpha.23"
+                        wasm_import_module = "wasmcp:mcp/oauth2-protected-resource@0.3.0-alpha.24"
                     )]
                     unsafe extern "C" {
                         #[link_name = "get-protected-resource-metadata"]
@@ -343,7 +343,7 @@ pub mod wasmcp {
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/jwt-validation@0.3.0-alpha.23"
+                        wasm_import_module = "wasmcp:mcp/jwt-validation@0.3.0-alpha.24"
                     )]
                     unsafe extern "C" {
                         #[link_name = "get-validation-config"]
@@ -683,7 +683,7 @@ pub mod wasmcp {
                     let ptr6 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/jwt-validation@0.3.0-alpha.23"
+                        wasm_import_module = "wasmcp:mcp/jwt-validation@0.3.0-alpha.24"
                     )]
                     unsafe extern "C" {
                         #[link_name = "post-validate"]
@@ -795,7 +795,7 @@ pub mod wasmcp {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/jwks-cache@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/jwks-cache@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "get-jwks-uri"]
                         fn wit_import1(_: *mut u8);
@@ -837,7 +837,7 @@ pub mod wasmcp {
                     let len0 = vec0.len();
                     let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/jwks-cache@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/jwks-cache@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "get-jwks"]
                         fn wit_import2(_: *mut u8, _: usize, _: *mut u8);
@@ -887,7 +887,7 @@ pub mod wasmcp {
                     let ptr1 = vec1.as_ptr().cast::<u8>();
                     let len1 = vec1.len();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/jwks-cache@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/jwks-cache@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "set-jwks"]
                         fn wit_import2(_: *mut u8, _: usize, _: *mut u8, _: usize);
@@ -1368,7 +1368,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]context"]
                             fn drop(_: u32);
@@ -1406,7 +1406,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]initialize-result"]
                             fn drop(_: u32);
@@ -1446,7 +1446,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]list-tools-result"]
                             fn drop(_: u32);
@@ -1483,7 +1483,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]call-tool-result"]
                             fn drop(_: u32);
@@ -1523,7 +1523,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]list-resources-result"]
                             fn drop(_: u32);
@@ -1560,7 +1560,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]list-resource-templates-result"]
                             fn drop(_: u32);
@@ -1597,7 +1597,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]read-resource-result"]
                             fn drop(_: u32);
@@ -1637,7 +1637,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]list-prompts-result"]
                             fn drop(_: u32);
@@ -1674,7 +1674,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]get-prompt-result"]
                             fn drop(_: u32);
@@ -1714,7 +1714,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]complete-result"]
                             fn drop(_: u32);
@@ -1740,7 +1740,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]context.request-id"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -1778,7 +1778,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]context.client-id"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -1832,7 +1832,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]context.session-id"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -1889,7 +1889,7 @@ pub mod wasmcp {
                         let len0 = vec0.len();
                         let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]context.get-state"]
                             fn wit_import2(_: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -1949,7 +1949,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]context.set-state"]
                             fn wit_import2(
@@ -2009,7 +2009,7 @@ pub mod wasmcp {
                         let len1 = vec1.len();
                         let flags2 = capabilities;
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[constructor]initialize-result"]
                             fn wit_import3(
@@ -2050,7 +2050,7 @@ pub mod wasmcp {
                     unsafe {
                         let flags0 = capabilities;
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]initialize-result.add-capabilities"]
                             fn wit_import1(_: i32, _: i32);
@@ -2079,7 +2079,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]initialize-result.add-meta"]
                             fn wit_import2(
@@ -2141,7 +2141,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]initialize-result.title"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -2186,7 +2186,7 @@ pub mod wasmcp {
                         let ptr0 = vec0.as_ptr().cast::<u8>();
                         let len0 = vec0.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]initialize-result.set-title"]
                             fn wit_import1(_: i32, _: *mut u8, _: usize);
@@ -2219,7 +2219,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]initialize-result.instructions"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -2264,7 +2264,7 @@ pub mod wasmcp {
                         let ptr0 = vec0.as_ptr().cast::<u8>();
                         let len0 = vec0.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]initialize-result.set-instructions"]
                             fn wit_import1(_: i32, _: *mut u8, _: usize);
@@ -2297,7 +2297,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[static]initialize-result.finish-json"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -2342,7 +2342,7 @@ pub mod wasmcp {
                 pub fn new() -> Self {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[constructor]list-tools-result"]
                             fn wit_import0() -> i32;
@@ -2368,7 +2368,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-tools-result.add-meta"]
                             fn wit_import2(
@@ -2421,7 +2421,7 @@ pub mod wasmcp {
                         let ptr0 = vec0.as_ptr().cast::<u8>();
                         let len0 = vec0.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-tools-result.set-next-cursor"]
                             fn wit_import1(_: i32, _: *mut u8, _: usize);
@@ -2655,7 +2655,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-tools-result.add-tool"]
                             fn wit_import14(_: *mut u8);
@@ -2691,7 +2691,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[static]list-tools-result.finish-json"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -2736,7 +2736,7 @@ pub mod wasmcp {
                 pub fn new() -> Self {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[constructor]call-tool-result"]
                             fn wit_import0() -> i32;
@@ -2762,7 +2762,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]call-tool-result.add-meta"]
                             fn wit_import2(
@@ -3002,7 +3002,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]call-tool-result.add-text"]
                             fn wit_import15(
@@ -3280,7 +3280,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]call-tool-result.add-image"]
                             fn wit_import11(_: *mut u8);
@@ -3505,7 +3505,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]call-tool-result.add-audio"]
                             fn wit_import11(_: *mut u8);
@@ -3812,7 +3812,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]call-tool-result.add-resource-link"]
                             fn wit_import14(_: *mut u8);
@@ -3937,7 +3937,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]call-tool-result.add-text-resource"]
                             fn wit_import11(
@@ -4103,7 +4103,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]call-tool-result.add-blob-resource"]
                             fn wit_import11(
@@ -4167,7 +4167,7 @@ pub mod wasmcp {
                 pub fn set_error(&self) -> () {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]call-tool-result.set-error"]
                             fn wit_import0(_: i32);
@@ -4189,7 +4189,7 @@ pub mod wasmcp {
                         let ptr0 = vec0.as_ptr().cast::<u8>();
                         let len0 = vec0.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]call-tool-result.set-structured-content"]
                             fn wit_import1(_: i32, _: *mut u8, _: usize);
@@ -4222,7 +4222,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[static]call-tool-result.finish-json"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -4267,7 +4267,7 @@ pub mod wasmcp {
                 pub fn new() -> Self {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[constructor]list-resources-result"]
                             fn wit_import0() -> i32;
@@ -4293,7 +4293,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-resources-result.add-meta"]
                             fn wit_import2(
@@ -4345,7 +4345,7 @@ pub mod wasmcp {
                         let ptr0 = vec0.as_ptr().cast::<u8>();
                         let len0 = vec0.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-resources-result.set-next-cursor"]
                             fn wit_import1(_: i32, _: *mut u8, _: usize);
@@ -4649,7 +4649,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-resources-result.add-resource"]
                             fn wit_import14(_: *mut u8);
@@ -4685,7 +4685,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[static]list-resources-result.finish-json"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -4730,7 +4730,7 @@ pub mod wasmcp {
                 pub fn new() -> Self {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[constructor]list-resource-templates-result"]
                             fn wit_import0() -> i32;
@@ -4756,7 +4756,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-resource-templates-result.add-meta"]
                             fn wit_import2(
@@ -4808,7 +4808,7 @@ pub mod wasmcp {
                         let ptr0 = vec0.as_ptr().cast::<u8>();
                         let len0 = vec0.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-resource-templates-result.set-next-cursor"]
                             fn wit_import1(_: i32, _: *mut u8, _: usize);
@@ -5096,7 +5096,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-resource-templates-result.add-resource-template"]
                             fn wit_import14(_: *mut u8);
@@ -5134,7 +5134,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[static]list-resource-templates-result.finish-json"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -5179,7 +5179,7 @@ pub mod wasmcp {
                 pub fn new() -> Self {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[constructor]read-resource-result"]
                             fn wit_import0() -> i32;
@@ -5205,7 +5205,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]read-resource-result.add-meta"]
                             fn wit_import2(
@@ -5356,7 +5356,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]read-resource-result.add-text-resource"]
                             fn wit_import11(
@@ -5522,7 +5522,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]read-resource-result.add-blob-resource"]
                             fn wit_import11(
@@ -5599,7 +5599,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[static]read-resource-result.finish-json"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -5644,7 +5644,7 @@ pub mod wasmcp {
                 pub fn new() -> Self {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[constructor]list-prompts-result"]
                             fn wit_import0() -> i32;
@@ -5670,7 +5670,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-prompts-result.add-meta"]
                             fn wit_import2(
@@ -5722,7 +5722,7 @@ pub mod wasmcp {
                         let ptr0 = vec0.as_ptr().cast::<u8>();
                         let len0 = vec0.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-prompts-result.set-next-cursor"]
                             fn wit_import1(_: i32, _: *mut u8, _: usize);
@@ -5970,7 +5970,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]list-prompts-result.add-prompt"]
                             fn wit_import18(
@@ -6059,7 +6059,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[static]list-prompts-result.finish-json"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -6104,7 +6104,7 @@ pub mod wasmcp {
                 pub fn new() -> Self {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[constructor]get-prompt-result"]
                             fn wit_import0() -> i32;
@@ -6130,7 +6130,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]get-prompt-result.add-meta"]
                             fn wit_import2(
@@ -6182,7 +6182,7 @@ pub mod wasmcp {
                         let ptr0 = vec0.as_ptr().cast::<u8>();
                         let len0 = vec0.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]get-prompt-result.set-description"]
                             fn wit_import1(_: i32, _: *mut u8, _: usize);
@@ -6394,7 +6394,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]get-prompt-result.add-text-message"]
                             fn wit_import10(_: *mut u8);
@@ -6619,7 +6619,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]get-prompt-result.add-image-message"]
                             fn wit_import11(_: *mut u8);
@@ -6844,7 +6844,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]get-prompt-result.add-audio-message"]
                             fn wit_import11(_: *mut u8);
@@ -7151,7 +7151,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]get-prompt-result.add-resource-link-message"]
                             fn wit_import14(_: *mut u8);
@@ -7277,7 +7277,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]get-prompt-result.add-text-resource-message"]
                             fn wit_import11(
@@ -7447,7 +7447,7 @@ pub mod wasmcp {
                             }
                         };
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]get-prompt-result.add-blob-resource-message"]
                             fn wit_import11(
@@ -7527,7 +7527,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[static]get-prompt-result.finish-json"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -7600,7 +7600,7 @@ pub mod wasmcp {
                             }
                         }
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[constructor]complete-result"]
                             fn wit_import2(_: *mut u8, _: usize) -> i32;
@@ -7629,7 +7629,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]complete-result.add-meta"]
                             fn wit_import2(
@@ -7678,7 +7678,7 @@ pub mod wasmcp {
                 pub fn set_has_more(&self) -> () {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]complete-result.set-has-more"]
                             fn wit_import0(_: i32);
@@ -7696,7 +7696,7 @@ pub mod wasmcp {
                 pub fn set_total(&self, total: u16) -> () {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]complete-result.set-total"]
                             fn wit_import0(_: i32, _: i32);
@@ -7719,7 +7719,7 @@ pub mod wasmcp {
                         let ptr0 = vec0.as_ptr().cast::<u8>();
                         let len0 = vec0.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
                             #[link_name = "[method]complete-result.add-value"]
                             fn wit_import1(_: i32, _: *mut u8, _: usize);
@@ -7737,7 +7737,7 @@ pub mod wasmcp {
             impl CompleteResult {
                 #[allow(unused_unsafe, clippy::all)]
                 /// Drop this after producing the JSON-RPC response
-                pub fn finish(this: CompleteResult) -> Result<Json, ()> {
+                pub fn finish_json(this: CompleteResult) -> Result<Json, ()> {
                     unsafe {
                         #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                         #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
@@ -7752,9 +7752,9 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.23")]
+                        #[link(wasm_import_module = "wasmcp:mcp/types@0.3.0-alpha.24")]
                         unsafe extern "C" {
-                            #[link_name = "[static]complete-result.finish"]
+                            #[link_name = "[static]complete-result.finish-json"]
                             fn wit_import1(_: i32, _: *mut u8);
                         }
                         #[cfg(not(target_arch = "wasm32"))]
@@ -7823,7 +7823,7 @@ pub mod wasmcp {
                     );
                     let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/lifecycle@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "initialize"]
                         fn wit_import1(_: i32, _: *mut u8);
@@ -7951,7 +7951,7 @@ pub mod wasmcp {
                     };
                     let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "list-tools"]
                         fn wit_import3(_: i32, _: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -8081,7 +8081,7 @@ pub mod wasmcp {
                     };
                     let ptr3 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/tools@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "call-tool"]
                         fn wit_import4(
@@ -8235,7 +8235,7 @@ pub mod wasmcp {
                     };
                     let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/resources@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/resources@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "list-resources"]
                         fn wit_import3(_: i32, _: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -8361,7 +8361,7 @@ pub mod wasmcp {
                     };
                     let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/resources@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/resources@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "list-templates"]
                         fn wit_import3(_: i32, _: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -8481,7 +8481,7 @@ pub mod wasmcp {
                     let len0 = vec0.len();
                     let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/resources@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/resources@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "read-resource"]
                         fn wit_import2(_: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -8616,7 +8616,7 @@ pub mod wasmcp {
                     };
                     let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/prompts@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/prompts@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "list-prompts"]
                         fn wit_import3(_: i32, _: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -8746,7 +8746,7 @@ pub mod wasmcp {
                     };
                     let ptr3 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/prompts@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/prompts@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "get-prompt"]
                         fn wit_import4(
@@ -8974,7 +8974,7 @@ pub mod wasmcp {
                     };
                     let ptr16 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasmcp:mcp/completion@0.3.0-alpha.23")]
+                    #[link(wasm_import_module = "wasmcp:mcp/completion@0.3.0-alpha.24")]
                     unsafe extern "C" {
                         #[link_name = "complete"]
                         fn wit_import17(
@@ -9669,7 +9669,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]context"]
@@ -9795,7 +9795,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]initialize-result"]
@@ -9923,7 +9923,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]list-tools-result"]
@@ -10048,7 +10048,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]call-tool-result"]
@@ -10176,7 +10176,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]list-resources-result"]
@@ -10307,7 +10307,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]list-resource-templates-result"]
@@ -10432,7 +10432,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]read-resource-result"]
@@ -10560,7 +10560,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]list-prompts-result"]
@@ -10685,7 +10685,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]get-prompt-result"]
@@ -10813,7 +10813,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]complete-result"]
@@ -15515,11 +15515,11 @@ pub mod exports {
                 }
                 #[doc(hidden)]
                 #[allow(non_snake_case)]
-                pub unsafe fn _export_static_complete_result_finish_cabi<
+                pub unsafe fn _export_static_complete_result_finish_json_cabi<
                     T: GuestCompleteResult,
                 >(arg0: i32) -> *mut u8 {
                     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-                    let result0 = T::finish(unsafe {
+                    let result0 = T::finish_json(unsafe {
                         CompleteResult::from_handle(arg0 as u32)
                     });
                     let ptr1 = (&raw mut _RET_AREA.0).cast::<u8>();
@@ -15545,7 +15545,7 @@ pub mod exports {
                 }
                 #[doc(hidden)]
                 #[allow(non_snake_case)]
-                pub unsafe fn __post_return_static_complete_result_finish<
+                pub unsafe fn __post_return_static_complete_result_finish_json<
                     T: GuestCompleteResult,
                 >(arg0: *mut u8) {
                     let l0 = i32::from(*arg0.add(0).cast::<u8>());
@@ -15588,7 +15588,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]context"]
@@ -15610,7 +15610,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]context"]
@@ -15643,7 +15643,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]initialize-result"]
@@ -15665,7 +15665,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]initialize-result"]
@@ -15709,7 +15709,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]list-tools-result"]
@@ -15731,7 +15731,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]list-tools-result"]
@@ -15772,7 +15772,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]call-tool-result"]
@@ -15794,7 +15794,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]call-tool-result"]
@@ -15865,7 +15865,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]list-resources-result"]
@@ -15887,7 +15887,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]list-resources-result"]
@@ -15927,7 +15927,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]list-resource-templates-result"]
@@ -15949,7 +15949,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]list-resource-templates-result"]
@@ -15991,7 +15991,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]read-resource-result"]
@@ -16013,7 +16013,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]read-resource-result"]
@@ -16058,7 +16058,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]list-prompts-result"]
@@ -16080,7 +16080,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]list-prompts-result"]
@@ -16119,7 +16119,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]get-prompt-result"]
@@ -16141,7 +16141,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]get-prompt-result"]
@@ -16216,7 +16216,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]complete-result"]
@@ -16238,7 +16238,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.23"
+                                wasm_import_module = "[export]wasmcp:mcp/types@0.3.0-alpha.24"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]complete-result"]
@@ -16258,82 +16258,82 @@ pub mod exports {
                     fn set_total(&self, total: u16) -> ();
                     fn add_value(&self, value: _rt::String) -> ();
                     /// Drop this after producing the JSON-RPC response
-                    fn finish(this: CompleteResult) -> Result<Json, ()>;
+                    fn finish_json(this: CompleteResult) -> Result<Json, ()>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_types_0_3_0_alpha_23_cabi {
+                macro_rules! __export_wasmcp_mcp_types_0_3_0_alpha_24_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]context.request-id")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]context.request-id")]
                         unsafe extern "C" fn export_method_context_request_id(arg0 : *
                         mut u8,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_context_request_id_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Context > (arg0) } } #[unsafe
                         (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[method]context.request-id")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[method]context.request-id")]
                         unsafe extern "C" fn _post_return_method_context_request_id(arg0
                         : * mut u8,) { unsafe { $($path_to_types)*::
                         __post_return_method_context_request_id::<<$ty as
                         $($path_to_types)*:: Guest >::Context > (arg0) } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]context.client-id")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]context.client-id")]
                         unsafe extern "C" fn export_method_context_client_id(arg0 : * mut
                         u8,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_context_client_id_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Context > (arg0) } } #[unsafe
                         (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[method]context.client-id")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[method]context.client-id")]
                         unsafe extern "C" fn _post_return_method_context_client_id(arg0 :
                         * mut u8,) { unsafe { $($path_to_types)*::
                         __post_return_method_context_client_id::<<$ty as
                         $($path_to_types)*:: Guest >::Context > (arg0) } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]context.session-id")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]context.session-id")]
                         unsafe extern "C" fn export_method_context_session_id(arg0 : *
                         mut u8,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_context_session_id_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Context > (arg0) } } #[unsafe
                         (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[method]context.session-id")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[method]context.session-id")]
                         unsafe extern "C" fn _post_return_method_context_session_id(arg0
                         : * mut u8,) { unsafe { $($path_to_types)*::
                         __post_return_method_context_session_id::<<$ty as
                         $($path_to_types)*:: Guest >::Context > (arg0) } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]context.get-state")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]context.get-state")]
                         unsafe extern "C" fn export_method_context_get_state(arg0 : * mut
                         u8, arg1 : * mut u8, arg2 : usize,) -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_method_context_get_state_cabi::<<$ty
                         as $($path_to_types)*:: Guest >::Context > (arg0, arg1, arg2) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[method]context.get-state")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[method]context.get-state")]
                         unsafe extern "C" fn _post_return_method_context_get_state(arg0 :
                         * mut u8,) { unsafe { $($path_to_types)*::
                         __post_return_method_context_get_state::<<$ty as
                         $($path_to_types)*:: Guest >::Context > (arg0) } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]context.set-state")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]context.set-state")]
                         unsafe extern "C" fn export_method_context_set_state(arg0 : * mut
                         u8, arg1 : * mut u8, arg2 : usize, arg3 : * mut u8, arg4 :
                         usize,) -> i32 { unsafe { $($path_to_types)*::
                         _export_method_context_set_state_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Context > (arg0, arg1, arg2, arg3,
                         arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[constructor]initialize-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[constructor]initialize-result")]
                         unsafe extern "C" fn export_constructor_initialize_result(arg0 :
                         * mut u8, arg1 : usize, arg2 : * mut u8, arg3 : usize, arg4 :
                         i32,) -> i32 { unsafe { $($path_to_types)*::
                         _export_constructor_initialize_result_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0, arg1,
                         arg2, arg3, arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]initialize-result.add-capabilities")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]initialize-result.add-capabilities")]
                         unsafe extern "C" fn
                         export_method_initialize_result_add_capabilities(arg0 : * mut u8,
                         arg1 : i32,) { unsafe { $($path_to_types)*::
                         _export_method_initialize_result_add_capabilities_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0, arg1) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]initialize-result.add-meta")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]initialize-result.add-meta")]
                         unsafe extern "C" fn
                         export_method_initialize_result_add_meta(arg0 : * mut u8, arg1 :
                         * mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,) -> i32 {
@@ -16341,68 +16341,68 @@ pub mod exports {
                         _export_method_initialize_result_add_meta_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0, arg1,
                         arg2, arg3, arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]initialize-result.title")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]initialize-result.title")]
                         unsafe extern "C" fn export_method_initialize_result_title(arg0 :
                         * mut u8,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_initialize_result_title_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[method]initialize-result.title")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[method]initialize-result.title")]
                         unsafe extern "C" fn
                         _post_return_method_initialize_result_title(arg0 : * mut u8,) {
                         unsafe { $($path_to_types)*::
                         __post_return_method_initialize_result_title::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]initialize-result.set-title")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]initialize-result.set-title")]
                         unsafe extern "C" fn
                         export_method_initialize_result_set_title(arg0 : * mut u8, arg1 :
                         * mut u8, arg2 : usize,) { unsafe { $($path_to_types)*::
                         _export_method_initialize_result_set_title_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0, arg1,
                         arg2) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]initialize-result.instructions")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]initialize-result.instructions")]
                         unsafe extern "C" fn
                         export_method_initialize_result_instructions(arg0 : * mut u8,) ->
                         * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_initialize_result_instructions_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[method]initialize-result.instructions")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[method]initialize-result.instructions")]
                         unsafe extern "C" fn
                         _post_return_method_initialize_result_instructions(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_method_initialize_result_instructions::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]initialize-result.set-instructions")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]initialize-result.set-instructions")]
                         unsafe extern "C" fn
                         export_method_initialize_result_set_instructions(arg0 : * mut u8,
                         arg1 : * mut u8, arg2 : usize,) { unsafe { $($path_to_types)*::
                         _export_method_initialize_result_set_instructions_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0, arg1,
                         arg2) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[static]initialize-result.finish-json")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[static]initialize-result.finish-json")]
                         unsafe extern "C" fn
                         export_static_initialize_result_finish_json(arg0 : i32,) -> * mut
                         u8 { unsafe { $($path_to_types)*::
                         _export_static_initialize_result_finish_json_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[static]initialize-result.finish-json")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[static]initialize-result.finish-json")]
                         unsafe extern "C" fn
                         _post_return_static_initialize_result_finish_json(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_static_initialize_result_finish_json::<<$ty as
                         $($path_to_types)*:: Guest >::InitializeResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[constructor]list-tools-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[constructor]list-tools-result")]
                         unsafe extern "C" fn export_constructor_list_tools_result() ->
                         i32 { unsafe { $($path_to_types)*::
                         _export_constructor_list_tools_result_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListToolsResult > () } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-tools-result.add-meta")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-tools-result.add-meta")]
                         unsafe extern "C" fn
                         export_method_list_tools_result_add_meta(arg0 : * mut u8, arg1 :
                         * mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,) -> i32 {
@@ -16410,48 +16410,48 @@ pub mod exports {
                         _export_method_list_tools_result_add_meta_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListToolsResult > (arg0, arg1,
                         arg2, arg3, arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-tools-result.set-next-cursor")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-tools-result.set-next-cursor")]
                         unsafe extern "C" fn
                         export_method_list_tools_result_set_next_cursor(arg0 : * mut u8,
                         arg1 : * mut u8, arg2 : usize,) { unsafe { $($path_to_types)*::
                         _export_method_list_tools_result_set_next_cursor_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListToolsResult > (arg0, arg1,
                         arg2) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-tools-result.add-tool")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-tools-result.add-tool")]
                         unsafe extern "C" fn
                         export_method_list_tools_result_add_tool(arg0 : * mut u8,) {
                         unsafe { $($path_to_types)*::
                         _export_method_list_tools_result_add_tool_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListToolsResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[static]list-tools-result.finish-json")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[static]list-tools-result.finish-json")]
                         unsafe extern "C" fn
                         export_static_list_tools_result_finish_json(arg0 : i32,) -> * mut
                         u8 { unsafe { $($path_to_types)*::
                         _export_static_list_tools_result_finish_json_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListToolsResult > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[static]list-tools-result.finish-json")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[static]list-tools-result.finish-json")]
                         unsafe extern "C" fn
                         _post_return_static_list_tools_result_finish_json(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_static_list_tools_result_finish_json::<<$ty as
                         $($path_to_types)*:: Guest >::ListToolsResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[constructor]call-tool-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[constructor]call-tool-result")]
                         unsafe extern "C" fn export_constructor_call_tool_result() -> i32
                         { unsafe { $($path_to_types)*::
                         _export_constructor_call_tool_result_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CallToolResult > () } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]call-tool-result.add-meta")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]call-tool-result.add-meta")]
                         unsafe extern "C" fn export_method_call_tool_result_add_meta(arg0
                         : * mut u8, arg1 : * mut u8, arg2 : usize, arg3 : * mut u8, arg4
                         : usize,) -> i32 { unsafe { $($path_to_types)*::
                         _export_method_call_tool_result_add_meta_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CallToolResult > (arg0, arg1, arg2,
                         arg3, arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]call-tool-result.add-text")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]call-tool-result.add-text")]
                         unsafe extern "C" fn export_method_call_tool_result_add_text(arg0
                         : * mut u8, arg1 : * mut u8, arg2 : usize, arg3 : i32, arg4 :
                         i32, arg5 : * mut u8, arg6 : usize, arg7 : i32, arg8 : i32, arg9
@@ -16461,28 +16461,28 @@ pub mod exports {
                         $($path_to_types)*:: Guest >::CallToolResult > (arg0, arg1, arg2,
                         arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12,
                         arg13, arg14, arg15) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]call-tool-result.add-image")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]call-tool-result.add-image")]
                         unsafe extern "C" fn
                         export_method_call_tool_result_add_image(arg0 : * mut u8,) {
                         unsafe { $($path_to_types)*::
                         _export_method_call_tool_result_add_image_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CallToolResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]call-tool-result.add-audio")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]call-tool-result.add-audio")]
                         unsafe extern "C" fn
                         export_method_call_tool_result_add_audio(arg0 : * mut u8,) {
                         unsafe { $($path_to_types)*::
                         _export_method_call_tool_result_add_audio_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CallToolResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]call-tool-result.add-resource-link")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]call-tool-result.add-resource-link")]
                         unsafe extern "C" fn
                         export_method_call_tool_result_add_resource_link(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         _export_method_call_tool_result_add_resource_link_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CallToolResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]call-tool-result.add-text-resource")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]call-tool-result.add-text-resource")]
                         unsafe extern "C" fn
                         export_method_call_tool_result_add_text_resource(arg0 : * mut u8,
                         arg1 : * mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,
@@ -16493,7 +16493,7 @@ pub mod exports {
                         $($path_to_types)*:: Guest >::CallToolResult > (arg0, arg1, arg2,
                         arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]call-tool-result.add-blob-resource")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]call-tool-result.add-blob-resource")]
                         unsafe extern "C" fn
                         export_method_call_tool_result_add_blob_resource(arg0 : * mut u8,
                         arg1 : * mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,
@@ -16504,14 +16504,14 @@ pub mod exports {
                         $($path_to_types)*:: Guest >::CallToolResult > (arg0, arg1, arg2,
                         arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]call-tool-result.set-error")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]call-tool-result.set-error")]
                         unsafe extern "C" fn
                         export_method_call_tool_result_set_error(arg0 : * mut u8,) {
                         unsafe { $($path_to_types)*::
                         _export_method_call_tool_result_set_error_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CallToolResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]call-tool-result.set-structured-content")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]call-tool-result.set-structured-content")]
                         unsafe extern "C" fn
                         export_method_call_tool_result_set_structured_content(arg0 : *
                         mut u8, arg1 : * mut u8, arg2 : usize,) { unsafe {
@@ -16519,27 +16519,27 @@ pub mod exports {
                         _export_method_call_tool_result_set_structured_content_cabi::<<$ty
                         as $($path_to_types)*:: Guest >::CallToolResult > (arg0, arg1,
                         arg2) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[static]call-tool-result.finish-json")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[static]call-tool-result.finish-json")]
                         unsafe extern "C" fn
                         export_static_call_tool_result_finish_json(arg0 : i32,) -> * mut
                         u8 { unsafe { $($path_to_types)*::
                         _export_static_call_tool_result_finish_json_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CallToolResult > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[static]call-tool-result.finish-json")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[static]call-tool-result.finish-json")]
                         unsafe extern "C" fn
                         _post_return_static_call_tool_result_finish_json(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_static_call_tool_result_finish_json::<<$ty as
                         $($path_to_types)*:: Guest >::CallToolResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[constructor]list-resources-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[constructor]list-resources-result")]
                         unsafe extern "C" fn export_constructor_list_resources_result()
                         -> i32 { unsafe { $($path_to_types)*::
                         _export_constructor_list_resources_result_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListResourcesResult > () } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-resources-result.add-meta")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-resources-result.add-meta")]
                         unsafe extern "C" fn
                         export_method_list_resources_result_add_meta(arg0 : * mut u8,
                         arg1 : * mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,) ->
@@ -16547,7 +16547,7 @@ pub mod exports {
                         _export_method_list_resources_result_add_meta_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListResourcesResult > (arg0, arg1,
                         arg2, arg3, arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-resources-result.set-next-cursor")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-resources-result.set-next-cursor")]
                         unsafe extern "C" fn
                         export_method_list_resources_result_set_next_cursor(arg0 : * mut
                         u8, arg1 : * mut u8, arg2 : usize,) { unsafe {
@@ -16555,35 +16555,35 @@ pub mod exports {
                         _export_method_list_resources_result_set_next_cursor_cabi::<<$ty
                         as $($path_to_types)*:: Guest >::ListResourcesResult > (arg0,
                         arg1, arg2) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-resources-result.add-resource")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-resources-result.add-resource")]
                         unsafe extern "C" fn
                         export_method_list_resources_result_add_resource(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         _export_method_list_resources_result_add_resource_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListResourcesResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[static]list-resources-result.finish-json")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[static]list-resources-result.finish-json")]
                         unsafe extern "C" fn
                         export_static_list_resources_result_finish_json(arg0 : i32,) -> *
                         mut u8 { unsafe { $($path_to_types)*::
                         _export_static_list_resources_result_finish_json_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListResourcesResult > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[static]list-resources-result.finish-json")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[static]list-resources-result.finish-json")]
                         unsafe extern "C" fn
                         _post_return_static_list_resources_result_finish_json(arg0 : *
                         mut u8,) { unsafe { $($path_to_types)*::
                         __post_return_static_list_resources_result_finish_json::<<$ty as
                         $($path_to_types)*:: Guest >::ListResourcesResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[constructor]list-resource-templates-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[constructor]list-resource-templates-result")]
                         unsafe extern "C" fn
                         export_constructor_list_resource_templates_result() -> i32 {
                         unsafe { $($path_to_types)*::
                         _export_constructor_list_resource_templates_result_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListResourceTemplatesResult > () }
                         } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-resource-templates-result.add-meta")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-resource-templates-result.add-meta")]
                         unsafe extern "C" fn
                         export_method_list_resource_templates_result_add_meta(arg0 : *
                         mut u8, arg1 : * mut u8, arg2 : usize, arg3 : * mut u8, arg4 :
@@ -16591,7 +16591,7 @@ pub mod exports {
                         _export_method_list_resource_templates_result_add_meta_cabi::<<$ty
                         as $($path_to_types)*:: Guest >::ListResourceTemplatesResult >
                         (arg0, arg1, arg2, arg3, arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-resource-templates-result.set-next-cursor")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-resource-templates-result.set-next-cursor")]
                         unsafe extern "C" fn
                         export_method_list_resource_templates_result_set_next_cursor(arg0
                         : * mut u8, arg1 : * mut u8, arg2 : usize,) { unsafe {
@@ -16599,34 +16599,34 @@ pub mod exports {
                         _export_method_list_resource_templates_result_set_next_cursor_cabi::<<$ty
                         as $($path_to_types)*:: Guest >::ListResourceTemplatesResult >
                         (arg0, arg1, arg2) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-resource-templates-result.add-resource-template")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-resource-templates-result.add-resource-template")]
                         unsafe extern "C" fn
                         export_method_list_resource_templates_result_add_resource_template(arg0
                         : * mut u8,) { unsafe { $($path_to_types)*::
                         _export_method_list_resource_templates_result_add_resource_template_cabi::<<$ty
                         as $($path_to_types)*:: Guest >::ListResourceTemplatesResult >
                         (arg0) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[static]list-resource-templates-result.finish-json")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[static]list-resource-templates-result.finish-json")]
                         unsafe extern "C" fn
                         export_static_list_resource_templates_result_finish_json(arg0 :
                         i32,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_static_list_resource_templates_result_finish_json_cabi::<<$ty
                         as $($path_to_types)*:: Guest >::ListResourceTemplatesResult >
                         (arg0) } } #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[static]list-resource-templates-result.finish-json")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[static]list-resource-templates-result.finish-json")]
                         unsafe extern "C" fn
                         _post_return_static_list_resource_templates_result_finish_json(arg0
                         : * mut u8,) { unsafe { $($path_to_types)*::
                         __post_return_static_list_resource_templates_result_finish_json::<<$ty
                         as $($path_to_types)*:: Guest >::ListResourceTemplatesResult >
                         (arg0) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[constructor]read-resource-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[constructor]read-resource-result")]
                         unsafe extern "C" fn export_constructor_read_resource_result() ->
                         i32 { unsafe { $($path_to_types)*::
                         _export_constructor_read_resource_result_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ReadResourceResult > () } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]read-resource-result.add-meta")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]read-resource-result.add-meta")]
                         unsafe extern "C" fn
                         export_method_read_resource_result_add_meta(arg0 : * mut u8, arg1
                         : * mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,) -> i32
@@ -16634,7 +16634,7 @@ pub mod exports {
                         _export_method_read_resource_result_add_meta_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ReadResourceResult > (arg0, arg1,
                         arg2, arg3, arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]read-resource-result.add-text-resource")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]read-resource-result.add-text-resource")]
                         unsafe extern "C" fn
                         export_method_read_resource_result_add_text_resource(arg0 : * mut
                         u8, arg1 : * mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,
@@ -16645,7 +16645,7 @@ pub mod exports {
                         as $($path_to_types)*:: Guest >::ReadResourceResult > (arg0,
                         arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10,
                         arg11) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]read-resource-result.add-blob-resource")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]read-resource-result.add-blob-resource")]
                         unsafe extern "C" fn
                         export_method_read_resource_result_add_blob_resource(arg0 : * mut
                         u8, arg1 : * mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,
@@ -16656,27 +16656,27 @@ pub mod exports {
                         as $($path_to_types)*:: Guest >::ReadResourceResult > (arg0,
                         arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10,
                         arg11) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[static]read-resource-result.finish-json")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[static]read-resource-result.finish-json")]
                         unsafe extern "C" fn
                         export_static_read_resource_result_finish_json(arg0 : i32,) -> *
                         mut u8 { unsafe { $($path_to_types)*::
                         _export_static_read_resource_result_finish_json_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ReadResourceResult > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[static]read-resource-result.finish-json")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[static]read-resource-result.finish-json")]
                         unsafe extern "C" fn
                         _post_return_static_read_resource_result_finish_json(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_static_read_resource_result_finish_json::<<$ty as
                         $($path_to_types)*:: Guest >::ReadResourceResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[constructor]list-prompts-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[constructor]list-prompts-result")]
                         unsafe extern "C" fn export_constructor_list_prompts_result() ->
                         i32 { unsafe { $($path_to_types)*::
                         _export_constructor_list_prompts_result_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListPromptsResult > () } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-prompts-result.add-meta")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-prompts-result.add-meta")]
                         unsafe extern "C" fn
                         export_method_list_prompts_result_add_meta(arg0 : * mut u8, arg1
                         : * mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,) -> i32
@@ -16684,7 +16684,7 @@ pub mod exports {
                         _export_method_list_prompts_result_add_meta_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListPromptsResult > (arg0, arg1,
                         arg2, arg3, arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-prompts-result.set-next-cursor")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-prompts-result.set-next-cursor")]
                         unsafe extern "C" fn
                         export_method_list_prompts_result_set_next_cursor(arg0 : * mut
                         u8, arg1 : * mut u8, arg2 : usize,) { unsafe {
@@ -16692,7 +16692,7 @@ pub mod exports {
                         _export_method_list_prompts_result_set_next_cursor_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListPromptsResult > (arg0, arg1,
                         arg2) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]list-prompts-result.add-prompt")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]list-prompts-result.add-prompt")]
                         unsafe extern "C" fn
                         export_method_list_prompts_result_add_prompt(arg0 : * mut u8,
                         arg1 : * mut u8, arg2 : usize, arg3 : i32, arg4 : i32, arg5 : *
@@ -16703,27 +16703,27 @@ pub mod exports {
                         $($path_to_types)*:: Guest >::ListPromptsResult > (arg0, arg1,
                         arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11,
                         arg12, arg13, arg14, arg15) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[static]list-prompts-result.finish-json")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[static]list-prompts-result.finish-json")]
                         unsafe extern "C" fn
                         export_static_list_prompts_result_finish_json(arg0 : i32,) -> *
                         mut u8 { unsafe { $($path_to_types)*::
                         _export_static_list_prompts_result_finish_json_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::ListPromptsResult > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[static]list-prompts-result.finish-json")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[static]list-prompts-result.finish-json")]
                         unsafe extern "C" fn
                         _post_return_static_list_prompts_result_finish_json(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_static_list_prompts_result_finish_json::<<$ty as
                         $($path_to_types)*:: Guest >::ListPromptsResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[constructor]get-prompt-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[constructor]get-prompt-result")]
                         unsafe extern "C" fn export_constructor_get_prompt_result() ->
                         i32 { unsafe { $($path_to_types)*::
                         _export_constructor_get_prompt_result_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::GetPromptResult > () } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]get-prompt-result.add-meta")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]get-prompt-result.add-meta")]
                         unsafe extern "C" fn
                         export_method_get_prompt_result_add_meta(arg0 : * mut u8, arg1 :
                         * mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,) -> i32 {
@@ -16731,42 +16731,42 @@ pub mod exports {
                         _export_method_get_prompt_result_add_meta_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::GetPromptResult > (arg0, arg1,
                         arg2, arg3, arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]get-prompt-result.set-description")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]get-prompt-result.set-description")]
                         unsafe extern "C" fn
                         export_method_get_prompt_result_set_description(arg0 : * mut u8,
                         arg1 : * mut u8, arg2 : usize,) { unsafe { $($path_to_types)*::
                         _export_method_get_prompt_result_set_description_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::GetPromptResult > (arg0, arg1,
                         arg2) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]get-prompt-result.add-text-message")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]get-prompt-result.add-text-message")]
                         unsafe extern "C" fn
                         export_method_get_prompt_result_add_text_message(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         _export_method_get_prompt_result_add_text_message_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::GetPromptResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]get-prompt-result.add-image-message")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]get-prompt-result.add-image-message")]
                         unsafe extern "C" fn
                         export_method_get_prompt_result_add_image_message(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         _export_method_get_prompt_result_add_image_message_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::GetPromptResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]get-prompt-result.add-audio-message")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]get-prompt-result.add-audio-message")]
                         unsafe extern "C" fn
                         export_method_get_prompt_result_add_audio_message(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         _export_method_get_prompt_result_add_audio_message_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::GetPromptResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]get-prompt-result.add-resource-link-message")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]get-prompt-result.add-resource-link-message")]
                         unsafe extern "C" fn
                         export_method_get_prompt_result_add_resource_link_message(arg0 :
                         * mut u8,) { unsafe { $($path_to_types)*::
                         _export_method_get_prompt_result_add_resource_link_message_cabi::<<$ty
                         as $($path_to_types)*:: Guest >::GetPromptResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]get-prompt-result.add-text-resource-message")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]get-prompt-result.add-text-resource-message")]
                         unsafe extern "C" fn
                         export_method_get_prompt_result_add_text_resource_message(arg0 :
                         * mut u8, arg1 : i32, arg2 : * mut u8, arg3 : usize, arg4 : * mut
@@ -16777,7 +16777,7 @@ pub mod exports {
                         as $($path_to_types)*:: Guest >::GetPromptResult > (arg0, arg1,
                         arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11,
                         arg12) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]get-prompt-result.add-blob-resource-message")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]get-prompt-result.add-blob-resource-message")]
                         unsafe extern "C" fn
                         export_method_get_prompt_result_add_blob_resource_message(arg0 :
                         * mut u8, arg1 : i32, arg2 : * mut u8, arg3 : usize, arg4 : * mut
@@ -16788,120 +16788,121 @@ pub mod exports {
                         as $($path_to_types)*:: Guest >::GetPromptResult > (arg0, arg1,
                         arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11,
                         arg12) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[static]get-prompt-result.finish-json")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[static]get-prompt-result.finish-json")]
                         unsafe extern "C" fn
                         export_static_get_prompt_result_finish_json(arg0 : i32,) -> * mut
                         u8 { unsafe { $($path_to_types)*::
                         _export_static_get_prompt_result_finish_json_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::GetPromptResult > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[static]get-prompt-result.finish-json")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[static]get-prompt-result.finish-json")]
                         unsafe extern "C" fn
                         _post_return_static_get_prompt_result_finish_json(arg0 : * mut
                         u8,) { unsafe { $($path_to_types)*::
                         __post_return_static_get_prompt_result_finish_json::<<$ty as
                         $($path_to_types)*:: Guest >::GetPromptResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[constructor]complete-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[constructor]complete-result")]
                         unsafe extern "C" fn export_constructor_complete_result(arg0 : *
                         mut u8, arg1 : usize,) -> i32 { unsafe { $($path_to_types)*::
                         _export_constructor_complete_result_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CompleteResult > (arg0, arg1) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]complete-result.add-meta")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]complete-result.add-meta")]
                         unsafe extern "C" fn export_method_complete_result_add_meta(arg0
                         : * mut u8, arg1 : * mut u8, arg2 : usize, arg3 : * mut u8, arg4
                         : usize,) -> i32 { unsafe { $($path_to_types)*::
                         _export_method_complete_result_add_meta_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CompleteResult > (arg0, arg1, arg2,
                         arg3, arg4) } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]complete-result.set-has-more")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]complete-result.set-has-more")]
                         unsafe extern "C" fn
                         export_method_complete_result_set_has_more(arg0 : * mut u8,) {
                         unsafe { $($path_to_types)*::
                         _export_method_complete_result_set_has_more_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CompleteResult > (arg0) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]complete-result.set-total")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]complete-result.set-total")]
                         unsafe extern "C" fn export_method_complete_result_set_total(arg0
                         : * mut u8, arg1 : i32,) { unsafe { $($path_to_types)*::
                         _export_method_complete_result_set_total_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CompleteResult > (arg0, arg1) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[method]complete-result.add-value")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[method]complete-result.add-value")]
                         unsafe extern "C" fn export_method_complete_result_add_value(arg0
                         : * mut u8, arg1 : * mut u8, arg2 : usize,) { unsafe {
                         $($path_to_types)*::
                         _export_method_complete_result_add_value_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CompleteResult > (arg0, arg1, arg2)
                         } } #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[static]complete-result.finish")]
-                        unsafe extern "C" fn export_static_complete_result_finish(arg0 :
-                        i32,) -> * mut u8 { unsafe { $($path_to_types)*::
-                        _export_static_complete_result_finish_cabi::<<$ty as
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[static]complete-result.finish-json")]
+                        unsafe extern "C" fn
+                        export_static_complete_result_finish_json(arg0 : i32,) -> * mut
+                        u8 { unsafe { $($path_to_types)*::
+                        _export_static_complete_result_finish_json_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::CompleteResult > (arg0) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.23#[static]complete-result.finish")]
+                        "cabi_post_wasmcp:mcp/types@0.3.0-alpha.24#[static]complete-result.finish-json")]
                         unsafe extern "C" fn
-                        _post_return_static_complete_result_finish(arg0 : * mut u8,) {
-                        unsafe { $($path_to_types)*::
-                        __post_return_static_complete_result_finish::<<$ty as
+                        _post_return_static_complete_result_finish_json(arg0 : * mut u8,)
+                        { unsafe { $($path_to_types)*::
+                        __post_return_static_complete_result_finish_json::<<$ty as
                         $($path_to_types)*:: Guest >::CompleteResult > (arg0) } } const _
                         : () = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[dtor]context")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[dtor]context")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: Context::dtor::< <$ty as
                         $($path_to_types)*:: Guest >::Context > (rep) } } }; const _ : ()
                         = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[dtor]initialize-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[dtor]initialize-result")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: InitializeResult::dtor::<
                         <$ty as $($path_to_types)*:: Guest >::InitializeResult > (rep) }
                         } }; const _ : () = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[dtor]list-tools-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[dtor]list-tools-result")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: ListToolsResult::dtor::< <$ty
                         as $($path_to_types)*:: Guest >::ListToolsResult > (rep) } } };
                         const _ : () = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[dtor]call-tool-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[dtor]call-tool-result")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: CallToolResult::dtor::< <$ty
                         as $($path_to_types)*:: Guest >::CallToolResult > (rep) } } };
                         const _ : () = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[dtor]list-resources-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[dtor]list-resources-result")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: ListResourcesResult::dtor::<
                         <$ty as $($path_to_types)*:: Guest >::ListResourcesResult > (rep)
                         } } }; const _ : () = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[dtor]list-resource-templates-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[dtor]list-resource-templates-result")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*::
                         ListResourceTemplatesResult::dtor::< <$ty as $($path_to_types)*::
                         Guest >::ListResourceTemplatesResult > (rep) } } }; const _ : ()
                         = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[dtor]read-resource-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[dtor]read-resource-result")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: ReadResourceResult::dtor::<
                         <$ty as $($path_to_types)*:: Guest >::ReadResourceResult > (rep)
                         } } }; const _ : () = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[dtor]list-prompts-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[dtor]list-prompts-result")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: ListPromptsResult::dtor::<
                         <$ty as $($path_to_types)*:: Guest >::ListPromptsResult > (rep) }
                         } }; const _ : () = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[dtor]get-prompt-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[dtor]get-prompt-result")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: GetPromptResult::dtor::< <$ty
                         as $($path_to_types)*:: Guest >::GetPromptResult > (rep) } } };
                         const _ : () = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/types@0.3.0-alpha.23#[dtor]complete-result")]
+                        "wasmcp:mcp/types@0.3.0-alpha.24#[dtor]complete-result")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: CompleteResult::dtor::< <$ty
                         as $($path_to_types)*:: Guest >::CompleteResult > (rep) } } }; };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_types_0_3_0_alpha_23_cabi;
+                pub(crate) use __export_wasmcp_mcp_types_0_3_0_alpha_24_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -17136,7 +17137,7 @@ macro_rules! __export_authorized_transport_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::wasmcp::mcp::types::__export_wasmcp_mcp_types_0_3_0_alpha_23_cabi!($ty
+        exports::wasmcp::mcp::types::__export_wasmcp_mcp_types_0_3_0_alpha_24_cabi!($ty
         with_types_in $($path_to_types_root)*:: exports::wasmcp::mcp::types);
     };
 }
@@ -17144,12 +17145,12 @@ macro_rules! __export_authorized_transport_impl {
 pub(crate) use __export_authorized_transport_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0-alpha.23:authorized-transport:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0-alpha.24:authorized-transport:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 14027] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc0l\x01A\x02\x01A'\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 14037] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xcal\x01A\x02\x01A'\x01\
 B\x14\x01ps\x01r\x02\x08resources\x15authorization-servers\0\x04\0\x1bprotected-\
 resource-metadata\x03\0\x01\x01ks\x04\0\x0bdeny-reason\x03\0\x03\x01r\x04\x06met\
 hods\x04paths\x07headers\0\x06claimss\x04\0\x15post-validate-context\x03\0\x05\x01\
@@ -17159,18 +17160,18 @@ PS256\x05PS384\x05PS512\x05EDDSA\x04\0\x09algorithm\x03\0\x07\x01k\0\x01kw\x01k\
 ct-tokens-expiring-in-less-than\x0a\x0cvalidate-exp\x0b\x0cvalidate-nbf\x0b\x03s\
 ub\x0c\x0aalgorithms\x0e\x04\0\x12validation-options\x03\0\x0f\x01k\x10\x01r\x03\
 \x06issuer\0\x08audience\0\x07options\x11\x04\0\x11validation-config\x03\0\x12\x03\
-\0-wasmcp:mcp/authorization-types@0.3.0-alpha.23\x05\0\x02\x03\0\0\x1bprotected-\
+\0-wasmcp:mcp/authorization-types@0.3.0-alpha.24\x05\0\x02\x03\0\0\x1bprotected-\
 resource-metadata\x01B\x04\x02\x03\x02\x01\x01\x04\0\x1bprotected-resource-metad\
 ata\x03\0\0\x01@\0\0\x01\x04\0\x1fget-protected-resource-metadata\x01\x02\x03\03\
-wasmcp:mcp/oauth2-protected-resource@0.3.0-alpha.23\x05\x02\x02\x03\0\0\x0bdeny-\
+wasmcp:mcp/oauth2-protected-resource@0.3.0-alpha.24\x05\x02\x02\x03\0\0\x0bdeny-\
 reason\x02\x03\0\0\x15post-validate-context\x02\x03\0\0\x11validation-config\x01\
 B\x0b\x02\x03\x02\x01\x03\x04\0\x0bdeny-reason\x03\0\0\x02\x03\x02\x01\x04\x04\0\
 \x15post-validate-context\x03\0\x02\x02\x03\x02\x01\x05\x04\0\x11validation-conf\
 ig\x03\0\x04\x01@\0\0\x05\x04\0\x15get-validation-config\x01\x06\x01j\0\x01\x01\x01\
 @\x01\x07context\x03\0\x07\x04\0\x0dpost-validate\x01\x08\x03\0(wasmcp:mcp/jwt-v\
-alidation@0.3.0-alpha.23\x05\x06\x01B\x07\x01@\0\0s\x04\0\x0cget-jwks-uri\x01\0\x01\
+alidation@0.3.0-alpha.24\x05\x06\x01B\x07\x01@\0\0s\x04\0\x0cget-jwks-uri\x01\0\x01\
 ks\x01@\x01\x08jwks-uris\0\x01\x04\0\x08get-jwks\x01\x02\x01@\x02\x08jwks-uris\x04\
-jwkss\x01\0\x04\0\x08set-jwks\x01\x03\x03\0$wasmcp:mcp/jwks-cache@0.3.0-alpha.23\
+jwkss\x01\0\x04\0\x08set-jwks\x01\x03\x03\0$wasmcp:mcp/jwks-cache@0.3.0-alpha.24\
 \x05\x07\x01B\xde\x01\x01s\x04\0\x04json\x03\0\0\x01o\x02ss\x01p\x02\x04\0\x0ame\
 ta-pairs\x03\0\x03\x01m\x05\x0bparse-error\x0finvalid-request\x10method-not-foun\
 d\x0einvalid-params\x0einternal-error\x04\0\x0aerror-code\x03\0\x05\x01m\x02\x04\
@@ -17277,13 +17278,13 @@ eys\x05values\0\xc8\0\x04\0\x20[method]complete-result.add-meta\x01\x98\x01\x01@
 \x01\x04self\x97\x01\x01\0\x04\0$[method]complete-result.set-has-more\x01\x99\x01\
 \x01@\x02\x04self\x97\x01\x05total{\x01\0\x04\0![method]complete-result.set-tota\
 l\x01\x9a\x01\x01@\x02\x04self\x97\x01\x05values\x01\0\x04\0![method]complete-re\
-sult.add-value\x01\x9b\x01\x01@\x01\x04this\x95\x01\0\xd2\0\x04\0\x1e[static]com\
-plete-result.finish\x01\x9c\x01\x03\0\x1fwasmcp:mcp/types@0.3.0-alpha.23\x05\x08\
+sult.add-value\x01\x9b\x01\x01@\x01\x04this\x95\x01\0\xd2\0\x04\0#[static]comple\
+te-result.finish-json\x01\x9c\x01\x03\0\x1fwasmcp:mcp/types@0.3.0-alpha.24\x05\x08\
 \x02\x03\0\x04\x11initialize-result\x02\x03\0\x04\x07context\x02\x03\0\x04\x09mc\
 p-error\x01B\x0b\x02\x03\x02\x01\x09\x04\0\x11initialize-result\x03\0\0\x02\x03\x02\
 \x01\x0a\x04\0\x07context\x03\0\x02\x02\x03\x02\x01\x0b\x04\0\x09mcp-error\x03\0\
 \x04\x01h\x03\x01i\x01\x01j\x01\x07\x01\x05\x01@\x01\x03ctx\x06\0\x08\x04\0\x0ai\
-nitialize\x01\x09\x03\0#wasmcp:mcp/lifecycle@0.3.0-alpha.23\x05\x0c\x02\x03\0\x04\
+nitialize\x01\x09\x03\0#wasmcp:mcp/lifecycle@0.3.0-alpha.24\x05\x0c\x02\x03\0\x04\
 \x10call-tool-result\x02\x03\0\x04\x11list-tools-result\x02\x03\0\x04\x04json\x01\
 B\x15\x02\x03\x02\x01\x0d\x04\0\x10call-tool-result\x03\0\0\x02\x03\x02\x01\x0e\x04\
 \0\x11list-tools-result\x03\0\x02\x02\x03\x02\x01\x0a\x04\0\x07context\x03\0\x04\
@@ -17291,7 +17292,7 @@ B\x15\x02\x03\x02\x01\x0d\x04\0\x10call-tool-result\x03\0\0\x02\x03\x02\x01\x0e\
 ror\x03\0\x08\x01h\x05\x01ks\x01i\x03\x01j\x01\x0c\x01\x09\x01@\x02\x03ctx\x0a\x06\
 cursor\x0b\0\x0d\x04\0\x0alist-tools\x01\x0e\x01k\x07\x01i\x01\x01j\x01\x10\x01\x09\
 \x01@\x03\x03ctx\x0a\x04names\x09arguments\x0f\0\x11\x04\0\x09call-tool\x01\x12\x03\
-\0\x1fwasmcp:mcp/tools@0.3.0-alpha.23\x05\x10\x02\x03\0\x04\x15list-resources-re\
+\0\x1fwasmcp:mcp/tools@0.3.0-alpha.24\x05\x10\x02\x03\0\x04\x15list-resources-re\
 sult\x02\x03\0\x04\x1elist-resource-templates-result\x02\x03\0\x04\x14read-resou\
 rce-result\x01B\x18\x02\x03\x02\x01\x11\x04\0\x15list-resources-result\x03\0\0\x02\
 \x03\x02\x01\x12\x04\0\x1elist-resource-templates-result\x03\0\x02\x02\x03\x02\x01\
@@ -17301,20 +17302,20 @@ t\x03\0\x06\x02\x03\x02\x01\x0b\x04\0\x09mcp-error\x03\0\x08\x01h\x07\x01ks\x01i
 resources\x01\x0e\x01i\x03\x01j\x01\x0f\x01\x09\x01@\x02\x03ctx\x0a\x06cursor\x0b\
 \0\x10\x04\0\x0elist-templates\x01\x11\x01i\x05\x01j\x01\x12\x01\x09\x01@\x02\x03\
 ctx\x0a\x03uris\0\x13\x04\0\x0dread-resource\x01\x14\x03\0#wasmcp:mcp/resources@\
-0.3.0-alpha.23\x05\x14\x02\x03\0\x04\x13list-prompts-result\x02\x03\0\x04\x11get\
+0.3.0-alpha.24\x05\x14\x02\x03\0\x04\x13list-prompts-result\x02\x03\0\x04\x11get\
 -prompt-result\x01B\x15\x02\x03\x02\x01\x15\x04\0\x13list-prompts-result\x03\0\0\
 \x02\x03\x02\x01\x16\x04\0\x11get-prompt-result\x03\0\x02\x02\x03\x02\x01\x0a\x04\
 \0\x07context\x03\0\x04\x02\x03\x02\x01\x0f\x04\0\x04json\x03\0\x06\x02\x03\x02\x01\
 \x0b\x04\0\x09mcp-error\x03\0\x08\x01h\x05\x01ks\x01i\x01\x01j\x01\x0c\x01\x09\x01\
 @\x02\x03ctx\x0a\x06cursor\x0b\0\x0d\x04\0\x0clist-prompts\x01\x0e\x01k\x07\x01i\
 \x03\x01j\x01\x10\x01\x09\x01@\x03\x03ctx\x0a\x04names\x09arguments\x0f\0\x11\x04\
-\0\x0aget-prompt\x01\x12\x03\0!wasmcp:mcp/prompts@0.3.0-alpha.23\x05\x17\x02\x03\
+\0\x0aget-prompt\x01\x12\x03\0!wasmcp:mcp/prompts@0.3.0-alpha.24\x05\x17\x02\x03\
 \0\x04\x10complete-request\x02\x03\0\x04\x0fcomplete-result\x01B\x0d\x02\x03\x02\
 \x01\x18\x04\0\x10complete-request\x03\0\0\x02\x03\x02\x01\x19\x04\0\x0fcomplete\
 -result\x03\0\x02\x02\x03\x02\x01\x0a\x04\0\x07context\x03\0\x04\x02\x03\x02\x01\
 \x0b\x04\0\x09mcp-error\x03\0\x06\x01h\x05\x01i\x03\x01j\x01\x09\x01\x07\x01@\x02\
 \x03ctx\x08\x07request\x01\0\x0a\x04\0\x08complete\x01\x0b\x03\0$wasmcp:mcp/comp\
-letion@0.3.0-alpha.23\x05\x1a\x01B\xde\x01\x01s\x04\0\x04json\x03\0\0\x01o\x02ss\
+letion@0.3.0-alpha.24\x05\x1a\x01B\xde\x01\x01s\x04\0\x04json\x03\0\0\x01o\x02ss\
 \x01p\x02\x04\0\x0ameta-pairs\x03\0\x03\x01m\x05\x0bparse-error\x0finvalid-reque\
 st\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerror-code\x03\
 \0\x05\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\x07\x01n\x04\x0bdestruc\
@@ -17421,10 +17422,10 @@ sult.add-meta\x01\x98\x01\x01@\x01\x04self\x97\x01\x01\0\x04\0$[method]complete-
 result.set-has-more\x01\x99\x01\x01@\x02\x04self\x97\x01\x05total{\x01\0\x04\0![\
 method]complete-result.set-total\x01\x9a\x01\x01@\x02\x04self\x97\x01\x05values\x01\
 \0\x04\0![method]complete-result.add-value\x01\x9b\x01\x01@\x01\x04this\x95\x01\0\
-\xd2\0\x04\0\x1e[static]complete-result.finish\x01\x9c\x01\x04\0\x1fwasmcp:mcp/t\
-ypes@0.3.0-alpha.23\x05\x1b\x04\0.wasmcp:mcp/authorized-transport@0.3.0-alpha.23\
-\x04\0\x0b\x1a\x01\0\x14authorized-transport\x03\0\0\0G\x09producers\x01\x0cproc\
-essed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+\xd2\0\x04\0#[static]complete-result.finish-json\x01\x9c\x01\x04\0\x1fwasmcp:mcp\
+/types@0.3.0-alpha.24\x05\x1b\x04\0.wasmcp:mcp/authorized-transport@0.3.0-alpha.\
+24\x04\0\x0b\x1a\x01\0\x14authorized-transport\x03\0\0\0G\x09producers\x01\x0cpr\
+ocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

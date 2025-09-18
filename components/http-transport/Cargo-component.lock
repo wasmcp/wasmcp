@@ -6,6 +6,6 @@ version = 1
 name = "wasmcp:mcp"
 
 [[package.version]]
-requirement = "^0.3.0-alpha.23"
-version = "0.3.0-alpha.23"
-digest = "sha256:67f4847b90c50ee8f7c4bbabcab78dca28a02bb0637ba56a99c55988405bdd9e"
+requirement = "^0.3.0-alpha.24"
+version = "0.3.0-alpha.24"
+digest = "sha256:747072ab0bbec0e8d279641bbbe1b68dc52528be423ba681bf7074a37e0b8baa"

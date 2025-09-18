@@ -1,6 +1,6 @@
 [package]
 name = "mcp_transport_http"
-version = "0.3.0-alpha.23"
+version = "0.3.0-alpha.24"
 edition = "2024"
 rust-version = "1.89"
 
@@ -47,5 +47,5 @@ package = "mcp:transport-http"
 
 [package.metadata.component.target]
 package = "wasmcp:mcp"
-version = "0.3.0-alpha.23"
+version = "0.3.0-alpha.24"
 world = "authorized-transport"
