@@ -7943,7 +7943,7 @@ mod _rt {
 /// ```
 #[allow(unused_macros)]
 #[doc(hidden)]
-macro_rules! __export_mcp_type_impls_impl {
+macro_rules! __export_mcp_lib_impl {
     ($ty:ident) => {
         self::export!($ty with_types_in self);
     };
@@ -7954,15 +7954,15 @@ macro_rules! __export_mcp_type_impls_impl {
     };
 }
 #[doc(inline)]
-pub(crate) use __export_mcp_type_impls_impl as export;
+pub(crate) use __export_mcp_lib_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp-type-impls:mcp-type-impls:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp-lib:mcp-lib:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 5851] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xd6,\x01A\x02\x01A\x02\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 5830] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc8,\x01A\x02\x01A\x02\
 \x01B\xde\x01\x01s\x04\0\x04json\x03\0\0\x01o\x02ss\x01p\x02\x04\0\x0ameta-pairs\
 \x03\0\x03\x01m\x05\x0bparse-error\x0finvalid-request\x10method-not-found\x0einv\
 alid-params\x0einternal-error\x04\0\x0aerror-code\x03\0\x05\x01m\x02\x04user\x09\
@@ -8071,9 +8071,9 @@ eys\x05values\0\xc8\0\x04\0\x20[method]complete-result.add-meta\x01\x98\x01\x01@
 l\x01\x9a\x01\x01@\x02\x04self\x97\x01\x05values\x01\0\x04\0![method]complete-re\
 sult.add-value\x01\x9b\x01\x01@\x01\x04this\x95\x01\0\xd2\0\x04\0#[static]comple\
 te-result.finish-json\x01\x9c\x01\x04\0\x1fwasmcp:mcp/types@0.3.0-alpha.24\x05\0\
-\x04\0$wasmcp:mcp-type-impls/mcp-type-impls\x04\0\x0b\x14\x01\0\x0emcp-type-impl\
-s\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10\
-wit-bindgen-rust\x060.41.0";
+\x04\0\x16wasmcp:mcp-lib/mcp-lib\x04\0\x0b\x0d\x01\0\x07mcp-lib\x03\0\0\0G\x09pr\
+oducers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x06\
+0.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {
