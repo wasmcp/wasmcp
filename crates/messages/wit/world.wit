@@ -1,0 +1,5 @@
+package wasmcp:messages;
+
+world messages-guest {
+    export wasmcp:mcp/messages@0.3.0-alpha.24;
+}

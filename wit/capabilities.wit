@@ -1,0 +1,84 @@
+/// Tools enable models to interact with external systems, such as querying databases, calling APIs, or performing computations.
+/// Each tool is uniquely identified by a name and includes metadata describing its schema.
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+interface tools-capability {
+    use contexts.{context};
+    use messages.{
+        json-string,
+        mcp-error,
+        list-tools-params,
+        list-tools-result,
+        call-tool-params,
+        call-tool-result,
+    };
+    
+    /// List available tools
+    list-tools: func(ctx: borrow<context>, params: list-tools-params) -> result<list-tools-result, mcp-error>;
+    
+    /// Execute a tool
+    call-tool: func(ctx: borrow<context>, params: call-tool-params) -> result<call-tool-result, mcp-error>;
+}
+
+/// Resources allow servers to share data that provides context to language models, such as files, database schemas, or application-specific information.
+/// Each resource is uniquely identified by a URI.
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/resources
+interface resources-capability {
+    use contexts.{context};
+    use messages.{
+        mcp-error,
+        list-resources-params,
+        list-resources-result,
+        list-resource-templates-params,
+        list-resource-templates-result,
+        read-resource-params,
+        read-resource-result,
+    };
+    
+    /// List available resources
+    list-resources: func(ctx: borrow<context>, params: list-resources-params) -> result<list-resources-result, mcp-error>;
+    
+    /// List resource templates
+    list-templates: func(ctx: borrow<context>, params: list-resource-templates-params) -> result<list-resource-templates-result, mcp-error>;
+    
+    /// Read a specific resource
+    read-resource: func(ctx: borrow<context>, params: read-resource-params) -> result<read-resource-result, mcp-error>;
+}
+
+/// Prompts allow servers to provide structured messages and instructions for interacting with language models.
+/// Clients can discover available prompts, retrieve their contents, and provide arguments to customize them.
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
+interface prompts-capability {
+    use contexts.{context};
+    use messages.{
+        json-string,
+        mcp-error,
+        list-prompts-params,
+        list-prompts-result,
+        get-prompt-params,
+        get-prompt-result,
+    };
+    
+    /// List available prompts
+    list-prompts: func(ctx: borrow<context>, params: list-prompts-params) -> result<list-prompts-result, mcp-error>;
+    
+    /// Get a specific prompt
+    get-prompt: func(ctx: borrow<context>, params: get-prompt-params) -> result<get-prompt-result, mcp-error>;
+}
+
+/// Provides a standardized way for servers to offer argument autocompletion suggestions for prompts and resource URIs
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion
+interface completion-capability {
+    use contexts.{context};
+    use messages.{
+        mcp-error,
+        complete-params,
+        complete-result,
+    };
+    
+    /// Handle request for completion suggestions
+    complete: func(ctx: borrow<context>, params: complete-params) -> result<complete-result, mcp-error>;
+}

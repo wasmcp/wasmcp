@@ -1,9 +1,0 @@
-/// Provides a standardized way for servers to offer argument autocompletion suggestions for prompts and resource URIs
-///
-/// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion
-interface completion {
-    use types.{complete-request, complete-result, context, mcp-error};
-    
-    /// Handle request for completion suggestions
-    complete: func(ctx: borrow<context>, request: complete-request) -> result<complete-result, mcp-error>;
-}

@@ -1,87 +1,103 @@
-/// Provides the relevant subset of [RFC9728] resource metatadata used by MCP clients
-/// Additional metadata parameters may be exposed in the future
-///
-/// https://datatracker.ietf.org/doc/html/rfc9728
-/// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
-interface oauth2-protected-resource {
-    use authorization-types.{protected-resource-metadata};
+interface validate-jwt {
+    use types.{alist};
+    use contexts.{context};
 
-    /// Gets the relevant subset of [RFC9728] resource metatadata used by MCP clients
-    get-protected-resource-metadata: func() -> protected-resource-metadata;
-}
-
-
-/// Validates an incoming JWT
-interface jwt-validation {
-    use authorization-types.{deny-reason, post-validate-context, validation-config};
-
-    /// Gets the validations that are applied after decoding a JWT. 
-    get-validation-config: func() -> validation-config;
-
-    /// Called after successful validation
-    ///
-    /// Additional access control may be enforced here
-    post-validate: func(context: post-validate-context) -> result<_, deny-reason>;
-}
-
-
-/// Caches JWKS
-interface jwks-cache {
-    /// Get the JWKS URI
-    get-jwks-uri: func() -> string;
-
-    /// Get cached JWKS for a given URI (optional - return none if not cached or not implemented)
-    /// Allows providers to implement JWKS caching via WASI-KV or other persistence mechanisms
-    /// The transport will call this before fetching from jwks-uri to check for cached keys
-    get-jwks: func(jwks-uri: string) -> option<string>;
-    
-    /// Cache JWKS for a given URI (optional - no-op if caching not implemented)
-    /// The transport calls this after successfully fetching JWKS from jwks-uri
-    /// Providers can implement caching via WASI-KV or other persistence mechanisms
-    /// The jwks parameter contains the raw JWKS JSON string to cache
-    set-jwks: func(jwks-uri: string, jwks: string);
-}
-
-/// Authorization types
-interface authorization-types {
-    /// The relevant subset of [RFC9728] resource metatadata used by MCP clients
-    /// Additional metadata parameters may be exposed in the future
-    ///
-    /// https://datatracker.ietf.org/doc/html/rfc9728
-    /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
-    record protected-resource-metadata {
-        /// The protected resource's identifier, as defined in [RFC9728] Section 1.2
-        ///
-        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization#resource-parameter-implementation
-        %resource: string,
-
-        /// List of OAuth authorization server issuer identifiers, as defined in [RFC8414], for authorization servers that can be used with this protected resource
-        /// Optional in [RFC9728] but REQUIRED by the MCP spec
-        /// MUST contain at least one authorization server
-        ///
-        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization#authorization-server-location
-        authorization-servers: list<string>,
+    record claims {
+        /// Expiration time (as UTC timestamp)
+        exp: u64,
+        /// Audience
+        aud: option<string>,
+        /// Issued at (as UTC timestamp)
+        iat: option<u64>,
+        /// Issuer
+        iss: option<string>,
+        /// Not Before (as UTC timestamp)
+        nbf: option<u64>,
+        /// Subject (whom token refers to)
+        sub: option<string>,
     }
 
-    /// Optional reason for access denial in the post-validate hook
-    type deny-reason = option<string>;
-
-    /// Request context passed to the post-validate hook
-    record post-validate-context {
-        method: string,
-        path: string,
-        headers: list<string>,
-        claims: string,
+    /// https://github.com/Keats/jsonwebtoken/blob/master/src/validation.rs
+    flags required-claims {
+        exp,
+        nbf,
+        aud,
+        iss,
+        sub,
     }
 
-    /// The validations that are applied after decoding a JWT
-    /// Derived from https://github.com/Keats/jsonwebtoken, which implements validation in the reference Streamable HTTP transport component.
-    record validation-config {
-        /// `iss` is a collection of one or more acceptable issuers members
-        issuer: list<string>,
-        /// `aud` is a collection of one or more acceptable audience members
-        audience: list<string>,
-        options: option<validation-options>,
+    enum algorithm {
+        /// HMAC using SHA-256
+        HS256,
+        /// HMAC using SHA-384
+        HS384,
+        /// HMAC using SHA-512
+        HS512,
+        /// ECDSA using SHA-256
+        ES256,
+        /// ECDSA using SHA-384
+        ES384,
+        /// RSASSA-PKCS1-v1_5 using SHA-256
+        RS256,
+        /// RSASSA-PKCS1-v1_5 using SHA-384
+        RS384,
+        /// RSASSA-PKCS1-v1_5 using SHA-512
+        RS512,
+        /// RSASSA-PSS using SHA-256
+        PS256,
+        /// RSASSA-PSS using SHA-384
+        PS384,
+        /// RSASSA-PSS using SHA-512
+        PS512,
+        /// Edwards-curve Digital Signature Algorithm (EdDSA)
+        EDDSA,
+    }
+
+    /// Validation error types
+    variant validation-error {
+        /// When a token doesn't have a valid JWT shape
+        invalid-token,
+        /// When the signature doesn't match
+        invalid-signature,
+        /// When the secret given is not a valid ECDSA key
+        invalid-ecdsa-key,
+        /// When the secret given is not a valid RSA key
+        invalid-rsa-key(string),
+        /// We could not sign with the given key
+        rsa-failed-signing,
+        /// When the algorithm from string doesn't match the one passed to `from_str`
+        invalid-algorithm-name,
+        /// When a key is provided with an invalid format
+        invalid-key-format,
+
+        // Validation errors
+        /// When a claim required by the validation is not present
+        missing-required-claim(string),
+        /// When a token’s `exp` claim indicates that it has expired
+        expired-signature,
+        /// When a token’s `iss` claim does not match the expected issuer
+        invalid-issuer,
+        /// When a token’s `aud` claim does not match one of the expected audience values
+        invalid-audience,
+        /// When a token’s `sub` claim does not match one of the expected subject values
+        invalid-subject,
+        /// When a token’s `nbf` claim represents a time in the future
+        immature-signature,
+        /// When the algorithm in the header doesn't match the one passed to `decode` or the encoding/decoding key
+        /// used doesn't match the alg requested
+        invalid-algorithm,
+        /// When the Validation struct does not contain at least 1 algorithm
+        missing-algorithm,
+
+        // 3rd party errors
+        /// An error happened when decoding some base64 text
+        base64,
+        /// An error happened while serializing/deserializing JSON
+        json,
+        /// Some of the text was invalid UTF-8
+        utf8,
+        /// Something unspecified went wrong with crypto
+        crypto,
     }
 
     /// Optional validations that are applied after decoding a JWT.
@@ -96,7 +112,7 @@ interface authorization-types {
         /// The only value that will be used are "exp", "nbf", "aud", "iss", "sub". Anything else will be ignored.
         ///
         /// Defaults to `{"exp"}`
-        required-spec-claims: option<list<string>>,
+        required-spec-claims: option<required-claims>,
         /// Add some leeway (in seconds) to the `exp` and `nbf` validation to
         /// account for clock skew.
         ///
@@ -139,30 +155,55 @@ interface authorization-types {
         algorithms: option<list<algorithm>>,
     }
 
-    enum algorithm {
-        /// HMAC using SHA-256
-        HS256,
-        /// HMAC using SHA-384
-        HS384,
-        /// HMAC using SHA-512
-        HS512,
-        /// ECDSA using SHA-256
-        ES256,
-        /// ECDSA using SHA-384
-        ES384,
-        /// RSASSA-PKCS1-v1_5 using SHA-256
-        RS256,
-        /// RSASSA-PKCS1-v1_5 using SHA-384
-        RS384,
-        /// RSASSA-PKCS1-v1_5 using SHA-512
-        RS512,
-        /// RSASSA-PSS using SHA-256
-        PS256,
-        /// RSASSA-PSS using SHA-384
-        PS384,
-        /// RSASSA-PSS using SHA-512
-        PS512,
-        /// Edwards-curve Digital Signature Algorithm (EdDSA)
-        EDDSA,
+    resource validation {
+        /// Algorithm defaults to HS256
+        contructor(options: validation-options);
+
+        set-audience: func(aud: list<string>);
+        set-issuer: func(iss: list<string>);
+        set-required-spec-claims: func(claims: required-claims);
+
+        validate: func(jwt: string, jwks: list<string>) -> result<claims, validation-error>;
     }
+}
+
+interface authorize {
+    use contexts.{context};
+    use validate-jwt.{claims};
+
+    flags bearer-methods {
+        header,
+    }
+
+    record www-authenticate {
+        resource-metadata: string,
+    }
+
+    /// [RFC9728] resource metatadata fetched by MCP clients
+    ///
+    /// This endpoint is discovery via WWW-Authenticate on 401 Unauthorized
+    ///
+    /// https://datatracker.ietf.org/doc/html/rfc9728#name-protected-resource-metadata-r
+    /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
+    record protected-resource-metadata {
+        /// The protected resource's identifier, as defined in [RFC9728] Section 1.2
+        ///
+        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization#resource-parameter-implementation
+        %resource: string,
+
+        /// List of OAuth authorization server issuer identifiers, as defined in [RFC8414], for authorization servers that can be used with this protected resource
+        ///
+        /// Optional in [RFC9728] but REQUIRED by the MCP spec. MUST contain at least one authorization server
+        ///
+        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization#authorization-server-location
+        authorization-servers: list<string>,
+
+        bearer-methods-supported: bearer-methods,
+
+        additional: option<alist>,
+    }
+
+    get-resource-metadata: func(ctx: borrow<context>) -> result<protected-resource-metadata>;
+
+    authorize: func(ctx: borrow<context>, jwt: option<string>) -> result<claims, www-authenticate>;
 }

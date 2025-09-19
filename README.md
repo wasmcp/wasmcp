@@ -2,14 +2,12 @@
 
 # `wasmcp`
 
-**Build MCP servers on the [WebAssembly Component Model](https://component-model.bytecodealliance.org/)**
+**A polyglot MCP server SDK via [WebAssembly components](https://component-model.bytecodealliance.org/)**
 </div>
 
-[wit/](./wit/) expresses the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18) specification in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) language.
+[crates/](./crates) contains published components that can be composed with your own to produce standalone [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18) servers as `.wasm` component binaries.
 
-These [published types](https://github.com/orgs/wasmcp/packages/container/package/mcp) enable polyglot MCP implementations via WebAssembly components. Transport components can be written once and reused with capability providers in any language.
-
-The composition process (`provider + transport = mcp-http-server.wasm`) produces a standalone MCP server that runs on any component model runtime: [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/spinframework/spin), [wasmCloud](https://github.com/wasmCloud/wasmCloud), and others.
+[wit/](./wit/) contains a published [Wasm Interface Type](https://component-model.bytecodealliance.org/design/wit.html) (WIT) package that enables the implementation of new components.
 
 ## Quick start
 

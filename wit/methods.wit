@@ -1,0 +1,272 @@
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#initialize
+interface initialize-method {
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest
+    record initialize-params {
+        capabilities: client-capabilities,
+        client-info: implementation,
+        protocol-version: string,
+    }
+
+    /// Information about an MCP implementation
+    resource initialize-result {
+        constructor(name: string, version: string, capabilities: server-capabilities);
+
+        /// Capabilities
+        add-capabilities: func(capabilities: server-capabilities);
+
+        add-meta: func(key: string, value: string) -> result;
+
+        /// Optional human-readable title
+        title: func() -> option<string>;
+        set-title: func(title: string);
+
+        /// Optional instructions for using the server
+        instructions: func() -> option<string>;
+        set-instructions: func(instructions: string);
+
+        /// Produce the JSON-RPC response
+        json: func() -> result<json>;
+    }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#tools%2Flist
+interface tools-list-method {
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsrequest
+    record list-tools-params {
+        cursor: option<string>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsresult
+    resource list-tools-result {
+        constructor(); 
+        /// Add optional metadata
+        add-meta: func(key: string, value: string) -> result;
+        // Set optional next cursor
+        set-next-cursor: func(cursor: string);
+
+        add-tool: func(name: string, input-schema: json, options: option<tool-options>);
+
+        /// Produce the JSON-RPC response
+        json: func() -> result<json>;
+    }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#tools%2Fcall
+interface tools-call-method {
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest
+    record call-tool-params {
+        name: string,
+        arguments: option<json>,
+    }
+
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
+    resource call-tool-result {
+        constructor();
+        /// Add optional metadata
+        add-meta: func(key: string, value: string) -> result;
+
+        add-text: func(text: string, options: option<content-options>);
+        add-image: func(mime-type: string, data: string, options: option<content-options>);
+        add-audio: func(mime-type: string, data: string, options: option<content-options>);
+        add-resource-link: func(name: string, uri: string, options: option<resource-options>);
+        add-text-resource: func(uri: string, text: string, options: option<resource-contents-options>);
+        add-blob-resource: func(uri: string, blob: string, options: option<resource-contents-options>);
+
+        set-error: func();
+
+        /// Set structured JSON output
+        set-structured-content: func(content: json);
+
+        /// Produce the JSON-RPC response
+        json: func() -> result<json>;
+    }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Flist
+interface resources-list-method {
+    // https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesrequest
+    record list-resources-params {
+        cursor: option<string>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesresult
+    resource list-resources-result {
+        constructor();
+        /// Add optional metadata
+        add-meta: func(key: string, value: string) -> result;
+        set-next-cursor: func(cursor: string);
+
+        add-resource: func(name: string, uri: string, options: option<resource-options>);
+
+        /// Produce the JSON-RPC response
+        json: func() -> result<json>;
+    }  
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Fread
+interface resources-read-method {
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourcerequest
+    record read-resource-params {
+        uri: string,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourceresult
+    resource read-resource-result {
+        constructor();
+        /// Add optional metadata
+        add-meta: func(key: string, value: string) -> result;
+
+        add-text-resource: func(uri: string, text: string, options: option<resource-contents-options>);
+        add-blob-resource: func(uri: string, blob: string, options: option<resource-contents-options>);
+
+        /// Produce the JSON-RPC response
+        json: func() -> result<json>;
+    }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Ftemplates%2Flist
+interface resources-templates-list-method {
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesrequest
+    record list-resource-templates-params {
+        cursor: option<string>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesresult
+    resource list-resource-templates-result {
+        constructor();
+        /// Add optional metadata
+        add-meta: func(key: string, value: string) -> result;
+        set-next-cursor: func(cursor: string);
+
+        add-resource-template: func(name: string, uri-template: string, options: option<resource-template-options>);
+
+        /// Produce the JSON-RPC response
+        json: func() -> result<json>;
+    }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts%2Flist
+interface prompts-list-method {
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsrequest
+    record list-prompts-params {
+        cursor: option<string>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsresult
+    resource list-prompts-result {
+        constructor();
+        /// Add optional metadata
+        add-meta: func(key: string, value: string) -> result;
+        set-next-cursor: func(cursor: string);
+
+        add-prompt: func(name: string, options: option<prompt-options>);
+
+        /// Produce the JSON-RPC response
+        json: func() -> result<json>;
+    }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts%2Fget
+interface prompts-get-method {
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest
+    record get-prompt-params {
+        name: string,
+        arguments: option<json>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptresult
+    resource get-prompt-result {
+        constructor();
+        /// Add optional metadata
+        add-meta: func(key: string, value: string) -> result;
+        set-description: func(description: string);
+
+        add-text-message: func(role: role, text: string, options: option<content-options>);
+        add-image-message: func(role: role, mime-type: string, data: string, options: option<content-options>);
+        add-audio-message: func(role: role, mime-type: string, data: string, options: option<content-options>);
+        add-resource-link-message: func(role: role, name: string, uri: string, options: option<resource-options>);
+        add-text-resource-message: func(role: role, uri: string, text: string, options: option<resource-contents-options>);
+        add-blob-resource-message: func(role: role, uri: string, blob: string, options: option<resource-contents-options>);
+
+        /// Produce the JSON-RPC response
+        json: func() -> result<json>;
+    }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#completion%2Fcomplete
+interface complete-method {
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#completerequest
+    record complete-params {
+        argument: argument-info,
+        context: option<completion-context>,
+        ref: completion-reference,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#completeresult
+    resource complete-result {
+        constructor(initial-values: list<string>);
+
+        /// Add optional metadata
+        add-meta: func(key: string, value: string) -> result;
+
+        set-has-more: func();
+        set-total: func(total: u16);
+
+        add-value: func(value: string);
+
+        /// Produce the JSON-RPC response
+        json: func() -> result<json>;
+    }    
+}
+
+interface params {
+    use initialize-method.{initialize-params};
+    use tools-list-method.{};
+    use complete-method.{complete-params};
+
+    variant params {
+        /// initialize
+        /// https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest
+        initialize(initialize-params),
+
+        /// tools/list
+        tools-list(list-tools-params),
+
+        /// tools/call
+        tools-call(call-tool-params),
+
+        /// resources/list
+        resources-list(list-resources-params),
+
+        /// resources/read
+        resources-read(read-resource-params),
+
+        /// resources/templates/list
+        resources-templates-list(list-resource-templates-params),
+
+        /// prompts/list
+        prompts-list(list-prompts-params),
+
+        /// prompts/get
+        prompts-get(get-prompt-params),
+
+        /// completion/complete
+        completion-complete(complete-params),
+    }
+}
+
+interface parse-method {
+    use jsonrpc.{mcp-error};
+    use methods.{method};
+
+    /// Parse a JSON value 
+    parse-method: func(json: json) -> result<method, mcp-error>;
+}
+
+interface handle-method {
+    use types.{json};
+    use jsonrpc.{mcp-error};
+    use methods.{method};
+
+    handle-method: func(method: method) -> result<json, mcp-error>;
+}

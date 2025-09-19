@@ -1,5 +1,0 @@
-package wasmcp:mcp-lib;
-
-world mcp-lib {
-    export wasmcp:mcp/types@0.3.0-alpha.24;
-}

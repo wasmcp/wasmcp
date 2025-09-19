@@ -1,5 +1,5 @@
 [package]
-name = "mcp-lib"
+name = "wasmcp-messages"
 version = "0.3.0-alpha.24"
 edition = "2024"
 rust-version = "1.89"
@@ -13,11 +13,11 @@ serde_json = "1.0"
 wit-bindgen-rt = { version = "0.44.0", features = ["bitflags"] }
 
 [package.metadata.component]
-package = "wasmcp:mcp-lib"
+package = "wasmcp:messages"
 
 [package.metadata.component.target]
 path = "wit"
-world = "mcp-lib"
+world = "messages-guest"
 
 [package.metadata.component.target.dependencies]
 "wasmcp:mcp" = { version = "0.3.0-alpha.24" }
