@@ -10,6 +10,7 @@ mod bindings;
 
 use bindings::wasmcp::mcp::authorization;
 use bindings::wasmcp::mcp::authorization_types::ProviderAuthConfig;
+use bindings::wasmcp::otel_exporter::api::{Span, get_context};
 
 mod capabilities;
 mod auth;
@@ -21,6 +22,7 @@ use auth::AuthContext;
 
 /// Static storage for auth configuration
 static AUTH_CONFIG: OnceLock<Option<ProviderAuthConfig>> = OnceLock::new();
+
 
 /// Get the cached auth configuration
 /// Returns None if provider doesn't require auth
@@ -36,9 +38,22 @@ fn is_auth_enabled() -> bool {
     get_auth_config().is_some()
 }
 
+/// Get the current span for user components to add their own tracing
+pub fn get_current_span() -> Option<Span> {
+    // Delegate to the OTEL exporter's get_current_span function
+    imported_otel::get_current_span()
+}
+
 #[spin_sdk::http_component]
 async fn handle_request(req: Request) -> Result<impl IntoResponse> {
     let path = req.path();
+
+    // Create a span for this HTTP request - OTEL exporter will handle storage
+    let span = Span::new(&format!("HTTP {}", req.method()), None);
+    span.add_event("request_received");
+
+    // Use the get_context function to ensure it's linked
+    let _context = get_context(&span);
 
     // Handle OAuth discovery endpoints iff auth is enabled
     if is_auth_enabled() {
@@ -85,8 +100,9 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
     let id = json_request.get("id").cloned();
 
     // Route to appropriate handler
-    match route_method(method, params, auth_context).await {
+    let result = match route_method(method, params, auth_context).await {
         Ok(result) => {
+            span.add_event("method_success");
             let response = if let Some(id) = id {
                 json!({
                     "jsonrpc": "2.0",
@@ -95,6 +111,7 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
                 })
             } else {
                 // Notification (no id) - no response expected
+                span.finish();
                 return Ok(Response::builder()
                     .status(204)
                     .header("content-type", "application/json")
@@ -109,6 +126,7 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
                 .build())
         }
         Err(error) => {
+            span.add_event(&format!("method_error_{}", error.code.to_code()));
             let error_response = json!({
                 "jsonrpc": "2.0",
                 "error": {
@@ -125,7 +143,11 @@ async fn handle_request(req: Request) -> Result<impl IntoResponse> {
                 .body(error_response.to_string())
                 .build())
         }
-    }
+    };
+
+    // Finish the span
+    span.finish();
+    result
 }
 
 /// Route method calls to appropriate handlers
@@ -171,3 +193,51 @@ async fn route_method(
         }),
     }
 }
+
+// Re-export OTEL API as pass-through for composition
+// This allows the HTTP transport to act as primary component that aggregates both HTTP and OTEL interfaces
+
+// Import the exports bindings for OTEL API
+use bindings::exports::wasmcp::otel_exporter::api::{Guest as OtelGuest, GuestSpan as OtelGuestSpan, SpanBorrow as OtelSpanBorrow, Span as ExportedSpan};
+use bindings::wasmcp::otel_exporter::api as imported_otel;
+// Import SpanContext from WASI OTEL tracing interface
+use bindings::wasi::otel::tracing::SpanContext as ExportedSpanContext;
+
+// Create a proxy span that forwards to the imported OTEL implementation
+pub struct ProxySpan {
+    inner: imported_otel::Span,
+}
+
+impl OtelGuestSpan for ProxySpan {
+    fn new(name: String, parent_context: Option<ExportedSpanContext>) -> Self {
+        let inner = imported_otel::Span::new(&name, parent_context.as_ref());
+        ProxySpan { inner }
+    }
+
+    fn add_event(&self, name: String) {
+        self.inner.add_event(&name);
+    }
+
+    fn finish(&self) {
+        self.inner.finish();
+    }
+}
+
+// Component implementation that exports both HTTP and OTEL interfaces
+struct Component;
+
+impl OtelGuest for Component {
+    type Span = ProxySpan;
+
+    fn get_context(s: OtelSpanBorrow<'_>) -> ExportedSpanContext {
+        let proxy_span = s.get::<ProxySpan>();
+        imported_otel::get_context(&proxy_span.inner)
+    }
+
+    fn get_current_span() -> Option<ExportedSpan> {
+        imported_otel::get_current_span().map(|inner| ExportedSpan::new(ProxySpan { inner }))
+    }
+}
+
+
+bindings::export!(Component with_types_in bindings);

@@ -1,0 +1,14 @@
+package wasmcp:mcp-transport-with-otel;
+
+// Instantiate the OTEL exporter component
+let otel = new wasmcp:otel-exporter { ... };
+
+// Instantiate the HTTP transport component and plug the OTEL API
+let transport = new mcp:transport-http {
+  api: otel.api,
+  ...
+};
+
+// Export both interfaces from the HTTP transport (primary component)
+export transport.incoming-handler;
+export transport.api;

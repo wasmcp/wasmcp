@@ -11,8 +11,11 @@ interface api {
     }
 
     get-context: func(s: borrow<span>) -> span-context;
+    get-current-span: func() -> option<span>;
 }
 
 world otel-exporter {
+    // Export both our API and the WASI OTEL tracing interface
     export api;
+    export wasi:otel/tracing@0.2.0-draft;
 }

@@ -42,9 +42,15 @@ completion = []
 package = "mcp:transport-http"
 
 [package.metadata.component.bindings]
-derives = ["serde::Serialize", "serde::Deserialize", "Clone"]
+derives = ["Clone"]
 
 [package.metadata.component.target]
-package = "wasmcp:mcp"
-version = "0.2.0"
+path = "../../wit"
 world = "tools-transport"
+
+[package.metadata.component.target.dependencies]
+"wasmcp:otel-exporter" = { path = "../otel-exporter/wit" }
+"wasi:otel" = { path = "../otel-exporter/wit/deps/wasi-otel.wit" }
+"wasi:clocks" = { path = "../otel-exporter/wit/deps/clocks" }
+"wasi:io" = { path = "../otel-exporter/wit/deps/io" }
+

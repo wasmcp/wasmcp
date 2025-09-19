@@ -1,8 +1,13 @@
 // World definitions for MCP transports
 
+world otel {
+    import wasmcp:otel-exporter/api@0.1.0;
+}
 world streamable-http-transport {
+    include otel;
     import lifecycle;
     import authorization;
+    export wasmcp:otel-exporter/api@0.1.0;
 }
 
 /// Serves TOOLS
