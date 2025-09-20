@@ -1,7 +1,0 @@
-interface mcp-lifecycle {
-    use request.{context};
-    use messages.{initialize-params, initialize-result, mcp-error};
-    
-    /// Describes the server and its capabilities to a client
-    initialize: func(ctx: borrow<context>, params: initialize-params) -> result<initialize-result, mcp-error>;
-}

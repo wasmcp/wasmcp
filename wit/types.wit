@@ -1,6 +1,0 @@
-interface types {
-    type alist = list<tuple<string, string>>;
-
-    /// JSON that should be parsed/validated by implementations
-    type json = string;
-}

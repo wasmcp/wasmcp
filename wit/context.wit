@@ -1,0 +1,45 @@
+interface context {
+    type jsonrpc-id = string;
+    type headers = list<tuple<string, string>>;
+
+    record request {
+        id: jsonrpc-id,
+        method: string,
+        headers: headers,
+    }
+
+    resource context {
+        constructor(id: jsonrpc-id, headers: option<headers>);
+        id: func() -> jsonrpc-id;
+
+        get-header: func(key: string) -> option<string>;
+        list-header-keys: func() -> list<string>;
+
+        get-state: func(key: string) -> option<string>;
+        set-state: func(key: string, value: string);
+        delete-state: func(key: string);
+        list-state-keys: func() -> list<string>;
+    }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management
+interface session-context {
+    use context.{context};
+
+    type session-id = string;
+
+    variant error {
+        no-such-session,
+        access-denied,
+        other(string),
+    }
+
+    open-session: func(ctx: borrow<context>) -> result<session-id, error>;
+    close-session: func(ctx: borrow<context>) -> result<_, error>;
+
+    session-exists: func(ctx: borrow<context>) -> result<bool, error>;
+    list-session-keys: func(ctx: borrow<context>) -> result<list<string>>;
+    get-session-state: func(ctx: borrow<context>, key: string) -> result<option<string>, error>;
+    set-session-state: func(ctx: borrow<context>, key: string, value: string) -> result<_, error>;
+    delete-session-state: func(ctx: borrow<context>, key: string) -> result<_, error>;
+}

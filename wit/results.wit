@@ -1,4 +1,68 @@
-interface results {
+interface result-content {
+    type meta = list<tuple<string, string>>;
+    type json = string;
+
+    /// Role in a conversation
+    enum role {
+        user,
+        assistant,
+    }
+
+    /// Optional annotations for the client. The client can use annotations to inform how objects are used or displayed
+    ///
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#annotations
+    record annotations {
+        /// Describes who the intended customer of this object or data is.
+        ///
+        /// It can include multiple entries to indicate content useful for multiple audiences (e.g., [“user”, “assistant”]).
+        audience: option<list<role>>,
+        /// Priority from 0.0 (least) to 1.0 (most important)
+        /// Implementations SHOULD validate this is within [0.0, 1.0] range
+        priority: option<f64>,
+        /// ISO 8601 timestamp of last modification
+        /// Format: YYYY-MM-DDTHH:mm:ss[.sss]Z or ±HH:MM offset
+        last-modified: option<string>,
+    }
+
+    record resource-options {
+        meta: option<meta>,
+        annotations: option<annotations>,
+        description: option<string>,
+        mime-type: option<string>,
+        size: option<u16>,
+        title: option<string>,
+    }
+
+    /// Text content with optional annotations
+    record content-options {
+        /// Optional protocol-level metadata for this content block
+        meta: option<meta>,
+        annotations: option<annotations>,
+    }
+
+    record resource-contents-options {
+        meta: option<meta>,
+        mime-type: option<string>,
+    }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#initialize
+interface initialize-result {
+    use result-content.{json};
+
+    flags server-capabilities {
+        /// Argument autocompletion
+        completions,
+        /// Prompts
+        prompts,
+        /// Resources
+        resources,
+        /// Tools
+        tools,
+        /// Experimental features
+        experimental,
+    }    
+
     /// Information about an MCP implementation
     resource initialize-result {
         constructor(name: string, version: string, capabilities: server-capabilities);
@@ -16,11 +80,41 @@ interface results {
         instructions: func() -> option<string>;
         set-instructions: func(instructions: string);
 
+        /// Sets the optional Mcp-Session-Id header on the response
+        ///
+        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management
+        set-session-id: func(id: string);
+
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
     }
+}
 
-    // https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsresult
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#tools%2Flist
+interface list-tools-result {
+    use result-content.{meta, json};
+
+    flags tool-hints {
+        destructive,
+        idempotent,
+        open-world,
+        read-only,
+    }    
+
+    record tool-annotations {
+        hints: tool-hints,
+        title: option<string>,
+    }    
+
+    record tool-options {
+        meta: option<meta>,
+        annotations: option<tool-annotations>,
+        description: option<string>,
+        output-schema: option<json>,
+        title: option<string>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsresult
     resource list-tools-result {
         constructor(); 
         /// Add optional metadata
@@ -33,8 +127,13 @@ interface results {
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
     }
+}
 
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#tools%2Fcall
+interface call-tool-result {
+    use result-content.{content-options, resource-options, resource-contents-options, json};
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
     resource call-tool-result {
         constructor();
         /// Add optional metadata
@@ -55,6 +154,11 @@ interface results {
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
     }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Flist
+interface list-resources-result {
+    use result-content.{resource-options, json};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesresult
     resource list-resources-result {
@@ -67,7 +171,12 @@ interface results {
 
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
-    }
+    }  
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Fread
+interface read-resource-result {
+    use result-content.{resource-contents-options, json};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourceresult
     resource read-resource-result {
@@ -80,6 +189,19 @@ interface results {
 
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
+    }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Ftemplates%2Flist
+interface list-resource-templates-result {
+    use result-content.{annotations, meta, json};
+
+    record resource-template-options {
+        meta: option<meta>,
+        annotations: option<annotations>,
+        description: option<string>,
+        mime-type: option<string>,
+        title: option<string>,
     }
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesresult
@@ -94,6 +216,25 @@ interface results {
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
     }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts%2Flist
+interface list-prompts-result {
+    use result-content.{meta, json};
+
+    record prompt-argument {
+        name: string,
+        description: option<string>,
+        required: option<bool>,
+        title: option<string>,
+    }
+
+    record prompt-options {
+        meta: option<meta>,
+        arguments: option<list<prompt-argument>>,
+        description: option<string>,
+        title: option<string>,
+    }
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsresult
     resource list-prompts-result {
@@ -107,6 +248,11 @@ interface results {
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
     }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts%2Fget
+interface get-prompt-result { 
+    use result-content.{content-options, resource-options, resource-contents-options, json, role};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptresult
     resource get-prompt-result {
@@ -125,6 +271,11 @@ interface results {
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
     }
+}
+
+/// https://modelcontextprotocol.io/specification/2025-06-18/schema#completion%2Fcomplete
+interface complete-result {
+    use result-content.{json};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#completeresult
     resource complete-result {

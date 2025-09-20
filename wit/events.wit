@@ -1,0 +1,85 @@
+interface lifecycle-events {
+    use context.{context};
+    use error.{mcp-error};
+    use initialize-result.{initialize-result};
+
+    flags client-capabilities {
+        elicitation,
+        roots,
+        sampling,
+        experimental,
+    }
+
+    enum protocol-version {
+        v20250618, // 2025-06-18
+        v20250326, // 2025-03-26
+        v20241105, // 2024-11-05
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#implementation
+    record implementation {
+        name: string,
+        title: option<string>,
+        version: string,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest
+    record initialize-params {
+        capabilities: client-capabilities,
+        client-info: implementation,
+        protocol-version: protocol-version,
+    }
+    
+    /// Negotiate capabilities with a client and optionally initialize a session.
+    initialize: func(ctx: borrow<context>, params: initialize-params) -> result<initialize-result, mcp-error>;
+}
+
+/// Authorize an incoming HTTP request to an MCP server
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
+interface auth-events {
+    use context.{context};
+    use claims.{claims, extras, validation-error};
+
+    flags bearer-methods {
+        header,
+    }
+
+    variant auth-error {
+        unauthorized(validation-error),
+        forbidden(validation-error),
+        bad-request(string),
+    }
+
+    /// https://datatracker.ietf.org/doc/html/rfc9728#name-www-authenticate-response
+    record unauthorized-response {
+        resource-metadata-url: string,
+        error: auth-error,
+    }
+
+    /// [RFC9728] protected resource metatadata fetched by MCP clients
+    ///
+    /// https://datatracker.ietf.org/doc/html/rfc9728#name-protected-resource-metadata-r
+    /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
+    record resource-metadata {
+        /// The protected resource's identifier, as defined in [RFC9728] Section 1.2
+        ///
+        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization#resource-parameter-implementation
+        %resource: string,
+
+        /// List of OAuth authorization server issuer identifiers, as defined in [RFC8414], for authorization servers that can be used with this protected resource
+        ///
+        /// Optional in [RFC9728] but REQUIRED by the MCP spec. MUST contain at least one authorization server
+        ///
+        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization#authorization-server-location
+        authorization-servers: list<string>,
+
+        bearer-methods-supported: bearer-methods,
+
+        extras: extras,
+    }
+
+    get-resource-metadata: func(ctx: borrow<context>) -> result<resource-metadata>;
+
+    authorize: func(ctx: borrow<context>) -> result<claims, unauthorized-response>;
+}

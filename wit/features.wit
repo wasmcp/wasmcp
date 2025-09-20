@@ -1,0 +1,194 @@
+interface error {
+    /// Standard JSON-RPC error codes
+    enum error-code {
+        parse-error,           // -32700
+        invalid-request,       // -32600
+        method-not-found,      // -32601
+        invalid-params,        // -32602
+        internal-error,        // -32603
+    }
+
+    /// Standard error structure
+    record mcp-error {
+        code: error-code,
+        message: string,
+        data: option<string>,
+    }    
+}
+
+interface params {
+    /// An opaque token used to represent a cursor for pagination
+    ///
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#cursor
+    type cursor = string;
+
+    type uri = string;
+
+    /// JSON that should be parsed/validated by implementations
+    type json = string;
+}
+
+/// Tools enable models to interact with external systems, such as querying databases, calling APIs, or performing computations.
+/// Each tool is uniquely identified by a name and includes metadata describing its schema.
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+interface tools-feature {
+    use error.{mcp-error};
+    use context.{context};
+    use params.{cursor, json};
+    use list-tools-result.{list-tools-result};
+    use call-tool-result.{call-tool-result};
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest
+    record call-tool-params {
+        name: string,
+        arguments: option<json>,
+    }
+    
+    /// List available tools
+    list-tools: func(ctx: borrow<context>, cursor: option<cursor>) -> result<list-tools-result, mcp-error>;
+    
+    /// Execute a tool
+    call-tool: func(ctx: borrow<context>, params: call-tool-params) -> result<call-tool-result, mcp-error>;
+}
+
+/// Resources allow servers to share data that provides context to language models, such as files, database schemas, or application-specific information.
+/// Each resource is uniquely identified by a URI.
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/resources
+interface resources-feature {
+    use context.{context};
+    use error.{mcp-error};
+    use params.{cursor, uri};
+    use list-resources-result.{list-resources-result};
+    use list-resource-templates-result.{list-resource-templates-result};
+    use read-resource-result.{read-resource-result};
+    
+    /// List available resources
+    list-resources: func(ctx: borrow<context>, cursor: option<cursor>) -> result<list-resources-result, mcp-error>;
+    
+    /// List resource templates
+    list-templates: func(ctx: borrow<context>, cursor: option<cursor>) -> result<list-resource-templates-result, mcp-error>;
+    
+    /// Read a specific resource
+    read-resource: func(ctx: borrow<context>, uri: uri) -> result<read-resource-result, mcp-error>;
+}
+
+/// Prompts allow servers to provide structured messages and instructions for interacting with language models.
+/// Clients can discover available prompts, retrieve their contents, and provide arguments to customize them.
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
+interface prompts-feature {
+    use error.{mcp-error};
+    use params.{cursor, json};
+    use context.{context};
+    use list-prompts-result.{list-prompts-result};
+    use get-prompt-result.{get-prompt-result};
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest
+    record get-prompt-params {
+        name: string,
+        arguments: option<json>,
+    }
+    
+    /// List available prompts
+    list-prompts: func(ctx: borrow<context>, cursor: option<cursor>) -> result<list-prompts-result, mcp-error>;
+    
+    /// Get a specific prompt
+    get-prompt: func(ctx: borrow<context>, params: get-prompt-params) -> result<get-prompt-result, mcp-error>;
+}
+
+/// Provides a standardized way for servers to offer argument autocompletion suggestions for prompts and resource URIs
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion
+interface completion-feature {
+    use error.{mcp-error};
+    use params.{json};
+    use context.{context};
+    use complete-result.{complete-result};
+
+    /// Resource reference
+    record resource-reference {
+        uri: string,
+    }
+
+    /// Prompt reference
+    record prompt-reference {
+        name: string,
+        title: option<string>,
+    }
+
+    /// Reference to what we're completing
+    variant completion-reference {
+        /// Completing for a resource
+        %resource(resource-reference),
+        /// Completing for a prompt
+        prompt(prompt-reference),
+    }
+
+    /// Argument information
+    record argument-info {
+        /// Name of the argument being completed
+        name: string,
+        /// Current partial value of the argument
+        value: string,
+    }
+
+    /// Additional context for generating completions
+    record completion-context {
+        /// Previously resolved argument values
+        arguments: option<json>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#completerequest
+    record complete-params {
+        argument: argument-info,
+        context: option<completion-context>,
+        ref: completion-reference,
+    }
+    
+    /// Handle request for completion suggestions
+    complete: func(ctx: borrow<context>, params: complete-params) -> result<complete-result, mcp-error>;
+}
+
+
+interface parse-params {
+    use error.{mcp-error};
+    use params.{cursor, uri, json};
+    use lifecycle-events.{initialize-params};
+    use tools-feature.{call-tool-params};
+    use prompts-feature.{get-prompt-params};
+    use completion-feature.{complete-params};
+
+    variant params {
+        /// initialize
+        initialize(initialize-params),
+
+        /// tools/list
+        tools-list(cursor),
+
+        /// tools/call
+        tools-call(call-tool-params),
+
+        /// resources/list
+        resources-list(cursor),
+
+        /// resources/read
+        resources-read(uri),
+
+        /// resources/templates/list
+        resources-templates-list(cursor),
+
+        /// prompts/list
+        prompts-list(cursor),
+
+        /// prompts/get
+        prompts-get(get-prompt-params),
+
+        /// completion/complete
+        completion-complete(complete-params),
+    }
+
+    /// Parse MCP method params from JSON 
+    parse-params: func(json: json) -> result<params, mcp-error>;
+}

@@ -1,6 +1,5 @@
-interface validate-jwt {
-    use types.{alist};
-    use contexts.{context};
+interface claims {
+    type extras = list<tuple<string, string>>;
 
     record claims {
         /// Expiration time (as UTC timestamp)
@@ -15,9 +14,67 @@ interface validate-jwt {
         nbf: option<u64>,
         /// Subject (whom token refers to)
         sub: option<string>,
+        /// Extra claims as an association list
+        extras: option<extras>,
     }
 
-    /// https://github.com/Keats/jsonwebtoken/blob/master/src/validation.rs
+    /// Validation error types
+    variant validation-error {
+        /// When a token doesn't have a valid JWT shape
+        invalid-token,
+        /// When the signature doesn't match
+        invalid-signature,
+        /// When the secret given is not a valid ECDSA key
+        invalid-ecdsa-key,
+        /// When the secret given is not a valid RSA key
+        invalid-rsa-key,
+        /// We could not sign with the given key
+        rsa-failed-signing,
+        /// When the algorithm from string doesn't match the one passed to `from_str`
+        invalid-algorithm-name,
+        /// When a key is provided with an invalid format
+        invalid-key-format,
+
+        // Validation errors
+        /// When a claim required by the validation is not present
+        missing-required-claim,
+        /// When a token’s `exp` claim indicates that it has expired
+        expired-signature,
+        /// When a token’s `iss` claim does not match the expected issuer
+        invalid-issuer,
+        /// When a token’s `aud` claim does not match one of the expected audience values
+        invalid-audience,
+        /// When a token’s `sub` claim does not match one of the expected subject values
+        invalid-subject,
+        /// When a token’s `nbf` claim represents a time in the future
+        immature-signature,
+        /// When the algorithm in the header doesn't match the one passed to `decode` or the encoding/decoding key
+        /// used doesn't match the alg requested
+        invalid-algorithm,
+        /// When the Validation struct does not contain at least 1 algorithm
+        missing-algorithm,
+
+        // 3rd party errors
+        /// An error happened when decoding some base64 text
+        base64,
+        /// An error happened while serializing/deserializing JSON
+        json,
+        /// Some of the text was invalid UTF-8
+        utf8,
+        /// Something unspecified went wrong with crypto
+        crypto,
+        /// Something unspecified went wrong
+        other(string),
+    }    
+}
+
+/// A simple library for validating JWTs
+///
+/// Derived from https://github.com/Keats/jsonwebtoken
+interface jwt-validator {
+    use context.{context};
+    use claims.{claims, extras, validation-error};
+
     flags required-claims {
         exp,
         nbf,
@@ -53,58 +110,102 @@ interface validate-jwt {
         EDDSA,
     }
 
-    /// Validation error types
-    variant validation-error {
-        /// When a token doesn't have a valid JWT shape
-        invalid-token,
-        /// When the signature doesn't match
-        invalid-signature,
-        /// When the secret given is not a valid ECDSA key
-        invalid-ecdsa-key,
-        /// When the secret given is not a valid RSA key
-        invalid-rsa-key(string),
-        /// We could not sign with the given key
-        rsa-failed-signing,
-        /// When the algorithm from string doesn't match the one passed to `from_str`
-        invalid-algorithm-name,
-        /// When a key is provided with an invalid format
-        invalid-key-format,
+    record jwk {
+        kty: string,
+        kid: option<string>,
+        alg: option<string>,
+        %use: option<string>,
 
-        // Validation errors
-        /// When a claim required by the validation is not present
-        missing-required-claim(string),
-        /// When a token’s `exp` claim indicates that it has expired
-        expired-signature,
-        /// When a token’s `iss` claim does not match the expected issuer
-        invalid-issuer,
-        /// When a token’s `aud` claim does not match one of the expected audience values
-        invalid-audience,
-        /// When a token’s `sub` claim does not match one of the expected subject values
-        invalid-subject,
-        /// When a token’s `nbf` claim represents a time in the future
-        immature-signature,
-        /// When the algorithm in the header doesn't match the one passed to `decode` or the encoding/decoding key
-        /// used doesn't match the alg requested
-        invalid-algorithm,
-        /// When the Validation struct does not contain at least 1 algorithm
-        missing-algorithm,
+        // RSA specific
+        n: option<string>,
+        e: option<string>,
 
-        // 3rd party errors
-        /// An error happened when decoding some base64 text
-        base64,
-        /// An error happened while serializing/deserializing JSON
-        json,
-        /// Some of the text was invalid UTF-8
-        utf8,
-        /// Something unspecified went wrong with crypto
-        crypto,
+        // HMAC specific
+        k: option<string>,
+    }
+
+    /// JWKS structure for key discovery
+    record jwks {
+        keys: list<jwk>,
+    }
+
+    variant jwks-source {
+        jwks(jwks),
+        json(string),
+        uri(string),
+    }
+
+    /// A basic JWT header, the alg defaults to HS256 and typ is automatically
+    /// set to `JWT`. All the other fields are optional.
+    record header {
+        /// The type of JWS: it can only be "JWT" here
+        ///
+        /// Defined in [RFC7515#4.1.9](https://tools.ietf.org/html/rfc7515#section-4.1.9).
+        typ: option<string>,
+
+        /// The algorithm used
+        ///
+        /// Defined in [RFC7515#4.1.1](https://tools.ietf.org/html/rfc7515#section-4.1.1).
+        alg: algorithm,
+
+        /// Content type
+        ///
+        /// Defined in [RFC7519#5.2](https://tools.ietf.org/html/rfc7519#section-5.2).
+        cty: option<string>,
+
+        /// JSON Key URL
+        ///
+        jku: option<string>,
+
+        /// JSON Web Key
+        ///
+        /// Defined in [RFC7515#4.1.3](https://tools.ietf.org/html/rfc7515#section-4.1.3).
+        jwk: option<jwk>,
+
+        /// Key ID
+        ///
+        /// Defined in [RFC7515#4.1.4](https://tools.ietf.org/html/rfc7515#section-4.1.4).
+        kid: option<string>,
+
+        /// X.509 URL
+        ///
+        /// Defined in [RFC7515#4.1.5](https://tools.ietf.org/html/rfc7515#section-4.1.5).
+        x5u: option<string>,
+
+        /// X.509 certificate chain. A Vec of base64 encoded ASN.1 DER certificates.
+        ///
+        /// Defined in [RFC7515#4.1.6](https://tools.ietf.org/html/rfc7515#section-4.1.6).
+        x5c: option<list<string>>,
+
+        /// X.509 SHA1 certificate thumbprint
+        ///
+        /// Defined in [RFC7515#4.1.7](https://tools.ietf.org/html/rfc7515#section-4.1.7).
+        x5t: option<string>,
+
+        /// X.509 SHA256 certificate thumbprint
+        ///
+        /// Defined in [RFC7515#4.1.8](https://tools.ietf.org/html/rfc7515#section-4.1.8).
+        ///
+        /// This will be serialized/deserialized as "x5t#S256", as defined by the RFC.
+        x5t-s256: option<string>,
+
+        /// Any additional non-standard headers not defined in [RFC7515#4.1](https://datatracker.ietf.org/doc/html/rfc7515#section-4.1).
+        /// Once serialized, all keys will be converted to fields at the root level of the header payload
+        /// Ex: Dict("custom" -> "header") will be converted to "{"typ": "JWT", ..., "custom": "header"}"
+        extras: extras,
+    }
+
+    /// The return type of a successful validation.
+    record token-data {
+        /// The decoded JWT header
+        header: header,
+        /// The decoded JWT claims
+        claims: claims,
     }
 
     /// Optional validations that are applied after decoding a JWT.
     ///
     /// All time validation happen on UTC timestamps as seconds.
-    ///
-    /// Derived from https://github.com/Keats/jsonwebtoken, which implements validation in the reference Streamable HTTP transport component.
     record validation-options {
         /// Which claims are required to be present before starting the validation.
         /// This does not interact with the various `validate_*`. If you remove `exp` from that list, you still need
@@ -156,54 +257,27 @@ interface validate-jwt {
     }
 
     resource validation {
+        constructor(jwks: jwks);
+
         /// Algorithm defaults to HS256
-        contructor(options: validation-options);
+        with-jwks-from: static func(jwks: jwks-source, options: option<validation-options>) -> result<validation, validation-error>;
 
         set-audience: func(aud: list<string>);
         set-issuer: func(iss: list<string>);
         set-required-spec-claims: func(claims: required-claims);
 
-        validate: func(jwt: string, jwks: list<string>) -> result<claims, validation-error>;
-    }
-}
-
-interface authorize {
-    use contexts.{context};
-    use validate-jwt.{claims};
-
-    flags bearer-methods {
-        header,
+        decode: func(ctx: borrow<context>) -> result<token-data, validation-error>;
     }
 
-    record www-authenticate {
-        resource-metadata: string,
+    record validate-props {
+        issuer: list<string>,
+        audience: list<string>,
+        jwks: jwks-source,
+        options: option<validation-options>,
     }
 
-    /// [RFC9728] resource metatadata fetched by MCP clients
-    ///
-    /// This endpoint is discovery via WWW-Authenticate on 401 Unauthorized
-    ///
-    /// https://datatracker.ietf.org/doc/html/rfc9728#name-protected-resource-metadata-r
-    /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
-    record protected-resource-metadata {
-        /// The protected resource's identifier, as defined in [RFC9728] Section 1.2
-        ///
-        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization#resource-parameter-implementation
-        %resource: string,
+    validate: func(ctx: borrow<context>, props: validate-props) -> result<token-data, validation-error>;
 
-        /// List of OAuth authorization server issuer identifiers, as defined in [RFC8414], for authorization servers that can be used with this protected resource
-        ///
-        /// Optional in [RFC9728] but REQUIRED by the MCP spec. MUST contain at least one authorization server
-        ///
-        /// https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization#authorization-server-location
-        authorization-servers: list<string>,
-
-        bearer-methods-supported: bearer-methods,
-
-        additional: option<alist>,
-    }
-
-    get-resource-metadata: func(ctx: borrow<context>) -> result<protected-resource-metadata>;
-
-    authorize: func(ctx: borrow<context>, jwt: option<string>) -> result<claims, www-authenticate>;
+    jwt-is-validated: func(ctx: borrow<context>) -> bool;
+    get-claims: func(ctx: borrow<context>) -> option<claims>;
 }
