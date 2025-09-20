@@ -91,8 +91,8 @@ interface initialize-result {
 }
 
 /// https://modelcontextprotocol.io/specification/2025-06-18/schema#tools%2Flist
-interface list-tools-result {
-    use result-content.{meta, json};
+interface tools-results {
+    use result-content.{meta, json, content-options, resource-options, resource-contents-options};
 
     flags tool-hints {
         destructive,
@@ -127,11 +127,6 @@ interface list-tools-result {
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
     }
-}
-
-/// https://modelcontextprotocol.io/specification/2025-06-18/schema#tools%2Fcall
-interface call-tool-result {
-    use result-content.{content-options, resource-options, resource-contents-options, json};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
     resource call-tool-result {
@@ -157,8 +152,8 @@ interface call-tool-result {
 }
 
 /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Flist
-interface list-resources-result {
-    use result-content.{resource-options, json};
+interface resources-results {
+    use result-content.{resource-options, resource-contents-options, annotations, json, meta};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesresult
     resource list-resources-result {
@@ -172,11 +167,6 @@ interface list-resources-result {
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
     }  
-}
-
-/// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Fread
-interface read-resource-result {
-    use result-content.{resource-contents-options, json};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourceresult
     resource read-resource-result {
@@ -190,11 +180,6 @@ interface read-resource-result {
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
     }
-}
-
-/// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Ftemplates%2Flist
-interface list-resource-templates-result {
-    use result-content.{annotations, meta, json};
 
     record resource-template-options {
         meta: option<meta>,
@@ -219,8 +204,8 @@ interface list-resource-templates-result {
 }
 
 /// https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts%2Flist
-interface list-prompts-result {
-    use result-content.{meta, json};
+interface prompts-results {
+    use result-content.{meta, json, role, content-options, resource-options, resource-contents-options};
 
     record prompt-argument {
         name: string,
@@ -248,11 +233,6 @@ interface list-prompts-result {
         /// Produce the JSON-RPC response
         json: func() -> result<json>;
     }
-}
-
-/// https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts%2Fget
-interface get-prompt-result { 
-    use result-content.{content-options, resource-options, resource-contents-options, json, role};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptresult
     resource get-prompt-result {
@@ -274,7 +254,7 @@ interface get-prompt-result {
 }
 
 /// https://modelcontextprotocol.io/specification/2025-06-18/schema#completion%2Fcomplete
-interface complete-result {
+interface complete-results {
     use result-content.{json};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#completeresult

@@ -36,8 +36,7 @@ interface tools-feature {
     use error.{mcp-error};
     use context.{context};
     use params.{cursor, json};
-    use list-tools-result.{list-tools-result};
-    use call-tool-result.{call-tool-result};
+    use tools-results.{list-tools-result, call-tool-result};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest
     record call-tool-params {
@@ -60,9 +59,7 @@ interface resources-feature {
     use context.{context};
     use error.{mcp-error};
     use params.{cursor, uri};
-    use list-resources-result.{list-resources-result};
-    use list-resource-templates-result.{list-resource-templates-result};
-    use read-resource-result.{read-resource-result};
+    use resources-results.{list-resources-result, list-resource-templates-result, read-resource-result};
     
     /// List available resources
     list-resources: func(ctx: borrow<context>, cursor: option<cursor>) -> result<list-resources-result, mcp-error>;
@@ -82,8 +79,7 @@ interface prompts-feature {
     use error.{mcp-error};
     use params.{cursor, json};
     use context.{context};
-    use list-prompts-result.{list-prompts-result};
-    use get-prompt-result.{get-prompt-result};
+    use prompts-results.{list-prompts-result, get-prompt-result};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest
     record get-prompt-params {
@@ -105,7 +101,7 @@ interface completion-feature {
     use error.{mcp-error};
     use params.{json};
     use context.{context};
-    use complete-result.{complete-result};
+    use complete-results.{complete-result};
 
     /// Resource reference
     record resource-reference {
@@ -152,7 +148,7 @@ interface completion-feature {
 }
 
 
-interface parse-params {
+interface feature-parser {
     use error.{mcp-error};
     use params.{cursor, uri, json};
     use lifecycle-events.{initialize-params};
@@ -160,7 +156,7 @@ interface parse-params {
     use prompts-feature.{get-prompt-params};
     use completion-feature.{complete-params};
 
-    variant params {
+    variant feature {
         /// initialize
         initialize(initialize-params),
 
@@ -190,5 +186,5 @@ interface parse-params {
     }
 
     /// Parse MCP method params from JSON 
-    parse-params: func(json: json) -> result<params, mcp-error>;
+    parse-feature: func(json: json) -> result<feature, mcp-error>;
 }

@@ -23,7 +23,7 @@ interface context {
 }
 
 /// https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management
-interface session-context {
+interface session {
     use context.{context};
 
     type session-id = string;

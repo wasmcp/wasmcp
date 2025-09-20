@@ -2,3 +2,43 @@
 ///
 /// https://modelcontextprotocol.io/specification/2025-06-18
 package wasmcp:mcp@0.3.0-alpha.25;
+
+world http-transport {
+    import lifecycle-events;
+    import tools-feature;
+    import resources-feature;
+    import prompts-feature;
+    import feature-parser;
+}
+
+world feature-guest {
+    export lifecycle-events;
+    export tools-feature;
+    export resources-feature;
+    export prompts-feature;
+}
+
+world authorized-transport {
+    include http-transport;
+    import auth-events;
+}
+
+world authorizer {
+    export auth-events;
+    import jwt-validator;
+}
+
+world session-transport {
+    include authorized-transport;
+    import session;
+}
+
+world lib {
+    export context;
+    //export feature-parser;
+    export jwt-validator;
+    export initialize-result;
+    export tools-results;
+    export resources-results;
+    export prompts-results;
+}
