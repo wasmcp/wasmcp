@@ -1,4 +1,4 @@
-// OpenTelemetry Exporter Component for Grafana
+// OpenTelemetry Exporter Component - Modular Architecture
 //
 // Configuration via environment variables (Spin variables):
 // - otel_exporter_otlp_endpoint: OTLP endpoint URL
@@ -11,16 +11,24 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 
 mod bindings;
+mod providers;
+mod protocols;
+mod config;
+mod variant_config;
+
 use bindings::exports::wasmcp::otel_exporter::api::{Guest, GuestSpan, SpanBorrow, Span as ApiSpan};
 use bindings::exports::wasi::otel::tracing::{SpanContext as WitSpanContext, TraceFlags};
 
 // Use standard OpenTelemetry types
 use opentelemetry::trace::{SpanKind, Status};
 
-// Use official opentelemetry-proto generated types
-use opentelemetry_proto::tonic::trace::v1 as otlp_trace;
-use opentelemetry_proto::tonic::common::v1 as otlp_common;
-use opentelemetry_proto::tonic::resource::v1 as otlp_resource;
+use providers::grafana::GrafanaProvider;
+use providers::jaeger::JaegerProvider;
+use providers::generic::GenericOtlpProvider;
+use providers::Provider;
+use protocols::otlp_http::{OtlpHttpProtocol, OtlpHttpConfig};
+use protocols::Protocol;
+use variant_config::get_otel_config;
 
 /// Thread-local storage for current span context
 thread_local! {
@@ -49,7 +57,7 @@ impl From<WitSpanContext> for SerializableSpanContext {
         SerializableSpanContext {
             trace_id: wit_ctx.trace_id,
             span_id: wit_ctx.span_id,
-            trace_flags: wit_ctx.trace_flags.bits(), // Convert bitflags to raw bits
+            trace_flags: wit_ctx.trace_flags.bits(),
             is_remote: wit_ctx.is_remote,
             trace_state: wit_ctx.trace_state,
         }
@@ -61,39 +69,10 @@ impl From<SerializableSpanContext> for WitSpanContext {
         WitSpanContext {
             trace_id: ctx.trace_id,
             span_id: ctx.span_id,
-            trace_flags: TraceFlags::from_bits_retain(ctx.trace_flags), // Convert back to bitflags
+            trace_flags: TraceFlags::from_bits_retain(ctx.trace_flags),
             is_remote: ctx.is_remote,
             trace_state: ctx.trace_state,
         }
-    }
-}
-
-// Helper function to convert SpanKind to OTLP protobuf enum
-fn span_kind_to_proto(kind: &SpanKind) -> i32 {
-    match kind {
-        SpanKind::Internal => 1,
-        SpanKind::Server => 2,
-        SpanKind::Client => 3,
-        SpanKind::Producer => 4,
-        SpanKind::Consumer => 5,
-    }
-}
-
-// Helper function to convert Status to OTLP protobuf format
-fn status_to_proto(status: &Status) -> otlp_trace::Status {
-    match status {
-        Status::Unset => otlp_trace::Status {
-            code: 0, // STATUS_CODE_UNSET
-            message: "".to_string(),
-        },
-        Status::Ok => otlp_trace::Status {
-            code: 1, // STATUS_CODE_OK
-            message: "".to_string(),
-        },
-        Status::Error { description } => otlp_trace::Status {
-            code: 2, // STATUS_CODE_ERROR
-            message: description.to_string(),
-        },
     }
 }
 
@@ -103,15 +82,52 @@ pub struct SpanImpl {
     name: String,
     context: WitSpanContext,
     parent_context: Option<WitSpanContext>,
-    events: RefCell<Vec<(String, u64)>>, // Use RefCell for interior mutability
+    events: RefCell<Vec<(String, u64)>>,
     start_time_nanos: u64,
-    end_time_nanos: RefCell<Option<u64>>, // Use RefCell for end time
+    end_time_nanos: RefCell<Option<u64>>,
     attributes: HashMap<String, String>,
     kind: SpanKind,
-    status: RefCell<Status>, // Use RefCell for status updates
+    status: RefCell<Status>,
 }
 
 impl SpanImpl {
+    // Accessor methods for the modular architecture
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn context(&self) -> &WitSpanContext {
+        &self.context
+    }
+
+    pub fn parent_context(&self) -> &Option<WitSpanContext> {
+        &self.parent_context
+    }
+
+    pub fn events(&self) -> std::cell::Ref<Vec<(String, u64)>> {
+        self.events.borrow()
+    }
+
+    pub fn start_time_nanos(&self) -> u64 {
+        self.start_time_nanos
+    }
+
+    pub fn end_time_nanos(&self) -> Option<u64> {
+        *self.end_time_nanos.borrow()
+    }
+
+    pub fn attributes(&self) -> &HashMap<String, String> {
+        &self.attributes
+    }
+
+    pub fn kind(&self) -> &SpanKind {
+        &self.kind
+    }
+
+    pub fn status(&self) -> std::cell::Ref<Status> {
+        self.status.borrow()
+    }
+
     fn generate_span_id() -> String {
         // Generate 8-byte span ID as hex string
         uuid::Uuid::new_v4().as_u128().to_be_bytes()[8..16]
@@ -252,8 +268,8 @@ impl GuestSpan for SpanImpl {
         *self.end_time_nanos.borrow_mut() = Some(timestamp);
         *self.status.borrow_mut() = Status::Ok; // Default to OK, caller can set error status via events
 
-        // Export the completed span
-        println!("[OTEL] Exporting completed span '{}' to Grafana", self.name);
+        // Export the completed span using the modular architecture
+        println!("[OTEL] Exporting completed span '{}' using modular exporter", self.name);
         OtelExporter::export_span(self);
     }
 }
@@ -287,9 +303,9 @@ impl WasiOtelGuest for Component {
     fn on_start(span: SpanData, parent: WasiSpanContext) {
         println!("[WASI-OTEL] Span started: {} (parent: {})", span.name, parent.span_id);
 
-        // Convert WASI span data to our internal format and export to Grafana
+        // Convert WASI span data to our internal format and export
         let span_impl = SpanImpl::from_wasi_span_data(span, Some(parent));
-        println!("[WASI-OTEL] Converting and exporting span to Grafana");
+        println!("[WASI-OTEL] Converting and exporting span using modular exporter");
         OtelExporter::export_span(&span_impl);
     }
 
@@ -298,7 +314,7 @@ impl WasiOtelGuest for Component {
 
         // For ended spans, we just need to ensure they get exported
         let span_impl = SpanImpl::from_wasi_span_data(span, None);
-        println!("[WASI-OTEL] Exporting ended span to Grafana");
+        println!("[WASI-OTEL] Exporting ended span using modular exporter");
         OtelExporter::export_span(&span_impl);
     }
 
@@ -317,230 +333,132 @@ impl WasiOtelGuest for Component {
 
 bindings::export!(Component with_types_in bindings);
 
-// Component implementation
+// Modular exporter implementation
 pub struct OtelExporter;
 
-// Grafana export functionality
 impl OtelExporter {
-    /// Get OTLP configuration using Spin SDK variables
-    fn get_config() -> OtlpConfig {
-        println!("[OTEL] Loading configuration from Spin variables...");
-
-        // Get configuration values using proper Spin SDK variables API
-        let endpoint = spin_sdk::variables::get("otel_exporter_otlp_endpoint")
-            .unwrap_or_else(|_| "http://localhost:4318".to_string());
-        println!("[OTEL] Endpoint: {}", endpoint);
-
-        let service_name = spin_sdk::variables::get("otel_service_name")
-            .unwrap_or_else(|_| "wasmcp-otel-exporter".to_string());
-        println!("[OTEL] Service name: {}", service_name);
-
-        // Get the authorization header securely (contains sensitive credentials)
-        let auth_header = spin_sdk::variables::get("otel_exporter_otlp_headers_authorization").ok();
-        println!("[OTEL] Authorization header configured: {}", auth_header.is_some());
-
-        // Build headers map
-        let mut headers = HashMap::new();
-        if let Some(auth) = auth_header {
-            headers.insert("Authorization".to_string(), auth);
-        }
-
-        // Get resource attributes
-        let resource_attrs_str = spin_sdk::variables::get("otel_resource_attributes")
-            .unwrap_or_else(|_| "service.name=wasmcp-otel-exporter,deployment.environment=production".to_string());
-        println!("[OTEL] Resource attributes: {}", resource_attrs_str);
-
-        OtlpConfig {
-            endpoint,
-            headers,
-            service_name,
-            resource_attributes: parse_resource_attributes(&resource_attrs_str),
-        }
-    }
-
-    /// Convert our span data to OTLP protobuf format and send to Grafana
+    /// Export span using the variant-based provider/protocol architecture
     fn export_span(span: &SpanImpl) {
-        println!("[OTEL] Starting export for span: {}", span.name);
+        println!("[OTEL] Starting variant-based export for span: {}", span.name());
 
-        let config = Self::get_config();
-        println!("[OTEL] Using endpoint: {}", config.endpoint);
-        println!("[OTEL] Service name: {}", config.service_name);
-
-        let proto_data = Self::create_otlp_proto(span, &config);
-        println!("[OTEL] Created protobuf data with {} resource spans", proto_data.resource_spans.len());
-
-        // Serialize to protobuf binary format
-        use prost::Message;
-        let proto_bytes = proto_data.encode_to_vec();
-        println!("[OTEL] Serialized to {} bytes", proto_bytes.len());
-
-        Self::send_to_grafana(&config, &proto_bytes);
-    }
-
-    fn create_otlp_proto(span: &SpanImpl, config: &OtlpConfig) -> otlp_trace::TracesData {
-        println!("[OTEL] Converting span '{}' to protobuf format", span.name);
-
-        // Convert span context for protobuf
-        let trace_id = hex::decode(&span.context.trace_id).unwrap_or_default();
-        let span_id = hex::decode(&span.context.span_id).unwrap_or_default();
-        let parent_span_id = span.parent_context
-            .as_ref()
-            .and_then(|ctx| hex::decode(&ctx.span_id).ok())
-            .unwrap_or_default();
-
-        // Access RefCell fields
-        let events = span.events.borrow();
-        let end_time = *span.end_time_nanos.borrow();
-        let status = span.status.borrow().clone();
-
-        println!("[OTEL] Span has {} events, end_time: {:?}", events.len(), end_time);
-
-        // Create protobuf span
-        let proto_span = otlp_trace::Span {
-            trace_id,
-            span_id,
-            parent_span_id,
-            name: span.name.clone(),
-            kind: span_kind_to_proto(&span.kind),
-            start_time_unix_nano: span.start_time_nanos,
-            end_time_unix_nano: end_time.unwrap_or(span.start_time_nanos + 1_000_000),
-            flags: span.context.trace_flags.bits() as u32,
-            attributes: span.attributes.iter().map(|(k, v)| {
-                otlp_common::KeyValue {
-                    key: k.clone(),
-                    value: Some(otlp_common::AnyValue {
-                        value: Some(otlp_common::any_value::Value::StringValue(v.clone())),
-                    }),
-                }
-            }).collect(),
-            events: events.iter().map(|(name, timestamp)| {
-                otlp_trace::span::Event {
-                    time_unix_nano: *timestamp,
-                    name: name.clone(),
-                    attributes: vec![],
-                    dropped_attributes_count: 0,
-                }
-            }).collect(),
-            status: Some(status_to_proto(&status)),
-            links: vec![],
-            dropped_attributes_count: 0,
-            dropped_events_count: 0,
-            dropped_links_count: 0,
-            trace_state: "".to_string(),
+        // Check if tracing is enabled via variant configuration
+        let config = match get_otel_config() {
+            Some(cfg) => cfg,
+            None => {
+                println!("[OTEL] No OTEL configuration provided by user component - silently skip tracing");
+                return;
+            }
         };
 
-        // Create protobuf traces data
-        otlp_trace::TracesData {
-            resource_spans: vec![otlp_trace::ResourceSpans {
-                resource: Some(otlp_resource::Resource {
-                    attributes: {
-                        let mut attrs = vec![
-                            otlp_common::KeyValue {
-                                key: "service.name".to_string(),
-                                value: Some(otlp_common::AnyValue {
-                                    value: Some(otlp_common::any_value::Value::StringValue(config.service_name.clone())),
-                                }),
-                            }
-                        ];
-                        // Add all resource attributes from config
-                        attrs.extend(config.resource_attributes.iter().map(|(k, v)| {
-                            otlp_common::KeyValue {
-                                key: k.clone(),
-                                value: Some(otlp_common::AnyValue {
-                                    value: Some(otlp_common::any_value::Value::StringValue(v.clone())),
-                                }),
-                            }
-                        }));
-                        attrs
-                    },
-                    dropped_attributes_count: 0,
-                }),
-                scope_spans: vec![otlp_trace::ScopeSpans {
-                    scope: Some(otlp_common::InstrumentationScope {
-                        name: "wasmcp-otel-exporter".to_string(),
-                        version: "0.1.0".to_string(),
-                        attributes: vec![],
-                        dropped_attributes_count: 0,
+        println!("[OTEL] Using variant-based configuration");
+
+        // Route to appropriate protocol implementation
+        let protocol_config = Self::get_protocol_config(&config.protocol);
+        let protocol = OtlpHttpProtocol::new(); // For now, always use OTLP HTTP
+
+        // Serialize span using protocol
+        let serialized_data = match protocol.serialize_span(span, &protocol_config) {
+            Ok(data) => data,
+            Err(e) => {
+                println!("[OTEL] Failed to serialize span: {:?}", e);
+                return;
+            }
+        };
+
+        // Route to appropriate provider implementation
+        Self::send_via_provider(&config.provider, &serialized_data);
+    }
+
+    fn get_protocol_config(protocol: &bindings::wasmcp::otel_exporter::otel_provider_config::OtelProtocol) -> OtlpHttpConfig {
+        use bindings::wasmcp::otel_exporter::otel_provider_config::OtelProtocol;
+
+        match protocol {
+            OtelProtocol::OtlpHttp(otlp_config) => {
+                OtlpHttpConfig {
+                    content_type: otlp_config.content_type.clone(),
+                    compression: otlp_config.compression.as_ref().map(|c| {
+                        use bindings::wasmcp::otel_exporter::otel_provider_config::CompressionType;
+                        match c {
+                            CompressionType::Gzip => protocols::otlp_http::CompressionType::Gzip,
+                            CompressionType::Deflate => protocols::otlp_http::CompressionType::Deflate,
+                            CompressionType::None => protocols::otlp_http::CompressionType::None,
+                        }
                     }),
-                    spans: vec![proto_span],
-                    schema_url: "".to_string(),
-                }],
-                schema_url: "".to_string(),
-            }],
-        }
-    }
-
-    fn send_to_grafana(config: &OtlpConfig, payload: &[u8]) {
-        // Append the traces-specific path to the base OTLP endpoint
-        let url = format!("{}/v1/traces", config.endpoint);
-        println!("[OTEL] Sending {} bytes to: {}", payload.len(), url);
-
-        let payload = payload.to_vec();
-        let headers = config.headers.clone();
-
-
-        // Use spin_sdk::http::run for async HTTP requests
-        let result = spin_sdk::http::run(async move {
-            println!("[OTEL] Building HTTP request...");
-
-            // Create HTTP request using Spin SDK
-            let mut builder = spin_sdk::http::Request::builder();
-            builder.method(spin_sdk::http::Method::Post);
-            builder.uri(&url);
-            builder.header("content-type", "application/x-protobuf");
-
-            // Add configured headers (like Authorization)
-            for (key, value) in &headers {
-                println!("[OTEL] Adding header: {} = {}", key, if key.to_lowercase().contains("auth") { "[REDACTED]" } else { value });
-                builder.header(key, value);
-            }
-
-            let request = builder.body(payload).build();
-            println!("[OTEL] Sending HTTP request...");
-
-            // Send the request
-            let response: spin_sdk::http::Response = spin_sdk::http::send(request)
-                .await
-                .map_err(|e| {
-                    let error_msg = format!("Failed to send OTLP data to Grafana: {e:?}");
-                    println!("[OTEL] ERROR: {}", error_msg);
-                    error_msg
-                })?;
-
-            println!("[OTEL] SUCCESS: OTLP data sent successfully to Grafana");
-            println!("[OTEL] Response status: {}", response.status());
-
-            let body = response.into_body();
-            if let Ok(body_str) = String::from_utf8(body) {
-                if !body_str.is_empty() {
-                    println!("[OTEL] Response body: {}", body_str);
-                } else {
-                    println!("[OTEL] Empty response body (expected for successful OTLP submission)");
+                    timeout_ms: otlp_config.timeout_ms,
                 }
+            },
+            _ => {
+                println!("[OTEL] Protocol not yet implemented, using default OTLP HTTP");
+                OtlpHttpConfig::default()
             }
-            Ok::<(), String>(())
-        });
-
-        if let Err(e) = result {
-            println!("[OTEL] CRITICAL ERROR: Failed to send OTLP data: {}", e);
         }
     }
-}
 
-#[derive(Debug)]
-struct OtlpConfig {
-    endpoint: String,
-    headers: HashMap<String, String>,
-    service_name: String,
-    resource_attributes: HashMap<String, String>,
-}
+    fn send_via_provider(provider: &bindings::wasmcp::otel_exporter::otel_provider_config::OtelProvider, data: &[u8]) {
+        use bindings::wasmcp::otel_exporter::otel_provider_config::OtelProvider;
 
-fn parse_resource_attributes(attrs_str: &str) -> HashMap<String, String> {
-    let mut attributes = HashMap::new();
-    for pair in attrs_str.split(',') {
-        if let Some((key, value)) = pair.split_once('=') {
-            attributes.insert(key.trim().to_string(), value.trim().to_string());
+        match provider {
+            OtelProvider::Grafana(grafana_config) => {
+                println!("[OTEL] Routing to Grafana provider");
+                let provider = GrafanaProvider::new();
+
+                // Convert WIT config to internal config format
+                let config = providers::grafana::GrafanaConfig {
+                    endpoint: grafana_config.endpoint.clone(),
+                    api_key: grafana_config.api_key.clone(),
+                    org_id: grafana_config.org_id.clone(),
+                    service_name: grafana_config.service_name.clone(),
+                    resource_attributes: grafana_config.resource_attributes.iter()
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect(),
+                };
+
+                if let Err(e) = provider.send_trace_data(data, &config) {
+                    println!("[OTEL] Failed to send via Grafana provider: {:?}", e);
+                } else {
+                    println!("[OTEL] Successfully sent via Grafana provider");
+                }
+            },
+            OtelProvider::Jaeger(jaeger_config) => {
+                println!("[OTEL] Routing to Jaeger provider");
+                let provider = JaegerProvider::new();
+
+                // Convert WIT config to internal config format
+                let config = bindings::wasmcp::otel_exporter::otel_provider_config::JaegerConfig {
+                    endpoint: jaeger_config.endpoint.clone(),
+                    username: jaeger_config.username.clone(),
+                    password: jaeger_config.password.clone(),
+                    service_name: jaeger_config.service_name.clone(),
+                    resource_attributes: jaeger_config.resource_attributes.clone(),
+                };
+
+                if let Err(e) = provider.send_trace_data(data, &config) {
+                    println!("[OTEL] Failed to send via Jaeger provider: {:?}", e);
+                } else {
+                    println!("[OTEL] Successfully sent via Jaeger provider");
+                }
+            },
+            OtelProvider::GenericOtlp(generic_config) => {
+                println!("[OTEL] Routing to Generic OTLP provider");
+                let provider = GenericOtlpProvider::new();
+
+                // Convert WIT config to internal config format
+                let config = bindings::wasmcp::otel_exporter::otel_provider_config::GenericOtlpConfig {
+                    endpoint: generic_config.endpoint.clone(),
+                    headers: generic_config.headers.clone(),
+                    service_name: generic_config.service_name.clone(),
+                    resource_attributes: generic_config.resource_attributes.clone(),
+                };
+
+                if let Err(e) = provider.send_trace_data(data, &config) {
+                    println!("[OTEL] Failed to send via Generic OTLP provider: {:?}", e);
+                } else {
+                    println!("[OTEL] Successfully sent via Generic OTLP provider");
+                }
+            },
+            _ => {
+                println!("[OTEL] Provider not yet implemented: {:?}", provider);
+            }
         }
     }
-    attributes
 }

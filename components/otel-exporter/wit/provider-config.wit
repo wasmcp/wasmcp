@@ -1,0 +1,75 @@
+package wasmcp:otel-exporter@0.1.0;
+
+interface otel-provider-config {
+    record otel-config {
+        provider: otel-provider,
+        protocol: otel-protocol,
+    }
+
+    // Protocol variants for serialization/transport method
+    variant otel-protocol {
+        otlp-http(otlp-http-config),
+        otlp-grpc(otlp-grpc-config),
+        jaeger-thrift(jaeger-thrift-config),
+        zipkin-json(zipkin-json-config),
+    }
+
+    record otlp-http-config {
+        content-type: string,  // "application/x-protobuf" or "application/json"
+        compression: option<compression-type>,
+        timeout-ms: option<u32>,
+    }
+
+    record otlp-grpc-config {
+        compression: option<compression-type>,
+        timeout-ms: option<u32>,
+    }
+
+    record jaeger-thrift-config {
+        batch-size: option<u32>,
+        timeout-ms: option<u32>,
+    }
+
+    record zipkin-json-config {
+        batch-size: option<u32>,
+        endpoint-path: string,  // Usually "/api/v2/spans"
+    }
+
+    enum compression-type {
+        gzip,
+        deflate,
+        none,
+    }
+
+    // Provider variants for endpoint/auth specifics
+    variant otel-provider {
+        grafana(grafana-config),
+        jaeger(jaeger-config),
+        generic-otlp(generic-otlp-config),
+    }
+
+    record grafana-config {
+        endpoint: string,           // Base OTLP endpoint URL
+        api-key: string,           // Grafana Cloud API key
+        org-id: option<string>,    // Optional organization ID
+        service-name: string,      // Service identifier
+        resource-attributes: list<tuple<string, string>>,
+    }
+
+    record jaeger-config {
+        endpoint: string,          // Jaeger collector endpoint
+        username: option<string>,  // Optional basic auth
+        password: option<string>,
+        service-name: string,
+        resource-attributes: list<tuple<string, string>>,
+    }
+
+    record generic-otlp-config {
+        endpoint: string,          // Any OTLP-compatible endpoint
+        headers: list<tuple<string, string>>,  // Custom auth headers
+        service-name: string,
+        resource-attributes: list<tuple<string, string>>,
+    }
+
+    get-otel-config: func() -> otel-config;
+}

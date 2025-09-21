@@ -118,6 +118,1298 @@ pub mod wasi {
 }
 #[rustfmt::skip]
 #[allow(dead_code, clippy::all)]
+pub mod wasmcp {
+    pub mod otel_exporter {
+        #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
+        pub mod otel_provider_config {
+            #[used]
+            #[doc(hidden)]
+            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
+            use super::super::super::_rt;
+            #[repr(C)]
+            #[derive(Clone, Copy)]
+            pub struct JaegerThriftConfig {
+                pub batch_size: Option<u32>,
+                pub timeout_ms: Option<u32>,
+            }
+            impl ::core::fmt::Debug for JaegerThriftConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("JaegerThriftConfig")
+                        .field("batch-size", &self.batch_size)
+                        .field("timeout-ms", &self.timeout_ms)
+                        .finish()
+                }
+            }
+            #[derive(Clone)]
+            pub struct ZipkinJsonConfig {
+                pub batch_size: Option<u32>,
+                pub endpoint_path: _rt::String,
+            }
+            impl ::core::fmt::Debug for ZipkinJsonConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("ZipkinJsonConfig")
+                        .field("batch-size", &self.batch_size)
+                        .field("endpoint-path", &self.endpoint_path)
+                        .finish()
+                }
+            }
+            #[repr(u8)]
+            #[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+            pub enum CompressionType {
+                Gzip,
+                Deflate,
+                None,
+            }
+            impl ::core::fmt::Debug for CompressionType {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    match self {
+                        CompressionType::Gzip => {
+                            f.debug_tuple("CompressionType::Gzip").finish()
+                        }
+                        CompressionType::Deflate => {
+                            f.debug_tuple("CompressionType::Deflate").finish()
+                        }
+                        CompressionType::None => {
+                            f.debug_tuple("CompressionType::None").finish()
+                        }
+                    }
+                }
+            }
+            impl CompressionType {
+                #[doc(hidden)]
+                pub unsafe fn _lift(val: u8) -> CompressionType {
+                    if !cfg!(debug_assertions) {
+                        return ::core::mem::transmute(val);
+                    }
+                    match val {
+                        0 => CompressionType::Gzip,
+                        1 => CompressionType::Deflate,
+                        2 => CompressionType::None,
+                        _ => panic!("invalid enum discriminant"),
+                    }
+                }
+            }
+            #[derive(Clone)]
+            pub struct OtlpHttpConfig {
+                pub content_type: _rt::String,
+                /// "application/x-protobuf" or "application/json"
+                pub compression: Option<CompressionType>,
+                pub timeout_ms: Option<u32>,
+            }
+            impl ::core::fmt::Debug for OtlpHttpConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("OtlpHttpConfig")
+                        .field("content-type", &self.content_type)
+                        .field("compression", &self.compression)
+                        .field("timeout-ms", &self.timeout_ms)
+                        .finish()
+                }
+            }
+            #[repr(C)]
+            #[derive(Clone, Copy)]
+            pub struct OtlpGrpcConfig {
+                pub compression: Option<CompressionType>,
+                pub timeout_ms: Option<u32>,
+            }
+            impl ::core::fmt::Debug for OtlpGrpcConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("OtlpGrpcConfig")
+                        .field("compression", &self.compression)
+                        .field("timeout-ms", &self.timeout_ms)
+                        .finish()
+                }
+            }
+            /// Protocol variants for serialization/transport method
+            #[derive(Clone)]
+            pub enum OtelProtocol {
+                OtlpHttp(OtlpHttpConfig),
+                OtlpGrpc(OtlpGrpcConfig),
+                JaegerThrift(JaegerThriftConfig),
+                ZipkinJson(ZipkinJsonConfig),
+            }
+            impl ::core::fmt::Debug for OtelProtocol {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    match self {
+                        OtelProtocol::OtlpHttp(e) => {
+                            f.debug_tuple("OtelProtocol::OtlpHttp").field(e).finish()
+                        }
+                        OtelProtocol::OtlpGrpc(e) => {
+                            f.debug_tuple("OtelProtocol::OtlpGrpc").field(e).finish()
+                        }
+                        OtelProtocol::JaegerThrift(e) => {
+                            f.debug_tuple("OtelProtocol::JaegerThrift").field(e).finish()
+                        }
+                        OtelProtocol::ZipkinJson(e) => {
+                            f.debug_tuple("OtelProtocol::ZipkinJson").field(e).finish()
+                        }
+                    }
+                }
+            }
+            #[derive(Clone)]
+            pub struct GrafanaConfig {
+                pub endpoint: _rt::String,
+                /// Base OTLP endpoint URL
+                pub api_key: _rt::String,
+                /// Grafana Cloud API key
+                pub org_id: Option<_rt::String>,
+                /// Optional organization ID
+                pub service_name: _rt::String,
+                /// Service identifier
+                pub resource_attributes: _rt::Vec<(_rt::String, _rt::String)>,
+            }
+            impl ::core::fmt::Debug for GrafanaConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("GrafanaConfig")
+                        .field("endpoint", &self.endpoint)
+                        .field("api-key", &self.api_key)
+                        .field("org-id", &self.org_id)
+                        .field("service-name", &self.service_name)
+                        .field("resource-attributes", &self.resource_attributes)
+                        .finish()
+                }
+            }
+            #[derive(Clone)]
+            pub struct JaegerConfig {
+                pub endpoint: _rt::String,
+                /// Jaeger collector endpoint
+                pub username: Option<_rt::String>,
+                /// Optional basic auth
+                pub password: Option<_rt::String>,
+                pub service_name: _rt::String,
+                pub resource_attributes: _rt::Vec<(_rt::String, _rt::String)>,
+            }
+            impl ::core::fmt::Debug for JaegerConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("JaegerConfig")
+                        .field("endpoint", &self.endpoint)
+                        .field("username", &self.username)
+                        .field("password", &self.password)
+                        .field("service-name", &self.service_name)
+                        .field("resource-attributes", &self.resource_attributes)
+                        .finish()
+                }
+            }
+            #[derive(Clone)]
+            pub struct DatadogConfig {
+                pub site: _rt::String,
+                /// e.g., "datadoghq.com", "datadoghq.eu"
+                pub api_key: _rt::String,
+                /// Datadog API key
+                pub service_name: _rt::String,
+                pub environment: Option<_rt::String>,
+                /// e.g., "production", "staging"
+                pub version: Option<_rt::String>,
+                /// Service version
+                pub resource_attributes: _rt::Vec<(_rt::String, _rt::String)>,
+            }
+            impl ::core::fmt::Debug for DatadogConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("DatadogConfig")
+                        .field("site", &self.site)
+                        .field("api-key", &self.api_key)
+                        .field("service-name", &self.service_name)
+                        .field("environment", &self.environment)
+                        .field("version", &self.version)
+                        .field("resource-attributes", &self.resource_attributes)
+                        .finish()
+                }
+            }
+            #[derive(Clone)]
+            pub struct HoneycombConfig {
+                pub endpoint: _rt::String,
+                /// Usually "https://api.honeycomb.io"
+                pub api_key: _rt::String,
+                /// Honeycomb API key
+                pub dataset: _rt::String,
+                /// Honeycomb dataset name
+                pub service_name: _rt::String,
+                pub resource_attributes: _rt::Vec<(_rt::String, _rt::String)>,
+            }
+            impl ::core::fmt::Debug for HoneycombConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("HoneycombConfig")
+                        .field("endpoint", &self.endpoint)
+                        .field("api-key", &self.api_key)
+                        .field("dataset", &self.dataset)
+                        .field("service-name", &self.service_name)
+                        .field("resource-attributes", &self.resource_attributes)
+                        .finish()
+                }
+            }
+            #[derive(Clone)]
+            pub struct NewrelicConfig {
+                pub endpoint: _rt::String,
+                /// Usually "https://otlp.nr-data.net"
+                pub api_key: _rt::String,
+                /// New Relic license key
+                pub service_name: _rt::String,
+                pub resource_attributes: _rt::Vec<(_rt::String, _rt::String)>,
+            }
+            impl ::core::fmt::Debug for NewrelicConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("NewrelicConfig")
+                        .field("endpoint", &self.endpoint)
+                        .field("api-key", &self.api_key)
+                        .field("service-name", &self.service_name)
+                        .field("resource-attributes", &self.resource_attributes)
+                        .finish()
+                }
+            }
+            #[derive(Clone)]
+            pub struct GenericOtlpConfig {
+                pub endpoint: _rt::String,
+                /// Any OTLP-compatible endpoint
+                pub headers: _rt::Vec<(_rt::String, _rt::String)>,
+                /// Custom auth headers
+                pub service_name: _rt::String,
+                pub resource_attributes: _rt::Vec<(_rt::String, _rt::String)>,
+            }
+            impl ::core::fmt::Debug for GenericOtlpConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("GenericOtlpConfig")
+                        .field("endpoint", &self.endpoint)
+                        .field("headers", &self.headers)
+                        .field("service-name", &self.service_name)
+                        .field("resource-attributes", &self.resource_attributes)
+                        .finish()
+                }
+            }
+            /// Provider variants for endpoint/auth specifics
+            #[derive(Clone)]
+            pub enum OtelProvider {
+                Grafana(GrafanaConfig),
+                Jaeger(JaegerConfig),
+                Datadog(DatadogConfig),
+                Honeycomb(HoneycombConfig),
+                Newrelic(NewrelicConfig),
+                GenericOtlp(GenericOtlpConfig),
+            }
+            impl ::core::fmt::Debug for OtelProvider {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    match self {
+                        OtelProvider::Grafana(e) => {
+                            f.debug_tuple("OtelProvider::Grafana").field(e).finish()
+                        }
+                        OtelProvider::Jaeger(e) => {
+                            f.debug_tuple("OtelProvider::Jaeger").field(e).finish()
+                        }
+                        OtelProvider::Datadog(e) => {
+                            f.debug_tuple("OtelProvider::Datadog").field(e).finish()
+                        }
+                        OtelProvider::Honeycomb(e) => {
+                            f.debug_tuple("OtelProvider::Honeycomb").field(e).finish()
+                        }
+                        OtelProvider::Newrelic(e) => {
+                            f.debug_tuple("OtelProvider::Newrelic").field(e).finish()
+                        }
+                        OtelProvider::GenericOtlp(e) => {
+                            f.debug_tuple("OtelProvider::GenericOtlp").field(e).finish()
+                        }
+                    }
+                }
+            }
+            #[derive(Clone)]
+            pub struct OtelConfig {
+                pub provider: OtelProvider,
+                pub protocol: OtelProtocol,
+            }
+            impl ::core::fmt::Debug for OtelConfig {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("OtelConfig")
+                        .field("provider", &self.provider)
+                        .field("protocol", &self.protocol)
+                        .finish()
+                }
+            }
+            #[allow(unused_unsafe, clippy::all)]
+            pub fn get_otel_config() -> OtelConfig {
+                unsafe {
+                    #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+                    #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
+                    struct RetArea(
+                        [::core::mem::MaybeUninit<
+                            u8,
+                        >; 8 + 19 * ::core::mem::size_of::<*const u8>()],
+                    );
+                    let mut ret_area = RetArea(
+                        [::core::mem::MaybeUninit::uninit(); 8
+                            + 19 * ::core::mem::size_of::<*const u8>()],
+                    );
+                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(
+                        wasm_import_module = "wasmcp:otel-exporter/otel-provider-config@0.1.0"
+                    )]
+                    unsafe extern "C" {
+                        #[link_name = "get-otel-config"]
+                        fn wit_import1(_: *mut u8);
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    unsafe extern "C" fn wit_import1(_: *mut u8) {
+                        unreachable!()
+                    }
+                    unsafe { wit_import1(ptr0) };
+                    let l2 = i32::from(*ptr0.add(0).cast::<u8>());
+                    let v137 = match l2 {
+                        0 => {
+                            let e137 = {
+                                let l3 = *ptr0
+                                    .add(::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l4 = *ptr0
+                                    .add(2 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len5 = l4;
+                                let bytes5 = _rt::Vec::from_raw_parts(
+                                    l3.cast(),
+                                    len5,
+                                    len5,
+                                );
+                                let l6 = *ptr0
+                                    .add(3 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l7 = *ptr0
+                                    .add(4 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len8 = l7;
+                                let bytes8 = _rt::Vec::from_raw_parts(
+                                    l6.cast(),
+                                    len8,
+                                    len8,
+                                );
+                                let l9 = i32::from(
+                                    *ptr0
+                                        .add(5 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l13 = *ptr0
+                                    .add(8 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l14 = *ptr0
+                                    .add(9 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len15 = l14;
+                                let bytes15 = _rt::Vec::from_raw_parts(
+                                    l13.cast(),
+                                    len15,
+                                    len15,
+                                );
+                                let l16 = *ptr0
+                                    .add(10 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l17 = *ptr0
+                                    .add(11 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let base24 = l16;
+                                let len24 = l17;
+                                let mut result24 = _rt::Vec::with_capacity(len24);
+                                for i in 0..len24 {
+                                    let base = base24
+                                        .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                    let e24 = {
+                                        let l18 = *base.add(0).cast::<*mut u8>();
+                                        let l19 = *base
+                                            .add(::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len20 = l19;
+                                        let bytes20 = _rt::Vec::from_raw_parts(
+                                            l18.cast(),
+                                            len20,
+                                            len20,
+                                        );
+                                        let l21 = *base
+                                            .add(2 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<*mut u8>();
+                                        let l22 = *base
+                                            .add(3 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len23 = l22;
+                                        let bytes23 = _rt::Vec::from_raw_parts(
+                                            l21.cast(),
+                                            len23,
+                                            len23,
+                                        );
+                                        (_rt::string_lift(bytes20), _rt::string_lift(bytes23))
+                                    };
+                                    result24.push(e24);
+                                }
+                                _rt::cabi_dealloc(
+                                    base24,
+                                    len24 * (4 * ::core::mem::size_of::<*const u8>()),
+                                    ::core::mem::size_of::<*const u8>(),
+                                );
+                                GrafanaConfig {
+                                    endpoint: _rt::string_lift(bytes5),
+                                    api_key: _rt::string_lift(bytes8),
+                                    org_id: match l9 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l10 = *ptr0
+                                                    .add(6 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<*mut u8>();
+                                                let l11 = *ptr0
+                                                    .add(7 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let len12 = l11;
+                                                let bytes12 = _rt::Vec::from_raw_parts(
+                                                    l10.cast(),
+                                                    len12,
+                                                    len12,
+                                                );
+                                                _rt::string_lift(bytes12)
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                    service_name: _rt::string_lift(bytes15),
+                                    resource_attributes: result24,
+                                }
+                            };
+                            OtelProvider::Grafana(e137)
+                        }
+                        1 => {
+                            let e137 = {
+                                let l25 = *ptr0
+                                    .add(::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l26 = *ptr0
+                                    .add(2 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len27 = l26;
+                                let bytes27 = _rt::Vec::from_raw_parts(
+                                    l25.cast(),
+                                    len27,
+                                    len27,
+                                );
+                                let l28 = i32::from(
+                                    *ptr0
+                                        .add(3 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l32 = i32::from(
+                                    *ptr0
+                                        .add(6 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l36 = *ptr0
+                                    .add(9 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l37 = *ptr0
+                                    .add(10 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len38 = l37;
+                                let bytes38 = _rt::Vec::from_raw_parts(
+                                    l36.cast(),
+                                    len38,
+                                    len38,
+                                );
+                                let l39 = *ptr0
+                                    .add(11 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l40 = *ptr0
+                                    .add(12 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let base47 = l39;
+                                let len47 = l40;
+                                let mut result47 = _rt::Vec::with_capacity(len47);
+                                for i in 0..len47 {
+                                    let base = base47
+                                        .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                    let e47 = {
+                                        let l41 = *base.add(0).cast::<*mut u8>();
+                                        let l42 = *base
+                                            .add(::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len43 = l42;
+                                        let bytes43 = _rt::Vec::from_raw_parts(
+                                            l41.cast(),
+                                            len43,
+                                            len43,
+                                        );
+                                        let l44 = *base
+                                            .add(2 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<*mut u8>();
+                                        let l45 = *base
+                                            .add(3 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len46 = l45;
+                                        let bytes46 = _rt::Vec::from_raw_parts(
+                                            l44.cast(),
+                                            len46,
+                                            len46,
+                                        );
+                                        (_rt::string_lift(bytes43), _rt::string_lift(bytes46))
+                                    };
+                                    result47.push(e47);
+                                }
+                                _rt::cabi_dealloc(
+                                    base47,
+                                    len47 * (4 * ::core::mem::size_of::<*const u8>()),
+                                    ::core::mem::size_of::<*const u8>(),
+                                );
+                                JaegerConfig {
+                                    endpoint: _rt::string_lift(bytes27),
+                                    username: match l28 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l29 = *ptr0
+                                                    .add(4 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<*mut u8>();
+                                                let l30 = *ptr0
+                                                    .add(5 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let len31 = l30;
+                                                let bytes31 = _rt::Vec::from_raw_parts(
+                                                    l29.cast(),
+                                                    len31,
+                                                    len31,
+                                                );
+                                                _rt::string_lift(bytes31)
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                    password: match l32 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l33 = *ptr0
+                                                    .add(7 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<*mut u8>();
+                                                let l34 = *ptr0
+                                                    .add(8 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let len35 = l34;
+                                                let bytes35 = _rt::Vec::from_raw_parts(
+                                                    l33.cast(),
+                                                    len35,
+                                                    len35,
+                                                );
+                                                _rt::string_lift(bytes35)
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                    service_name: _rt::string_lift(bytes38),
+                                    resource_attributes: result47,
+                                }
+                            };
+                            OtelProvider::Jaeger(e137)
+                        }
+                        2 => {
+                            let e137 = {
+                                let l48 = *ptr0
+                                    .add(::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l49 = *ptr0
+                                    .add(2 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len50 = l49;
+                                let bytes50 = _rt::Vec::from_raw_parts(
+                                    l48.cast(),
+                                    len50,
+                                    len50,
+                                );
+                                let l51 = *ptr0
+                                    .add(3 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l52 = *ptr0
+                                    .add(4 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len53 = l52;
+                                let bytes53 = _rt::Vec::from_raw_parts(
+                                    l51.cast(),
+                                    len53,
+                                    len53,
+                                );
+                                let l54 = *ptr0
+                                    .add(5 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l55 = *ptr0
+                                    .add(6 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len56 = l55;
+                                let bytes56 = _rt::Vec::from_raw_parts(
+                                    l54.cast(),
+                                    len56,
+                                    len56,
+                                );
+                                let l57 = i32::from(
+                                    *ptr0
+                                        .add(7 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l61 = i32::from(
+                                    *ptr0
+                                        .add(10 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l65 = *ptr0
+                                    .add(13 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l66 = *ptr0
+                                    .add(14 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let base73 = l65;
+                                let len73 = l66;
+                                let mut result73 = _rt::Vec::with_capacity(len73);
+                                for i in 0..len73 {
+                                    let base = base73
+                                        .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                    let e73 = {
+                                        let l67 = *base.add(0).cast::<*mut u8>();
+                                        let l68 = *base
+                                            .add(::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len69 = l68;
+                                        let bytes69 = _rt::Vec::from_raw_parts(
+                                            l67.cast(),
+                                            len69,
+                                            len69,
+                                        );
+                                        let l70 = *base
+                                            .add(2 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<*mut u8>();
+                                        let l71 = *base
+                                            .add(3 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len72 = l71;
+                                        let bytes72 = _rt::Vec::from_raw_parts(
+                                            l70.cast(),
+                                            len72,
+                                            len72,
+                                        );
+                                        (_rt::string_lift(bytes69), _rt::string_lift(bytes72))
+                                    };
+                                    result73.push(e73);
+                                }
+                                _rt::cabi_dealloc(
+                                    base73,
+                                    len73 * (4 * ::core::mem::size_of::<*const u8>()),
+                                    ::core::mem::size_of::<*const u8>(),
+                                );
+                                DatadogConfig {
+                                    site: _rt::string_lift(bytes50),
+                                    api_key: _rt::string_lift(bytes53),
+                                    service_name: _rt::string_lift(bytes56),
+                                    environment: match l57 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l58 = *ptr0
+                                                    .add(8 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<*mut u8>();
+                                                let l59 = *ptr0
+                                                    .add(9 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let len60 = l59;
+                                                let bytes60 = _rt::Vec::from_raw_parts(
+                                                    l58.cast(),
+                                                    len60,
+                                                    len60,
+                                                );
+                                                _rt::string_lift(bytes60)
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                    version: match l61 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l62 = *ptr0
+                                                    .add(11 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<*mut u8>();
+                                                let l63 = *ptr0
+                                                    .add(12 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<usize>();
+                                                let len64 = l63;
+                                                let bytes64 = _rt::Vec::from_raw_parts(
+                                                    l62.cast(),
+                                                    len64,
+                                                    len64,
+                                                );
+                                                _rt::string_lift(bytes64)
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                    resource_attributes: result73,
+                                }
+                            };
+                            OtelProvider::Datadog(e137)
+                        }
+                        3 => {
+                            let e137 = {
+                                let l74 = *ptr0
+                                    .add(::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l75 = *ptr0
+                                    .add(2 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len76 = l75;
+                                let bytes76 = _rt::Vec::from_raw_parts(
+                                    l74.cast(),
+                                    len76,
+                                    len76,
+                                );
+                                let l77 = *ptr0
+                                    .add(3 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l78 = *ptr0
+                                    .add(4 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len79 = l78;
+                                let bytes79 = _rt::Vec::from_raw_parts(
+                                    l77.cast(),
+                                    len79,
+                                    len79,
+                                );
+                                let l80 = *ptr0
+                                    .add(5 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l81 = *ptr0
+                                    .add(6 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len82 = l81;
+                                let bytes82 = _rt::Vec::from_raw_parts(
+                                    l80.cast(),
+                                    len82,
+                                    len82,
+                                );
+                                let l83 = *ptr0
+                                    .add(7 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l84 = *ptr0
+                                    .add(8 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len85 = l84;
+                                let bytes85 = _rt::Vec::from_raw_parts(
+                                    l83.cast(),
+                                    len85,
+                                    len85,
+                                );
+                                let l86 = *ptr0
+                                    .add(9 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l87 = *ptr0
+                                    .add(10 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let base94 = l86;
+                                let len94 = l87;
+                                let mut result94 = _rt::Vec::with_capacity(len94);
+                                for i in 0..len94 {
+                                    let base = base94
+                                        .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                    let e94 = {
+                                        let l88 = *base.add(0).cast::<*mut u8>();
+                                        let l89 = *base
+                                            .add(::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len90 = l89;
+                                        let bytes90 = _rt::Vec::from_raw_parts(
+                                            l88.cast(),
+                                            len90,
+                                            len90,
+                                        );
+                                        let l91 = *base
+                                            .add(2 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<*mut u8>();
+                                        let l92 = *base
+                                            .add(3 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len93 = l92;
+                                        let bytes93 = _rt::Vec::from_raw_parts(
+                                            l91.cast(),
+                                            len93,
+                                            len93,
+                                        );
+                                        (_rt::string_lift(bytes90), _rt::string_lift(bytes93))
+                                    };
+                                    result94.push(e94);
+                                }
+                                _rt::cabi_dealloc(
+                                    base94,
+                                    len94 * (4 * ::core::mem::size_of::<*const u8>()),
+                                    ::core::mem::size_of::<*const u8>(),
+                                );
+                                HoneycombConfig {
+                                    endpoint: _rt::string_lift(bytes76),
+                                    api_key: _rt::string_lift(bytes79),
+                                    dataset: _rt::string_lift(bytes82),
+                                    service_name: _rt::string_lift(bytes85),
+                                    resource_attributes: result94,
+                                }
+                            };
+                            OtelProvider::Honeycomb(e137)
+                        }
+                        4 => {
+                            let e137 = {
+                                let l95 = *ptr0
+                                    .add(::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l96 = *ptr0
+                                    .add(2 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len97 = l96;
+                                let bytes97 = _rt::Vec::from_raw_parts(
+                                    l95.cast(),
+                                    len97,
+                                    len97,
+                                );
+                                let l98 = *ptr0
+                                    .add(3 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l99 = *ptr0
+                                    .add(4 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len100 = l99;
+                                let bytes100 = _rt::Vec::from_raw_parts(
+                                    l98.cast(),
+                                    len100,
+                                    len100,
+                                );
+                                let l101 = *ptr0
+                                    .add(5 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l102 = *ptr0
+                                    .add(6 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len103 = l102;
+                                let bytes103 = _rt::Vec::from_raw_parts(
+                                    l101.cast(),
+                                    len103,
+                                    len103,
+                                );
+                                let l104 = *ptr0
+                                    .add(7 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l105 = *ptr0
+                                    .add(8 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let base112 = l104;
+                                let len112 = l105;
+                                let mut result112 = _rt::Vec::with_capacity(len112);
+                                for i in 0..len112 {
+                                    let base = base112
+                                        .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                    let e112 = {
+                                        let l106 = *base.add(0).cast::<*mut u8>();
+                                        let l107 = *base
+                                            .add(::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len108 = l107;
+                                        let bytes108 = _rt::Vec::from_raw_parts(
+                                            l106.cast(),
+                                            len108,
+                                            len108,
+                                        );
+                                        let l109 = *base
+                                            .add(2 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<*mut u8>();
+                                        let l110 = *base
+                                            .add(3 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len111 = l110;
+                                        let bytes111 = _rt::Vec::from_raw_parts(
+                                            l109.cast(),
+                                            len111,
+                                            len111,
+                                        );
+                                        (_rt::string_lift(bytes108), _rt::string_lift(bytes111))
+                                    };
+                                    result112.push(e112);
+                                }
+                                _rt::cabi_dealloc(
+                                    base112,
+                                    len112 * (4 * ::core::mem::size_of::<*const u8>()),
+                                    ::core::mem::size_of::<*const u8>(),
+                                );
+                                NewrelicConfig {
+                                    endpoint: _rt::string_lift(bytes97),
+                                    api_key: _rt::string_lift(bytes100),
+                                    service_name: _rt::string_lift(bytes103),
+                                    resource_attributes: result112,
+                                }
+                            };
+                            OtelProvider::Newrelic(e137)
+                        }
+                        n => {
+                            debug_assert_eq!(n, 5, "invalid enum discriminant");
+                            let e137 = {
+                                let l113 = *ptr0
+                                    .add(::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l114 = *ptr0
+                                    .add(2 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len115 = l114;
+                                let bytes115 = _rt::Vec::from_raw_parts(
+                                    l113.cast(),
+                                    len115,
+                                    len115,
+                                );
+                                let l116 = *ptr0
+                                    .add(3 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l117 = *ptr0
+                                    .add(4 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let base124 = l116;
+                                let len124 = l117;
+                                let mut result124 = _rt::Vec::with_capacity(len124);
+                                for i in 0..len124 {
+                                    let base = base124
+                                        .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                    let e124 = {
+                                        let l118 = *base.add(0).cast::<*mut u8>();
+                                        let l119 = *base
+                                            .add(::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len120 = l119;
+                                        let bytes120 = _rt::Vec::from_raw_parts(
+                                            l118.cast(),
+                                            len120,
+                                            len120,
+                                        );
+                                        let l121 = *base
+                                            .add(2 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<*mut u8>();
+                                        let l122 = *base
+                                            .add(3 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len123 = l122;
+                                        let bytes123 = _rt::Vec::from_raw_parts(
+                                            l121.cast(),
+                                            len123,
+                                            len123,
+                                        );
+                                        (_rt::string_lift(bytes120), _rt::string_lift(bytes123))
+                                    };
+                                    result124.push(e124);
+                                }
+                                _rt::cabi_dealloc(
+                                    base124,
+                                    len124 * (4 * ::core::mem::size_of::<*const u8>()),
+                                    ::core::mem::size_of::<*const u8>(),
+                                );
+                                let l125 = *ptr0
+                                    .add(5 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l126 = *ptr0
+                                    .add(6 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len127 = l126;
+                                let bytes127 = _rt::Vec::from_raw_parts(
+                                    l125.cast(),
+                                    len127,
+                                    len127,
+                                );
+                                let l128 = *ptr0
+                                    .add(7 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l129 = *ptr0
+                                    .add(8 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let base136 = l128;
+                                let len136 = l129;
+                                let mut result136 = _rt::Vec::with_capacity(len136);
+                                for i in 0..len136 {
+                                    let base = base136
+                                        .add(i * (4 * ::core::mem::size_of::<*const u8>()));
+                                    let e136 = {
+                                        let l130 = *base.add(0).cast::<*mut u8>();
+                                        let l131 = *base
+                                            .add(::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len132 = l131;
+                                        let bytes132 = _rt::Vec::from_raw_parts(
+                                            l130.cast(),
+                                            len132,
+                                            len132,
+                                        );
+                                        let l133 = *base
+                                            .add(2 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<*mut u8>();
+                                        let l134 = *base
+                                            .add(3 * ::core::mem::size_of::<*const u8>())
+                                            .cast::<usize>();
+                                        let len135 = l134;
+                                        let bytes135 = _rt::Vec::from_raw_parts(
+                                            l133.cast(),
+                                            len135,
+                                            len135,
+                                        );
+                                        (_rt::string_lift(bytes132), _rt::string_lift(bytes135))
+                                    };
+                                    result136.push(e136);
+                                }
+                                _rt::cabi_dealloc(
+                                    base136,
+                                    len136 * (4 * ::core::mem::size_of::<*const u8>()),
+                                    ::core::mem::size_of::<*const u8>(),
+                                );
+                                GenericOtlpConfig {
+                                    endpoint: _rt::string_lift(bytes115),
+                                    headers: result124,
+                                    service_name: _rt::string_lift(bytes127),
+                                    resource_attributes: result136,
+                                }
+                            };
+                            OtelProvider::GenericOtlp(e137)
+                        }
+                    };
+                    let l138 = i32::from(
+                        *ptr0.add(15 * ::core::mem::size_of::<*const u8>()).cast::<u8>(),
+                    );
+                    let v159 = match l138 {
+                        0 => {
+                            let e159 = {
+                                let l139 = *ptr0
+                                    .add(16 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l140 = *ptr0
+                                    .add(17 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len141 = l140;
+                                let bytes141 = _rt::Vec::from_raw_parts(
+                                    l139.cast(),
+                                    len141,
+                                    len141,
+                                );
+                                let l142 = i32::from(
+                                    *ptr0
+                                        .add(18 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l144 = i32::from(
+                                    *ptr0
+                                        .add(4 + 18 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                OtlpHttpConfig {
+                                    content_type: _rt::string_lift(bytes141),
+                                    compression: match l142 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l143 = i32::from(
+                                                    *ptr0
+                                                        .add(1 + 18 * ::core::mem::size_of::<*const u8>())
+                                                        .cast::<u8>(),
+                                                );
+                                                CompressionType::_lift(l143 as u8)
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                    timeout_ms: match l144 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l145 = *ptr0
+                                                    .add(8 + 18 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<i32>();
+                                                l145 as u32
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                }
+                            };
+                            OtelProtocol::OtlpHttp(e159)
+                        }
+                        1 => {
+                            let e159 = {
+                                let l146 = i32::from(
+                                    *ptr0
+                                        .add(16 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l148 = i32::from(
+                                    *ptr0
+                                        .add(4 + 16 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                OtlpGrpcConfig {
+                                    compression: match l146 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l147 = i32::from(
+                                                    *ptr0
+                                                        .add(1 + 16 * ::core::mem::size_of::<*const u8>())
+                                                        .cast::<u8>(),
+                                                );
+                                                CompressionType::_lift(l147 as u8)
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                    timeout_ms: match l148 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l149 = *ptr0
+                                                    .add(8 + 16 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<i32>();
+                                                l149 as u32
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                }
+                            };
+                            OtelProtocol::OtlpGrpc(e159)
+                        }
+                        2 => {
+                            let e159 = {
+                                let l150 = i32::from(
+                                    *ptr0
+                                        .add(16 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l152 = i32::from(
+                                    *ptr0
+                                        .add(8 + 16 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                JaegerThriftConfig {
+                                    batch_size: match l150 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l151 = *ptr0
+                                                    .add(4 + 16 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<i32>();
+                                                l151 as u32
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                    timeout_ms: match l152 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l153 = *ptr0
+                                                    .add(12 + 16 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<i32>();
+                                                l153 as u32
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                }
+                            };
+                            OtelProtocol::JaegerThrift(e159)
+                        }
+                        n => {
+                            debug_assert_eq!(n, 3, "invalid enum discriminant");
+                            let e159 = {
+                                let l154 = i32::from(
+                                    *ptr0
+                                        .add(16 * ::core::mem::size_of::<*const u8>())
+                                        .cast::<u8>(),
+                                );
+                                let l156 = *ptr0
+                                    .add(8 + 16 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<*mut u8>();
+                                let l157 = *ptr0
+                                    .add(8 + 17 * ::core::mem::size_of::<*const u8>())
+                                    .cast::<usize>();
+                                let len158 = l157;
+                                let bytes158 = _rt::Vec::from_raw_parts(
+                                    l156.cast(),
+                                    len158,
+                                    len158,
+                                );
+                                ZipkinJsonConfig {
+                                    batch_size: match l154 {
+                                        0 => None,
+                                        1 => {
+                                            let e = {
+                                                let l155 = *ptr0
+                                                    .add(4 + 16 * ::core::mem::size_of::<*const u8>())
+                                                    .cast::<i32>();
+                                                l155 as u32
+                                            };
+                                            Some(e)
+                                        }
+                                        _ => _rt::invalid_enum_discriminant(),
+                                    },
+                                    endpoint_path: _rt::string_lift(bytes158),
+                                }
+                            };
+                            OtelProtocol::ZipkinJson(e159)
+                        }
+                    };
+                    let result160 = OtelConfig {
+                        provider: v137,
+                        protocol: v159,
+                    };
+                    result160
+                }
+            }
+        }
+    }
+}
+#[rustfmt::skip]
+#[allow(dead_code, clippy::all)]
 pub mod exports {
     pub mod wasi {
         pub mod otel {
@@ -3427,16 +4719,30 @@ mod _rt {
     #![allow(dead_code, clippy::all)]
     pub use alloc_crate::string::String;
     pub use alloc_crate::vec::Vec;
-    #[cfg(target_arch = "wasm32")]
-    pub fn run_ctors_once() {
-        wit_bindgen_rt::run_ctors_once();
-    }
     pub unsafe fn string_lift(bytes: Vec<u8>) -> String {
         if cfg!(debug_assertions) {
             String::from_utf8(bytes).unwrap()
         } else {
             String::from_utf8_unchecked(bytes)
         }
+    }
+    pub unsafe fn invalid_enum_discriminant<T>() -> T {
+        if cfg!(debug_assertions) {
+            panic!("invalid enum discriminant")
+        } else {
+            unsafe { core::hint::unreachable_unchecked() }
+        }
+    }
+    pub unsafe fn cabi_dealloc(ptr: *mut u8, size: usize, align: usize) {
+        if size == 0 {
+            return;
+        }
+        let layout = alloc::Layout::from_size_align_unchecked(size, align);
+        alloc::dealloc(ptr, layout);
+    }
+    #[cfg(target_arch = "wasm32")]
+    pub fn run_ctors_once() {
+        wit_bindgen_rt::run_ctors_once();
     }
     pub unsafe fn bool_lift(val: u8) -> bool {
         if cfg!(debug_assertions) {
@@ -3447,20 +4753,6 @@ mod _rt {
             }
         } else {
             val != 0
-        }
-    }
-    pub unsafe fn cabi_dealloc(ptr: *mut u8, size: usize, align: usize) {
-        if size == 0 {
-            return;
-        }
-        let layout = alloc::Layout::from_size_align_unchecked(size, align);
-        alloc::dealloc(ptr, layout);
-    }
-    pub unsafe fn invalid_enum_discriminant<T>() -> T {
-        if cfg!(debug_assertions) {
-            panic!("invalid enum discriminant")
-        } else {
-            unsafe { core::hint::unreachable_unchecked() }
         }
     }
     pub use alloc_crate::alloc;
@@ -3580,39 +4872,61 @@ pub(crate) use __export_otel_exporter_impl as export;
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1482] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc6\x0a\x01A\x02\x01\
-A\x08\x01B\x05\x01r\x02\x07secondsw\x0bnanosecondsy\x04\0\x08datetime\x03\0\0\x01\
-@\0\0\x01\x04\0\x03now\x01\x02\x04\0\x0aresolution\x01\x02\x03\0\x1cwasi:clocks/\
-wall-clock@0.2.0\x05\0\x02\x03\0\0\x08datetime\x01B-\x02\x03\x02\x01\x01\x04\0\x08\
-datetime\x03\0\0\x01s\x04\0\x08trace-id\x03\0\x02\x01s\x04\0\x07span-id\x03\0\x04\
-\x01n\x01\x07sampled\x04\0\x0btrace-flags\x03\0\x06\x01o\x02ss\x01p\x08\x04\0\x0b\
-trace-state\x03\0\x09\x01r\x05\x08trace-id\x03\x07span-id\x05\x0btrace-flags\x07\
-\x09is-remote\x7f\x0btrace-state\x0a\x04\0\x0cspan-context\x03\0\x0b\x01m\x05\x06\
-client\x06server\x08producer\x08consumer\x08internal\x04\0\x09span-kind\x03\0\x0d\
-\x01s\x04\0\x03key\x03\0\x0f\x01ps\x01p\x7f\x01pu\x01px\x01q\x08\x06string\x01s\0\
-\x04bool\x01\x7f\0\x03f64\x01u\0\x03s64\x01x\0\x0cstring-array\x01\x11\0\x0abool\
--array\x01\x12\0\x09f64-array\x01\x13\0\x09s64-array\x01\x14\0\x04\0\x05value\x03\
-\0\x15\x01r\x02\x03key\x10\x05value\x16\x04\0\x09key-value\x03\0\x17\x01p\x18\x01\
-r\x03\x04names\x04time\x01\x0aattributes\x19\x04\0\x05event\x03\0\x1a\x01r\x02\x0c\
-span-context\x0c\x0aattributes\x19\x04\0\x04link\x03\0\x1c\x01q\x03\x05unset\0\0\
-\x02ok\0\0\x05error\x01s\0\x04\0\x06status\x03\0\x1e\x01ks\x01r\x04\x04names\x07\
-version\x20\x0aschema-url\x20\x0aattributes\x19\x04\0\x15instrumentation-scope\x03\
-\0!\x01p\x1b\x01p\x1d\x01r\x0e\x0cspan-context\x0c\x0eparent-span-ids\x09span-ki\
-nd\x0e\x04names\x0astart-time\x01\x08end-time\x01\x0aattributes\x19\x06events#\x05\
-links$\x06status\x1f\x15instrumentation-scope\"\x12dropped-attributesy\x0edroppe\
-d-eventsy\x0ddropped-linksy\x04\0\x09span-data\x03\0%\x01@\x02\x04span&\x06paren\
-t\x0c\x01\0\x04\0\x08on-start\x01'\x01@\x01\x04span&\x01\0\x04\0\x06on-end\x01(\x01\
-@\0\0\x0c\x04\0\x14current-span-context\x01)\x04\0\x1dwasi:otel/tracing@0.2.0-dr\
-aft\x05\x02\x02\x03\0\x01\x0cspan-context\x01B\x11\x02\x03\x02\x01\x03\x04\0\x0c\
-span-context\x03\0\0\x04\0\x04span\x03\x01\x01k\x01\x01i\x02\x01@\x02\x04names\x0e\
-parent-context\x03\0\x04\x04\0\x11[constructor]span\x01\x05\x01h\x02\x01@\x02\x04\
-self\x06\x04names\x01\0\x04\0\x16[method]span.add-event\x01\x07\x01@\x01\x04self\
-\x06\x01\0\x04\0\x13[method]span.finish\x01\x08\x01@\x01\x01s\x06\0\x01\x04\0\x0b\
-get-context\x01\x09\x01k\x04\x01@\0\0\x0a\x04\0\x10get-current-span\x01\x0b\x04\0\
-\x1ewasmcp:otel-exporter/api@0.1.0\x05\x04\x04\0(wasmcp:otel-exporter/otel-expor\
-ter@0.1.0\x04\0\x0b\x13\x01\0\x0dotel-exporter\x03\0\0\0G\x09producers\x01\x0cpr\
-ocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2573] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x89\x13\x01A\x02\x01\
+A\x0a\x01B#\x01ky\x01r\x02\x0abatch-size\0\x0atimeout-ms\0\x04\0\x14jaeger-thrif\
+t-config\x03\0\x01\x01r\x02\x0abatch-size\0\x0dendpoint-paths\x04\0\x12zipkin-js\
+on-config\x03\0\x03\x01m\x03\x04gzip\x07deflate\x04none\x04\0\x10compression-typ\
+e\x03\0\x05\x01k\x06\x01r\x03\x0ccontent-types\x0bcompression\x07\x0atimeout-ms\0\
+\x04\0\x10otlp-http-config\x03\0\x08\x01r\x02\x0bcompression\x07\x0atimeout-ms\0\
+\x04\0\x10otlp-grpc-config\x03\0\x0a\x01q\x04\x09otlp-http\x01\x09\0\x09otlp-grp\
+c\x01\x0b\0\x0djaeger-thrift\x01\x02\0\x0bzipkin-json\x01\x04\0\x04\0\x0dotel-pr\
+otocol\x03\0\x0c\x01ks\x01o\x02ss\x01p\x0f\x01r\x05\x08endpoints\x07api-keys\x06\
+org-id\x0e\x0cservice-names\x13resource-attributes\x10\x04\0\x0egrafana-config\x03\
+\0\x11\x01r\x05\x08endpoints\x08username\x0e\x08password\x0e\x0cservice-names\x13\
+resource-attributes\x10\x04\0\x0djaeger-config\x03\0\x13\x01r\x06\x04sites\x07ap\
+i-keys\x0cservice-names\x0benvironment\x0e\x07version\x0e\x13resource-attributes\
+\x10\x04\0\x0edatadog-config\x03\0\x15\x01r\x05\x08endpoints\x07api-keys\x07data\
+sets\x0cservice-names\x13resource-attributes\x10\x04\0\x10honeycomb-config\x03\0\
+\x17\x01r\x04\x08endpoints\x07api-keys\x0cservice-names\x13resource-attributes\x10\
+\x04\0\x0fnewrelic-config\x03\0\x19\x01r\x04\x08endpoints\x07headers\x10\x0cserv\
+ice-names\x13resource-attributes\x10\x04\0\x13generic-otlp-config\x03\0\x1b\x01q\
+\x06\x07grafana\x01\x12\0\x06jaeger\x01\x14\0\x07datadog\x01\x16\0\x09honeycomb\x01\
+\x18\0\x08newrelic\x01\x1a\0\x0cgeneric-otlp\x01\x1c\0\x04\0\x0dotel-provider\x03\
+\0\x1d\x01r\x02\x08provider\x1e\x08protocol\x0d\x04\0\x0botel-config\x03\0\x1f\x01\
+@\0\0\x20\x04\0\x0fget-otel-config\x01!\x03\0/wasmcp:otel-exporter/otel-provider\
+-config@0.1.0\x05\0\x01B\x05\x01r\x02\x07secondsw\x0bnanosecondsy\x04\0\x08datet\
+ime\x03\0\0\x01@\0\0\x01\x04\0\x03now\x01\x02\x04\0\x0aresolution\x01\x02\x03\0\x1c\
+wasi:clocks/wall-clock@0.2.0\x05\x01\x02\x03\0\x01\x08datetime\x01B-\x02\x03\x02\
+\x01\x02\x04\0\x08datetime\x03\0\0\x01s\x04\0\x08trace-id\x03\0\x02\x01s\x04\0\x07\
+span-id\x03\0\x04\x01n\x01\x07sampled\x04\0\x0btrace-flags\x03\0\x06\x01o\x02ss\x01\
+p\x08\x04\0\x0btrace-state\x03\0\x09\x01r\x05\x08trace-id\x03\x07span-id\x05\x0b\
+trace-flags\x07\x09is-remote\x7f\x0btrace-state\x0a\x04\0\x0cspan-context\x03\0\x0b\
+\x01m\x05\x06client\x06server\x08producer\x08consumer\x08internal\x04\0\x09span-\
+kind\x03\0\x0d\x01s\x04\0\x03key\x03\0\x0f\x01ps\x01p\x7f\x01pu\x01px\x01q\x08\x06\
+string\x01s\0\x04bool\x01\x7f\0\x03f64\x01u\0\x03s64\x01x\0\x0cstring-array\x01\x11\
+\0\x0abool-array\x01\x12\0\x09f64-array\x01\x13\0\x09s64-array\x01\x14\0\x04\0\x05\
+value\x03\0\x15\x01r\x02\x03key\x10\x05value\x16\x04\0\x09key-value\x03\0\x17\x01\
+p\x18\x01r\x03\x04names\x04time\x01\x0aattributes\x19\x04\0\x05event\x03\0\x1a\x01\
+r\x02\x0cspan-context\x0c\x0aattributes\x19\x04\0\x04link\x03\0\x1c\x01q\x03\x05\
+unset\0\0\x02ok\0\0\x05error\x01s\0\x04\0\x06status\x03\0\x1e\x01ks\x01r\x04\x04\
+names\x07version\x20\x0aschema-url\x20\x0aattributes\x19\x04\0\x15instrumentatio\
+n-scope\x03\0!\x01p\x1b\x01p\x1d\x01r\x0e\x0cspan-context\x0c\x0eparent-span-ids\
+\x09span-kind\x0e\x04names\x0astart-time\x01\x08end-time\x01\x0aattributes\x19\x06\
+events#\x05links$\x06status\x1f\x15instrumentation-scope\"\x12dropped-attributes\
+y\x0edropped-eventsy\x0ddropped-linksy\x04\0\x09span-data\x03\0%\x01@\x02\x04spa\
+n&\x06parent\x0c\x01\0\x04\0\x08on-start\x01'\x01@\x01\x04span&\x01\0\x04\0\x06o\
+n-end\x01(\x01@\0\0\x0c\x04\0\x14current-span-context\x01)\x04\0\x1dwasi:otel/tr\
+acing@0.2.0-draft\x05\x03\x02\x03\0\x02\x0cspan-context\x01B\x11\x02\x03\x02\x01\
+\x04\x04\0\x0cspan-context\x03\0\0\x04\0\x04span\x03\x01\x01k\x01\x01i\x02\x01@\x02\
+\x04names\x0eparent-context\x03\0\x04\x04\0\x11[constructor]span\x01\x05\x01h\x02\
+\x01@\x02\x04self\x06\x04names\x01\0\x04\0\x16[method]span.add-event\x01\x07\x01\
+@\x01\x04self\x06\x01\0\x04\0\x13[method]span.finish\x01\x08\x01@\x01\x01s\x06\0\
+\x01\x04\0\x0bget-context\x01\x09\x01k\x04\x01@\0\0\x0a\x04\0\x10get-current-spa\
+n\x01\x0b\x04\0\x1ewasmcp:otel-exporter/api@0.1.0\x05\x05\x04\0(wasmcp:otel-expo\
+rter/otel-exporter@0.1.0\x04\0\x0b\x13\x01\0\x0dotel-exporter\x03\0\0\0G\x09prod\
+ucers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x06\
+0.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

@@ -18,4 +18,7 @@ world otel-exporter {
     // Export both our API and the WASI OTEL tracing interface
     export api;
     export wasi:otel/tracing@0.2.0-draft;
+
+    // Import user's provider configuration (optional)
+    import otel-provider-config;
 }
