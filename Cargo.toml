@@ -1,0 +1,16 @@
+[workspace]
+members = [
+    "cli",
+    "crates/error-writer",
+    "crates/http-transport",
+    "crates/initialize-handler",
+    "crates/initialize-writer",
+    "crates/request",
+    "crates/resources-writer", "crates/stdio-transport",
+    "crates/tools-writer",
+]
+exclude = [
+    "examples/*",
+    "tmp/*",
+]
+resolver = "2"

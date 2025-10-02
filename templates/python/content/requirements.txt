@@ -1,2 +1,0 @@
-componentize-py>=0.13.2
-pyright==1.1.405

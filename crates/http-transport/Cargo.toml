@@ -1,0 +1,25 @@
+[package]
+name = "http-transport"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wit-bindgen-rt = { version = "0.44.0", features = ["bitflags"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+serde_json = "1.0"
+
+[features]
+integration-tests = []
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "wasmcp:http-transport"
+target = "wasmcp:mcp/http-transport@0.3.0-alpha.59"
+
+[package.metadata.component.dependencies]
+

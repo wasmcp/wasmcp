@@ -1,0 +1,6 @@
+package component:go;
+
+world tools-handler {
+    include wasmcp:mcp/tools-handler@0.3.0-alpha.59;
+    include wasi:cli/imports@0.2.3;
+}

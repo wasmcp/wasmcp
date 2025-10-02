@@ -1,0 +1,5 @@
+package component:{{ project_name }};
+
+world {{ world_name }} {
+    include wasmcp:mcp/{{ world_name }}@{{ wasmcp_version }};
+}

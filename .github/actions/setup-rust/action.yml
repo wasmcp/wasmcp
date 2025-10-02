@@ -1,0 +1,39 @@
+name: 'Setup Rust Environment'
+description: 'Install Rust toolchain with caching'
+inputs:
+  components:
+    description: 'Rust components to install (comma-separated)'
+    required: false
+    default: ''
+  targets:
+    description: 'Rust targets to install (comma-separated)'
+    required: false
+    default: ''
+  toolchain:
+    description: 'Rust toolchain version'
+    required: false
+    default: '1.89'
+  cache-key:
+    description: 'Cache key suffix for rust-cache'
+    required: true
+  workspaces:
+    description: 'Workspace directories to cache (for rust-cache)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+        targets: ${{ inputs.targets }}
+
+    - name: Setup Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ inputs.cache-key }}
+        workspaces: ${{ inputs.workspaces }}
+        save-if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'pull_request' }}

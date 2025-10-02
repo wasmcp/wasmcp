@@ -1,0 +1,19 @@
+[package]
+name = "initialize-writer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wit-bindgen-rt = { version = "0.44.0", features = ["bitflags"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "wasmcp:initialize-writer"
+target = "wasmcp:mcp/initialize-writer@0.3.0-alpha.59"
+
+[package.metadata.component.dependencies]
+

@@ -1,0 +1,23 @@
+[package]
+name = "request"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wit-bindgen-rt = { version = "0.44.0", features = ["bitflags"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "wasmcp:request"
+
+[package.metadata.component.target]
+path = "wit"
+world = "request"
+
+[package.metadata.component.target.dependencies]
+"wasmcp:mcp" = { version = "0.3.0-alpha.59" }
+

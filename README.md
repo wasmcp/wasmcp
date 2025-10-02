@@ -2,140 +2,153 @@
 
 # `wasmcp`
 
-**Build MCP servers on the [WebAssembly Component Model](https://component-model.bytecodealliance.org/)**
+A [WebAssembly Component](https://component-model.bytecodealliance.org/) Development Kit for [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro) servers
+
 </div>
 
-[wit/](./wit/) expresses the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18) specification in the [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) language.
+## Quick Start
 
-These [published types](https://github.com/orgs/wasmcp/packages/container/package/mcp) enable polyglot MCP implementations via WebAssembly components. Transport components can be written once and reused with capability providers in any language.
-
-The composition process (`provider + transport = mcp-http-server.wasm`) produces a standalone MCP server that runs on any component model runtime: [Wasmtime](https://github.com/bytecodealliance/wasmtime), [Spin](https://github.com/spinframework/spin), [wasmCloud](https://github.com/wasmCloud/wasmCloud), and others.
-
-## Quick start
-
-Try running one of the example servers in your favorite source language. All examples provide transparent implementations that use WIT bindings directly as the SDK.
+See [Installation](#installation)
 
 ```bash
-cd examples/weather-py    # Python
-cd examples/weather-go    # Go
-cd examples/weather-rs    # Rust
-cd examples/weather-ts    # TypeScript
+# Scaffold a new handler
+wasmcp new my-tools --type tools --language rust
+
+# Compose handlers with an HTTP transport and middleware
+wasmcp compose \
+  --middleware ./auth.wasm \
+  --tools ./my-tools.wasm \
+  --middleware ./logging.wasm \
+  --resources ./my-resources.wasm \
+  -o server.wasm
+
+# Serve a complete MCP server over HTTP
+wasmtime serve -Scommon server.wasm
+
+# Or compose with stdio transport
+wasmcp compose \
+  --tools ./my-tools.wasm \
+  --transport stdio \
+  -o server-stdio.wasm
+
+wasmtime run server-stdio.wasm
 ```
 
-Ensure build dependencies are set up. The [examples/](./examples/) depend only on [wkg](https://github.com/bytecodealliance/wasm-pkg-tools) (for WIT package management), [wac](https://github.com/bytecodealliance/wac) (for component composition), and the standard toolchain of your chosen source language. Run setup to check and install these tools:
-```bash
-make setup
-```
+See [cli/README.md](cli/README.md) and [examples/hello-world](examples/hello-world/) for complete examples in Rust, Python, TypeScript, and Go.
 
-Run any language-specific setup steps
-```bash
-source venv/bin/activate  # Python
-```
+## Why?
 
-Build and compose the capability provider with a transport component
-```bash
-make build
-```
+> [!TIP]
+> You only write the handlers for the individual MCP features and middlewares that you need.
 
-That's it. Your `mcp-http-server.wasm` server binary runs anywhere WebAssembly components do, or will.
+Wasmcp provides [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) definitions and [published](https://github.com/orgs/wasmcp/packages) framework components for building complete, deployable MCP servers as WebAssembly components.
 
-Try it out with a runtime that supports Wasm components, like [Wasmtime](https://github.com/bytecodealliance/wasmtime)
-```bash
-wasmtime serve -Scli mcp-http-server.wasm
-```
+Any language with a [component toolchain](https://component-model.bytecodealliance.org/language-support.html) can be used for any individual component in the server.
 
-Use the running MCP server in a compatible client
-```json
-{
-  "mcpServers": {
-    "wasmTools": {
-      "url": "http://localhost:8080/mcp",
-      "transport": "http"
-    }
-  }
-}
-```
+MCP servers are:
+- **Modular** - Composed of discrete capabilities (tools, resources, prompts, etc.) that can be implemented progressively
+- **Security-sensitive** - Handling client requests in a least-privilege sandbox is a core requirement of secure MCP servers
+- **Performance-sensitive** - Scalability and efficiency dictate the types of clients that can be served. Real-time AI applications require real-time tool responses
 
-```bash
-claude mcp add -t http wasmTools http://localhost:8080/mcp
-```
+WebAssembly components are
+- **Efficient** - Run portably on a wide variety of hosts, including edge workers
+- **Secure** - Execute in a least-privilege sandbox
+- **Lean** - Published framework components are each under 300KB
+- **Composable** - Compose multiple components together into new ones, like binary lego bricks
 
-## Spin
-
-Spin users can run Wasm components out of the box.
-
-```bash
-spin up --from mcp-http-server.wasm
-```
-
-These components also work with Spin v3's built-in [component dependencies](https://spinframework.dev/v3/writing-apps#using-component-dependencies) feature, where you might specify a transport component as a Spin http component, and plug in a provider component to satisfy its capabilities dependencies.
-
-You can install the templates in this repo to scaffold new MCP provider components in different source languages.
-```bash
-spin templates install --git https://github.com/wasmcp/wasmcp --upgrade
-```
-
-Create a new MCP server project:
-```bash
-spin new -t wasmcp-python my-mcp-server    # Python
-spin new -t wasmcp-go my-mcp-server         # Go
-spin new -t wasmcp-rust my-mcp-server       # Rust
-spin new -t wasmcp-typescript my-mcp-server # TypeScript
-```
-
-The resulting structure will include a `spin.toml` file that you can use for composing, running, and deploying components.
-```bash
-spin cloud deploy
-```
-```
-View application:   https://weather-py-xxxxxxxx.fermyon.app/
-  Routes:
-  - mcp-server: https://weather-py-xxxxxxxx.fermyon.app/mcp
-```
-
-## Examples
-
-See [`examples/`](./examples/) for complete working servers implementing tools capabilities. Each example provides a transparent implementation that uses WIT bindings directly as the SDK.
-
-## WIT
-
-The Wasm Interface Type ([WIT](https://component-model.bytecodealliance.org/design/wit.html)) package in [`wit/`](./wit/) aims to capture useful subset of the MCP specification. It currently reflects the 2025-06-18 version of the spec, with some additional elements from the latest draft.
-
-The WIT package is published as Wasm at https://github.com/orgs/wasmcp/packages/container/package/mcp. It can be fetched with `wkg wit fetch` when included as a dependency in a component's world:
-
-```wit
-// world.wit
-package weather-ts:provider;
-
-/// MCP provider for weather-ts
-world weather-ts {
-    import wasi:http/outgoing-handler@0.2.3;
-    export wasmcp:mcp/lifecycle@0.2.0;
-    export wasmcp:mcp/authorization@0.2.0;
-    export wasmcp:mcp/tools@0.2.0;
-}
-```
-
-A capability provider component does not necessarily depend on I/O. It can be a pure computational component that can run in browsers, embedded systems, or any WebAssembly hosts - it just exports functions that transform MCP requests to responses.
-
-A provider with I/O, directly for outbound HTTP or indirectly via composition with an HTTP transport component, uses the WebAssembly System Interface ([WASI](https://github.com/WebAssembly/WASI)) to interact with the outside world.
+They are a natural fit.
 
 ## Components
 
-The [`components/`](./components/) directory contains published components that are useful for composing MCP servers.
+### Handler components (you implement as needed)
 
-The HTTP transport component is published and publicly available at https://github.com/orgs/wasmcp/packages/container/package/mcp-transport-http-tools as `wasmcp:mcp-transport-http-tools`. This transport provides:
-- JSON-RPC over HTTP
-- Built-in OAuth 2.0 authorization support
-- JWKS caching capabilities
-- Rego policy enforcement (optional)
+- **tools-handler** - Handles `tools/list` and `tools/call` methods
+- **resources-handler** - Handles `resources/read` method
+- **prompts-handler** - Handles `prompts/get` method
+- **completion-handler** - Handles `completion/complete` method
+- **middleware** - Any custom middleware (e.g. logging, auth), as many as needed, at any point in the chain
 
-## Why components?
+### Framework components (published to ghcr.io/wasmcp)
 
-From https://component-model.bytecodealliance.org/design/why-component-model.html#benefits-of-the-component-model
+- **[http-transport](./crates/http-transport/)** - HTTP server transport using WASI HTTP (for `wasmtime serve`)
+- **[stdio-transport](./crates/stdio-transport/)** - Stdio transport
+- **[request](./crates/request/)** - Parses MCP JSON-RPC requests and manages request context
+- **[initialize-writer](./crates/initialize-writer/)** - Formats MCP initialization responses
+- **[tools-writer](./crates/tools-writer/)** - Formats tool execution results
+- **[resources-writer](./crates/resources-writer/)** - Formats resource content responses
+- **[initialize-handler](./crates/initialize-handler/)** - Terminal handler for initialization requests
 
->Moreover, a component interacts with a runtime or other components only by calling its imports and having its exports called. Specifically, unlike core modules, a component may not export a memory and thus it cannot indirectly communicate to others by writing to its memory and having others read from that memory. This not only reinforces sandboxing, but enables interoperation between languages that make different assumptions about memory: for example, allowing a component that relies on garbage-collected memory to interoperate with one that uses conventional linear memory.
+## Installation
+
+Download the latest release binary for your platform from [GitHub Releases](https://github.com/wasmcp/wasmcp/releases):
+
+
+**Linux (x86_64):**
+```bash
+curl -fsSL https://github.com/wasmcp/wasmcp/releases/latest/download/wasmcp-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+sudo mv wasmcp /usr/local/bin/
+```
+
+**Linux (ARM64):**
+```bash
+curl -fsSL https://github.com/wasmcp/wasmcp/releases/latest/download/wasmcp-aarch64-unknown-linux-gnu.tar.gz | tar -xz
+sudo mv wasmcp /usr/local/bin/
+```
+
+**macOS (Apple Silicon):**
+```bash
+curl -fsSL https://github.com/wasmcp/wasmcp/releases/latest/download/wasmcp-aarch64-apple-darwin.tar.gz | tar -xz
+sudo mv wasmcp /usr/local/bin/
+```
+
+**macOS (Intel):**
+```bash
+curl -fsSL https://github.com/wasmcp/wasmcp/releases/latest/download/wasmcp-x86_64-apple-darwin.tar.gz | tar -xz
+sudo mv wasmcp /usr/local/bin/
+```
+
+**Verify installation:**
+```bash
+wasmcp --version
+```
+
+**Or build from source:**
+```bash
+cargo install --git https://github.com/wasmcp/wasmcp wasmcp
+```
+
+## Architecture
+
+Wasmcp prescribes a [chain-of-responsibility](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) pattern where components are composed into request processing pipelines. A typical chain:
+
+```
+Transport → Middleware/Handlers -> Terminus
+```
+
+**Transport components** terminate the transport protocol (HTTP or stdio) and pass the JSON-RPC request and `wasi:io/streams.{output-stream}` to the next component. They import the `incoming-handler` interface and export transport-specific interfaces:
+- **HTTP transport** - Exports `wasi:http/incoming-handler` for use with `wasmtime serve`
+- **Stdio transport** - Exports `wasi:cli/run` and uses newline-delimited JSON-RPC over stdin/stdout per the MCP specification
+
+**Middleware components** intercept requests to add capabilities, perform authorization, logging, or other cross-cutting concerns. They both import and export the `incoming-handler` interface. As many middleware components as needed can be chained together and interleaved with other components in the chain.
+
+**Handler components** are middleware that process specific MCP methods (`tools/call`, `resources/read`, `prompts/get`). They terminate the response for their supported method, short-circuiting the chain. Unrecognized methods are forwarded to the next component in the chain. Handlers can be interleaved with generic middleware in any order.
+
+**`initialize` handler** processes the `initialize` method using capabilities accumulated from upstream handler components. It acts as the terminal handler, completing the chain and handling any remaining unprocessed requests.
+
+Components communicate in memory through WIT interfaces defined in the [/wit](/wit) package. Composition happens with [wac](https://github.com/bytecodealliance/wac).
+
+## Examples
+
+**hello-world/** - Minimal echo tool server in four languages
+- Python, Rust, TypeScript, Go
+- Same functionality, different implementations
+
+**polyglot-composition/** - Multi-language polyglot server
+- TypeScript + Go middlewares
+- Rust MCP tools
+- Python MCP resources
+- Demonstrates composition patterns
 
 ## License
 
-Apache-2.0
+Apache 2.0

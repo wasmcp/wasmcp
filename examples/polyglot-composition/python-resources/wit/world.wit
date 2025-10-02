@@ -1,0 +1,5 @@
+package component:python-resources;
+
+world resources-handler {
+    include wasmcp:mcp/resources-handler@0.3.0-alpha.59;
+}

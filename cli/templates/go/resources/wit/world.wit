@@ -1,0 +1,6 @@
+package component:{{ project_name }};
+
+world {{ handler_type }}-handler {
+    include wasmcp:mcp/{{ handler_type }}-handler@{{ wasmcp_version }};
+    include wasi:cli/imports@0.2.3;
+}
