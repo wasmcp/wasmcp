@@ -38,8 +38,8 @@ jobs:
             exit 1
           fi
 
-  build-and-publish-components:
-    name: Build and Publish Components
+  publish-wit-package:
+    name: Publish WIT Package
     runs-on: ubuntu-latest
     needs: validate
     permissions:
@@ -48,37 +48,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          targets: wasm32-wasip2
-          cache-key: release-components
-          # Cache all component crates for release builds
-          workspaces: |
-            crates/error-writer
-            crates/http-transport
-            crates/initialize-handler
-            crates/initialize-writer
-            crates/request
-            crates/resources-writer
-            crates/stdio-transport
-            crates/tools-writer
-
-      - name: Install cargo-component
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-component@${{ env.CARGO_COMPONENT_VERSION }}
-
       - name: Install wkg
         run: |
           curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
           chmod +x wkg
           sudo mv wkg /usr/local/bin/
-
-      - name: Install cargo-cyclonedx
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-cyclonedx
 
       - name: Configure wkg registry
         run: |
@@ -92,20 +66,126 @@ jobs:
           password = "${{ secrets.GHCR_TOKEN }}"
           EOF
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-
       - name: Build and publish WIT package
         run: |
           wkg wit build
-          wkg publish wasmcp:mcp@${{ inputs.version }}.wasm \
+          wkg publish wasmcp:mcp@${{ inputs.version }}.wasm
+          echo "✅ Published WIT package: mcp@${{ inputs.version }}"
 
-      - name: Build and publish components to registry
-        run: make publish-all
+  build-and-publish-component:
+    name: Build ${{ matrix.component.name }}
+    runs-on: ubuntu-latest
+    needs: [validate, publish-wit-package]
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        component:
+          - name: request
+            package: request
+            binary: request.wasm
+          - name: error-writer
+            package: error-writer
+            binary: error_writer.wasm
+          - name: initialize-writer
+            package: initialize-writer
+            binary: initialize_writer.wasm
+          - name: tools-writer
+            package: tools-writer
+            binary: tools_writer.wasm
+          - name: resources-writer
+            package: resources-writer
+            binary: resources_writer.wasm
+          - name: http-transport
+            package: http-transport
+            binary: http_transport.wasm
+          - name: stdio-transport
+            package: stdio-transport
+            binary: stdio_transport.wasm
+          - name: initialize-handler
+            package: initialize-handler
+            binary: initialize_handler.wasm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          targets: wasm32-wasip2
+          cache-key: release-${{ matrix.component.name }}
+          workspaces: crates/${{ matrix.component.name }}
+
+      - name: Install cargo-component
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-component@${{ env.CARGO_COMPONENT_VERSION }}
+
+      - name: Install wkg
+        run: |
+          curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
+          chmod +x wkg
+          sudo mv wkg /usr/local/bin/
+
+      - name: Configure wkg registry
+        run: |
+          mkdir -p ~/.config/wasm-pkg
+          cat > ~/.config/wasm-pkg/config.toml <<EOF
+          [namespace_registries]
+          wasmcp = "ghcr.io"
+
+          [registry."ghcr.io".oci.auth]
+          username = "${{ github.actor }}"
+          password = "${{ secrets.GHCR_TOKEN }}"
+          EOF
+
+      - name: Build component
+        run: |
+          cd crates/${{ matrix.component.name }}
+          cargo component build --release
+          echo "✅ Built ${{ matrix.component.name }}"
+
+      - name: Publish component
+        run: |
+          wkg publish --package 'wasmcp:${{ matrix.component.package }}@${{ inputs.version }}' \
+            target/wasm32-wasip1/release/${{ matrix.component.binary }}
+          echo "✅ Published wasmcp:${{ matrix.component.package }}@${{ inputs.version }}"
+
+      - name: Upload component artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.component.name }}-${{ inputs.version }}
+          path: target/wasm32-wasip1/release/${{ matrix.component.binary }}
+
+  generate-sbom-and-checksums:
+    name: Generate SBOM and Checksums
+    runs-on: ubuntu-latest
+    needs: build-and-publish-component
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: sbom
+          workspaces: crates
+
+      - name: Install cargo-cyclonedx
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-cyclonedx
+
+      - name: Download all component artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: '*-${{ inputs.version }}'
+
+      - name: Organize components for checksums
+        run: |
+          mkdir -p components
+          find artifacts -name "*.wasm" -exec cp {} components/ \;
+          ls -la components/
 
       - name: Generate workspace SBOM
         run: |
@@ -117,16 +197,16 @@ jobs:
 
       - name: Generate component checksums
         run: |
-          cd target/wasm32-wasip1/release
+          cd components
           sha256sum *.wasm > checksums-components.txt
-          mv checksums-components.txt ${{ github.workspace }}/
+          mv checksums-components.txt ../
           echo "✅ Generated component checksums"
 
-      - name: Upload component artifacts
+      - name: Upload all components
         uses: actions/upload-artifact@v4
         with:
           name: wasmcp-components-${{ inputs.version }}
-          path: target/wasm32-wasip1/release/*.wasm
+          path: components/*.wasm
 
       - name: Upload SBOM and checksums
         uses: actions/upload-artifact@v4
@@ -221,7 +301,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [build-and-publish-components, build-cli]
+    needs: [generate-sbom-and-checksums, build-cli]
     permissions:
       contents: write
     steps:
@@ -315,12 +395,14 @@ jobs:
   all-jobs-complete:
     name: All Jobs Complete
     runs-on: ubuntu-latest
-    needs: [build-and-publish-components, build-cli, create-release]
+    needs: [publish-wit-package, build-and-publish-component, generate-sbom-and-checksums, build-cli, create-release]
     if: always()
     steps:
       - name: Check results
         run: |
-          if [ "${{ needs.build-and-publish-components.result }}" != "success" ] || \
+          if [ "${{ needs.publish-wit-package.result }}" != "success" ] || \
+             [ "${{ needs.build-and-publish-component.result }}" != "success" ] || \
+             [ "${{ needs.generate-sbom-and-checksums.result }}" != "success" ] || \
              [ "${{ needs.build-cli.result }}" != "success" ] || \
              [ "${{ needs.create-release.result }}" != "success" ]; then
             echo "One or more jobs failed"
