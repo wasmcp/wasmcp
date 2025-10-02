@@ -1,0 +1,91 @@
+package wasmcp:mcp@0.3.0-alpha.59;
+
+// A WIT framework for composing Model Context Protocol servers as WebAssembly components.
+//
+// <https://modelcontextprotocol.io/specification/2025-06-18/schema>
+
+// Transport components terminate the transport layer protocol and forward the MCP request resource and output stream handle to the first handler in the chain.
+//
+// Middleware components intercept an MCP request resource. They can modify the request context before passing the resource to the next handler.
+//
+// Handler components process specific MCP methods and can forward the request resource to the next handler in the chain.
+//
+// The `initialize` method handler is the final handler in the chain. It processes the `initialize` MCP request using the server capabilities added to the request context by upstream handlers and middleware.
+
+/// Transport world for stdio-based MCP communication.
+///
+/// This world provides MCP server functionality over standard I/O,
+/// suitable for command-line tools and local process communication.
+@since(version = 0.3.0-alpha.45)
+world stdio-transport {
+    include wasi:cli/command@0.2.3;
+    import incoming-handler;
+}
+
+/// Transport world for HTTP-based MCP communication.
+///
+/// This world provides MCP server functionality over HTTP,
+/// suitable for network-based communication and web services.
+@since(version = 0.3.0-alpha.45)
+world http-transport {
+    include wasi:http/proxy@0.2.3;
+    import incoming-handler;
+}
+
+/// Handler world for MCP initialization.
+///
+/// Terminates the middleware chain by processing initialize requests
+/// using capabilities accumulated from upstream handlers.
+@since(version = 0.3.0-alpha.45)
+world initialize-handler {
+    import error-result;
+    import initialize-result;
+    export incoming-handler;
+}
+
+/// Middleware world for request interception.
+///
+/// Both imports and exports the handler interface, enabling components
+/// to intercept requests before forwarding to the next handler.
+@since(version = 0.3.0-alpha.45)
+world middleware {
+    import incoming-handler;
+    export incoming-handler;
+}
+
+/// Handler world for MCP tool operations.
+@since(version = 0.3.0-alpha.45)
+world tools-handler {
+    include middleware;
+    import error-result;
+    import tools-list-result;
+    import tools-call-content;
+    import tools-call-structured;
+}
+
+/// Handler world for MCP resource operations.
+@since(version = 0.3.0-alpha.45)
+world resources-handler {
+    include middleware;
+    import error-result;
+    import resources-list-result;
+    import resources-read-result;
+    import resource-templates-list-result;
+}
+
+/// Handler world for MCP prompt operations.
+@since(version = 0.3.0-alpha.45)
+world prompts-handler {
+    include middleware;
+    import error-result;
+    import prompts-list-result;
+    import prompts-get-result;
+}
+
+/// Handler world for MCP completion operations.
+@since(version = 0.3.0-alpha.45)
+world completion-handler {
+    include middleware;
+    import error-result;
+    import completion-complete-result;
+}

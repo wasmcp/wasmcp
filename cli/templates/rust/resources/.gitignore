@@ -1,0 +1,6 @@
+# Rust build artifacts
+/target/
+Cargo.lock
+
+# WIT dependencies
+/wit/deps/

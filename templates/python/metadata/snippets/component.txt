@@ -1,5 +1,0 @@
-# Python MCP component
-[component.{{project-name | snake_case}}]
-source = "{{project-name | snake_case}}/build/mcp-http-server.wasm"
-[component.{{project-name | snake_case}}.build]
-command = "cd {{project-name | snake_case}} && make build"

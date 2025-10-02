@@ -1,8 +1,0 @@
-{
-  "pythonVersion": "3.10",
-  "typeCheckingMode": "strict",
-  "include": ["app.py", "capabilities"],
-  "exclude": ["venv", "build", "wit_world"],
-  "reportMissingImports": false,
-  "reportMissingModuleSource": false
-}
