@@ -48,13 +48,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate a token
-        id: generate-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ vars.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -93,6 +86,10 @@ jobs:
           cat > ~/.config/wasm-pkg/config.toml <<EOF
           [namespace_registries]
           wasmcp = "ghcr.io"
+
+          [registry."ghcr.io".oci.auth]
+          username = "${{ github.actor }}"
+          password = "${{ secrets.GHCR_TOKEN }}"
           EOF
 
       - name: Login to GitHub Container Registry
@@ -100,7 +97,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ steps.generate-token.outputs.token }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Build and publish WIT package
         run: |
