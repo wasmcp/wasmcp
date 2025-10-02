@@ -75,7 +75,7 @@ jobs:
   build-and-publish-component:
     name: Build ${{ matrix.component.name }}
     runs-on: ubuntu-latest
-    needs: [validate, publish-wit-package]
+    needs: publish-wit-package
     permissions:
       contents: read
       packages: write

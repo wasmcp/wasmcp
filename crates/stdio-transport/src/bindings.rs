@@ -10199,7 +10199,9 @@ macro_rules! __export_stdio_transport_impl {
 #[doc(inline)]
 pub(crate) use __export_stdio_transport_impl as export;
 #[cfg(target_arch = "wasm32")]
-#[unsafe(link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0-alpha.59:stdio-transport:encoded world")]
+#[unsafe(
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0-alpha.59:stdio-transport:encoded world"
+)]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
 pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 13127] = *b"\
