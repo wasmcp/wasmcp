@@ -48,6 +48,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -93,55 +100,15 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ steps.generate-token.outputs.token }}
 
       - name: Build and publish WIT package
         run: |
-          cd wit
-          wkg wit build --wit-dir . -o ../wasmcp-mcp-${{ inputs.version }}.wasm
-          cd ..
-          wkg oci push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/mcp:${{ inputs.version }} \
-            wasmcp-mcp-${{ inputs.version }}.wasm
-          echo "✅ Published WIT package: mcp:${{ inputs.version }}"
+          wkg wit build
+          wkg publish wasmcp:mcp@${{ inputs.version }}.wasm \
 
-      - name: Build all components
-        run: |
-          cd crates
-          make clean
-          make
-          echo "✅ All components built"
-
-      - name: Publish components to registry
-        run: |
-          echo "Publishing wasmcp:request@${{ inputs.version }}..."
-          wkg oci push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/request:${{ inputs.version }} \
-            target/wasm32-wasip1/release/request.wasm
-
-          echo "Publishing wasmcp:error-writer@${{ inputs.version }}..."
-          wkg oci push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/error-writer:${{ inputs.version }} \
-            target/wasm32-wasip1/release/error_writer.wasm
-
-          echo "Publishing wasmcp:initialize-writer@${{ inputs.version }}..."
-          wkg oci push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/initialize-writer:${{ inputs.version }} \
-            target/wasm32-wasip1/release/initialize_writer.wasm
-
-          echo "Publishing wasmcp:tools-writer@${{ inputs.version }}..."
-          wkg oci push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/tools-writer:${{ inputs.version }} \
-            target/wasm32-wasip1/release/tools_writer.wasm
-
-          echo "Publishing wasmcp:resources-writer@${{ inputs.version }}..."
-          wkg oci push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/resources-writer:${{ inputs.version }} \
-            target/wasm32-wasip1/release/resources_writer.wasm
-
-          echo "Publishing wasmcp:http-transport@${{ inputs.version }}..."
-          wkg oci push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/http-transport:${{ inputs.version }} \
-            target/wasm32-wasip1/release/http_transport.wasm
-
-          echo "Publishing wasmcp:initialize-handler@${{ inputs.version }}..."
-          wkg oci push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/initialize-handler:${{ inputs.version }} \
-            target/wasm32-wasip1/release/initialize_handler.wasm
-
-          echo "✅ All components published"
+      - name: Build and publish components to registry
+        run: make publish-all
 
       - name: Generate workspace SBOM
         run: |

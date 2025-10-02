@@ -14,7 +14,7 @@ See [Installation](#installation)
 # Scaffold a new handler
 wasmcp new my-tools --type tools --language rust
 
-# Compose handlers with an HTTP transport and middleware
+# Compose handlers with HTTP transport and middleware
 wasmcp compose \
   --middleware ./auth.wasm \
   --tools ./my-tools.wasm \
