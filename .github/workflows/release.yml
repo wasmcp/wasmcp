@@ -75,10 +75,10 @@ jobs:
           chmod +x wkg
           sudo mv wkg /usr/local/bin/
 
-      - name: Install cargo-cyclonedx for SBOM
-        run: |
-          cargo binstall cargo-cyclonedx --no-confirm --force
-          cargo cyclonedx --version
+      - name: Install cargo-cyclonedx
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-cyclonedx
 
       - name: Configure wkg registry
         run: |
@@ -212,8 +212,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
 
-      - name: Install cargo-cyclonedx for SBOM
-        run: cargo binstall cargo-cyclonedx --no-confirm --force
+      - name: Install cargo-cyclonedx
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-cyclonedx
 
       - name: Build CLI
         run: |
