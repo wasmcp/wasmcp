@@ -261,7 +261,7 @@ jobs:
         with:
           name: wasmcp-components-security-${{ inputs.version }}
           path: |
-            sboms/*
+            sboms/
             checksums-components.txt
 
   create-release:
@@ -291,6 +291,7 @@ jobs:
           files: |
             artifacts/wasmcp-components-${{ inputs.version }}/*.wasm
             artifacts/wasmcp-components-security-${{ inputs.version }}/*
+            artifacts/wasmcp-components-security-${{ inputs.version }}/sboms/*
           body: |
             # Components v${{ inputs.version }}
 
