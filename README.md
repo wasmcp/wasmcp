@@ -125,6 +125,33 @@ Wasmcp prescribes a [chain-of-responsibility](https://en.wikipedia.org/wiki/Chai
 Transport → Middleware/Handlers -> Terminus
 ```
 
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Client as MCP Client
+  participant Transport as Transport (HTTP/stdio)
+  participant Request as request (ctx, output-stream)
+  participant MW as middleware
+  participant Handler as handler (tools/resources/prompts/completion)
+  participant Writer as writer (*-writer)
+  participant Terminus as initialize-handler
+
+  Client->>Transport: JSON-RPC request
+  Transport->>Request: parse + create ctx/output-stream
+  Request->>MW: incoming-handler(ctx, request)
+  MW->>Handler: incoming-handler(ctx, request)
+  alt recognized method
+    Handler->>Writer: format result into output-stream
+    Writer-->>Transport: bytes
+    Transport-->>Client: JSON-RPC response
+  else unrecognized
+    Handler->>Terminus: forward
+    Terminus->>Writer: format initialize or error
+    Writer-->>Transport: bytes
+    Transport-->>Client: JSON-RPC response
+  end
+```
+
 **Transport components** terminate the transport protocol (HTTP or stdio) and pass the JSON-RPC request and `wasi:io/streams.{output-stream}` to the next component. They import the `incoming-handler` interface and export transport-specific interfaces:
 - **HTTP transport** - Exports `wasi:http/incoming-handler` for use with `wasmtime serve`
 - **Stdio transport** - Exports `wasi:cli/run` and uses newline-delimited JSON-RPC over stdin/stdout per the MCP specification
