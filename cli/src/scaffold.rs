@@ -50,7 +50,7 @@ pub fn create_project(
             );
             context.insert(
                 "generated_version_path".into(),
-                liquid::model::Value::Scalar("v0.3.0-alpha.59".into()),
+                liquid::model::Value::Scalar("v0.3.0".into()),
             );
         }
         _ => {

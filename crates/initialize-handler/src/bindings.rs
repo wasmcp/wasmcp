@@ -1567,9 +1567,7 @@ pub mod wasmcp {
                     };
                     let ptr7 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/error-result@0.3.0-alpha.59"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/error-result@0.3.0")]
                     unsafe extern "C" {
                         #[link_name = "write"]
                         fn wit_import8(
@@ -1901,9 +1899,7 @@ pub mod wasmcp {
                     };
                     let ptr15 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/initialize-result@0.3.0-alpha.59"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/initialize-result@0.3.0")]
                     unsafe extern "C" {
                         #[link_name = "write"]
                         fn wit_import16(_: *mut u8, _: *mut u8);
@@ -2258,7 +2254,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]request"]
                             fn drop(_: u32);
@@ -2283,7 +2279,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[static]request.from-http-stream"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -2350,7 +2346,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[static]request.from-stdio-stream"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -2417,7 +2413,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.id"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -2466,7 +2462,7 @@ pub mod wasmcp {
                 pub fn feature(&self) -> Feature {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.feature"]
                             fn wit_import0(_: i32) -> i32;
@@ -2498,7 +2494,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.params"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -3017,7 +3013,7 @@ pub mod wasmcp {
                         let len0 = vec0.len();
                         let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.get"]
                             fn wit_import2(_: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -3088,7 +3084,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.set"]
                             fn wit_import2(
@@ -3141,7 +3137,7 @@ pub mod wasmcp {
                     unsafe {
                         let flags0 = capabilities;
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.needs"]
                             fn wit_import1(_: i32, _: i32) -> i32;
@@ -3174,7 +3170,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.get-capabilities"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -3260,17 +3256,17 @@ pub mod exports {
                     fn handle(request: Request, output: OutputStream) -> ();
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_incoming_handler_0_3_0_alpha_59_cabi {
+                macro_rules! __export_wasmcp_mcp_incoming_handler_0_3_0_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/incoming-handler@0.3.0-alpha.59#handle")] unsafe
-                        extern "C" fn export_handle(arg0 : i32, arg1 : i32,) { unsafe {
+                        "wasmcp:mcp/incoming-handler@0.3.0#handle")] unsafe extern "C" fn
+                        export_handle(arg0 : i32, arg1 : i32,) { unsafe {
                         $($path_to_types)*:: _export_handle_cabi::<$ty > (arg0, arg1) } }
                         };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_incoming_handler_0_3_0_alpha_59_cabi;
+                pub(crate) use __export_wasmcp_mcp_incoming_handler_0_3_0_cabi;
             }
         }
     }
@@ -3433,7 +3429,7 @@ macro_rules! __export_initialize_handler_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::wasmcp::mcp::incoming_handler::__export_wasmcp_mcp_incoming_handler_0_3_0_alpha_59_cabi!($ty
+        exports::wasmcp::mcp::incoming_handler::__export_wasmcp_mcp_incoming_handler_0_3_0_cabi!($ty
         with_types_in $($path_to_types_root)*:: exports::wasmcp::mcp::incoming_handler);
     };
 }
@@ -3441,12 +3437,12 @@ macro_rules! __export_initialize_handler_impl {
 pub(crate) use __export_initialize_handler_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0-alpha.59:initialize-handler:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0:initialize-handler:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4267] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xa2\x20\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4204] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xe3\x1f\x01A\x02\x01\
 A\"\x01B\x04\x04\0\x05error\x03\x01\x01h\0\x01@\x01\x04self\x01\0s\x04\0\x1d[met\
 hod]error.to-debug-string\x01\x02\x03\0\x13wasi:io/error@0.2.3\x05\0\x01B\x0a\x04\
 \0\x08pollable\x03\x01\x01h\0\x01@\x01\x04self\x01\0\x7f\x04\0\x16[method]pollab\
@@ -3477,67 +3473,66 @@ erimental\x04\0\x13client-capabilities\x03\0\x0a\x01n\x05\x0bcompletions\x07prom
 pts\x09resources\x05tools\x0cexperimental\x04\0\x13server-capabilities\x03\0\x0c\
 \x01m\x03\x09v20250618\x09v20250326\x09v20241105\x04\0\x10protocol-version\x03\0\
 \x0e\x01ks\x01r\x03\x04names\x05title\x10\x07versions\x04\0\x0eimplementation\x03\
-\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x1f\
-wasmcp:mcp/types@0.3.0-alpha.59\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finva\
-lid-request\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerr\
-or-code\x03\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05erro\
-r\x03\0\x03\x03\0\x1fwasmcp:mcp/error@0.3.0-alpha.59\x05\x06\x02\x03\0\x02\x0dou\
-tput-stream\x02\x03\0\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x04\x05e\
-rror\x01B\x0c\x02\x03\x02\x01\x07\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\
-\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\
-\x03\x02\x01\x0a\x04\0\x09mcp-error\x03\0\x06\x01i\x01\x01j\0\x01\x03\x01@\x03\x02\
-id\x05\x06output\x08\x05error\x07\0\x09\x04\0\x05write\x01\x0a\x03\0&wasmcp:mcp/\
-error-result@0.3.0-alpha.59\x05\x0b\x02\x03\0\x03\x0eimplementation\x02\x03\0\x03\
-\x04meta\x02\x03\0\x03\x10protocol-version\x02\x03\0\x03\x13server-capabilities\x01\
-B\x18\x02\x03\x02\x01\x07\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x08\x04\
-\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\x03\x02\
-\x01\x0c\x04\0\x0eimplementation\x03\0\x06\x02\x03\x02\x01\x0d\x04\0\x04meta\x03\
-\0\x08\x02\x03\x02\x01\x0e\x04\0\x10protocol-version\x03\0\x0a\x02\x03\x02\x01\x0f\
-\x04\0\x13server-capabilities\x03\0\x0c\x01ks\x01r\x02\x0cinstructions\x0e\x04me\
-ta\x09\x04\0\x19initialize-result-options\x03\0\x0f\x01k\x10\x01r\x04\x0bserver-\
-info\x07\x0ccapabilities\x0d\x10protocol-version\x0b\x07options\x11\x04\0\x11ini\
-tialize-result\x03\0\x12\x01i\x01\x01j\0\x01\x03\x01@\x03\x02id\x05\x06output\x14\
-\x06result\x13\0\x15\x04\0\x05write\x01\x16\x03\0+wasmcp:mcp/initialize-result@0\
-.3.0-alpha.59\x05\x10\x02\x03\0\x02\x0cinput-stream\x02\x03\0\x03\x04json\x02\x03\
-\0\x03\x03uri\x02\x03\0\x03\x06cursor\x02\x03\0\x03\x13client-capabilities\x01BO\
-\x02\x03\x02\x01\x11\x04\0\x0cinput-stream\x03\0\0\x02\x03\x02\x01\x08\x04\0\x0c\
-stream-error\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\
-\x0c\x04\0\x0eimplementation\x03\0\x06\x02\x03\x02\x01\x12\x04\0\x04json\x03\0\x08\
-\x02\x03\x02\x01\x13\x04\0\x03uri\x03\0\x0a\x02\x03\x02\x01\x14\x04\0\x06cursor\x03\
-\0\x0c\x02\x03\x02\x01\x15\x04\0\x13client-capabilities\x03\0\x0e\x02\x03\x02\x01\
-\x0e\x04\0\x10protocol-version\x03\0\x10\x02\x03\x02\x01\x0f\x04\0\x13server-cap\
-abilities\x03\0\x12\x02\x03\x02\x01\x0a\x04\0\x09mcp-error\x03\0\x14\x01k\x09\x01\
-r\x02\x04names\x09arguments\x16\x04\0\x09arguments\x03\0\x17\x01r\x02\x04names\x05\
-values\x04\0\x13completion-argument\x03\0\x19\x01r\x01\x09arguments\x16\x04\0\x12\
-completion-context\x03\0\x1b\x01ks\x01r\x02\x04names\x05title\x1d\x04\0\x1bcompl\
-etion-prompt-reference\x03\0\x1e\x01q\x02\x06prompt\x01\x1f\0\x11resource-templa\
-te\x01\x0b\0\x04\0\x0ecompletion-ref\x03\0\x20\x01r\x03\x0ccapabilities\x0f\x0bc\
-lient-info\x07\x10protocol-version\x11\x04\0\x11initialize-params\x03\0\"\x04\0\x11\
-list-tools-params\x03\0\x0d\x04\0\x10call-tool-params\x03\0\x18\x04\0\x15list-re\
-sources-params\x03\0\x0d\x04\0\x14read-resource-params\x03\0\x0b\x04\0\x1elist-r\
-esource-templates-params\x03\0\x0d\x04\0\x13list-prompts-params\x03\0\x0d\x04\0\x11\
-get-prompt-params\x03\0\x18\x01k\x1c\x01r\x03\x08argument\x1a\x03ref!\x07context\
-+\x04\0\x11completion-params\x03\0,\x01q\x09\x0ainitialize\x01#\0\x0atools-list\x01\
-$\0\x0atools-call\x01%\0\x0eresources-list\x01&\0\x0eresources-read\x01'\0\x18re\
-sources-templates-list\x01(\0\x0cprompts-list\x01)\0\x0bprompts-get\x01*\0\x13co\
-mpletion-complete\x01-\0\x04\0\x06params\x03\0.\x01m\x05\x0ainitialize\x05tools\x09\
-resources\x07prompts\x0acompletion\x04\0\x07feature\x03\00\x04\0\x07request\x03\x01\
-\x01h\x01\x01i2\x01j\x014\x01\x03\x01@\x01\x05input3\05\x04\0\x20[static]request\
-.from-http-stream\x016\x04\0![static]request.from-stdio-stream\x016\x01h2\x01@\x01\
-\x04self7\0\x05\x04\0\x12[method]request.id\x018\x01@\x01\x04self7\01\x04\0\x17[\
-method]request.feature\x019\x01j\x01/\x01\x15\x01@\x01\x04self7\0:\x04\0\x16[met\
-hod]request.params\x01;\x01p}\x01k<\x01j\x01=\0\x01@\x02\x04self7\x03keys\0>\x04\
-\0\x13[method]request.get\x01?\x01j\0\0\x01@\x03\x04self7\x03keys\x05value<\0\xc0\
-\0\x04\0\x13[method]request.set\x01A\x01@\x02\x04self7\x0ccapabilities\x13\0\x7f\
-\x04\0\x15[method]request.needs\x01B\x01k\x13\x01j\x01\xc3\0\0\x01@\x01\x04self7\
-\0\xc4\0\x04\0\x20[method]request.get-capabilities\x01E\x03\0!wasmcp:mcp/request\
-@0.3.0-alpha.59\x05\x16\x02\x03\0\x07\x07request\x01B\x08\x02\x03\x02\x01\x07\x04\
-\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x17\x04\0\x07request\x03\0\x02\x01i\x03\
-\x01i\x01\x01@\x02\x07request\x04\x06output\x05\x01\0\x04\0\x06handle\x01\x06\x04\
-\0*wasmcp:mcp/incoming-handler@0.3.0-alpha.59\x05\x18\x04\0,wasmcp:mcp/initializ\
-e-handler@0.3.0-alpha.59\x04\0\x0b\x18\x01\0\x12initialize-handler\x03\0\0\0G\x09\
-producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rus\
-t\x060.41.0";
+\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x16\
+wasmcp:mcp/types@0.3.0\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finvalid-reque\
+st\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerror-code\x03\
+\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05error\x03\0\x03\
+\x03\0\x16wasmcp:mcp/error@0.3.0\x05\x06\x02\x03\0\x02\x0doutput-stream\x02\x03\0\
+\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x04\x05error\x01B\x0c\x02\x03\
+\x02\x01\x07\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-\
+error\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x0a\x04\
+\0\x09mcp-error\x03\0\x06\x01i\x01\x01j\0\x01\x03\x01@\x03\x02id\x05\x06output\x08\
+\x05error\x07\0\x09\x04\0\x05write\x01\x0a\x03\0\x1dwasmcp:mcp/error-result@0.3.\
+0\x05\x0b\x02\x03\0\x03\x0eimplementation\x02\x03\0\x03\x04meta\x02\x03\0\x03\x10\
+protocol-version\x02\x03\0\x03\x13server-capabilities\x01B\x18\x02\x03\x02\x01\x07\
+\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\
+\x02\x03\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x0c\x04\0\x0eimplemen\
+tation\x03\0\x06\x02\x03\x02\x01\x0d\x04\0\x04meta\x03\0\x08\x02\x03\x02\x01\x0e\
+\x04\0\x10protocol-version\x03\0\x0a\x02\x03\x02\x01\x0f\x04\0\x13server-capabil\
+ities\x03\0\x0c\x01ks\x01r\x02\x0cinstructions\x0e\x04meta\x09\x04\0\x19initiali\
+ze-result-options\x03\0\x0f\x01k\x10\x01r\x04\x0bserver-info\x07\x0ccapabilities\
+\x0d\x10protocol-version\x0b\x07options\x11\x04\0\x11initialize-result\x03\0\x12\
+\x01i\x01\x01j\0\x01\x03\x01@\x03\x02id\x05\x06output\x14\x06result\x13\0\x15\x04\
+\0\x05write\x01\x16\x03\0\"wasmcp:mcp/initialize-result@0.3.0\x05\x10\x02\x03\0\x02\
+\x0cinput-stream\x02\x03\0\x03\x04json\x02\x03\0\x03\x03uri\x02\x03\0\x03\x06cur\
+sor\x02\x03\0\x03\x13client-capabilities\x01BO\x02\x03\x02\x01\x11\x04\0\x0cinpu\
+t-stream\x03\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\
+\x01\x09\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x0c\x04\0\x0eimplementation\x03\0\
+\x06\x02\x03\x02\x01\x12\x04\0\x04json\x03\0\x08\x02\x03\x02\x01\x13\x04\0\x03ur\
+i\x03\0\x0a\x02\x03\x02\x01\x14\x04\0\x06cursor\x03\0\x0c\x02\x03\x02\x01\x15\x04\
+\0\x13client-capabilities\x03\0\x0e\x02\x03\x02\x01\x0e\x04\0\x10protocol-versio\
+n\x03\0\x10\x02\x03\x02\x01\x0f\x04\0\x13server-capabilities\x03\0\x12\x02\x03\x02\
+\x01\x0a\x04\0\x09mcp-error\x03\0\x14\x01k\x09\x01r\x02\x04names\x09arguments\x16\
+\x04\0\x09arguments\x03\0\x17\x01r\x02\x04names\x05values\x04\0\x13completion-ar\
+gument\x03\0\x19\x01r\x01\x09arguments\x16\x04\0\x12completion-context\x03\0\x1b\
+\x01ks\x01r\x02\x04names\x05title\x1d\x04\0\x1bcompletion-prompt-reference\x03\0\
+\x1e\x01q\x02\x06prompt\x01\x1f\0\x11resource-template\x01\x0b\0\x04\0\x0ecomple\
+tion-ref\x03\0\x20\x01r\x03\x0ccapabilities\x0f\x0bclient-info\x07\x10protocol-v\
+ersion\x11\x04\0\x11initialize-params\x03\0\"\x04\0\x11list-tools-params\x03\0\x0d\
+\x04\0\x10call-tool-params\x03\0\x18\x04\0\x15list-resources-params\x03\0\x0d\x04\
+\0\x14read-resource-params\x03\0\x0b\x04\0\x1elist-resource-templates-params\x03\
+\0\x0d\x04\0\x13list-prompts-params\x03\0\x0d\x04\0\x11get-prompt-params\x03\0\x18\
+\x01k\x1c\x01r\x03\x08argument\x1a\x03ref!\x07context+\x04\0\x11completion-param\
+s\x03\0,\x01q\x09\x0ainitialize\x01#\0\x0atools-list\x01$\0\x0atools-call\x01%\0\
+\x0eresources-list\x01&\0\x0eresources-read\x01'\0\x18resources-templates-list\x01\
+(\0\x0cprompts-list\x01)\0\x0bprompts-get\x01*\0\x13completion-complete\x01-\0\x04\
+\0\x06params\x03\0.\x01m\x05\x0ainitialize\x05tools\x09resources\x07prompts\x0ac\
+ompletion\x04\0\x07feature\x03\00\x04\0\x07request\x03\x01\x01h\x01\x01i2\x01j\x01\
+4\x01\x03\x01@\x01\x05input3\05\x04\0\x20[static]request.from-http-stream\x016\x04\
+\0![static]request.from-stdio-stream\x016\x01h2\x01@\x01\x04self7\0\x05\x04\0\x12\
+[method]request.id\x018\x01@\x01\x04self7\01\x04\0\x17[method]request.feature\x01\
+9\x01j\x01/\x01\x15\x01@\x01\x04self7\0:\x04\0\x16[method]request.params\x01;\x01\
+p}\x01k<\x01j\x01=\0\x01@\x02\x04self7\x03keys\0>\x04\0\x13[method]request.get\x01\
+?\x01j\0\0\x01@\x03\x04self7\x03keys\x05value<\0\xc0\0\x04\0\x13[method]request.\
+set\x01A\x01@\x02\x04self7\x0ccapabilities\x13\0\x7f\x04\0\x15[method]request.ne\
+eds\x01B\x01k\x13\x01j\x01\xc3\0\0\x01@\x01\x04self7\0\xc4\0\x04\0\x20[method]re\
+quest.get-capabilities\x01E\x03\0\x18wasmcp:mcp/request@0.3.0\x05\x16\x02\x03\0\x07\
+\x07request\x01B\x08\x02\x03\x02\x01\x07\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\
+\x01\x17\x04\0\x07request\x03\0\x02\x01i\x03\x01i\x01\x01@\x02\x07request\x04\x06\
+output\x05\x01\0\x04\0\x06handle\x01\x06\x04\0!wasmcp:mcp/incoming-handler@0.3.0\
+\x05\x18\x04\0#wasmcp:mcp/initialize-handler@0.3.0\x04\0\x0b\x18\x01\0\x12initia\
+lize-handler\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x07\
+0.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

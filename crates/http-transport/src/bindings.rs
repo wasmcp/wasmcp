@@ -8537,7 +8537,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]request"]
                             fn drop(_: u32);
@@ -8562,7 +8562,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[static]request.from-http-stream"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -8629,7 +8629,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[static]request.from-stdio-stream"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -8696,7 +8696,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.id"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -8745,7 +8745,7 @@ pub mod wasmcp {
                 pub fn feature(&self) -> Feature {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.feature"]
                             fn wit_import0(_: i32) -> i32;
@@ -8777,7 +8777,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.params"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -9296,7 +9296,7 @@ pub mod wasmcp {
                         let len0 = vec0.len();
                         let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.get"]
                             fn wit_import2(_: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -9367,7 +9367,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.set"]
                             fn wit_import2(
@@ -9420,7 +9420,7 @@ pub mod wasmcp {
                     unsafe {
                         let flags0 = capabilities;
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.needs"]
                             fn wit_import1(_: i32, _: i32) -> i32;
@@ -9453,7 +9453,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.get-capabilities"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -9514,9 +9514,7 @@ pub mod wasmcp {
             pub fn handle(request: Request, output: OutputStream) -> () {
                 unsafe {
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/incoming-handler@0.3.0-alpha.59"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/incoming-handler@0.3.0")]
                     unsafe extern "C" {
                         #[link_name = "handle"]
                         fn wit_import0(_: i32, _: i32);
@@ -9820,12 +9818,12 @@ macro_rules! __export_http_transport_impl {
 pub(crate) use __export_http_transport_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0-alpha.59:http-transport:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0:http-transport:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 9395] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xaeH\x01A\x02\x01A6\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 9350] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x81H\x01A\x02\x01A6\x01\
 B\x04\x04\0\x05error\x03\x01\x01h\0\x01@\x01\x04self\x01\0s\x04\0\x1d[method]err\
 or.to-debug-string\x01\x02\x03\0\x13wasi:io/error@0.2.3\x05\0\x01B\x0a\x04\0\x08\
 pollable\x03\x01\x01h\0\x01@\x01\x04self\x01\0\x7f\x04\0\x16[method]pollable.rea\
@@ -9856,166 +9854,165 @@ erimental\x04\0\x13client-capabilities\x03\0\x0a\x01n\x05\x0bcompletions\x07prom
 pts\x09resources\x05tools\x0cexperimental\x04\0\x13server-capabilities\x03\0\x0c\
 \x01m\x03\x09v20250618\x09v20250326\x09v20241105\x04\0\x10protocol-version\x03\0\
 \x0e\x01ks\x01r\x03\x04names\x05title\x10\x07versions\x04\0\x0eimplementation\x03\
-\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x1f\
-wasmcp:mcp/types@0.3.0-alpha.59\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finva\
-lid-request\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerr\
-or-code\x03\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05erro\
-r\x03\0\x03\x03\0\x1fwasmcp:mcp/error@0.3.0-alpha.59\x05\x06\x02\x03\0\x02\x0cin\
-put-stream\x02\x03\0\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x03\x0eim\
-plementation\x02\x03\0\x03\x04json\x02\x03\0\x03\x03uri\x02\x03\0\x03\x06cursor\x02\
-\x03\0\x03\x13client-capabilities\x02\x03\0\x03\x10protocol-version\x02\x03\0\x03\
-\x13server-capabilities\x02\x03\0\x04\x05error\x01BO\x02\x03\x02\x01\x07\x04\0\x0c\
-input-stream\x03\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\
-\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x0a\x04\0\x0eimplementation\x03\
-\0\x06\x02\x03\x02\x01\x0b\x04\0\x04json\x03\0\x08\x02\x03\x02\x01\x0c\x04\0\x03\
-uri\x03\0\x0a\x02\x03\x02\x01\x0d\x04\0\x06cursor\x03\0\x0c\x02\x03\x02\x01\x0e\x04\
-\0\x13client-capabilities\x03\0\x0e\x02\x03\x02\x01\x0f\x04\0\x10protocol-versio\
-n\x03\0\x10\x02\x03\x02\x01\x10\x04\0\x13server-capabilities\x03\0\x12\x02\x03\x02\
-\x01\x11\x04\0\x09mcp-error\x03\0\x14\x01k\x09\x01r\x02\x04names\x09arguments\x16\
-\x04\0\x09arguments\x03\0\x17\x01r\x02\x04names\x05values\x04\0\x13completion-ar\
-gument\x03\0\x19\x01r\x01\x09arguments\x16\x04\0\x12completion-context\x03\0\x1b\
-\x01ks\x01r\x02\x04names\x05title\x1d\x04\0\x1bcompletion-prompt-reference\x03\0\
-\x1e\x01q\x02\x06prompt\x01\x1f\0\x11resource-template\x01\x0b\0\x04\0\x0ecomple\
-tion-ref\x03\0\x20\x01r\x03\x0ccapabilities\x0f\x0bclient-info\x07\x10protocol-v\
-ersion\x11\x04\0\x11initialize-params\x03\0\"\x04\0\x11list-tools-params\x03\0\x0d\
-\x04\0\x10call-tool-params\x03\0\x18\x04\0\x15list-resources-params\x03\0\x0d\x04\
-\0\x14read-resource-params\x03\0\x0b\x04\0\x1elist-resource-templates-params\x03\
-\0\x0d\x04\0\x13list-prompts-params\x03\0\x0d\x04\0\x11get-prompt-params\x03\0\x18\
-\x01k\x1c\x01r\x03\x08argument\x1a\x03ref!\x07context+\x04\0\x11completion-param\
-s\x03\0,\x01q\x09\x0ainitialize\x01#\0\x0atools-list\x01$\0\x0atools-call\x01%\0\
-\x0eresources-list\x01&\0\x0eresources-read\x01'\0\x18resources-templates-list\x01\
-(\0\x0cprompts-list\x01)\0\x0bprompts-get\x01*\0\x13completion-complete\x01-\0\x04\
-\0\x06params\x03\0.\x01m\x05\x0ainitialize\x05tools\x09resources\x07prompts\x0ac\
-ompletion\x04\0\x07feature\x03\00\x04\0\x07request\x03\x01\x01h\x01\x01i2\x01j\x01\
-4\x01\x03\x01@\x01\x05input3\05\x04\0\x20[static]request.from-http-stream\x016\x04\
-\0![static]request.from-stdio-stream\x016\x01h2\x01@\x01\x04self7\0\x05\x04\0\x12\
-[method]request.id\x018\x01@\x01\x04self7\01\x04\0\x17[method]request.feature\x01\
-9\x01j\x01/\x01\x15\x01@\x01\x04self7\0:\x04\0\x16[method]request.params\x01;\x01\
-p}\x01k<\x01j\x01=\0\x01@\x02\x04self7\x03keys\0>\x04\0\x13[method]request.get\x01\
-?\x01j\0\0\x01@\x03\x04self7\x03keys\x05value<\0\xc0\0\x04\0\x13[method]request.\
-set\x01A\x01@\x02\x04self7\x0ccapabilities\x13\0\x7f\x04\0\x15[method]request.ne\
-eds\x01B\x01k\x13\x01j\x01\xc3\0\0\x01@\x01\x04self7\0\xc4\0\x04\0\x20[method]re\
-quest.get-capabilities\x01E\x03\0!wasmcp:mcp/request@0.3.0-alpha.59\x05\x12\x02\x03\
-\0\x02\x0doutput-stream\x02\x03\0\x05\x07request\x01B\x08\x02\x03\x02\x01\x13\x04\
-\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x14\x04\0\x07request\x03\0\x02\x01i\x03\
-\x01i\x01\x01@\x02\x07request\x04\x06output\x05\x01\0\x04\0\x06handle\x01\x06\x03\
-\0*wasmcp:mcp/incoming-handler@0.3.0-alpha.59\x05\x15\x01B\x0f\x02\x03\x02\x01\x03\
-\x04\0\x08pollable\x03\0\0\x01w\x04\0\x07instant\x03\0\x02\x01w\x04\0\x08duratio\
-n\x03\0\x04\x01@\0\0\x03\x04\0\x03now\x01\x06\x01@\0\0\x05\x04\0\x0aresolution\x01\
-\x07\x01i\x01\x01@\x01\x04when\x03\0\x08\x04\0\x11subscribe-instant\x01\x09\x01@\
-\x01\x04when\x05\0\x08\x04\0\x12subscribe-duration\x01\x0a\x03\0!wasi:clocks/mon\
-otonic-clock@0.2.3\x05\x16\x01B\x05\x01r\x02\x07secondsw\x0bnanosecondsy\x04\0\x08\
-datetime\x03\0\0\x01@\0\0\x01\x04\0\x03now\x01\x02\x04\0\x0aresolution\x01\x02\x03\
-\0\x1cwasi:clocks/wall-clock@0.2.3\x05\x17\x01B\x05\x01p}\x01@\x01\x03lenw\0\0\x04\
-\0\x10get-random-bytes\x01\x01\x01@\0\0w\x04\0\x0eget-random-u64\x01\x02\x03\0\x18\
-wasi:random/random@0.2.3\x05\x18\x01B\x05\x02\x03\x02\x01\x13\x04\0\x0doutput-st\
-ream\x03\0\0\x01i\x01\x01@\0\0\x02\x04\0\x0aget-stdout\x01\x03\x03\0\x15wasi:cli\
-/stdout@0.2.3\x05\x19\x01B\x05\x02\x03\x02\x01\x13\x04\0\x0doutput-stream\x03\0\0\
-\x01i\x01\x01@\0\0\x02\x04\0\x0aget-stderr\x01\x03\x03\0\x15wasi:cli/stderr@0.2.\
-3\x05\x1a\x01B\x05\x02\x03\x02\x01\x07\x04\0\x0cinput-stream\x03\0\0\x01i\x01\x01\
-@\0\0\x02\x04\0\x09get-stdin\x01\x03\x03\0\x14wasi:cli/stdin@0.2.3\x05\x1b\x02\x03\
-\0\x07\x08duration\x01B\xc1\x01\x02\x03\x02\x01\x1c\x04\0\x08duration\x03\0\0\x02\
-\x03\x02\x01\x07\x04\0\x0cinput-stream\x03\0\x02\x02\x03\x02\x01\x13\x04\0\x0dou\
-tput-stream\x03\0\x04\x02\x03\x02\x01\x02\x04\0\x08io-error\x03\0\x06\x02\x03\x02\
-\x01\x03\x04\0\x08pollable\x03\0\x08\x01q\x0a\x03get\0\0\x04head\0\0\x04post\0\0\
-\x03put\0\0\x06delete\0\0\x07connect\0\0\x07options\0\0\x05trace\0\0\x05patch\0\0\
-\x05other\x01s\0\x04\0\x06method\x03\0\x0a\x01q\x03\x04HTTP\0\0\x05HTTPS\0\0\x05\
-other\x01s\0\x04\0\x06scheme\x03\0\x0c\x01ks\x01k{\x01r\x02\x05rcode\x0e\x09info\
--code\x0f\x04\0\x11DNS-error-payload\x03\0\x10\x01k}\x01r\x02\x08alert-id\x12\x0d\
-alert-message\x0e\x04\0\x1aTLS-alert-received-payload\x03\0\x13\x01ky\x01r\x02\x0a\
-field-name\x0e\x0afield-size\x15\x04\0\x12field-size-payload\x03\0\x16\x01kw\x01\
-k\x17\x01q'\x0bDNS-timeout\0\0\x09DNS-error\x01\x11\0\x15destination-not-found\0\
-\0\x17destination-unavailable\0\0\x19destination-IP-prohibited\0\0\x19destinatio\
-n-IP-unroutable\0\0\x12connection-refused\0\0\x15connection-terminated\0\0\x12co\
-nnection-timeout\0\0\x17connection-read-timeout\0\0\x18connection-write-timeout\0\
-\0\x18connection-limit-reached\0\0\x12TLS-protocol-error\0\0\x15TLS-certificate-\
-error\0\0\x12TLS-alert-received\x01\x14\0\x13HTTP-request-denied\0\0\x1cHTTP-req\
-uest-length-required\0\0\x16HTTP-request-body-size\x01\x18\0\x1bHTTP-request-met\
-hod-invalid\0\0\x18HTTP-request-URI-invalid\0\0\x19HTTP-request-URI-too-long\0\0\
-\x20HTTP-request-header-section-size\x01\x15\0\x18HTTP-request-header-size\x01\x19\
-\0!HTTP-request-trailer-section-size\x01\x15\0\x19HTTP-request-trailer-size\x01\x17\
-\0\x18HTTP-response-incomplete\0\0!HTTP-response-header-section-size\x01\x15\0\x19\
-HTTP-response-header-size\x01\x17\0\x17HTTP-response-body-size\x01\x18\0\"HTTP-r\
-esponse-trailer-section-size\x01\x15\0\x1aHTTP-response-trailer-size\x01\x17\0\x1d\
-HTTP-response-transfer-coding\x01\x0e\0\x1cHTTP-response-content-coding\x01\x0e\0\
-\x15HTTP-response-timeout\0\0\x13HTTP-upgrade-failed\0\0\x13HTTP-protocol-error\0\
-\0\x0dloop-detected\0\0\x13configuration-error\0\0\x0einternal-error\x01\x0e\0\x04\
-\0\x0aerror-code\x03\0\x1a\x01q\x03\x0einvalid-syntax\0\0\x09forbidden\0\0\x09im\
-mutable\0\0\x04\0\x0cheader-error\x03\0\x1c\x01s\x04\0\x09field-key\x03\0\x1e\x04\
-\0\x0afield-name\x03\0\x1f\x01p}\x04\0\x0bfield-value\x03\0!\x04\0\x06fields\x03\
-\x01\x04\0\x07headers\x03\0#\x04\0\x08trailers\x03\0#\x04\0\x10incoming-request\x03\
-\x01\x04\0\x10outgoing-request\x03\x01\x04\0\x0frequest-options\x03\x01\x04\0\x11\
-response-outparam\x03\x01\x01{\x04\0\x0bstatus-code\x03\0*\x04\0\x11incoming-res\
-ponse\x03\x01\x04\0\x0dincoming-body\x03\x01\x04\0\x0ffuture-trailers\x03\x01\x04\
-\0\x11outgoing-response\x03\x01\x04\0\x0doutgoing-body\x03\x01\x04\0\x18future-i\
-ncoming-response\x03\x01\x01i#\x01@\0\02\x04\0\x13[constructor]fields\x013\x01o\x02\
-\x20\"\x01p4\x01j\x012\x01\x1d\x01@\x01\x07entries5\06\x04\0\x18[static]fields.f\
-rom-list\x017\x01h#\x01p\"\x01@\x02\x04self8\x04name\x20\09\x04\0\x12[method]fie\
-lds.get\x01:\x01@\x02\x04self8\x04name\x20\0\x7f\x04\0\x12[method]fields.has\x01\
-;\x01j\0\x01\x1d\x01@\x03\x04self8\x04name\x20\x05value9\0<\x04\0\x12[method]fie\
-lds.set\x01=\x01@\x02\x04self8\x04name\x20\0<\x04\0\x15[method]fields.delete\x01\
->\x01@\x03\x04self8\x04name\x20\x05value\"\0<\x04\0\x15[method]fields.append\x01\
-?\x01@\x01\x04self8\05\x04\0\x16[method]fields.entries\x01@\x01@\x01\x04self8\02\
-\x04\0\x14[method]fields.clone\x01A\x01h&\x01@\x01\x04self\xc2\0\0\x0b\x04\0\x1f\
-[method]incoming-request.method\x01C\x01@\x01\x04self\xc2\0\0\x0e\x04\0([method]\
-incoming-request.path-with-query\x01D\x01k\x0d\x01@\x01\x04self\xc2\0\0\xc5\0\x04\
-\0\x1f[method]incoming-request.scheme\x01F\x04\0\"[method]incoming-request.autho\
-rity\x01D\x01i$\x01@\x01\x04self\xc2\0\0\xc7\0\x04\0\x20[method]incoming-request\
-.headers\x01H\x01i-\x01j\x01\xc9\0\0\x01@\x01\x04self\xc2\0\0\xca\0\x04\0\x20[me\
-thod]incoming-request.consume\x01K\x01i'\x01@\x01\x07headers\xc7\0\0\xcc\0\x04\0\
-\x1d[constructor]outgoing-request\x01M\x01h'\x01i0\x01j\x01\xcf\0\0\x01@\x01\x04\
-self\xce\0\0\xd0\0\x04\0\x1d[method]outgoing-request.body\x01Q\x01@\x01\x04self\xce\
-\0\0\x0b\x04\0\x1f[method]outgoing-request.method\x01R\x01j\0\0\x01@\x02\x04self\
-\xce\0\x06method\x0b\0\xd3\0\x04\0#[method]outgoing-request.set-method\x01T\x01@\
-\x01\x04self\xce\0\0\x0e\x04\0([method]outgoing-request.path-with-query\x01U\x01\
-@\x02\x04self\xce\0\x0fpath-with-query\x0e\0\xd3\0\x04\0,[method]outgoing-reques\
-t.set-path-with-query\x01V\x01@\x01\x04self\xce\0\0\xc5\0\x04\0\x1f[method]outgo\
-ing-request.scheme\x01W\x01@\x02\x04self\xce\0\x06scheme\xc5\0\0\xd3\0\x04\0#[me\
-thod]outgoing-request.set-scheme\x01X\x04\0\"[method]outgoing-request.authority\x01\
-U\x01@\x02\x04self\xce\0\x09authority\x0e\0\xd3\0\x04\0&[method]outgoing-request\
-.set-authority\x01Y\x01@\x01\x04self\xce\0\0\xc7\0\x04\0\x20[method]outgoing-req\
-uest.headers\x01Z\x01i(\x01@\0\0\xdb\0\x04\0\x1c[constructor]request-options\x01\
-\\\x01h(\x01k\x01\x01@\x01\x04self\xdd\0\0\xde\0\x04\0'[method]request-options.c\
-onnect-timeout\x01_\x01@\x02\x04self\xdd\0\x08duration\xde\0\0\xd3\0\x04\0+[meth\
-od]request-options.set-connect-timeout\x01`\x04\0*[method]request-options.first-\
-byte-timeout\x01_\x04\0.[method]request-options.set-first-byte-timeout\x01`\x04\0\
--[method]request-options.between-bytes-timeout\x01_\x04\01[method]request-option\
-s.set-between-bytes-timeout\x01`\x01i)\x01i/\x01j\x01\xe2\0\x01\x1b\x01@\x02\x05\
-param\xe1\0\x08response\xe3\0\x01\0\x04\0\x1d[static]response-outparam.set\x01d\x01\
-h,\x01@\x01\x04self\xe5\0\0+\x04\0\x20[method]incoming-response.status\x01f\x01@\
-\x01\x04self\xe5\0\0\xc7\0\x04\0![method]incoming-response.headers\x01g\x01@\x01\
-\x04self\xe5\0\0\xca\0\x04\0![method]incoming-response.consume\x01h\x01h-\x01i\x03\
-\x01j\x01\xea\0\0\x01@\x01\x04self\xe9\0\0\xeb\0\x04\0\x1c[method]incoming-body.\
-stream\x01l\x01i.\x01@\x01\x04this\xc9\0\0\xed\0\x04\0\x1c[static]incoming-body.\
-finish\x01n\x01h.\x01i\x09\x01@\x01\x04self\xef\0\0\xf0\0\x04\0![method]future-t\
-railers.subscribe\x01q\x01i%\x01k\xf2\0\x01j\x01\xf3\0\x01\x1b\x01j\x01\xf4\0\0\x01\
-k\xf5\0\x01@\x01\x04self\xef\0\0\xf6\0\x04\0\x1b[method]future-trailers.get\x01w\
-\x01@\x01\x07headers\xc7\0\0\xe2\0\x04\0\x1e[constructor]outgoing-response\x01x\x01\
-h/\x01@\x01\x04self\xf9\0\0+\x04\0%[method]outgoing-response.status-code\x01z\x01\
-@\x02\x04self\xf9\0\x0bstatus-code+\0\xd3\0\x04\0)[method]outgoing-response.set-\
-status-code\x01{\x01@\x01\x04self\xf9\0\0\xc7\0\x04\0![method]outgoing-response.\
-headers\x01|\x01@\x01\x04self\xf9\0\0\xd0\0\x04\0\x1e[method]outgoing-response.b\
-ody\x01}\x01h0\x01i\x05\x01j\x01\xff\0\0\x01@\x01\x04self\xfe\0\0\x80\x01\x04\0\x1b\
-[method]outgoing-body.write\x01\x81\x01\x01j\0\x01\x1b\x01@\x02\x04this\xcf\0\x08\
-trailers\xf3\0\0\x82\x01\x04\0\x1c[static]outgoing-body.finish\x01\x83\x01\x01h1\
-\x01@\x01\x04self\x84\x01\0\xf0\0\x04\0*[method]future-incoming-response.subscri\
-be\x01\x85\x01\x01i,\x01j\x01\x86\x01\x01\x1b\x01j\x01\x87\x01\0\x01k\x88\x01\x01\
-@\x01\x04self\x84\x01\0\x89\x01\x04\0$[method]future-incoming-response.get\x01\x8a\
-\x01\x01h\x07\x01k\x1b\x01@\x01\x03err\x8b\x01\0\x8c\x01\x04\0\x0fhttp-error-cod\
-e\x01\x8d\x01\x03\0\x15wasi:http/types@0.2.3\x05\x1d\x02\x03\0\x0d\x10outgoing-r\
-equest\x02\x03\0\x0d\x0frequest-options\x02\x03\0\x0d\x18future-incoming-respons\
-e\x02\x03\0\x0d\x0aerror-code\x01B\x0f\x02\x03\x02\x01\x1e\x04\0\x10outgoing-req\
-uest\x03\0\0\x02\x03\x02\x01\x1f\x04\0\x0frequest-options\x03\0\x02\x02\x03\x02\x01\
-\x20\x04\0\x18future-incoming-response\x03\0\x04\x02\x03\x02\x01!\x04\0\x0aerror\
--code\x03\0\x06\x01i\x01\x01i\x03\x01k\x09\x01i\x05\x01j\x01\x0b\x01\x07\x01@\x02\
-\x07request\x08\x07options\x0a\0\x0c\x04\0\x06handle\x01\x0d\x03\0\x20wasi:http/\
-outgoing-handler@0.2.3\x05\"\x02\x03\0\x0d\x10incoming-request\x02\x03\0\x0d\x11\
-response-outparam\x01B\x08\x02\x03\x02\x01#\x04\0\x10incoming-request\x03\0\0\x02\
-\x03\x02\x01$\x04\0\x11response-outparam\x03\0\x02\x01i\x01\x01i\x03\x01@\x02\x07\
-request\x04\x0cresponse-out\x05\x01\0\x04\0\x06handle\x01\x06\x04\0\x20wasi:http\
-/incoming-handler@0.2.3\x05%\x04\0(wasmcp:mcp/http-transport@0.3.0-alpha.59\x04\0\
-\x0b\x14\x01\0\x0ehttp-transport\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\
-\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x16\
+wasmcp:mcp/types@0.3.0\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finvalid-reque\
+st\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerror-code\x03\
+\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05error\x03\0\x03\
+\x03\0\x16wasmcp:mcp/error@0.3.0\x05\x06\x02\x03\0\x02\x0cinput-stream\x02\x03\0\
+\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x03\x0eimplementation\x02\x03\
+\0\x03\x04json\x02\x03\0\x03\x03uri\x02\x03\0\x03\x06cursor\x02\x03\0\x03\x13cli\
+ent-capabilities\x02\x03\0\x03\x10protocol-version\x02\x03\0\x03\x13server-capab\
+ilities\x02\x03\0\x04\x05error\x01BO\x02\x03\x02\x01\x07\x04\0\x0cinput-stream\x03\
+\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x09\x04\
+\0\x02id\x03\0\x04\x02\x03\x02\x01\x0a\x04\0\x0eimplementation\x03\0\x06\x02\x03\
+\x02\x01\x0b\x04\0\x04json\x03\0\x08\x02\x03\x02\x01\x0c\x04\0\x03uri\x03\0\x0a\x02\
+\x03\x02\x01\x0d\x04\0\x06cursor\x03\0\x0c\x02\x03\x02\x01\x0e\x04\0\x13client-c\
+apabilities\x03\0\x0e\x02\x03\x02\x01\x0f\x04\0\x10protocol-version\x03\0\x10\x02\
+\x03\x02\x01\x10\x04\0\x13server-capabilities\x03\0\x12\x02\x03\x02\x01\x11\x04\0\
+\x09mcp-error\x03\0\x14\x01k\x09\x01r\x02\x04names\x09arguments\x16\x04\0\x09arg\
+uments\x03\0\x17\x01r\x02\x04names\x05values\x04\0\x13completion-argument\x03\0\x19\
+\x01r\x01\x09arguments\x16\x04\0\x12completion-context\x03\0\x1b\x01ks\x01r\x02\x04\
+names\x05title\x1d\x04\0\x1bcompletion-prompt-reference\x03\0\x1e\x01q\x02\x06pr\
+ompt\x01\x1f\0\x11resource-template\x01\x0b\0\x04\0\x0ecompletion-ref\x03\0\x20\x01\
+r\x03\x0ccapabilities\x0f\x0bclient-info\x07\x10protocol-version\x11\x04\0\x11in\
+itialize-params\x03\0\"\x04\0\x11list-tools-params\x03\0\x0d\x04\0\x10call-tool-\
+params\x03\0\x18\x04\0\x15list-resources-params\x03\0\x0d\x04\0\x14read-resource\
+-params\x03\0\x0b\x04\0\x1elist-resource-templates-params\x03\0\x0d\x04\0\x13lis\
+t-prompts-params\x03\0\x0d\x04\0\x11get-prompt-params\x03\0\x18\x01k\x1c\x01r\x03\
+\x08argument\x1a\x03ref!\x07context+\x04\0\x11completion-params\x03\0,\x01q\x09\x0a\
+initialize\x01#\0\x0atools-list\x01$\0\x0atools-call\x01%\0\x0eresources-list\x01\
+&\0\x0eresources-read\x01'\0\x18resources-templates-list\x01(\0\x0cprompts-list\x01\
+)\0\x0bprompts-get\x01*\0\x13completion-complete\x01-\0\x04\0\x06params\x03\0.\x01\
+m\x05\x0ainitialize\x05tools\x09resources\x07prompts\x0acompletion\x04\0\x07feat\
+ure\x03\00\x04\0\x07request\x03\x01\x01h\x01\x01i2\x01j\x014\x01\x03\x01@\x01\x05\
+input3\05\x04\0\x20[static]request.from-http-stream\x016\x04\0![static]request.f\
+rom-stdio-stream\x016\x01h2\x01@\x01\x04self7\0\x05\x04\0\x12[method]request.id\x01\
+8\x01@\x01\x04self7\01\x04\0\x17[method]request.feature\x019\x01j\x01/\x01\x15\x01\
+@\x01\x04self7\0:\x04\0\x16[method]request.params\x01;\x01p}\x01k<\x01j\x01=\0\x01\
+@\x02\x04self7\x03keys\0>\x04\0\x13[method]request.get\x01?\x01j\0\0\x01@\x03\x04\
+self7\x03keys\x05value<\0\xc0\0\x04\0\x13[method]request.set\x01A\x01@\x02\x04se\
+lf7\x0ccapabilities\x13\0\x7f\x04\0\x15[method]request.needs\x01B\x01k\x13\x01j\x01\
+\xc3\0\0\x01@\x01\x04self7\0\xc4\0\x04\0\x20[method]request.get-capabilities\x01\
+E\x03\0\x18wasmcp:mcp/request@0.3.0\x05\x12\x02\x03\0\x02\x0doutput-stream\x02\x03\
+\0\x05\x07request\x01B\x08\x02\x03\x02\x01\x13\x04\0\x0doutput-stream\x03\0\0\x02\
+\x03\x02\x01\x14\x04\0\x07request\x03\0\x02\x01i\x03\x01i\x01\x01@\x02\x07reques\
+t\x04\x06output\x05\x01\0\x04\0\x06handle\x01\x06\x03\0!wasmcp:mcp/incoming-hand\
+ler@0.3.0\x05\x15\x01B\x0f\x02\x03\x02\x01\x03\x04\0\x08pollable\x03\0\0\x01w\x04\
+\0\x07instant\x03\0\x02\x01w\x04\0\x08duration\x03\0\x04\x01@\0\0\x03\x04\0\x03n\
+ow\x01\x06\x01@\0\0\x05\x04\0\x0aresolution\x01\x07\x01i\x01\x01@\x01\x04when\x03\
+\0\x08\x04\0\x11subscribe-instant\x01\x09\x01@\x01\x04when\x05\0\x08\x04\0\x12su\
+bscribe-duration\x01\x0a\x03\0!wasi:clocks/monotonic-clock@0.2.3\x05\x16\x01B\x05\
+\x01r\x02\x07secondsw\x0bnanosecondsy\x04\0\x08datetime\x03\0\0\x01@\0\0\x01\x04\
+\0\x03now\x01\x02\x04\0\x0aresolution\x01\x02\x03\0\x1cwasi:clocks/wall-clock@0.\
+2.3\x05\x17\x01B\x05\x01p}\x01@\x01\x03lenw\0\0\x04\0\x10get-random-bytes\x01\x01\
+\x01@\0\0w\x04\0\x0eget-random-u64\x01\x02\x03\0\x18wasi:random/random@0.2.3\x05\
+\x18\x01B\x05\x02\x03\x02\x01\x13\x04\0\x0doutput-stream\x03\0\0\x01i\x01\x01@\0\
+\0\x02\x04\0\x0aget-stdout\x01\x03\x03\0\x15wasi:cli/stdout@0.2.3\x05\x19\x01B\x05\
+\x02\x03\x02\x01\x13\x04\0\x0doutput-stream\x03\0\0\x01i\x01\x01@\0\0\x02\x04\0\x0a\
+get-stderr\x01\x03\x03\0\x15wasi:cli/stderr@0.2.3\x05\x1a\x01B\x05\x02\x03\x02\x01\
+\x07\x04\0\x0cinput-stream\x03\0\0\x01i\x01\x01@\0\0\x02\x04\0\x09get-stdin\x01\x03\
+\x03\0\x14wasi:cli/stdin@0.2.3\x05\x1b\x02\x03\0\x07\x08duration\x01B\xc1\x01\x02\
+\x03\x02\x01\x1c\x04\0\x08duration\x03\0\0\x02\x03\x02\x01\x07\x04\0\x0cinput-st\
+ream\x03\0\x02\x02\x03\x02\x01\x13\x04\0\x0doutput-stream\x03\0\x04\x02\x03\x02\x01\
+\x02\x04\0\x08io-error\x03\0\x06\x02\x03\x02\x01\x03\x04\0\x08pollable\x03\0\x08\
+\x01q\x0a\x03get\0\0\x04head\0\0\x04post\0\0\x03put\0\0\x06delete\0\0\x07connect\
+\0\0\x07options\0\0\x05trace\0\0\x05patch\0\0\x05other\x01s\0\x04\0\x06method\x03\
+\0\x0a\x01q\x03\x04HTTP\0\0\x05HTTPS\0\0\x05other\x01s\0\x04\0\x06scheme\x03\0\x0c\
+\x01ks\x01k{\x01r\x02\x05rcode\x0e\x09info-code\x0f\x04\0\x11DNS-error-payload\x03\
+\0\x10\x01k}\x01r\x02\x08alert-id\x12\x0dalert-message\x0e\x04\0\x1aTLS-alert-re\
+ceived-payload\x03\0\x13\x01ky\x01r\x02\x0afield-name\x0e\x0afield-size\x15\x04\0\
+\x12field-size-payload\x03\0\x16\x01kw\x01k\x17\x01q'\x0bDNS-timeout\0\0\x09DNS-\
+error\x01\x11\0\x15destination-not-found\0\0\x17destination-unavailable\0\0\x19d\
+estination-IP-prohibited\0\0\x19destination-IP-unroutable\0\0\x12connection-refu\
+sed\0\0\x15connection-terminated\0\0\x12connection-timeout\0\0\x17connection-rea\
+d-timeout\0\0\x18connection-write-timeout\0\0\x18connection-limit-reached\0\0\x12\
+TLS-protocol-error\0\0\x15TLS-certificate-error\0\0\x12TLS-alert-received\x01\x14\
+\0\x13HTTP-request-denied\0\0\x1cHTTP-request-length-required\0\0\x16HTTP-reques\
+t-body-size\x01\x18\0\x1bHTTP-request-method-invalid\0\0\x18HTTP-request-URI-inv\
+alid\0\0\x19HTTP-request-URI-too-long\0\0\x20HTTP-request-header-section-size\x01\
+\x15\0\x18HTTP-request-header-size\x01\x19\0!HTTP-request-trailer-section-size\x01\
+\x15\0\x19HTTP-request-trailer-size\x01\x17\0\x18HTTP-response-incomplete\0\0!HT\
+TP-response-header-section-size\x01\x15\0\x19HTTP-response-header-size\x01\x17\0\
+\x17HTTP-response-body-size\x01\x18\0\"HTTP-response-trailer-section-size\x01\x15\
+\0\x1aHTTP-response-trailer-size\x01\x17\0\x1dHTTP-response-transfer-coding\x01\x0e\
+\0\x1cHTTP-response-content-coding\x01\x0e\0\x15HTTP-response-timeout\0\0\x13HTT\
+P-upgrade-failed\0\0\x13HTTP-protocol-error\0\0\x0dloop-detected\0\0\x13configur\
+ation-error\0\0\x0einternal-error\x01\x0e\0\x04\0\x0aerror-code\x03\0\x1a\x01q\x03\
+\x0einvalid-syntax\0\0\x09forbidden\0\0\x09immutable\0\0\x04\0\x0cheader-error\x03\
+\0\x1c\x01s\x04\0\x09field-key\x03\0\x1e\x04\0\x0afield-name\x03\0\x1f\x01p}\x04\
+\0\x0bfield-value\x03\0!\x04\0\x06fields\x03\x01\x04\0\x07headers\x03\0#\x04\0\x08\
+trailers\x03\0#\x04\0\x10incoming-request\x03\x01\x04\0\x10outgoing-request\x03\x01\
+\x04\0\x0frequest-options\x03\x01\x04\0\x11response-outparam\x03\x01\x01{\x04\0\x0b\
+status-code\x03\0*\x04\0\x11incoming-response\x03\x01\x04\0\x0dincoming-body\x03\
+\x01\x04\0\x0ffuture-trailers\x03\x01\x04\0\x11outgoing-response\x03\x01\x04\0\x0d\
+outgoing-body\x03\x01\x04\0\x18future-incoming-response\x03\x01\x01i#\x01@\0\02\x04\
+\0\x13[constructor]fields\x013\x01o\x02\x20\"\x01p4\x01j\x012\x01\x1d\x01@\x01\x07\
+entries5\06\x04\0\x18[static]fields.from-list\x017\x01h#\x01p\"\x01@\x02\x04self\
+8\x04name\x20\09\x04\0\x12[method]fields.get\x01:\x01@\x02\x04self8\x04name\x20\0\
+\x7f\x04\0\x12[method]fields.has\x01;\x01j\0\x01\x1d\x01@\x03\x04self8\x04name\x20\
+\x05value9\0<\x04\0\x12[method]fields.set\x01=\x01@\x02\x04self8\x04name\x20\0<\x04\
+\0\x15[method]fields.delete\x01>\x01@\x03\x04self8\x04name\x20\x05value\"\0<\x04\
+\0\x15[method]fields.append\x01?\x01@\x01\x04self8\05\x04\0\x16[method]fields.en\
+tries\x01@\x01@\x01\x04self8\02\x04\0\x14[method]fields.clone\x01A\x01h&\x01@\x01\
+\x04self\xc2\0\0\x0b\x04\0\x1f[method]incoming-request.method\x01C\x01@\x01\x04s\
+elf\xc2\0\0\x0e\x04\0([method]incoming-request.path-with-query\x01D\x01k\x0d\x01\
+@\x01\x04self\xc2\0\0\xc5\0\x04\0\x1f[method]incoming-request.scheme\x01F\x04\0\"\
+[method]incoming-request.authority\x01D\x01i$\x01@\x01\x04self\xc2\0\0\xc7\0\x04\
+\0\x20[method]incoming-request.headers\x01H\x01i-\x01j\x01\xc9\0\0\x01@\x01\x04s\
+elf\xc2\0\0\xca\0\x04\0\x20[method]incoming-request.consume\x01K\x01i'\x01@\x01\x07\
+headers\xc7\0\0\xcc\0\x04\0\x1d[constructor]outgoing-request\x01M\x01h'\x01i0\x01\
+j\x01\xcf\0\0\x01@\x01\x04self\xce\0\0\xd0\0\x04\0\x1d[method]outgoing-request.b\
+ody\x01Q\x01@\x01\x04self\xce\0\0\x0b\x04\0\x1f[method]outgoing-request.method\x01\
+R\x01j\0\0\x01@\x02\x04self\xce\0\x06method\x0b\0\xd3\0\x04\0#[method]outgoing-r\
+equest.set-method\x01T\x01@\x01\x04self\xce\0\0\x0e\x04\0([method]outgoing-reque\
+st.path-with-query\x01U\x01@\x02\x04self\xce\0\x0fpath-with-query\x0e\0\xd3\0\x04\
+\0,[method]outgoing-request.set-path-with-query\x01V\x01@\x01\x04self\xce\0\0\xc5\
+\0\x04\0\x1f[method]outgoing-request.scheme\x01W\x01@\x02\x04self\xce\0\x06schem\
+e\xc5\0\0\xd3\0\x04\0#[method]outgoing-request.set-scheme\x01X\x04\0\"[method]ou\
+tgoing-request.authority\x01U\x01@\x02\x04self\xce\0\x09authority\x0e\0\xd3\0\x04\
+\0&[method]outgoing-request.set-authority\x01Y\x01@\x01\x04self\xce\0\0\xc7\0\x04\
+\0\x20[method]outgoing-request.headers\x01Z\x01i(\x01@\0\0\xdb\0\x04\0\x1c[const\
+ructor]request-options\x01\\\x01h(\x01k\x01\x01@\x01\x04self\xdd\0\0\xde\0\x04\0\
+'[method]request-options.connect-timeout\x01_\x01@\x02\x04self\xdd\0\x08duration\
+\xde\0\0\xd3\0\x04\0+[method]request-options.set-connect-timeout\x01`\x04\0*[met\
+hod]request-options.first-byte-timeout\x01_\x04\0.[method]request-options.set-fi\
+rst-byte-timeout\x01`\x04\0-[method]request-options.between-bytes-timeout\x01_\x04\
+\01[method]request-options.set-between-bytes-timeout\x01`\x01i)\x01i/\x01j\x01\xe2\
+\0\x01\x1b\x01@\x02\x05param\xe1\0\x08response\xe3\0\x01\0\x04\0\x1d[static]resp\
+onse-outparam.set\x01d\x01h,\x01@\x01\x04self\xe5\0\0+\x04\0\x20[method]incoming\
+-response.status\x01f\x01@\x01\x04self\xe5\0\0\xc7\0\x04\0![method]incoming-resp\
+onse.headers\x01g\x01@\x01\x04self\xe5\0\0\xca\0\x04\0![method]incoming-response\
+.consume\x01h\x01h-\x01i\x03\x01j\x01\xea\0\0\x01@\x01\x04self\xe9\0\0\xeb\0\x04\
+\0\x1c[method]incoming-body.stream\x01l\x01i.\x01@\x01\x04this\xc9\0\0\xed\0\x04\
+\0\x1c[static]incoming-body.finish\x01n\x01h.\x01i\x09\x01@\x01\x04self\xef\0\0\xf0\
+\0\x04\0![method]future-trailers.subscribe\x01q\x01i%\x01k\xf2\0\x01j\x01\xf3\0\x01\
+\x1b\x01j\x01\xf4\0\0\x01k\xf5\0\x01@\x01\x04self\xef\0\0\xf6\0\x04\0\x1b[method\
+]future-trailers.get\x01w\x01@\x01\x07headers\xc7\0\0\xe2\0\x04\0\x1e[constructo\
+r]outgoing-response\x01x\x01h/\x01@\x01\x04self\xf9\0\0+\x04\0%[method]outgoing-\
+response.status-code\x01z\x01@\x02\x04self\xf9\0\x0bstatus-code+\0\xd3\0\x04\0)[\
+method]outgoing-response.set-status-code\x01{\x01@\x01\x04self\xf9\0\0\xc7\0\x04\
+\0![method]outgoing-response.headers\x01|\x01@\x01\x04self\xf9\0\0\xd0\0\x04\0\x1e\
+[method]outgoing-response.body\x01}\x01h0\x01i\x05\x01j\x01\xff\0\0\x01@\x01\x04\
+self\xfe\0\0\x80\x01\x04\0\x1b[method]outgoing-body.write\x01\x81\x01\x01j\0\x01\
+\x1b\x01@\x02\x04this\xcf\0\x08trailers\xf3\0\0\x82\x01\x04\0\x1c[static]outgoin\
+g-body.finish\x01\x83\x01\x01h1\x01@\x01\x04self\x84\x01\0\xf0\0\x04\0*[method]f\
+uture-incoming-response.subscribe\x01\x85\x01\x01i,\x01j\x01\x86\x01\x01\x1b\x01\
+j\x01\x87\x01\0\x01k\x88\x01\x01@\x01\x04self\x84\x01\0\x89\x01\x04\0$[method]fu\
+ture-incoming-response.get\x01\x8a\x01\x01h\x07\x01k\x1b\x01@\x01\x03err\x8b\x01\
+\0\x8c\x01\x04\0\x0fhttp-error-code\x01\x8d\x01\x03\0\x15wasi:http/types@0.2.3\x05\
+\x1d\x02\x03\0\x0d\x10outgoing-request\x02\x03\0\x0d\x0frequest-options\x02\x03\0\
+\x0d\x18future-incoming-response\x02\x03\0\x0d\x0aerror-code\x01B\x0f\x02\x03\x02\
+\x01\x1e\x04\0\x10outgoing-request\x03\0\0\x02\x03\x02\x01\x1f\x04\0\x0frequest-\
+options\x03\0\x02\x02\x03\x02\x01\x20\x04\0\x18future-incoming-response\x03\0\x04\
+\x02\x03\x02\x01!\x04\0\x0aerror-code\x03\0\x06\x01i\x01\x01i\x03\x01k\x09\x01i\x05\
+\x01j\x01\x0b\x01\x07\x01@\x02\x07request\x08\x07options\x0a\0\x0c\x04\0\x06hand\
+le\x01\x0d\x03\0\x20wasi:http/outgoing-handler@0.2.3\x05\"\x02\x03\0\x0d\x10inco\
+ming-request\x02\x03\0\x0d\x11response-outparam\x01B\x08\x02\x03\x02\x01#\x04\0\x10\
+incoming-request\x03\0\0\x02\x03\x02\x01$\x04\0\x11response-outparam\x03\0\x02\x01\
+i\x01\x01i\x03\x01@\x02\x07request\x04\x0cresponse-out\x05\x01\0\x04\0\x06handle\
+\x01\x06\x04\0\x20wasi:http/incoming-handler@0.2.3\x05%\x04\0\x1fwasmcp:mcp/http\
+-transport@0.3.0\x04\0\x0b\x14\x01\0\x0ehttp-transport\x03\0\0\0G\x09producers\x01\
+\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

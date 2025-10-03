@@ -210,11 +210,11 @@ wasmcp compose --resources python-resources.wasm
 
 ## Version Compatibility
 
-All components use `wasmcp@0.3.0-alpha.59`:
+All components use `wasmcp@0.3.0`:
 
 ```bash
-wasmcp new --version 0.3.0-alpha.59 <handler>
-wasmcp compose --version 0.3.0-alpha.59 -o server.wasm
+wasmcp new --version 0.3.0 <handler>
+wasmcp compose --version 0.3.0 -o server.wasm
 ```
 
 ## License

@@ -1568,7 +1568,7 @@ pub mod wasmcp {
                     let ptr7 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/error-result@0.3.0-alpha.59"
+                        wasm_import_module = "wasmcp:mcp/error-result@0.3.0"
                     )]
                     unsafe extern "C" {
                         #[link_name = "write"]
@@ -1782,7 +1782,7 @@ pub mod wasmcp {
                     #[cfg(target_arch = "wasm32")]
                     {
                         #[link(
-                            wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0-alpha.59"
+                            wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0"
                         )]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]writer"]
@@ -1804,7 +1804,7 @@ pub mod wasmcp {
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
                         #[link(
-                            wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0-alpha.59"
+                            wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0"
                         )]
                         unsafe extern "C" {
                             #[link_name = "[method]writer.check-write"]
@@ -2076,7 +2076,7 @@ pub mod wasmcp {
                         let ptr15 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
                         #[link(
-                            wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0-alpha.59"
+                            wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0"
                         )]
                         unsafe extern "C" {
                             #[link_name = "[method]writer.write"]
@@ -2232,7 +2232,7 @@ pub mod wasmcp {
                         let ptr9 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
                         #[link(
-                            wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0-alpha.59"
+                            wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0"
                         )]
                         unsafe extern "C" {
                             #[link_name = "[method]writer.close"]
@@ -2662,7 +2662,7 @@ pub mod wasmcp {
                     let ptr27 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0-alpha.59"
+                        wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0"
                     )]
                     unsafe extern "C" {
                         #[link_name = "write"]
@@ -3021,7 +3021,7 @@ pub mod wasmcp {
                     let ptr18 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0-alpha.59"
+                        wasm_import_module = "wasmcp:mcp/tools-list-result@0.3.0"
                     )]
                     unsafe extern "C" {
                         #[link_name = "open"]
@@ -3523,7 +3523,7 @@ pub mod wasmcp {
                     #[cfg(target_arch = "wasm32")]
                     {
                         #[link(
-                            wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0-alpha.59"
+                            wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0"
                         )]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]writer"]
@@ -3545,7 +3545,7 @@ pub mod wasmcp {
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
                         #[link(
-                            wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0-alpha.59"
+                            wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0"
                         )]
                         unsafe extern "C" {
                             #[link_name = "[method]writer.check-write"]
@@ -3611,7 +3611,7 @@ pub mod wasmcp {
                         let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
                         #[link(
-                            wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0-alpha.59"
+                            wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0"
                         )]
                         unsafe extern "C" {
                             #[link_name = "[method]writer.write"]
@@ -4882,7 +4882,7 @@ pub mod wasmcp {
                         let ptr76 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
                         #[link(
-                            wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0-alpha.59"
+                            wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0"
                         )]
                         unsafe extern "C" {
                             #[link_name = "[method]writer.next"]
@@ -5012,7 +5012,7 @@ pub mod wasmcp {
                         let ptr7 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
                         #[link(
-                            wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0-alpha.59"
+                            wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0"
                         )]
                         unsafe extern "C" {
                             #[link_name = "[method]writer.close"]
@@ -5194,7 +5194,7 @@ pub mod wasmcp {
                     let ptr11 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0-alpha.59"
+                        wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0"
                     )]
                     unsafe extern "C" {
                         #[link_name = "write-text"]
@@ -5327,7 +5327,7 @@ pub mod wasmcp {
                     let ptr4 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0-alpha.59"
+                        wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0"
                     )]
                     unsafe extern "C" {
                         #[link_name = "write-error"]
@@ -6712,7 +6712,7 @@ pub mod wasmcp {
                     let ptr86 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0-alpha.59"
+                        wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0"
                     )]
                     unsafe extern "C" {
                         #[link_name = "write"]
@@ -8063,7 +8063,7 @@ pub mod wasmcp {
                     let ptr78 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0-alpha.59"
+                        wasm_import_module = "wasmcp:mcp/tools-call-content@0.3.0"
                     )]
                     unsafe extern "C" {
                         #[link_name = "open"]
@@ -8252,7 +8252,7 @@ pub mod wasmcp {
                     let ptr11 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/tools-call-structured@0.3.0-alpha.59"
+                        wasm_import_module = "wasmcp:mcp/tools-call-structured@0.3.0"
                     )]
                     unsafe extern "C" {
                         #[link_name = "write"]
@@ -8649,7 +8649,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]request"]
                             fn drop(_: u32);
@@ -8674,7 +8674,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[static]request.from-http-stream"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -8741,7 +8741,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[static]request.from-stdio-stream"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -8808,7 +8808,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.id"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -8857,7 +8857,7 @@ pub mod wasmcp {
                 pub fn feature(&self) -> Feature {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.feature"]
                             fn wit_import0(_: i32) -> i32;
@@ -8889,7 +8889,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.params"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -9408,7 +9408,7 @@ pub mod wasmcp {
                         let len0 = vec0.len();
                         let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.get"]
                             fn wit_import2(_: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -9479,7 +9479,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.set"]
                             fn wit_import2(
@@ -9532,7 +9532,7 @@ pub mod wasmcp {
                     unsafe {
                         let flags0 = capabilities;
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.needs"]
                             fn wit_import1(_: i32, _: i32) -> i32;
@@ -9565,7 +9565,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.get-capabilities"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -9627,7 +9627,7 @@ pub mod wasmcp {
                 unsafe {
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "wasmcp:mcp/incoming-handler@0.3.0-alpha.59"
+                        wasm_import_module = "wasmcp:mcp/incoming-handler@0.3.0"
                     )]
                     unsafe extern "C" {
                         #[link_name = "handle"]
@@ -9692,7 +9692,7 @@ pub mod exports {
                 macro_rules! __export_wasmcp_mcp_incoming_handler_0_3_0_alpha_59_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/incoming-handler@0.3.0-alpha.59#handle")] unsafe
+                        "wasmcp:mcp/incoming-handler@0.3.0#handle")] unsafe
                         extern "C" fn export_handle(arg0 : i32, arg1 : i32,) { unsafe {
                         $($path_to_types)*:: _export_handle_cabi::<$ty > (arg0, arg1) } }
                         };
@@ -9924,16 +9924,16 @@ pts\x09resources\x05tools\x0cexperimental\x04\0\x13server-capabilities\x03\0\x0c
 \x01m\x03\x09v20250618\x09v20250326\x09v20241105\x04\0\x10protocol-version\x03\0\
 \x0e\x01ks\x01r\x03\x04names\x05title\x10\x07versions\x04\0\x0eimplementation\x03\
 \0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x1f\
-wasmcp:mcp/types@0.3.0-alpha.59\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finva\
+wasmcp:mcp/types@0.3.0\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finva\
 lid-request\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerr\
 or-code\x03\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05erro\
-r\x03\0\x03\x03\0\x1fwasmcp:mcp/error@0.3.0-alpha.59\x05\x06\x02\x03\0\x02\x0dou\
+r\x03\0\x03\x03\0\x1fwasmcp:mcp/error@0.3.0\x05\x06\x02\x03\0\x02\x0dou\
 tput-stream\x02\x03\0\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x04\x05e\
 rror\x01B\x0c\x02\x03\x02\x01\x07\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\
 \x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\
 \x03\x02\x01\x0a\x04\0\x09mcp-error\x03\0\x06\x01i\x01\x01j\0\x01\x03\x01@\x03\x02\
 id\x05\x06output\x08\x05error\x07\0\x09\x04\0\x05write\x01\x0a\x03\0&wasmcp:mcp/\
-error-result@0.3.0-alpha.59\x05\x0b\x02\x03\0\x03\x06cursor\x02\x03\0\x03\x04met\
+error-result@0.3.0\x05\x0b\x02\x03\0\x03\x06cursor\x02\x03\0\x03\x04met\
 a\x02\x03\0\x03\x04json\x01B.\x02\x03\x02\x01\x07\x04\0\x0doutput-stream\x03\0\0\
 \x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x02\
 id\x03\0\x04\x02\x03\x02\x01\x0c\x04\0\x06cursor\x03\0\x06\x02\x03\x02\x01\x0d\x04\
@@ -9950,7 +9950,7 @@ ethod]writer.write\x01\x20\x01k\x1a\x01@\x02\x04self\x1c\x07options!\0\x1f\x04\0
 \x14[method]writer.close\x01\"\x01i\x01\x01p\x17\x01@\x04\x02id\x05\x06output#\x05\
 tools$\x07options!\0\x1f\x04\0\x05write\x01%\x01i\x1b\x01j\x01&\x01\x03\x01@\x03\
 \x02id\x05\x06output#\x07initial$\0'\x04\0\x04open\x01(\x03\0+wasmcp:mcp/tools-l\
-ist-result@0.3.0-alpha.59\x05\x0f\x01B'\x02\x03\x02\x01\x0d\x04\0\x04meta\x03\0\0\
+ist-result@0.3.0\x05\x0f\x01B'\x02\x03\x02\x01\x0d\x04\0\x04meta\x03\0\0\
 \x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\x02\x01p\x03\x01k\x04\x01ks\x01\
 r\x03\x08audience\x05\x0dlast-modified\x06\x08priorityu\x04\0\x0bannotations\x03\
 \0\x07\x01k\x08\x01r\x02\x0bannotations\x09\x04meta\x01\x04\0\x0fcontent-options\
@@ -9967,7 +9967,7 @@ resource-options\x03\0\x1a\x01k\x1b\x01r\x03\x03uris\x04texts\x07options\x1c\x04
 \x20\0\x04\0\x11embedded-resource\x03\0!\x01r\x02\x08resource\"\x07options\x0c\x04\
 \0\x19embedded-resource-content\x03\0#\x01q\x05\x04text\x01\x0e\0\x05image\x01\x11\
 \0\x05audio\x01\x13\0\x0dresource-link\x01\x19\0\x11embedded-resource\x01$\0\x04\
-\0\x0dcontent-block\x03\0%\x03\0!wasmcp:mcp/content@0.3.0-alpha.59\x05\x10\x02\x03\
+\0\x0dcontent-block\x03\0%\x03\0!wasmcp:mcp/content@0.3.0\x05\x10\x02\x03\
 \0\x07\x0dcontent-block\x01B&\x02\x03\x02\x01\x07\x04\0\x0doutput-stream\x03\0\0\
 \x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x11\x04\0\x0d\
 content-block\x03\0\x04\x02\x03\x02\x01\x09\x04\0\x02id\x03\0\x06\x02\x03\x02\x01\
@@ -9982,13 +9982,13 @@ ns\x03\0\x0a\x04\0\x06writer\x03\x01\x01h\x0c\x01j\x01w\x01\x03\x01@\x01\x04self
 \x0bwrite-error\x01\x18\x01p\x05\x01@\x04\x02id\x07\x06output\x16\x07content\x19\
 \x07options\x14\0\x11\x04\0\x05write\x01\x1a\x01i\x0c\x01j\x01\x1b\x01\x03\x01@\x03\
 \x02id\x07\x06output\x16\x07initial\x05\0\x1c\x04\0\x04open\x01\x1d\x03\0,wasmcp\
-:mcp/tools-call-content@0.3.0-alpha.59\x05\x12\x01B\x11\x02\x03\x02\x01\x07\x04\0\
+:mcp/tools-call-content@0.3.0\x05\x12\x01B\x11\x02\x03\x02\x01\x07\x04\0\
 \x0doutput-stream\x03\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\x02\
 \x03\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x0d\x04\0\x04meta\x03\0\x06\
 \x02\x03\x02\x01\x0e\x04\0\x04json\x03\0\x08\x01r\x02\x08is-error\x7f\x04meta\x07\
 \x04\0\x07options\x03\0\x0a\x01i\x01\x01k\x0b\x01j\0\x01\x03\x01@\x04\x02id\x05\x06\
 output\x0c\x0astructured\x09\x07options\x0d\0\x0e\x04\0\x05write\x01\x0f\x03\0/w\
-asmcp:mcp/tools-call-structured@0.3.0-alpha.59\x05\x13\x02\x03\0\x02\x0cinput-st\
+asmcp:mcp/tools-call-structured@0.3.0\x05\x13\x02\x03\0\x02\x0cinput-st\
 ream\x02\x03\0\x03\x0eimplementation\x02\x03\0\x03\x03uri\x02\x03\0\x03\x13clien\
 t-capabilities\x02\x03\0\x03\x10protocol-version\x02\x03\0\x03\x13server-capabil\
 ities\x01BO\x02\x03\x02\x01\x14\x04\0\x0cinput-stream\x03\0\0\x02\x03\x02\x01\x08\
@@ -10022,13 +10022,13 @@ eys\0>\x04\0\x13[method]request.get\x01?\x01j\0\0\x01@\x03\x04self7\x03keys\x05v
 alue<\0\xc0\0\x04\0\x13[method]request.set\x01A\x01@\x02\x04self7\x0ccapabilitie\
 s\x13\0\x7f\x04\0\x15[method]request.needs\x01B\x01k\x13\x01j\x01\xc3\0\0\x01@\x01\
 \x04self7\0\xc4\0\x04\0\x20[method]request.get-capabilities\x01E\x03\0!wasmcp:mc\
-p/request@0.3.0-alpha.59\x05\x1a\x02\x03\0\x0a\x07request\x01B\x08\x02\x03\x02\x01\
+p/request@0.3.0\x05\x1a\x02\x03\0\x0a\x07request\x01B\x08\x02\x03\x02\x01\
 \x07\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x1b\x04\0\x07request\x03\0\x02\
 \x01i\x03\x01i\x01\x01@\x02\x07request\x04\x06output\x05\x01\0\x04\0\x06handle\x01\
-\x06\x03\0*wasmcp:mcp/incoming-handler@0.3.0-alpha.59\x05\x1c\x01B\x08\x02\x03\x02\
+\x06\x03\0*wasmcp:mcp/incoming-handler@0.3.0\x05\x1c\x01B\x08\x02\x03\x02\
 \x01\x07\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x1b\x04\0\x07request\x03\
 \0\x02\x01i\x03\x01i\x01\x01@\x02\x07request\x04\x06output\x05\x01\0\x04\0\x06ha\
-ndle\x01\x06\x04\0*wasmcp:mcp/incoming-handler@0.3.0-alpha.59\x05\x1d\x04\0\"com\
+ndle\x01\x06\x04\0*wasmcp:mcp/incoming-handler@0.3.0\x05\x1d\x04\0\"com\
 ponent:rust-tools/tools-handler\x04\0\x0b\x13\x01\0\x0dtools-handler\x03\0\0\0G\x09\
 producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rus\
 t\x060.41.0";

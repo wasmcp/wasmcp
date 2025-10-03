@@ -2,7 +2,7 @@
 
 COMPONENT = initialize-handler
 PACKAGE = wasmcp:initialize-handler
-VERSION = 0.3.0-alpha.59
+VERSION = 0.3.0
 
 # Build mode (debug or release)
 MODE ?= release

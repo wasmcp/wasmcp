@@ -2,7 +2,7 @@
 
 COMPONENT = initialize-writer
 PACKAGE = wasmcp:initialize-writer
-VERSION = 0.3.0-alpha.59
+VERSION = 0.3.0
 
 # Build mode (debug or release)
 MODE ?= release

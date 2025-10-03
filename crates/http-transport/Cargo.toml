@@ -19,7 +19,7 @@ crate-type = ["cdylib"]
 
 [package.metadata.component]
 package = "wasmcp:http-transport"
-target = "wasmcp:mcp/http-transport@0.3.0-alpha.59"
+target = "wasmcp:mcp/http-transport@0.3.0"
 
 [package.metadata.component.dependencies]
 

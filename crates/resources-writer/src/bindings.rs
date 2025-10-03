@@ -1939,7 +1939,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/resources-list-result@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/resources-list-result@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]writer"]
@@ -3204,7 +3204,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/resources-list-result@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/resources-list-result@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]writer"]
@@ -3226,7 +3226,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/resources-list-result@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/resources-list-result@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]writer"]
@@ -3240,48 +3240,47 @@ pub mod exports {
                     fn close(&self, options: Option<Options>) -> Result<(), StreamError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_resources_list_result_0_3_0_alpha_59_cabi {
+                macro_rules! __export_wasmcp_mcp_resources_list_result_0_3_0_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/resources-list-result@0.3.0-alpha.59#[method]writer.check-write")]
+                        "wasmcp:mcp/resources-list-result@0.3.0#[method]writer.check-write")]
                         unsafe extern "C" fn export_method_writer_check_write(arg0 : *
                         mut u8,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_writer_check_write_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Writer > (arg0) } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/resources-list-result@0.3.0-alpha.59#[method]writer.write")]
+                        "wasmcp:mcp/resources-list-result@0.3.0#[method]writer.write")]
                         unsafe extern "C" fn export_method_writer_write(arg0 : * mut u8,)
                         -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_writer_write_cabi::<<$ty as $($path_to_types)*::
                         Guest >::Writer > (arg0) } } #[unsafe (export_name =
-                        "wasmcp:mcp/resources-list-result@0.3.0-alpha.59#[method]writer.close")]
+                        "wasmcp:mcp/resources-list-result@0.3.0#[method]writer.close")]
                         unsafe extern "C" fn export_method_writer_close(arg0 : * mut u8,
                         arg1 : i32, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 :
                         i32, arg6 : * mut u8, arg7 : usize,) -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_method_writer_close_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Writer > (arg0, arg1, arg2, arg3,
                         arg4, arg5, arg6, arg7) } } #[unsafe (export_name =
-                        "wasmcp:mcp/resources-list-result@0.3.0-alpha.59#write")] unsafe
-                        extern "C" fn export_write(arg0 : i32, arg1 :
+                        "wasmcp:mcp/resources-list-result@0.3.0#write")] unsafe extern
+                        "C" fn export_write(arg0 : i32, arg1 :
                         ::core::mem::MaybeUninit::< u64 >, arg2 : usize, arg3 : i32, arg4
                         : * mut u8, arg5 : usize, arg6 : i32, arg7 : i32, arg8 : * mut
                         u8, arg9 : usize, arg10 : i32, arg11 : * mut u8, arg12 : usize,)
                         -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_write_cabi::<$ty > (arg0, arg1, arg2, arg3, arg4, arg5,
                         arg6, arg7, arg8, arg9, arg10, arg11, arg12) } } #[unsafe
-                        (export_name =
-                        "wasmcp:mcp/resources-list-result@0.3.0-alpha.59#open")] unsafe
-                        extern "C" fn export_open(arg0 : * mut u8,) -> * mut u8 { unsafe
-                        { $($path_to_types)*:: _export_open_cabi::<$ty > (arg0) } } const
-                        _ : () = { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/resources-list-result@0.3.0-alpha.59#[dtor]writer")]
+                        (export_name = "wasmcp:mcp/resources-list-result@0.3.0#open")]
+                        unsafe extern "C" fn export_open(arg0 : * mut u8,) -> * mut u8 {
+                        unsafe { $($path_to_types)*:: _export_open_cabi::<$ty > (arg0) }
+                        } const _ : () = { #[doc(hidden)] #[unsafe (export_name =
+                        "wasmcp:mcp/resources-list-result@0.3.0#[dtor]writer")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: Writer::dtor::< <$ty as
                         $($path_to_types)*:: Guest >::Writer > (rep) } } }; };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_resources_list_result_0_3_0_alpha_59_cabi;
+                pub(crate) use __export_wasmcp_mcp_resources_list_result_0_3_0_cabi;
                 #[repr(align(4))]
                 struct _RetArea([::core::mem::MaybeUninit<u8>; 12]);
                 static mut _RET_AREA: _RetArea = _RetArea(
@@ -3460,7 +3459,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/resources-read-result@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/resources-read-result@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]writer"]
@@ -4069,7 +4068,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/resources-read-result@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/resources-read-result@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]writer"]
@@ -4091,7 +4090,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/resources-read-result@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/resources-read-result@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]writer"]
@@ -4105,50 +4104,48 @@ pub mod exports {
                     fn close(&self, options: Option<Options>) -> Result<(), StreamError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_resources_read_result_0_3_0_alpha_59_cabi {
+                macro_rules! __export_wasmcp_mcp_resources_read_result_0_3_0_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/resources-read-result@0.3.0-alpha.59#[method]writer.check-write")]
+                        "wasmcp:mcp/resources-read-result@0.3.0#[method]writer.check-write")]
                         unsafe extern "C" fn export_method_writer_check_write(arg0 : *
                         mut u8,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_writer_check_write_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Writer > (arg0) } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/resources-read-result@0.3.0-alpha.59#[method]writer.write")]
+                        "wasmcp:mcp/resources-read-result@0.3.0#[method]writer.write")]
                         unsafe extern "C" fn export_method_writer_write(arg0 : * mut u8,
                         arg1 : * mut u8, arg2 : usize,) -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_method_writer_write_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Writer > (arg0, arg1, arg2) } }
                         #[unsafe (export_name =
-                        "wasmcp:mcp/resources-read-result@0.3.0-alpha.59#[method]writer.close")]
+                        "wasmcp:mcp/resources-read-result@0.3.0#[method]writer.close")]
                         unsafe extern "C" fn export_method_writer_close(arg0 : * mut u8,
                         arg1 : i32, arg2 : i32, arg3 : * mut u8, arg4 : usize,) -> * mut
                         u8 { unsafe { $($path_to_types)*::
                         _export_method_writer_close_cabi::<<$ty as $($path_to_types)*::
                         Guest >::Writer > (arg0, arg1, arg2, arg3, arg4) } } #[unsafe
-                        (export_name =
-                        "wasmcp:mcp/resources-read-result@0.3.0-alpha.59#write")] unsafe
-                        extern "C" fn export_write(arg0 : * mut u8,) -> * mut u8 { unsafe
-                        { $($path_to_types)*:: _export_write_cabi::<$ty > (arg0) } }
-                        #[unsafe (export_name =
-                        "wasmcp:mcp/resources-read-result@0.3.0-alpha.59#open")] unsafe
-                        extern "C" fn export_open(arg0 : i32, arg1 :
-                        ::core::mem::MaybeUninit::< u64 >, arg2 : usize, arg3 : i32, arg4
-                        : * mut u8, arg5 : usize, arg6 : * mut u8, arg7 : usize, arg8 :
-                        i32, arg9 : i32, arg10 : * mut u8, arg11 : usize, arg12 : i32,
-                        arg13 : * mut u8, arg14 : usize,) -> * mut u8 { unsafe {
-                        $($path_to_types)*:: _export_open_cabi::<$ty > (arg0, arg1, arg2,
-                        arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12,
-                        arg13, arg14) } } const _ : () = { #[doc(hidden)] #[unsafe
-                        (export_name =
-                        "wasmcp:mcp/resources-read-result@0.3.0-alpha.59#[dtor]writer")]
+                        (export_name = "wasmcp:mcp/resources-read-result@0.3.0#write")]
+                        unsafe extern "C" fn export_write(arg0 : * mut u8,) -> * mut u8 {
+                        unsafe { $($path_to_types)*:: _export_write_cabi::<$ty > (arg0) }
+                        } #[unsafe (export_name =
+                        "wasmcp:mcp/resources-read-result@0.3.0#open")] unsafe extern "C"
+                        fn export_open(arg0 : i32, arg1 : ::core::mem::MaybeUninit::< u64
+                        >, arg2 : usize, arg3 : i32, arg4 : * mut u8, arg5 : usize, arg6
+                        : * mut u8, arg7 : usize, arg8 : i32, arg9 : i32, arg10 : * mut
+                        u8, arg11 : usize, arg12 : i32, arg13 : * mut u8, arg14 : usize,)
+                        -> * mut u8 { unsafe { $($path_to_types)*::
+                        _export_open_cabi::<$ty > (arg0, arg1, arg2, arg3, arg4, arg5,
+                        arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14) } }
+                        const _ : () = { #[doc(hidden)] #[unsafe (export_name =
+                        "wasmcp:mcp/resources-read-result@0.3.0#[dtor]writer")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: Writer::dtor::< <$ty as
                         $($path_to_types)*:: Guest >::Writer > (rep) } } }; };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_resources_read_result_0_3_0_alpha_59_cabi;
+                pub(crate) use __export_wasmcp_mcp_resources_read_result_0_3_0_cabi;
                 #[repr(align(8))]
                 struct _RetArea([::core::mem::MaybeUninit<u8>; 16]);
                 static mut _RET_AREA: _RetArea = _RetArea(
@@ -4340,7 +4337,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/resource-templates-list-result@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/resource-templates-list-result@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]writer"]
@@ -5278,7 +5275,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/resource-templates-list-result@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/resource-templates-list-result@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]writer"]
@@ -5300,7 +5297,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/resource-templates-list-result@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/resource-templates-list-result@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]writer"]
@@ -5314,29 +5311,29 @@ pub mod exports {
                     fn close(&self, options: Option<Options>) -> Result<(), StreamError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_resource_templates_list_result_0_3_0_alpha_59_cabi {
+                macro_rules! __export_wasmcp_mcp_resource_templates_list_result_0_3_0_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/resource-templates-list-result@0.3.0-alpha.59#[method]writer.check-write")]
+                        "wasmcp:mcp/resource-templates-list-result@0.3.0#[method]writer.check-write")]
                         unsafe extern "C" fn export_method_writer_check_write(arg0 : *
                         mut u8,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_writer_check_write_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Writer > (arg0) } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/resource-templates-list-result@0.3.0-alpha.59#[method]writer.write")]
+                        "wasmcp:mcp/resource-templates-list-result@0.3.0#[method]writer.write")]
                         unsafe extern "C" fn export_method_writer_write(arg0 : * mut u8,)
                         -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_writer_write_cabi::<<$ty as $($path_to_types)*::
                         Guest >::Writer > (arg0) } } #[unsafe (export_name =
-                        "wasmcp:mcp/resource-templates-list-result@0.3.0-alpha.59#[method]writer.close")]
+                        "wasmcp:mcp/resource-templates-list-result@0.3.0#[method]writer.close")]
                         unsafe extern "C" fn export_method_writer_close(arg0 : * mut u8,
                         arg1 : i32, arg2 : i32, arg3 : * mut u8, arg4 : usize, arg5 :
                         i32, arg6 : * mut u8, arg7 : usize,) -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_method_writer_close_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Writer > (arg0, arg1, arg2, arg3,
                         arg4, arg5, arg6, arg7) } } #[unsafe (export_name =
-                        "wasmcp:mcp/resource-templates-list-result@0.3.0-alpha.59#write")]
-                        unsafe extern "C" fn export_write(arg0 : i32, arg1 :
+                        "wasmcp:mcp/resource-templates-list-result@0.3.0#write")] unsafe
+                        extern "C" fn export_write(arg0 : i32, arg1 :
                         ::core::mem::MaybeUninit::< u64 >, arg2 : usize, arg3 : i32, arg4
                         : * mut u8, arg5 : usize, arg6 : i32, arg7 : i32, arg8 : * mut
                         u8, arg9 : usize, arg10 : i32, arg11 : * mut u8, arg12 : usize,)
@@ -5344,20 +5341,20 @@ pub mod exports {
                         _export_write_cabi::<$ty > (arg0, arg1, arg2, arg3, arg4, arg5,
                         arg6, arg7, arg8, arg9, arg10, arg11, arg12) } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/resource-templates-list-result@0.3.0-alpha.59#open")]
-                        unsafe extern "C" fn export_open(arg0 : i32, arg1 :
+                        "wasmcp:mcp/resource-templates-list-result@0.3.0#open")] unsafe
+                        extern "C" fn export_open(arg0 : i32, arg1 :
                         ::core::mem::MaybeUninit::< u64 >, arg2 : usize, arg3 : i32,) ->
                         * mut u8 { unsafe { $($path_to_types)*:: _export_open_cabi::<$ty
                         > (arg0, arg1, arg2, arg3) } } const _ : () = { #[doc(hidden)]
                         #[unsafe (export_name =
-                        "wasmcp:mcp/resource-templates-list-result@0.3.0-alpha.59#[dtor]writer")]
+                        "wasmcp:mcp/resource-templates-list-result@0.3.0#[dtor]writer")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: Writer::dtor::< <$ty as
                         $($path_to_types)*:: Guest >::Writer > (rep) } } }; };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_resource_templates_list_result_0_3_0_alpha_59_cabi;
+                pub(crate) use __export_wasmcp_mcp_resource_templates_list_result_0_3_0_cabi;
                 #[repr(align(4))]
                 struct _RetArea([::core::mem::MaybeUninit<u8>; 12]);
                 static mut _RET_AREA: _RetArea = _RetArea(
@@ -5592,13 +5589,13 @@ macro_rules! __export_resources_writer_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::wasmcp::mcp::resources_list_result::__export_wasmcp_mcp_resources_list_result_0_3_0_alpha_59_cabi!($ty
+        exports::wasmcp::mcp::resources_list_result::__export_wasmcp_mcp_resources_list_result_0_3_0_cabi!($ty
         with_types_in $($path_to_types_root)*::
         exports::wasmcp::mcp::resources_list_result); $($path_to_types_root)*::
-        exports::wasmcp::mcp::resources_read_result::__export_wasmcp_mcp_resources_read_result_0_3_0_alpha_59_cabi!($ty
+        exports::wasmcp::mcp::resources_read_result::__export_wasmcp_mcp_resources_read_result_0_3_0_cabi!($ty
         with_types_in $($path_to_types_root)*::
         exports::wasmcp::mcp::resources_read_result); $($path_to_types_root)*::
-        exports::wasmcp::mcp::resource_templates_list_result::__export_wasmcp_mcp_resource_templates_list_result_0_3_0_alpha_59_cabi!($ty
+        exports::wasmcp::mcp::resource_templates_list_result::__export_wasmcp_mcp_resource_templates_list_result_0_3_0_cabi!($ty
         with_types_in $($path_to_types_root)*::
         exports::wasmcp::mcp::resource_templates_list_result);
     };
@@ -5607,12 +5604,12 @@ macro_rules! __export_resources_writer_impl {
 pub(crate) use __export_resources_writer_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0-alpha.59:resources-writer:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0:resources-writer:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4290] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xbb\x20\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 4236] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x85\x20\x01A\x02\x01\
 A\x18\x01B\x04\x04\0\x05error\x03\x01\x01h\0\x01@\x01\x04self\x01\0s\x04\0\x1d[m\
 ethod]error.to-debug-string\x01\x02\x03\0\x13wasi:io/error@0.2.3\x05\0\x01B\x0a\x04\
 \0\x08pollable\x03\x01\x01h\0\x01@\x01\x04self\x01\0\x7f\x04\0\x16[method]pollab\
@@ -5643,71 +5640,70 @@ erimental\x04\0\x13client-capabilities\x03\0\x0a\x01n\x05\x0bcompletions\x07prom
 pts\x09resources\x05tools\x0cexperimental\x04\0\x13server-capabilities\x03\0\x0c\
 \x01m\x03\x09v20250618\x09v20250326\x09v20241105\x04\0\x10protocol-version\x03\0\
 \x0e\x01ks\x01r\x03\x04names\x05title\x10\x07versions\x04\0\x0eimplementation\x03\
-\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x1f\
-wasmcp:mcp/types@0.3.0-alpha.59\x05\x05\x02\x03\0\x03\x04meta\x01B'\x02\x03\x02\x01\
-\x06\x04\0\x04meta\x03\0\0\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\x02\
-\x01p\x03\x01k\x04\x01ks\x01r\x03\x08audience\x05\x0dlast-modified\x06\x08priori\
-tyu\x04\0\x0bannotations\x03\0\x07\x01k\x08\x01r\x02\x0bannotations\x09\x04meta\x01\
-\x04\0\x0fcontent-options\x03\0\x0a\x01k\x0b\x01r\x02\x04texts\x07options\x0c\x04\
-\0\x0ctext-content\x03\0\x0d\x01p}\x01r\x03\x04data\x0f\x09mime-types\x07options\
-\x0c\x04\0\x0dimage-content\x03\0\x10\x01r\x03\x04data\x0f\x09mime-types\x07opti\
-ons\x0c\x04\0\x0daudio-content\x03\0\x12\x01kw\x01r\x06\x05title\x06\x0bdescript\
-ion\x06\x04size\x14\x09mime-type\x06\x0bannotations\x09\x04meta\x01\x04\0\x1dres\
-ource-link-content-options\x03\0\x15\x01k\x16\x01r\x03\x03uris\x04names\x07optio\
-ns\x17\x04\0\x15resource-link-content\x03\0\x18\x01r\x02\x09mime-type\x06\x04met\
-a\x01\x04\0\x19embedded-resource-options\x03\0\x1a\x01k\x1b\x01r\x03\x03uris\x04\
-texts\x07options\x1c\x04\0\x16text-resource-contents\x03\0\x1d\x01r\x03\x03uris\x04\
-blob\x0f\x07options\x1c\x04\0\x16blob-resource-contents\x03\0\x1f\x01q\x02\x04te\
-xt\x01\x1e\0\x04blob\x01\x20\0\x04\0\x11embedded-resource\x03\0!\x01r\x02\x08res\
-ource\"\x07options\x0c\x04\0\x19embedded-resource-content\x03\0#\x01q\x05\x04tex\
-t\x01\x0e\0\x05image\x01\x11\0\x05audio\x01\x13\0\x0dresource-link\x01\x19\0\x11\
-embedded-resource\x01$\0\x04\0\x0dcontent-block\x03\0%\x03\0!wasmcp:mcp/content@\
-0.3.0-alpha.59\x05\x07\x02\x03\0\x02\x0doutput-stream\x02\x03\0\x02\x0cstream-er\
-ror\x02\x03\0\x03\x02id\x02\x03\0\x03\x06cursor\x02\x03\0\x04\x0bannotations\x01\
-B*\x02\x03\x02\x01\x08\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x09\x04\0\x0c\
-stream-error\x03\0\x02\x02\x03\x02\x01\x0a\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\
-\x0b\x04\0\x06cursor\x03\0\x06\x02\x03\x02\x01\x06\x04\0\x04meta\x03\0\x08\x02\x03\
-\x02\x01\x0c\x04\0\x0bannotations\x03\0\x0a\x01kw\x01ks\x01k\x0b\x01r\x06\x04siz\
-e\x0c\x05title\x0d\x0bdescription\x0d\x09mime-type\x0d\x0bannotations\x0e\x04met\
-a\x09\x04\0\x10resource-options\x03\0\x0f\x01k\x10\x01r\x03\x03uris\x04names\x07\
-options\x11\x04\0\x08resource\x03\0\x12\x01k\x07\x01r\x02\x04meta\x09\x0bnext-cu\
-rsor\x14\x04\0\x07options\x03\0\x15\x04\0\x06writer\x03\x01\x01h\x17\x01j\x01y\x01\
-\x03\x01@\x01\x04self\x18\0\x19\x04\0\x1a[method]writer.check-write\x01\x1a\x01j\
-\0\x01\x03\x01@\x02\x04self\x18\x08resource\x13\0\x1b\x04\0\x14[method]writer.wr\
-ite\x01\x1c\x01k\x16\x01@\x02\x04self\x18\x07options\x1d\0\x1b\x04\0\x14[method]\
-writer.close\x01\x1e\x01i\x01\x01p\x13\x01@\x04\x02id\x05\x06output\x1f\x09resou\
-rces\x20\x07options\x1d\0\x1b\x04\0\x05write\x01!\x01i\x17\x01j\x01\"\x01\x03\x01\
-@\x03\x02id\x05\x06output\x1f\x07initial\x13\0#\x04\0\x04open\x01$\x04\0/wasmcp:\
-mcp/resources-list-result@0.3.0-alpha.59\x05\x0d\x01B#\x02\x03\x02\x01\x08\x04\0\
-\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x09\x04\0\x0cstream-error\x03\0\x02\x02\
-\x03\x02\x01\x0a\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x06\x04\0\x04meta\x03\0\x06\
-\x01ks\x01r\x02\x09mime-type\x08\x04meta\x07\x04\0\x10contents-options\x03\0\x09\
-\x01p}\x01k\x0a\x01r\x03\x03uris\x04data\x0b\x07options\x0c\x04\0\x08contents\x03\
-\0\x0d\x01r\x01\x04meta\x07\x04\0\x07options\x03\0\x0f\x04\0\x06writer\x03\x01\x01\
-h\x11\x01j\x01w\x01\x03\x01@\x01\x04self\x12\0\x13\x04\0\x1a[method]writer.check\
--write\x01\x14\x01j\0\x01\x03\x01@\x02\x04self\x12\x08contents\x0b\0\x15\x04\0\x14\
-[method]writer.write\x01\x16\x01k\x10\x01@\x02\x04self\x12\x07options\x17\0\x15\x04\
-\0\x14[method]writer.close\x01\x18\x01i\x01\x01@\x04\x02id\x05\x06output\x19\x08\
-contents\x0e\x07options\x17\0\x15\x04\0\x05write\x01\x1a\x01i\x11\x01j\x01\x1b\x01\
-\x03\x01@\x03\x02id\x05\x06output\x19\x07initial\x0e\0\x1c\x04\0\x04open\x01\x1d\
-\x04\0/wasmcp:mcp/resources-read-result@0.3.0-alpha.59\x05\x0e\x01B)\x02\x03\x02\
-\x01\x08\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x09\x04\0\x0cstream-erro\
-r\x03\0\x02\x02\x03\x02\x01\x0a\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x0b\x04\0\x06\
-cursor\x03\0\x06\x02\x03\x02\x01\x06\x04\0\x04meta\x03\0\x08\x02\x03\x02\x01\x0c\
-\x04\0\x0bannotations\x03\0\x0a\x01ks\x01k\x0b\x01r\x05\x0bdescription\x0c\x05ti\
-tle\x0c\x09mime-type\x0c\x0bannotations\x0d\x04meta\x09\x04\0\x10template-option\
-s\x03\0\x0e\x01k\x0f\x01r\x03\x0curi-templates\x04names\x07options\x10\x04\0\x08\
-template\x03\0\x11\x01k\x07\x01r\x02\x04meta\x09\x0bnext-cursor\x13\x04\0\x07opt\
-ions\x03\0\x14\x04\0\x06writer\x03\x01\x01h\x16\x01j\x01y\x01\x03\x01@\x01\x04se\
-lf\x17\0\x18\x04\0\x1a[method]writer.check-write\x01\x19\x01j\0\x01\x03\x01@\x02\
-\x04self\x17\x08template\x12\0\x1a\x04\0\x14[method]writer.write\x01\x1b\x01k\x15\
-\x01@\x02\x04self\x17\x07options\x1c\0\x1a\x04\0\x14[method]writer.close\x01\x1d\
-\x01i\x01\x01p\x12\x01@\x04\x02id\x05\x06output\x1e\x09templates\x1f\x07options\x1c\
-\0\x1a\x04\0\x05write\x01\x20\x01i\x16\x01j\x01!\x01\x03\x01@\x02\x02id\x05\x06o\
-utput\x1e\0\"\x04\0\x04open\x01#\x04\08wasmcp:mcp/resource-templates-list-result\
-@0.3.0-alpha.59\x05\x0f\x04\0*wasmcp:mcp/resources-writer@0.3.0-alpha.59\x04\0\x0b\
-\x16\x01\0\x10resources-writer\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0d\
-wit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x16\
+wasmcp:mcp/types@0.3.0\x05\x05\x02\x03\0\x03\x04meta\x01B'\x02\x03\x02\x01\x06\x04\
+\0\x04meta\x03\0\0\x01m\x02\x04user\x09assistant\x04\0\x04role\x03\0\x02\x01p\x03\
+\x01k\x04\x01ks\x01r\x03\x08audience\x05\x0dlast-modified\x06\x08priorityu\x04\0\
+\x0bannotations\x03\0\x07\x01k\x08\x01r\x02\x0bannotations\x09\x04meta\x01\x04\0\
+\x0fcontent-options\x03\0\x0a\x01k\x0b\x01r\x02\x04texts\x07options\x0c\x04\0\x0c\
+text-content\x03\0\x0d\x01p}\x01r\x03\x04data\x0f\x09mime-types\x07options\x0c\x04\
+\0\x0dimage-content\x03\0\x10\x01r\x03\x04data\x0f\x09mime-types\x07options\x0c\x04\
+\0\x0daudio-content\x03\0\x12\x01kw\x01r\x06\x05title\x06\x0bdescription\x06\x04\
+size\x14\x09mime-type\x06\x0bannotations\x09\x04meta\x01\x04\0\x1dresource-link-\
+content-options\x03\0\x15\x01k\x16\x01r\x03\x03uris\x04names\x07options\x17\x04\0\
+\x15resource-link-content\x03\0\x18\x01r\x02\x09mime-type\x06\x04meta\x01\x04\0\x19\
+embedded-resource-options\x03\0\x1a\x01k\x1b\x01r\x03\x03uris\x04texts\x07option\
+s\x1c\x04\0\x16text-resource-contents\x03\0\x1d\x01r\x03\x03uris\x04blob\x0f\x07\
+options\x1c\x04\0\x16blob-resource-contents\x03\0\x1f\x01q\x02\x04text\x01\x1e\0\
+\x04blob\x01\x20\0\x04\0\x11embedded-resource\x03\0!\x01r\x02\x08resource\"\x07o\
+ptions\x0c\x04\0\x19embedded-resource-content\x03\0#\x01q\x05\x04text\x01\x0e\0\x05\
+image\x01\x11\0\x05audio\x01\x13\0\x0dresource-link\x01\x19\0\x11embedded-resour\
+ce\x01$\0\x04\0\x0dcontent-block\x03\0%\x03\0\x18wasmcp:mcp/content@0.3.0\x05\x07\
+\x02\x03\0\x02\x0doutput-stream\x02\x03\0\x02\x0cstream-error\x02\x03\0\x03\x02i\
+d\x02\x03\0\x03\x06cursor\x02\x03\0\x04\x0bannotations\x01B*\x02\x03\x02\x01\x08\
+\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x09\x04\0\x0cstream-error\x03\0\x02\
+\x02\x03\x02\x01\x0a\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x0b\x04\0\x06cursor\x03\
+\0\x06\x02\x03\x02\x01\x06\x04\0\x04meta\x03\0\x08\x02\x03\x02\x01\x0c\x04\0\x0b\
+annotations\x03\0\x0a\x01kw\x01ks\x01k\x0b\x01r\x06\x04size\x0c\x05title\x0d\x0b\
+description\x0d\x09mime-type\x0d\x0bannotations\x0e\x04meta\x09\x04\0\x10resourc\
+e-options\x03\0\x0f\x01k\x10\x01r\x03\x03uris\x04names\x07options\x11\x04\0\x08r\
+esource\x03\0\x12\x01k\x07\x01r\x02\x04meta\x09\x0bnext-cursor\x14\x04\0\x07opti\
+ons\x03\0\x15\x04\0\x06writer\x03\x01\x01h\x17\x01j\x01y\x01\x03\x01@\x01\x04sel\
+f\x18\0\x19\x04\0\x1a[method]writer.check-write\x01\x1a\x01j\0\x01\x03\x01@\x02\x04\
+self\x18\x08resource\x13\0\x1b\x04\0\x14[method]writer.write\x01\x1c\x01k\x16\x01\
+@\x02\x04self\x18\x07options\x1d\0\x1b\x04\0\x14[method]writer.close\x01\x1e\x01\
+i\x01\x01p\x13\x01@\x04\x02id\x05\x06output\x1f\x09resources\x20\x07options\x1d\0\
+\x1b\x04\0\x05write\x01!\x01i\x17\x01j\x01\"\x01\x03\x01@\x03\x02id\x05\x06outpu\
+t\x1f\x07initial\x13\0#\x04\0\x04open\x01$\x04\0&wasmcp:mcp/resources-list-resul\
+t@0.3.0\x05\x0d\x01B#\x02\x03\x02\x01\x08\x04\0\x0doutput-stream\x03\0\0\x02\x03\
+\x02\x01\x09\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x0a\x04\0\x02id\x03\
+\0\x04\x02\x03\x02\x01\x06\x04\0\x04meta\x03\0\x06\x01ks\x01r\x02\x09mime-type\x08\
+\x04meta\x07\x04\0\x10contents-options\x03\0\x09\x01p}\x01k\x0a\x01r\x03\x03uris\
+\x04data\x0b\x07options\x0c\x04\0\x08contents\x03\0\x0d\x01r\x01\x04meta\x07\x04\
+\0\x07options\x03\0\x0f\x04\0\x06writer\x03\x01\x01h\x11\x01j\x01w\x01\x03\x01@\x01\
+\x04self\x12\0\x13\x04\0\x1a[method]writer.check-write\x01\x14\x01j\0\x01\x03\x01\
+@\x02\x04self\x12\x08contents\x0b\0\x15\x04\0\x14[method]writer.write\x01\x16\x01\
+k\x10\x01@\x02\x04self\x12\x07options\x17\0\x15\x04\0\x14[method]writer.close\x01\
+\x18\x01i\x01\x01@\x04\x02id\x05\x06output\x19\x08contents\x0e\x07options\x17\0\x15\
+\x04\0\x05write\x01\x1a\x01i\x11\x01j\x01\x1b\x01\x03\x01@\x03\x02id\x05\x06outp\
+ut\x19\x07initial\x0e\0\x1c\x04\0\x04open\x01\x1d\x04\0&wasmcp:mcp/resources-rea\
+d-result@0.3.0\x05\x0e\x01B)\x02\x03\x02\x01\x08\x04\0\x0doutput-stream\x03\0\0\x02\
+\x03\x02\x01\x09\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x0a\x04\0\x02id\
+\x03\0\x04\x02\x03\x02\x01\x0b\x04\0\x06cursor\x03\0\x06\x02\x03\x02\x01\x06\x04\
+\0\x04meta\x03\0\x08\x02\x03\x02\x01\x0c\x04\0\x0bannotations\x03\0\x0a\x01ks\x01\
+k\x0b\x01r\x05\x0bdescription\x0c\x05title\x0c\x09mime-type\x0c\x0bannotations\x0d\
+\x04meta\x09\x04\0\x10template-options\x03\0\x0e\x01k\x0f\x01r\x03\x0curi-templa\
+tes\x04names\x07options\x10\x04\0\x08template\x03\0\x11\x01k\x07\x01r\x02\x04met\
+a\x09\x0bnext-cursor\x13\x04\0\x07options\x03\0\x14\x04\0\x06writer\x03\x01\x01h\
+\x16\x01j\x01y\x01\x03\x01@\x01\x04self\x17\0\x18\x04\0\x1a[method]writer.check-\
+write\x01\x19\x01j\0\x01\x03\x01@\x02\x04self\x17\x08template\x12\0\x1a\x04\0\x14\
+[method]writer.write\x01\x1b\x01k\x15\x01@\x02\x04self\x17\x07options\x1c\0\x1a\x04\
+\0\x14[method]writer.close\x01\x1d\x01i\x01\x01p\x12\x01@\x04\x02id\x05\x06outpu\
+t\x1e\x09templates\x1f\x07options\x1c\0\x1a\x04\0\x05write\x01\x20\x01i\x16\x01j\
+\x01!\x01\x03\x01@\x02\x02id\x05\x06output\x1e\0\"\x04\0\x04open\x01#\x04\0/wasm\
+cp:mcp/resource-templates-list-result@0.3.0\x05\x0f\x04\0!wasmcp:mcp/resources-w\
+riter@0.3.0\x04\0\x0b\x16\x01\0\x10resources-writer\x03\0\0\0G\x09producers\x01\x0c\
+processed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

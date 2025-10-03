@@ -1897,7 +1897,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/request@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/request@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-drop]request"]
@@ -2864,7 +2864,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/request@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/request@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-new]request"]
@@ -2886,7 +2886,7 @@ pub mod exports {
                         #[cfg(target_arch = "wasm32")]
                         {
                             #[link(
-                                wasm_import_module = "[export]wasmcp:mcp/request@0.3.0-alpha.59"
+                                wasm_import_module = "[export]wasmcp:mcp/request@0.3.0"
                             )]
                             unsafe extern "C" {
                                 #[link_name = "[resource-rep]request"]
@@ -2930,85 +2930,82 @@ pub mod exports {
                     fn get_capabilities(&self) -> Result<Option<ServerCapabilities>, ()>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_request_0_3_0_alpha_59_cabi {
+                macro_rules! __export_wasmcp_mcp_request_0_3_0_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/request@0.3.0-alpha.59#[static]request.from-http-stream")]
+                        "wasmcp:mcp/request@0.3.0#[static]request.from-http-stream")]
                         unsafe extern "C" fn export_static_request_from_http_stream(arg0
                         : i32,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_static_request_from_http_stream_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Request > (arg0) } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/request@0.3.0-alpha.59#[static]request.from-stdio-stream")]
+                        "wasmcp:mcp/request@0.3.0#[static]request.from-stdio-stream")]
                         unsafe extern "C" fn export_static_request_from_stdio_stream(arg0
                         : i32,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_static_request_from_stdio_stream_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Request > (arg0) } } #[unsafe
-                        (export_name =
-                        "wasmcp:mcp/request@0.3.0-alpha.59#[method]request.id")] unsafe
-                        extern "C" fn export_method_request_id(arg0 : * mut u8,) -> * mut
-                        u8 { unsafe { $($path_to_types)*::
+                        (export_name = "wasmcp:mcp/request@0.3.0#[method]request.id")]
+                        unsafe extern "C" fn export_method_request_id(arg0 : * mut u8,)
+                        -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_request_id_cabi::<<$ty as $($path_to_types)*::
                         Guest >::Request > (arg0) } } #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/request@0.3.0-alpha.59#[method]request.id")]
-                        unsafe extern "C" fn _post_return_method_request_id(arg0 : * mut
-                        u8,) { unsafe { $($path_to_types)*::
+                        "cabi_post_wasmcp:mcp/request@0.3.0#[method]request.id")] unsafe
+                        extern "C" fn _post_return_method_request_id(arg0 : * mut u8,) {
+                        unsafe { $($path_to_types)*::
                         __post_return_method_request_id::<<$ty as $($path_to_types)*::
                         Guest >::Request > (arg0) } } #[unsafe (export_name =
-                        "wasmcp:mcp/request@0.3.0-alpha.59#[method]request.feature")]
-                        unsafe extern "C" fn export_method_request_feature(arg0 : * mut
-                        u8,) -> i32 { unsafe { $($path_to_types)*::
+                        "wasmcp:mcp/request@0.3.0#[method]request.feature")] unsafe
+                        extern "C" fn export_method_request_feature(arg0 : * mut u8,) ->
+                        i32 { unsafe { $($path_to_types)*::
                         _export_method_request_feature_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Request > (arg0) } } #[unsafe
                         (export_name =
-                        "wasmcp:mcp/request@0.3.0-alpha.59#[method]request.params")]
-                        unsafe extern "C" fn export_method_request_params(arg0 : * mut
-                        u8,) -> * mut u8 { unsafe { $($path_to_types)*::
+                        "wasmcp:mcp/request@0.3.0#[method]request.params")] unsafe extern
+                        "C" fn export_method_request_params(arg0 : * mut u8,) -> * mut u8
+                        { unsafe { $($path_to_types)*::
                         _export_method_request_params_cabi::<<$ty as $($path_to_types)*::
                         Guest >::Request > (arg0) } } #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/request@0.3.0-alpha.59#[method]request.params")]
+                        "cabi_post_wasmcp:mcp/request@0.3.0#[method]request.params")]
                         unsafe extern "C" fn _post_return_method_request_params(arg0 : *
                         mut u8,) { unsafe { $($path_to_types)*::
                         __post_return_method_request_params::<<$ty as
                         $($path_to_types)*:: Guest >::Request > (arg0) } } #[unsafe
-                        (export_name =
-                        "wasmcp:mcp/request@0.3.0-alpha.59#[method]request.get")] unsafe
-                        extern "C" fn export_method_request_get(arg0 : * mut u8, arg1 : *
-                        mut u8, arg2 : usize,) -> * mut u8 { unsafe {
+                        (export_name = "wasmcp:mcp/request@0.3.0#[method]request.get")]
+                        unsafe extern "C" fn export_method_request_get(arg0 : * mut u8,
+                        arg1 : * mut u8, arg2 : usize,) -> * mut u8 { unsafe {
                         $($path_to_types)*:: _export_method_request_get_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Request > (arg0, arg1, arg2) } }
                         #[unsafe (export_name =
-                        "cabi_post_wasmcp:mcp/request@0.3.0-alpha.59#[method]request.get")]
-                        unsafe extern "C" fn _post_return_method_request_get(arg0 : * mut
-                        u8,) { unsafe { $($path_to_types)*::
+                        "cabi_post_wasmcp:mcp/request@0.3.0#[method]request.get")] unsafe
+                        extern "C" fn _post_return_method_request_get(arg0 : * mut u8,) {
+                        unsafe { $($path_to_types)*::
                         __post_return_method_request_get::<<$ty as $($path_to_types)*::
                         Guest >::Request > (arg0) } } #[unsafe (export_name =
-                        "wasmcp:mcp/request@0.3.0-alpha.59#[method]request.set")] unsafe
-                        extern "C" fn export_method_request_set(arg0 : * mut u8, arg1 : *
-                        mut u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,) -> i32 {
-                        unsafe { $($path_to_types)*::
-                        _export_method_request_set_cabi::<<$ty as $($path_to_types)*::
-                        Guest >::Request > (arg0, arg1, arg2, arg3, arg4) } } #[unsafe
-                        (export_name =
-                        "wasmcp:mcp/request@0.3.0-alpha.59#[method]request.needs")]
-                        unsafe extern "C" fn export_method_request_needs(arg0 : * mut u8,
-                        arg1 : i32,) -> i32 { unsafe { $($path_to_types)*::
+                        "wasmcp:mcp/request@0.3.0#[method]request.set")] unsafe extern
+                        "C" fn export_method_request_set(arg0 : * mut u8, arg1 : * mut
+                        u8, arg2 : usize, arg3 : * mut u8, arg4 : usize,) -> i32 { unsafe
+                        { $($path_to_types)*:: _export_method_request_set_cabi::<<$ty as
+                        $($path_to_types)*:: Guest >::Request > (arg0, arg1, arg2, arg3,
+                        arg4) } } #[unsafe (export_name =
+                        "wasmcp:mcp/request@0.3.0#[method]request.needs")] unsafe extern
+                        "C" fn export_method_request_needs(arg0 : * mut u8, arg1 : i32,)
+                        -> i32 { unsafe { $($path_to_types)*::
                         _export_method_request_needs_cabi::<<$ty as $($path_to_types)*::
                         Guest >::Request > (arg0, arg1) } } #[unsafe (export_name =
-                        "wasmcp:mcp/request@0.3.0-alpha.59#[method]request.get-capabilities")]
+                        "wasmcp:mcp/request@0.3.0#[method]request.get-capabilities")]
                         unsafe extern "C" fn export_method_request_get_capabilities(arg0
                         : * mut u8,) -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_method_request_get_capabilities_cabi::<<$ty as
                         $($path_to_types)*:: Guest >::Request > (arg0) } } const _ : () =
                         { #[doc(hidden)] #[unsafe (export_name =
-                        "wasmcp:mcp/request@0.3.0-alpha.59#[dtor]request")]
+                        "wasmcp:mcp/request@0.3.0#[dtor]request")]
                         #[allow(non_snake_case)] unsafe extern "C" fn dtor(rep : * mut
                         u8) { unsafe { $($path_to_types)*:: Request::dtor::< <$ty as
                         $($path_to_types)*:: Guest >::Request > (rep) } } }; };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_request_0_3_0_alpha_59_cabi;
+                pub(crate) use __export_wasmcp_mcp_request_0_3_0_cabi;
                 #[repr(align(8))]
                 struct _RetArea(
                     [::core::mem::MaybeUninit<
@@ -3189,7 +3186,7 @@ macro_rules! __export_request_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::wasmcp::mcp::request::__export_wasmcp_mcp_request_0_3_0_alpha_59_cabi!($ty
+        exports::wasmcp::mcp::request::__export_wasmcp_mcp_request_0_3_0_cabi!($ty
         with_types_in $($path_to_types_root)*:: exports::wasmcp::mcp::request);
     };
 }
@@ -3201,8 +3198,8 @@ pub(crate) use __export_request_impl as export;
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3505] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xb3\x1a\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3478] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x98\x1a\x01A\x02\x01\
 A\x19\x01B\x04\x04\0\x05error\x03\x01\x01h\0\x01@\x01\x04self\x01\0s\x04\0\x1d[m\
 ethod]error.to-debug-string\x01\x02\x03\0\x13wasi:io/error@0.2.3\x05\0\x01B\x0a\x04\
 \0\x08pollable\x03\x01\x01h\0\x01@\x01\x04self\x01\0\x7f\x04\0\x16[method]pollab\
@@ -3233,49 +3230,48 @@ erimental\x04\0\x13client-capabilities\x03\0\x0a\x01n\x05\x0bcompletions\x07prom
 pts\x09resources\x05tools\x0cexperimental\x04\0\x13server-capabilities\x03\0\x0c\
 \x01m\x03\x09v20250618\x09v20250326\x09v20241105\x04\0\x10protocol-version\x03\0\
 \x0e\x01ks\x01r\x03\x04names\x05title\x10\x07versions\x04\0\x0eimplementation\x03\
-\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x1f\
-wasmcp:mcp/types@0.3.0-alpha.59\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finva\
-lid-request\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerr\
-or-code\x03\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05erro\
-r\x03\0\x03\x03\0\x1fwasmcp:mcp/error@0.3.0-alpha.59\x05\x06\x02\x03\0\x02\x0cin\
-put-stream\x02\x03\0\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x03\x0eim\
-plementation\x02\x03\0\x03\x04json\x02\x03\0\x03\x03uri\x02\x03\0\x03\x06cursor\x02\
-\x03\0\x03\x13client-capabilities\x02\x03\0\x03\x10protocol-version\x02\x03\0\x03\
-\x13server-capabilities\x02\x03\0\x04\x05error\x01BO\x02\x03\x02\x01\x07\x04\0\x0c\
-input-stream\x03\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\
-\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x0a\x04\0\x0eimplementation\x03\
-\0\x06\x02\x03\x02\x01\x0b\x04\0\x04json\x03\0\x08\x02\x03\x02\x01\x0c\x04\0\x03\
-uri\x03\0\x0a\x02\x03\x02\x01\x0d\x04\0\x06cursor\x03\0\x0c\x02\x03\x02\x01\x0e\x04\
-\0\x13client-capabilities\x03\0\x0e\x02\x03\x02\x01\x0f\x04\0\x10protocol-versio\
-n\x03\0\x10\x02\x03\x02\x01\x10\x04\0\x13server-capabilities\x03\0\x12\x02\x03\x02\
-\x01\x11\x04\0\x09mcp-error\x03\0\x14\x01k\x09\x01r\x02\x04names\x09arguments\x16\
-\x04\0\x09arguments\x03\0\x17\x01r\x02\x04names\x05values\x04\0\x13completion-ar\
-gument\x03\0\x19\x01r\x01\x09arguments\x16\x04\0\x12completion-context\x03\0\x1b\
-\x01ks\x01r\x02\x04names\x05title\x1d\x04\0\x1bcompletion-prompt-reference\x03\0\
-\x1e\x01q\x02\x06prompt\x01\x1f\0\x11resource-template\x01\x0b\0\x04\0\x0ecomple\
-tion-ref\x03\0\x20\x01r\x03\x0ccapabilities\x0f\x0bclient-info\x07\x10protocol-v\
-ersion\x11\x04\0\x11initialize-params\x03\0\"\x04\0\x11list-tools-params\x03\0\x0d\
-\x04\0\x10call-tool-params\x03\0\x18\x04\0\x15list-resources-params\x03\0\x0d\x04\
-\0\x14read-resource-params\x03\0\x0b\x04\0\x1elist-resource-templates-params\x03\
-\0\x0d\x04\0\x13list-prompts-params\x03\0\x0d\x04\0\x11get-prompt-params\x03\0\x18\
-\x01k\x1c\x01r\x03\x08argument\x1a\x03ref!\x07context+\x04\0\x11completion-param\
-s\x03\0,\x01q\x09\x0ainitialize\x01#\0\x0atools-list\x01$\0\x0atools-call\x01%\0\
-\x0eresources-list\x01&\0\x0eresources-read\x01'\0\x18resources-templates-list\x01\
-(\0\x0cprompts-list\x01)\0\x0bprompts-get\x01*\0\x13completion-complete\x01-\0\x04\
-\0\x06params\x03\0.\x01m\x05\x0ainitialize\x05tools\x09resources\x07prompts\x0ac\
-ompletion\x04\0\x07feature\x03\00\x04\0\x07request\x03\x01\x01h\x01\x01i2\x01j\x01\
-4\x01\x03\x01@\x01\x05input3\05\x04\0\x20[static]request.from-http-stream\x016\x04\
-\0![static]request.from-stdio-stream\x016\x01h2\x01@\x01\x04self7\0\x05\x04\0\x12\
-[method]request.id\x018\x01@\x01\x04self7\01\x04\0\x17[method]request.feature\x01\
-9\x01j\x01/\x01\x15\x01@\x01\x04self7\0:\x04\0\x16[method]request.params\x01;\x01\
-p}\x01k<\x01j\x01=\0\x01@\x02\x04self7\x03keys\0>\x04\0\x13[method]request.get\x01\
-?\x01j\0\0\x01@\x03\x04self7\x03keys\x05value<\0\xc0\0\x04\0\x13[method]request.\
-set\x01A\x01@\x02\x04self7\x0ccapabilities\x13\0\x7f\x04\0\x15[method]request.ne\
-eds\x01B\x01k\x13\x01j\x01\xc3\0\0\x01@\x01\x04self7\0\xc4\0\x04\0\x20[method]re\
-quest.get-capabilities\x01E\x04\0!wasmcp:mcp/request@0.3.0-alpha.59\x05\x12\x04\0\
-\x16wasmcp:request/request\x04\0\x0b\x0d\x01\0\x07request\x03\0\0\0G\x09producer\
-s\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.4\
-1.0";
+\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x16\
+wasmcp:mcp/types@0.3.0\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finvalid-reque\
+st\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerror-code\x03\
+\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05error\x03\0\x03\
+\x03\0\x16wasmcp:mcp/error@0.3.0\x05\x06\x02\x03\0\x02\x0cinput-stream\x02\x03\0\
+\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x03\x0eimplementation\x02\x03\
+\0\x03\x04json\x02\x03\0\x03\x03uri\x02\x03\0\x03\x06cursor\x02\x03\0\x03\x13cli\
+ent-capabilities\x02\x03\0\x03\x10protocol-version\x02\x03\0\x03\x13server-capab\
+ilities\x02\x03\0\x04\x05error\x01BO\x02\x03\x02\x01\x07\x04\0\x0cinput-stream\x03\
+\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x09\x04\
+\0\x02id\x03\0\x04\x02\x03\x02\x01\x0a\x04\0\x0eimplementation\x03\0\x06\x02\x03\
+\x02\x01\x0b\x04\0\x04json\x03\0\x08\x02\x03\x02\x01\x0c\x04\0\x03uri\x03\0\x0a\x02\
+\x03\x02\x01\x0d\x04\0\x06cursor\x03\0\x0c\x02\x03\x02\x01\x0e\x04\0\x13client-c\
+apabilities\x03\0\x0e\x02\x03\x02\x01\x0f\x04\0\x10protocol-version\x03\0\x10\x02\
+\x03\x02\x01\x10\x04\0\x13server-capabilities\x03\0\x12\x02\x03\x02\x01\x11\x04\0\
+\x09mcp-error\x03\0\x14\x01k\x09\x01r\x02\x04names\x09arguments\x16\x04\0\x09arg\
+uments\x03\0\x17\x01r\x02\x04names\x05values\x04\0\x13completion-argument\x03\0\x19\
+\x01r\x01\x09arguments\x16\x04\0\x12completion-context\x03\0\x1b\x01ks\x01r\x02\x04\
+names\x05title\x1d\x04\0\x1bcompletion-prompt-reference\x03\0\x1e\x01q\x02\x06pr\
+ompt\x01\x1f\0\x11resource-template\x01\x0b\0\x04\0\x0ecompletion-ref\x03\0\x20\x01\
+r\x03\x0ccapabilities\x0f\x0bclient-info\x07\x10protocol-version\x11\x04\0\x11in\
+itialize-params\x03\0\"\x04\0\x11list-tools-params\x03\0\x0d\x04\0\x10call-tool-\
+params\x03\0\x18\x04\0\x15list-resources-params\x03\0\x0d\x04\0\x14read-resource\
+-params\x03\0\x0b\x04\0\x1elist-resource-templates-params\x03\0\x0d\x04\0\x13lis\
+t-prompts-params\x03\0\x0d\x04\0\x11get-prompt-params\x03\0\x18\x01k\x1c\x01r\x03\
+\x08argument\x1a\x03ref!\x07context+\x04\0\x11completion-params\x03\0,\x01q\x09\x0a\
+initialize\x01#\0\x0atools-list\x01$\0\x0atools-call\x01%\0\x0eresources-list\x01\
+&\0\x0eresources-read\x01'\0\x18resources-templates-list\x01(\0\x0cprompts-list\x01\
+)\0\x0bprompts-get\x01*\0\x13completion-complete\x01-\0\x04\0\x06params\x03\0.\x01\
+m\x05\x0ainitialize\x05tools\x09resources\x07prompts\x0acompletion\x04\0\x07feat\
+ure\x03\00\x04\0\x07request\x03\x01\x01h\x01\x01i2\x01j\x014\x01\x03\x01@\x01\x05\
+input3\05\x04\0\x20[static]request.from-http-stream\x016\x04\0![static]request.f\
+rom-stdio-stream\x016\x01h2\x01@\x01\x04self7\0\x05\x04\0\x12[method]request.id\x01\
+8\x01@\x01\x04self7\01\x04\0\x17[method]request.feature\x019\x01j\x01/\x01\x15\x01\
+@\x01\x04self7\0:\x04\0\x16[method]request.params\x01;\x01p}\x01k<\x01j\x01=\0\x01\
+@\x02\x04self7\x03keys\0>\x04\0\x13[method]request.get\x01?\x01j\0\0\x01@\x03\x04\
+self7\x03keys\x05value<\0\xc0\0\x04\0\x13[method]request.set\x01A\x01@\x02\x04se\
+lf7\x0ccapabilities\x13\0\x7f\x04\0\x15[method]request.needs\x01B\x01k\x13\x01j\x01\
+\xc3\0\0\x01@\x01\x04self7\0\xc4\0\x04\0\x20[method]request.get-capabilities\x01\
+E\x04\0\x18wasmcp:mcp/request@0.3.0\x05\x12\x04\0\x16wasmcp:request/request\x04\0\
+\x0b\x0d\x01\0\x07request\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit\
+-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

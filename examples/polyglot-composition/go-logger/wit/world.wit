@@ -1,6 +1,6 @@
 package component:go-logger;
 
 world middleware {
-    include wasmcp:mcp/middleware@0.3.0-alpha.59;
+    include wasmcp:mcp/middleware@0.3.0;
     include wasi:cli/imports@0.2.3;
 }

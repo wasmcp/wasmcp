@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 
 [package.metadata.component]
 package = "wasmcp:resources-writer"
-target = "wasmcp:mcp/resources-writer@0.3.0-alpha.59"
+target = "wasmcp:mcp/resources-writer@0.3.0"
 
 [package.metadata.component.dependencies]
 

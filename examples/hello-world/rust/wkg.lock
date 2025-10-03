@@ -7,6 +7,6 @@ name = "wasmcp:mcp"
 registry = "ghcr.io"
 
 [[packages.versions]]
-requirement = "=0.3.0-alpha.59"
-version = "0.3.0-alpha.59"
-digest = "sha256:b29bd35f9bc1e10a0d8f469e3493b7e65cb639b559875ed79765410e0523692b"
+requirement = "=0.3.0"
+version = "0.3.0"
+digest = "sha256:7cbb61f11a3b950cbf70c568fa98952fbd470c61a3779dfe806053d242273cf2"

@@ -41,13 +41,13 @@ export default {
   externalsType: "module",
   externals: {
     "./generated/interfaces/wasmcp-mcp-incoming-handler.js":
-      "wasmcp:mcp/incoming-handler@0.3.0-alpha.49",
+      "wasmcp:mcp/incoming-handler@0.3.0",
     "./generated/interfaces/wasmcp-mcp-tools-list-result.js":
-      "wasmcp:mcp/tools-list-result@0.3.0-alpha.49",
+      "wasmcp:mcp/tools-list-result@0.3.0",
     "./generated/interfaces/wasmcp-mcp-tools-call-content.js":
-      "wasmcp:mcp/tools-call-content@0.3.0-alpha.49",
+      "wasmcp:mcp/tools-call-content@0.3.0",
     "./generated/interfaces/wasmcp-mcp-error-result.js":
-      "wasmcp:mcp/error-result@0.3.0-alpha.49",
+      "wasmcp:mcp/error-result@0.3.0",
   },
   optimization: {
     minimize: false,

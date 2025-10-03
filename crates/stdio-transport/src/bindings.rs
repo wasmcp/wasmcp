@@ -8929,7 +8929,7 @@ pub mod wasmcp {
                     unreachable!();
                     #[cfg(target_arch = "wasm32")]
                     {
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[resource-drop]request"]
                             fn drop(_: u32);
@@ -8954,7 +8954,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[static]request.from-http-stream"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -9021,7 +9021,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[static]request.from-stdio-stream"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -9088,7 +9088,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.id"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -9137,7 +9137,7 @@ pub mod wasmcp {
                 pub fn feature(&self) -> Feature {
                     unsafe {
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.feature"]
                             fn wit_import0(_: i32) -> i32;
@@ -9169,7 +9169,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.params"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -9688,7 +9688,7 @@ pub mod wasmcp {
                         let len0 = vec0.len();
                         let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.get"]
                             fn wit_import2(_: i32, _: *mut u8, _: usize, _: *mut u8);
@@ -9759,7 +9759,7 @@ pub mod wasmcp {
                         let ptr1 = vec1.as_ptr().cast::<u8>();
                         let len1 = vec1.len();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.set"]
                             fn wit_import2(
@@ -9812,7 +9812,7 @@ pub mod wasmcp {
                     unsafe {
                         let flags0 = capabilities;
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.needs"]
                             fn wit_import1(_: i32, _: i32) -> i32;
@@ -9845,7 +9845,7 @@ pub mod wasmcp {
                         );
                         let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
-                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0-alpha.59")]
+                        #[link(wasm_import_module = "wasmcp:mcp/request@0.3.0")]
                         unsafe extern "C" {
                             #[link_name = "[method]request.get-capabilities"]
                             fn wit_import1(_: i32, _: *mut u8);
@@ -9906,9 +9906,7 @@ pub mod wasmcp {
             pub fn handle(request: Request, output: OutputStream) -> () {
                 unsafe {
                     #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "wasmcp:mcp/incoming-handler@0.3.0-alpha.59"
-                    )]
+                    #[link(wasm_import_module = "wasmcp:mcp/incoming-handler@0.3.0")]
                     unsafe extern "C" {
                         #[link_name = "handle"]
                         fn wit_import0(_: i32, _: i32);
@@ -10199,11 +10197,11 @@ macro_rules! __export_stdio_transport_impl {
 #[doc(inline)]
 pub(crate) use __export_stdio_transport_impl as export;
 #[cfg(target_arch = "wasm32")]
-#[unsafe(link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0-alpha.59:stdio-transport:encoded world")]
+#[unsafe(link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0:stdio-transport:encoded world")]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 13127] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc1e\x01A\x02\x01A\\\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 13082] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x94e\x01A\x02\x01A\\\
 \x01B\x04\x04\0\x05error\x03\x01\x01h\0\x01@\x01\x04self\x01\0s\x04\0\x1d[method\
 ]error.to-debug-string\x01\x02\x03\0\x13wasi:io/error@0.2.3\x05\0\x01B\x0a\x04\0\
 \x08pollable\x03\x01\x01h\0\x01@\x01\x04self\x01\0\x7f\x04\0\x16[method]pollable\
@@ -10234,241 +10232,241 @@ erimental\x04\0\x13client-capabilities\x03\0\x0a\x01n\x05\x0bcompletions\x07prom
 pts\x09resources\x05tools\x0cexperimental\x04\0\x13server-capabilities\x03\0\x0c\
 \x01m\x03\x09v20250618\x09v20250326\x09v20241105\x04\0\x10protocol-version\x03\0\
 \x0e\x01ks\x01r\x03\x04names\x05title\x10\x07versions\x04\0\x0eimplementation\x03\
-\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x1f\
-wasmcp:mcp/types@0.3.0-alpha.59\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finva\
-lid-request\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerr\
-or-code\x03\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05erro\
-r\x03\0\x03\x03\0\x1fwasmcp:mcp/error@0.3.0-alpha.59\x05\x06\x02\x03\0\x02\x0cin\
-put-stream\x02\x03\0\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x03\x0eim\
-plementation\x02\x03\0\x03\x04json\x02\x03\0\x03\x03uri\x02\x03\0\x03\x06cursor\x02\
-\x03\0\x03\x13client-capabilities\x02\x03\0\x03\x10protocol-version\x02\x03\0\x03\
-\x13server-capabilities\x02\x03\0\x04\x05error\x01BO\x02\x03\x02\x01\x07\x04\0\x0c\
-input-stream\x03\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\
-\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x0a\x04\0\x0eimplementation\x03\
-\0\x06\x02\x03\x02\x01\x0b\x04\0\x04json\x03\0\x08\x02\x03\x02\x01\x0c\x04\0\x03\
-uri\x03\0\x0a\x02\x03\x02\x01\x0d\x04\0\x06cursor\x03\0\x0c\x02\x03\x02\x01\x0e\x04\
-\0\x13client-capabilities\x03\0\x0e\x02\x03\x02\x01\x0f\x04\0\x10protocol-versio\
-n\x03\0\x10\x02\x03\x02\x01\x10\x04\0\x13server-capabilities\x03\0\x12\x02\x03\x02\
-\x01\x11\x04\0\x09mcp-error\x03\0\x14\x01k\x09\x01r\x02\x04names\x09arguments\x16\
-\x04\0\x09arguments\x03\0\x17\x01r\x02\x04names\x05values\x04\0\x13completion-ar\
-gument\x03\0\x19\x01r\x01\x09arguments\x16\x04\0\x12completion-context\x03\0\x1b\
-\x01ks\x01r\x02\x04names\x05title\x1d\x04\0\x1bcompletion-prompt-reference\x03\0\
-\x1e\x01q\x02\x06prompt\x01\x1f\0\x11resource-template\x01\x0b\0\x04\0\x0ecomple\
-tion-ref\x03\0\x20\x01r\x03\x0ccapabilities\x0f\x0bclient-info\x07\x10protocol-v\
-ersion\x11\x04\0\x11initialize-params\x03\0\"\x04\0\x11list-tools-params\x03\0\x0d\
-\x04\0\x10call-tool-params\x03\0\x18\x04\0\x15list-resources-params\x03\0\x0d\x04\
-\0\x14read-resource-params\x03\0\x0b\x04\0\x1elist-resource-templates-params\x03\
-\0\x0d\x04\0\x13list-prompts-params\x03\0\x0d\x04\0\x11get-prompt-params\x03\0\x18\
-\x01k\x1c\x01r\x03\x08argument\x1a\x03ref!\x07context+\x04\0\x11completion-param\
-s\x03\0,\x01q\x09\x0ainitialize\x01#\0\x0atools-list\x01$\0\x0atools-call\x01%\0\
-\x0eresources-list\x01&\0\x0eresources-read\x01'\0\x18resources-templates-list\x01\
-(\0\x0cprompts-list\x01)\0\x0bprompts-get\x01*\0\x13completion-complete\x01-\0\x04\
-\0\x06params\x03\0.\x01m\x05\x0ainitialize\x05tools\x09resources\x07prompts\x0ac\
-ompletion\x04\0\x07feature\x03\00\x04\0\x07request\x03\x01\x01h\x01\x01i2\x01j\x01\
-4\x01\x03\x01@\x01\x05input3\05\x04\0\x20[static]request.from-http-stream\x016\x04\
-\0![static]request.from-stdio-stream\x016\x01h2\x01@\x01\x04self7\0\x05\x04\0\x12\
-[method]request.id\x018\x01@\x01\x04self7\01\x04\0\x17[method]request.feature\x01\
-9\x01j\x01/\x01\x15\x01@\x01\x04self7\0:\x04\0\x16[method]request.params\x01;\x01\
-p}\x01k<\x01j\x01=\0\x01@\x02\x04self7\x03keys\0>\x04\0\x13[method]request.get\x01\
-?\x01j\0\0\x01@\x03\x04self7\x03keys\x05value<\0\xc0\0\x04\0\x13[method]request.\
-set\x01A\x01@\x02\x04self7\x0ccapabilities\x13\0\x7f\x04\0\x15[method]request.ne\
-eds\x01B\x01k\x13\x01j\x01\xc3\0\0\x01@\x01\x04self7\0\xc4\0\x04\0\x20[method]re\
-quest.get-capabilities\x01E\x03\0!wasmcp:mcp/request@0.3.0-alpha.59\x05\x12\x02\x03\
-\0\x02\x0doutput-stream\x02\x03\0\x05\x07request\x01B\x08\x02\x03\x02\x01\x13\x04\
-\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x14\x04\0\x07request\x03\0\x02\x01i\x03\
-\x01i\x01\x01@\x02\x07request\x04\x06output\x05\x01\0\x04\0\x06handle\x01\x06\x03\
-\0*wasmcp:mcp/incoming-handler@0.3.0-alpha.59\x05\x15\x01B\x0a\x01o\x02ss\x01p\0\
-\x01@\0\0\x01\x04\0\x0fget-environment\x01\x02\x01ps\x01@\0\0\x03\x04\0\x0dget-a\
-rguments\x01\x04\x01ks\x01@\0\0\x05\x04\0\x0binitial-cwd\x01\x06\x03\0\x1awasi:c\
-li/environment@0.2.3\x05\x16\x01B\x03\x01j\0\0\x01@\x01\x06status\0\x01\0\x04\0\x04\
-exit\x01\x01\x03\0\x13wasi:cli/exit@0.2.3\x05\x17\x01B\x05\x02\x03\x02\x01\x07\x04\
-\0\x0cinput-stream\x03\0\0\x01i\x01\x01@\0\0\x02\x04\0\x09get-stdin\x01\x03\x03\0\
-\x14wasi:cli/stdin@0.2.3\x05\x18\x01B\x05\x02\x03\x02\x01\x13\x04\0\x0doutput-st\
-ream\x03\0\0\x01i\x01\x01@\0\0\x02\x04\0\x0aget-stdout\x01\x03\x03\0\x15wasi:cli\
-/stdout@0.2.3\x05\x19\x01B\x05\x02\x03\x02\x01\x13\x04\0\x0doutput-stream\x03\0\0\
-\x01i\x01\x01@\0\0\x02\x04\0\x0aget-stderr\x01\x03\x03\0\x15wasi:cli/stderr@0.2.\
-3\x05\x1a\x01B\x01\x04\0\x0eterminal-input\x03\x01\x03\0\x1dwasi:cli/terminal-in\
-put@0.2.3\x05\x1b\x01B\x01\x04\0\x0fterminal-output\x03\x01\x03\0\x1ewasi:cli/te\
-rminal-output@0.2.3\x05\x1c\x02\x03\0\x0c\x0eterminal-input\x01B\x06\x02\x03\x02\
-\x01\x1d\x04\0\x0eterminal-input\x03\0\0\x01i\x01\x01k\x02\x01@\0\0\x03\x04\0\x12\
-get-terminal-stdin\x01\x04\x03\0\x1dwasi:cli/terminal-stdin@0.2.3\x05\x1e\x02\x03\
-\0\x0d\x0fterminal-output\x01B\x06\x02\x03\x02\x01\x1f\x04\0\x0fterminal-output\x03\
-\0\0\x01i\x01\x01k\x02\x01@\0\0\x03\x04\0\x13get-terminal-stdout\x01\x04\x03\0\x1e\
-wasi:cli/terminal-stdout@0.2.3\x05\x20\x01B\x06\x02\x03\x02\x01\x1f\x04\0\x0fter\
-minal-output\x03\0\0\x01i\x01\x01k\x02\x01@\0\0\x03\x04\0\x13get-terminal-stderr\
-\x01\x04\x03\0\x1ewasi:cli/terminal-stderr@0.2.3\x05!\x01B\x0f\x02\x03\x02\x01\x03\
-\x04\0\x08pollable\x03\0\0\x01w\x04\0\x07instant\x03\0\x02\x01w\x04\0\x08duratio\
-n\x03\0\x04\x01@\0\0\x03\x04\0\x03now\x01\x06\x01@\0\0\x05\x04\0\x0aresolution\x01\
-\x07\x01i\x01\x01@\x01\x04when\x03\0\x08\x04\0\x11subscribe-instant\x01\x09\x01@\
-\x01\x04when\x05\0\x08\x04\0\x12subscribe-duration\x01\x0a\x03\0!wasi:clocks/mon\
-otonic-clock@0.2.3\x05\"\x01B\x05\x01r\x02\x07secondsw\x0bnanosecondsy\x04\0\x08\
-datetime\x03\0\0\x01@\0\0\x01\x04\0\x03now\x01\x02\x04\0\x0aresolution\x01\x02\x03\
-\0\x1cwasi:clocks/wall-clock@0.2.3\x05#\x02\x03\0\x02\x05error\x02\x03\0\x12\x08\
-datetime\x01Br\x02\x03\x02\x01\x07\x04\0\x0cinput-stream\x03\0\0\x02\x03\x02\x01\
-\x13\x04\0\x0doutput-stream\x03\0\x02\x02\x03\x02\x01$\x04\0\x05error\x03\0\x04\x02\
-\x03\x02\x01%\x04\0\x08datetime\x03\0\x06\x01w\x04\0\x08filesize\x03\0\x08\x01m\x08\
-\x07unknown\x0cblock-device\x10character-device\x09directory\x04fifo\x0dsymbolic\
--link\x0cregular-file\x06socket\x04\0\x0fdescriptor-type\x03\0\x0a\x01n\x06\x04r\
-ead\x05write\x13file-integrity-sync\x13data-integrity-sync\x14requested-write-sy\
-nc\x10mutate-directory\x04\0\x10descriptor-flags\x03\0\x0c\x01n\x01\x0esymlink-f\
-ollow\x04\0\x0apath-flags\x03\0\x0e\x01n\x04\x06create\x09directory\x09exclusive\
-\x08truncate\x04\0\x0aopen-flags\x03\0\x10\x01w\x04\0\x0alink-count\x03\0\x12\x01\
-k\x07\x01r\x06\x04type\x0b\x0alink-count\x13\x04size\x09\x15data-access-timestam\
-p\x14\x1bdata-modification-timestamp\x14\x17status-change-timestamp\x14\x04\0\x0f\
-descriptor-stat\x03\0\x15\x01q\x03\x09no-change\0\0\x03now\0\0\x09timestamp\x01\x07\
-\0\x04\0\x0dnew-timestamp\x03\0\x17\x01r\x02\x04type\x0b\x04names\x04\0\x0fdirec\
-tory-entry\x03\0\x19\x01m%\x06access\x0bwould-block\x07already\x0ebad-descriptor\
-\x04busy\x08deadlock\x05quota\x05exist\x0efile-too-large\x15illegal-byte-sequenc\
-e\x0bin-progress\x0binterrupted\x07invalid\x02io\x0cis-directory\x04loop\x0etoo-\
-many-links\x0cmessage-size\x0dname-too-long\x09no-device\x08no-entry\x07no-lock\x13\
-insufficient-memory\x12insufficient-space\x0dnot-directory\x09not-empty\x0fnot-r\
-ecoverable\x0bunsupported\x06no-tty\x0eno-such-device\x08overflow\x0dnot-permitt\
-ed\x04pipe\x09read-only\x0cinvalid-seek\x0etext-file-busy\x0ccross-device\x04\0\x0a\
-error-code\x03\0\x1b\x01m\x06\x06normal\x0asequential\x06random\x09will-need\x09\
-dont-need\x08no-reuse\x04\0\x06advice\x03\0\x1d\x01r\x02\x05lowerw\x05upperw\x04\
-\0\x13metadata-hash-value\x03\0\x1f\x04\0\x0adescriptor\x03\x01\x04\0\x16directo\
-ry-entry-stream\x03\x01\x01h!\x01i\x01\x01j\x01$\x01\x1c\x01@\x02\x04self#\x06of\
-fset\x09\0%\x04\0\"[method]descriptor.read-via-stream\x01&\x01i\x03\x01j\x01'\x01\
-\x1c\x01@\x02\x04self#\x06offset\x09\0(\x04\0#[method]descriptor.write-via-strea\
-m\x01)\x01@\x01\x04self#\0(\x04\0$[method]descriptor.append-via-stream\x01*\x01j\
-\0\x01\x1c\x01@\x04\x04self#\x06offset\x09\x06length\x09\x06advice\x1e\0+\x04\0\x19\
-[method]descriptor.advise\x01,\x01@\x01\x04self#\0+\x04\0\x1c[method]descriptor.\
-sync-data\x01-\x01j\x01\x0d\x01\x1c\x01@\x01\x04self#\0.\x04\0\x1c[method]descri\
-ptor.get-flags\x01/\x01j\x01\x0b\x01\x1c\x01@\x01\x04self#\00\x04\0\x1b[method]d\
-escriptor.get-type\x011\x01@\x02\x04self#\x04size\x09\0+\x04\0\x1b[method]descri\
-ptor.set-size\x012\x01@\x03\x04self#\x15data-access-timestamp\x18\x1bdata-modifi\
-cation-timestamp\x18\0+\x04\0\x1c[method]descriptor.set-times\x013\x01p}\x01o\x02\
-4\x7f\x01j\x015\x01\x1c\x01@\x03\x04self#\x06length\x09\x06offset\x09\06\x04\0\x17\
-[method]descriptor.read\x017\x01j\x01\x09\x01\x1c\x01@\x03\x04self#\x06buffer4\x06\
-offset\x09\08\x04\0\x18[method]descriptor.write\x019\x01i\"\x01j\x01:\x01\x1c\x01\
-@\x01\x04self#\0;\x04\0![method]descriptor.read-directory\x01<\x04\0\x17[method]\
-descriptor.sync\x01-\x01@\x02\x04self#\x04paths\0+\x04\0&[method]descriptor.crea\
-te-directory-at\x01=\x01j\x01\x16\x01\x1c\x01@\x01\x04self#\0>\x04\0\x17[method]\
-descriptor.stat\x01?\x01@\x03\x04self#\x0apath-flags\x0f\x04paths\0>\x04\0\x1a[m\
-ethod]descriptor.stat-at\x01@\x01@\x05\x04self#\x0apath-flags\x0f\x04paths\x15da\
-ta-access-timestamp\x18\x1bdata-modification-timestamp\x18\0+\x04\0\x1f[method]d\
-escriptor.set-times-at\x01A\x01@\x05\x04self#\x0eold-path-flags\x0f\x08old-paths\
-\x0enew-descriptor#\x08new-paths\0+\x04\0\x1a[method]descriptor.link-at\x01B\x01\
-i!\x01j\x01\xc3\0\x01\x1c\x01@\x05\x04self#\x0apath-flags\x0f\x04paths\x0aopen-f\
-lags\x11\x05flags\x0d\0\xc4\0\x04\0\x1a[method]descriptor.open-at\x01E\x01j\x01s\
-\x01\x1c\x01@\x02\x04self#\x04paths\0\xc6\0\x04\0\x1e[method]descriptor.readlink\
--at\x01G\x04\0&[method]descriptor.remove-directory-at\x01=\x01@\x04\x04self#\x08\
-old-paths\x0enew-descriptor#\x08new-paths\0+\x04\0\x1c[method]descriptor.rename-\
-at\x01H\x01@\x03\x04self#\x08old-paths\x08new-paths\0+\x04\0\x1d[method]descript\
-or.symlink-at\x01I\x04\0![method]descriptor.unlink-file-at\x01=\x01@\x02\x04self\
-#\x05other#\0\x7f\x04\0![method]descriptor.is-same-object\x01J\x01j\x01\x20\x01\x1c\
-\x01@\x01\x04self#\0\xcb\0\x04\0\x20[method]descriptor.metadata-hash\x01L\x01@\x03\
-\x04self#\x0apath-flags\x0f\x04paths\0\xcb\0\x04\0#[method]descriptor.metadata-h\
-ash-at\x01M\x01h\"\x01k\x1a\x01j\x01\xcf\0\x01\x1c\x01@\x01\x04self\xce\0\0\xd0\0\
-\x04\03[method]directory-entry-stream.read-directory-entry\x01Q\x01h\x05\x01k\x1c\
-\x01@\x01\x03err\xd2\0\0\xd3\0\x04\0\x15filesystem-error-code\x01T\x03\0\x1bwasi\
-:filesystem/types@0.2.3\x05&\x02\x03\0\x13\x0adescriptor\x01B\x07\x02\x03\x02\x01\
-'\x04\0\x0adescriptor\x03\0\0\x01i\x01\x01o\x02\x02s\x01p\x03\x01@\0\0\x04\x04\0\
-\x0fget-directories\x01\x05\x03\0\x1ewasi:filesystem/preopens@0.2.3\x05(\x01B\x11\
-\x04\0\x07network\x03\x01\x01m\x15\x07unknown\x0daccess-denied\x0dnot-supported\x10\
-invalid-argument\x0dout-of-memory\x07timeout\x14concurrency-conflict\x0fnot-in-p\
-rogress\x0bwould-block\x0dinvalid-state\x10new-socket-limit\x14address-not-binda\
-ble\x0eaddress-in-use\x12remote-unreachable\x12connection-refused\x10connection-\
-reset\x12connection-aborted\x12datagram-too-large\x11name-unresolvable\x1atempor\
-ary-resolver-failure\x1apermanent-resolver-failure\x04\0\x0aerror-code\x03\0\x01\
-\x01m\x02\x04ipv4\x04ipv6\x04\0\x11ip-address-family\x03\0\x03\x01o\x04}}}}\x04\0\
-\x0cipv4-address\x03\0\x05\x01o\x08{{{{{{{{\x04\0\x0cipv6-address\x03\0\x07\x01q\
-\x02\x04ipv4\x01\x06\0\x04ipv6\x01\x08\0\x04\0\x0aip-address\x03\0\x09\x01r\x02\x04\
-port{\x07address\x06\x04\0\x13ipv4-socket-address\x03\0\x0b\x01r\x04\x04port{\x09\
-flow-infoy\x07address\x08\x08scope-idy\x04\0\x13ipv6-socket-address\x03\0\x0d\x01\
-q\x02\x04ipv4\x01\x0c\0\x04ipv6\x01\x0e\0\x04\0\x11ip-socket-address\x03\0\x0f\x03\
-\0\x1awasi:sockets/network@0.2.3\x05)\x02\x03\0\x15\x07network\x01B\x05\x02\x03\x02\
-\x01*\x04\0\x07network\x03\0\0\x01i\x01\x01@\0\0\x02\x04\0\x10instance-network\x01\
-\x03\x03\0#wasi:sockets/instance-network@0.2.3\x05+\x02\x03\0\x15\x0aerror-code\x02\
-\x03\0\x15\x11ip-socket-address\x02\x03\0\x15\x11ip-address-family\x01BD\x02\x03\
-\x02\x01\x03\x04\0\x08pollable\x03\0\0\x02\x03\x02\x01*\x04\0\x07network\x03\0\x02\
-\x02\x03\x02\x01,\x04\0\x0aerror-code\x03\0\x04\x02\x03\x02\x01-\x04\0\x11ip-soc\
-ket-address\x03\0\x06\x02\x03\x02\x01.\x04\0\x11ip-address-family\x03\0\x08\x01p\
-}\x01r\x02\x04data\x0a\x0eremote-address\x07\x04\0\x11incoming-datagram\x03\0\x0b\
-\x01k\x07\x01r\x02\x04data\x0a\x0eremote-address\x0d\x04\0\x11outgoing-datagram\x03\
-\0\x0e\x04\0\x0audp-socket\x03\x01\x04\0\x18incoming-datagram-stream\x03\x01\x04\
-\0\x18outgoing-datagram-stream\x03\x01\x01h\x10\x01h\x03\x01j\0\x01\x05\x01@\x03\
-\x04self\x13\x07network\x14\x0dlocal-address\x07\0\x15\x04\0\x1d[method]udp-sock\
-et.start-bind\x01\x16\x01@\x01\x04self\x13\0\x15\x04\0\x1e[method]udp-socket.fin\
-ish-bind\x01\x17\x01i\x11\x01i\x12\x01o\x02\x18\x19\x01j\x01\x1a\x01\x05\x01@\x02\
-\x04self\x13\x0eremote-address\x0d\0\x1b\x04\0\x19[method]udp-socket.stream\x01\x1c\
-\x01j\x01\x07\x01\x05\x01@\x01\x04self\x13\0\x1d\x04\0\x20[method]udp-socket.loc\
-al-address\x01\x1e\x04\0![method]udp-socket.remote-address\x01\x1e\x01@\x01\x04s\
-elf\x13\0\x09\x04\0![method]udp-socket.address-family\x01\x1f\x01j\x01}\x01\x05\x01\
-@\x01\x04self\x13\0\x20\x04\0$[method]udp-socket.unicast-hop-limit\x01!\x01@\x02\
-\x04self\x13\x05value}\0\x15\x04\0([method]udp-socket.set-unicast-hop-limit\x01\"\
-\x01j\x01w\x01\x05\x01@\x01\x04self\x13\0#\x04\0&[method]udp-socket.receive-buff\
-er-size\x01$\x01@\x02\x04self\x13\x05valuew\0\x15\x04\0*[method]udp-socket.set-r\
-eceive-buffer-size\x01%\x04\0#[method]udp-socket.send-buffer-size\x01$\x04\0'[me\
-thod]udp-socket.set-send-buffer-size\x01%\x01i\x01\x01@\x01\x04self\x13\0&\x04\0\
-\x1c[method]udp-socket.subscribe\x01'\x01h\x11\x01p\x0c\x01j\x01)\x01\x05\x01@\x02\
-\x04self(\x0bmax-resultsw\0*\x04\0([method]incoming-datagram-stream.receive\x01+\
-\x01@\x01\x04self(\0&\x04\0*[method]incoming-datagram-stream.subscribe\x01,\x01h\
-\x12\x01@\x01\x04self-\0#\x04\0+[method]outgoing-datagram-stream.check-send\x01.\
-\x01p\x0f\x01@\x02\x04self-\x09datagrams/\0#\x04\0%[method]outgoing-datagram-str\
-eam.send\x010\x01@\x01\x04self-\0&\x04\0*[method]outgoing-datagram-stream.subscr\
-ibe\x011\x03\0\x16wasi:sockets/udp@0.2.3\x05/\x02\x03\0\x17\x0audp-socket\x01B\x0c\
-\x02\x03\x02\x01*\x04\0\x07network\x03\0\0\x02\x03\x02\x01,\x04\0\x0aerror-code\x03\
-\0\x02\x02\x03\x02\x01.\x04\0\x11ip-address-family\x03\0\x04\x02\x03\x02\x010\x04\
-\0\x0audp-socket\x03\0\x06\x01i\x07\x01j\x01\x08\x01\x03\x01@\x01\x0eaddress-fam\
-ily\x05\0\x09\x04\0\x11create-udp-socket\x01\x0a\x03\0$wasi:sockets/udp-create-s\
-ocket@0.2.3\x051\x02\x03\0\x11\x08duration\x01BT\x02\x03\x02\x01\x07\x04\0\x0cin\
-put-stream\x03\0\0\x02\x03\x02\x01\x13\x04\0\x0doutput-stream\x03\0\x02\x02\x03\x02\
-\x01\x03\x04\0\x08pollable\x03\0\x04\x02\x03\x02\x012\x04\0\x08duration\x03\0\x06\
-\x02\x03\x02\x01*\x04\0\x07network\x03\0\x08\x02\x03\x02\x01,\x04\0\x0aerror-cod\
-e\x03\0\x0a\x02\x03\x02\x01-\x04\0\x11ip-socket-address\x03\0\x0c\x02\x03\x02\x01\
-.\x04\0\x11ip-address-family\x03\0\x0e\x01m\x03\x07receive\x04send\x04both\x04\0\
-\x0dshutdown-type\x03\0\x10\x04\0\x0atcp-socket\x03\x01\x01h\x12\x01h\x09\x01j\0\
-\x01\x0b\x01@\x03\x04self\x13\x07network\x14\x0dlocal-address\x0d\0\x15\x04\0\x1d\
-[method]tcp-socket.start-bind\x01\x16\x01@\x01\x04self\x13\0\x15\x04\0\x1e[metho\
-d]tcp-socket.finish-bind\x01\x17\x01@\x03\x04self\x13\x07network\x14\x0eremote-a\
-ddress\x0d\0\x15\x04\0\x20[method]tcp-socket.start-connect\x01\x18\x01i\x01\x01i\
-\x03\x01o\x02\x19\x1a\x01j\x01\x1b\x01\x0b\x01@\x01\x04self\x13\0\x1c\x04\0![met\
-hod]tcp-socket.finish-connect\x01\x1d\x04\0\x1f[method]tcp-socket.start-listen\x01\
-\x17\x04\0\x20[method]tcp-socket.finish-listen\x01\x17\x01i\x12\x01o\x03\x1e\x19\
-\x1a\x01j\x01\x1f\x01\x0b\x01@\x01\x04self\x13\0\x20\x04\0\x19[method]tcp-socket\
-.accept\x01!\x01j\x01\x0d\x01\x0b\x01@\x01\x04self\x13\0\"\x04\0\x20[method]tcp-\
-socket.local-address\x01#\x04\0![method]tcp-socket.remote-address\x01#\x01@\x01\x04\
-self\x13\0\x7f\x04\0\x1f[method]tcp-socket.is-listening\x01$\x01@\x01\x04self\x13\
-\0\x0f\x04\0![method]tcp-socket.address-family\x01%\x01@\x02\x04self\x13\x05valu\
-ew\0\x15\x04\0*[method]tcp-socket.set-listen-backlog-size\x01&\x01j\x01\x7f\x01\x0b\
-\x01@\x01\x04self\x13\0'\x04\0%[method]tcp-socket.keep-alive-enabled\x01(\x01@\x02\
-\x04self\x13\x05value\x7f\0\x15\x04\0)[method]tcp-socket.set-keep-alive-enabled\x01\
-)\x01j\x01\x07\x01\x0b\x01@\x01\x04self\x13\0*\x04\0'[method]tcp-socket.keep-ali\
-ve-idle-time\x01+\x01@\x02\x04self\x13\x05value\x07\0\x15\x04\0+[method]tcp-sock\
-et.set-keep-alive-idle-time\x01,\x04\0&[method]tcp-socket.keep-alive-interval\x01\
-+\x04\0*[method]tcp-socket.set-keep-alive-interval\x01,\x01j\x01y\x01\x0b\x01@\x01\
-\x04self\x13\0-\x04\0#[method]tcp-socket.keep-alive-count\x01.\x01@\x02\x04self\x13\
-\x05valuey\0\x15\x04\0'[method]tcp-socket.set-keep-alive-count\x01/\x01j\x01}\x01\
-\x0b\x01@\x01\x04self\x13\00\x04\0\x1c[method]tcp-socket.hop-limit\x011\x01@\x02\
-\x04self\x13\x05value}\0\x15\x04\0\x20[method]tcp-socket.set-hop-limit\x012\x01j\
-\x01w\x01\x0b\x01@\x01\x04self\x13\03\x04\0&[method]tcp-socket.receive-buffer-si\
-ze\x014\x04\0*[method]tcp-socket.set-receive-buffer-size\x01&\x04\0#[method]tcp-\
-socket.send-buffer-size\x014\x04\0'[method]tcp-socket.set-send-buffer-size\x01&\x01\
-i\x05\x01@\x01\x04self\x13\05\x04\0\x1c[method]tcp-socket.subscribe\x016\x01@\x02\
-\x04self\x13\x0dshutdown-type\x11\0\x15\x04\0\x1b[method]tcp-socket.shutdown\x01\
-7\x03\0\x16wasi:sockets/tcp@0.2.3\x053\x02\x03\0\x19\x0atcp-socket\x01B\x0c\x02\x03\
-\x02\x01*\x04\0\x07network\x03\0\0\x02\x03\x02\x01,\x04\0\x0aerror-code\x03\0\x02\
-\x02\x03\x02\x01.\x04\0\x11ip-address-family\x03\0\x04\x02\x03\x02\x014\x04\0\x0a\
-tcp-socket\x03\0\x06\x01i\x07\x01j\x01\x08\x01\x03\x01@\x01\x0eaddress-family\x05\
-\0\x09\x04\0\x11create-tcp-socket\x01\x0a\x03\0$wasi:sockets/tcp-create-socket@0\
-.2.3\x055\x02\x03\0\x15\x0aip-address\x01B\x16\x02\x03\x02\x01\x03\x04\0\x08poll\
-able\x03\0\0\x02\x03\x02\x01*\x04\0\x07network\x03\0\x02\x02\x03\x02\x01,\x04\0\x0a\
-error-code\x03\0\x04\x02\x03\x02\x016\x04\0\x0aip-address\x03\0\x06\x04\0\x16res\
-olve-address-stream\x03\x01\x01h\x08\x01k\x07\x01j\x01\x0a\x01\x05\x01@\x01\x04s\
-elf\x09\0\x0b\x04\03[method]resolve-address-stream.resolve-next-address\x01\x0c\x01\
-i\x01\x01@\x01\x04self\x09\0\x0d\x04\0([method]resolve-address-stream.subscribe\x01\
-\x0e\x01h\x03\x01i\x08\x01j\x01\x10\x01\x05\x01@\x02\x07network\x0f\x04names\0\x11\
-\x04\0\x11resolve-addresses\x01\x12\x03\0!wasi:sockets/ip-name-lookup@0.2.3\x057\
-\x01B\x05\x01p}\x01@\x01\x03lenw\0\0\x04\0\x10get-random-bytes\x01\x01\x01@\0\0w\
-\x04\0\x0eget-random-u64\x01\x02\x03\0\x18wasi:random/random@0.2.3\x058\x01B\x05\
-\x01p}\x01@\x01\x03lenw\0\0\x04\0\x19get-insecure-random-bytes\x01\x01\x01@\0\0w\
-\x04\0\x17get-insecure-random-u64\x01\x02\x03\0\x1awasi:random/insecure@0.2.3\x05\
-9\x01B\x03\x01o\x02ww\x01@\0\0\0\x04\0\x0dinsecure-seed\x01\x01\x03\0\x1fwasi:ra\
-ndom/insecure-seed@0.2.3\x05:\x01B\x03\x01j\0\0\x01@\0\0\0\x04\0\x03run\x01\x01\x04\
-\0\x12wasi:cli/run@0.2.3\x05;\x04\0)wasmcp:mcp/stdio-transport@0.3.0-alpha.59\x04\
-\0\x0b\x15\x01\0\x0fstdio-transport\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\
-\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x16\
+wasmcp:mcp/types@0.3.0\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finvalid-reque\
+st\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerror-code\x03\
+\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05error\x03\0\x03\
+\x03\0\x16wasmcp:mcp/error@0.3.0\x05\x06\x02\x03\0\x02\x0cinput-stream\x02\x03\0\
+\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x03\x0eimplementation\x02\x03\
+\0\x03\x04json\x02\x03\0\x03\x03uri\x02\x03\0\x03\x06cursor\x02\x03\0\x03\x13cli\
+ent-capabilities\x02\x03\0\x03\x10protocol-version\x02\x03\0\x03\x13server-capab\
+ilities\x02\x03\0\x04\x05error\x01BO\x02\x03\x02\x01\x07\x04\0\x0cinput-stream\x03\
+\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x09\x04\
+\0\x02id\x03\0\x04\x02\x03\x02\x01\x0a\x04\0\x0eimplementation\x03\0\x06\x02\x03\
+\x02\x01\x0b\x04\0\x04json\x03\0\x08\x02\x03\x02\x01\x0c\x04\0\x03uri\x03\0\x0a\x02\
+\x03\x02\x01\x0d\x04\0\x06cursor\x03\0\x0c\x02\x03\x02\x01\x0e\x04\0\x13client-c\
+apabilities\x03\0\x0e\x02\x03\x02\x01\x0f\x04\0\x10protocol-version\x03\0\x10\x02\
+\x03\x02\x01\x10\x04\0\x13server-capabilities\x03\0\x12\x02\x03\x02\x01\x11\x04\0\
+\x09mcp-error\x03\0\x14\x01k\x09\x01r\x02\x04names\x09arguments\x16\x04\0\x09arg\
+uments\x03\0\x17\x01r\x02\x04names\x05values\x04\0\x13completion-argument\x03\0\x19\
+\x01r\x01\x09arguments\x16\x04\0\x12completion-context\x03\0\x1b\x01ks\x01r\x02\x04\
+names\x05title\x1d\x04\0\x1bcompletion-prompt-reference\x03\0\x1e\x01q\x02\x06pr\
+ompt\x01\x1f\0\x11resource-template\x01\x0b\0\x04\0\x0ecompletion-ref\x03\0\x20\x01\
+r\x03\x0ccapabilities\x0f\x0bclient-info\x07\x10protocol-version\x11\x04\0\x11in\
+itialize-params\x03\0\"\x04\0\x11list-tools-params\x03\0\x0d\x04\0\x10call-tool-\
+params\x03\0\x18\x04\0\x15list-resources-params\x03\0\x0d\x04\0\x14read-resource\
+-params\x03\0\x0b\x04\0\x1elist-resource-templates-params\x03\0\x0d\x04\0\x13lis\
+t-prompts-params\x03\0\x0d\x04\0\x11get-prompt-params\x03\0\x18\x01k\x1c\x01r\x03\
+\x08argument\x1a\x03ref!\x07context+\x04\0\x11completion-params\x03\0,\x01q\x09\x0a\
+initialize\x01#\0\x0atools-list\x01$\0\x0atools-call\x01%\0\x0eresources-list\x01\
+&\0\x0eresources-read\x01'\0\x18resources-templates-list\x01(\0\x0cprompts-list\x01\
+)\0\x0bprompts-get\x01*\0\x13completion-complete\x01-\0\x04\0\x06params\x03\0.\x01\
+m\x05\x0ainitialize\x05tools\x09resources\x07prompts\x0acompletion\x04\0\x07feat\
+ure\x03\00\x04\0\x07request\x03\x01\x01h\x01\x01i2\x01j\x014\x01\x03\x01@\x01\x05\
+input3\05\x04\0\x20[static]request.from-http-stream\x016\x04\0![static]request.f\
+rom-stdio-stream\x016\x01h2\x01@\x01\x04self7\0\x05\x04\0\x12[method]request.id\x01\
+8\x01@\x01\x04self7\01\x04\0\x17[method]request.feature\x019\x01j\x01/\x01\x15\x01\
+@\x01\x04self7\0:\x04\0\x16[method]request.params\x01;\x01p}\x01k<\x01j\x01=\0\x01\
+@\x02\x04self7\x03keys\0>\x04\0\x13[method]request.get\x01?\x01j\0\0\x01@\x03\x04\
+self7\x03keys\x05value<\0\xc0\0\x04\0\x13[method]request.set\x01A\x01@\x02\x04se\
+lf7\x0ccapabilities\x13\0\x7f\x04\0\x15[method]request.needs\x01B\x01k\x13\x01j\x01\
+\xc3\0\0\x01@\x01\x04self7\0\xc4\0\x04\0\x20[method]request.get-capabilities\x01\
+E\x03\0\x18wasmcp:mcp/request@0.3.0\x05\x12\x02\x03\0\x02\x0doutput-stream\x02\x03\
+\0\x05\x07request\x01B\x08\x02\x03\x02\x01\x13\x04\0\x0doutput-stream\x03\0\0\x02\
+\x03\x02\x01\x14\x04\0\x07request\x03\0\x02\x01i\x03\x01i\x01\x01@\x02\x07reques\
+t\x04\x06output\x05\x01\0\x04\0\x06handle\x01\x06\x03\0!wasmcp:mcp/incoming-hand\
+ler@0.3.0\x05\x15\x01B\x0a\x01o\x02ss\x01p\0\x01@\0\0\x01\x04\0\x0fget-environme\
+nt\x01\x02\x01ps\x01@\0\0\x03\x04\0\x0dget-arguments\x01\x04\x01ks\x01@\0\0\x05\x04\
+\0\x0binitial-cwd\x01\x06\x03\0\x1awasi:cli/environment@0.2.3\x05\x16\x01B\x03\x01\
+j\0\0\x01@\x01\x06status\0\x01\0\x04\0\x04exit\x01\x01\x03\0\x13wasi:cli/exit@0.\
+2.3\x05\x17\x01B\x05\x02\x03\x02\x01\x07\x04\0\x0cinput-stream\x03\0\0\x01i\x01\x01\
+@\0\0\x02\x04\0\x09get-stdin\x01\x03\x03\0\x14wasi:cli/stdin@0.2.3\x05\x18\x01B\x05\
+\x02\x03\x02\x01\x13\x04\0\x0doutput-stream\x03\0\0\x01i\x01\x01@\0\0\x02\x04\0\x0a\
+get-stdout\x01\x03\x03\0\x15wasi:cli/stdout@0.2.3\x05\x19\x01B\x05\x02\x03\x02\x01\
+\x13\x04\0\x0doutput-stream\x03\0\0\x01i\x01\x01@\0\0\x02\x04\0\x0aget-stderr\x01\
+\x03\x03\0\x15wasi:cli/stderr@0.2.3\x05\x1a\x01B\x01\x04\0\x0eterminal-input\x03\
+\x01\x03\0\x1dwasi:cli/terminal-input@0.2.3\x05\x1b\x01B\x01\x04\0\x0fterminal-o\
+utput\x03\x01\x03\0\x1ewasi:cli/terminal-output@0.2.3\x05\x1c\x02\x03\0\x0c\x0et\
+erminal-input\x01B\x06\x02\x03\x02\x01\x1d\x04\0\x0eterminal-input\x03\0\0\x01i\x01\
+\x01k\x02\x01@\0\0\x03\x04\0\x12get-terminal-stdin\x01\x04\x03\0\x1dwasi:cli/ter\
+minal-stdin@0.2.3\x05\x1e\x02\x03\0\x0d\x0fterminal-output\x01B\x06\x02\x03\x02\x01\
+\x1f\x04\0\x0fterminal-output\x03\0\0\x01i\x01\x01k\x02\x01@\0\0\x03\x04\0\x13ge\
+t-terminal-stdout\x01\x04\x03\0\x1ewasi:cli/terminal-stdout@0.2.3\x05\x20\x01B\x06\
+\x02\x03\x02\x01\x1f\x04\0\x0fterminal-output\x03\0\0\x01i\x01\x01k\x02\x01@\0\0\
+\x03\x04\0\x13get-terminal-stderr\x01\x04\x03\0\x1ewasi:cli/terminal-stderr@0.2.\
+3\x05!\x01B\x0f\x02\x03\x02\x01\x03\x04\0\x08pollable\x03\0\0\x01w\x04\0\x07inst\
+ant\x03\0\x02\x01w\x04\0\x08duration\x03\0\x04\x01@\0\0\x03\x04\0\x03now\x01\x06\
+\x01@\0\0\x05\x04\0\x0aresolution\x01\x07\x01i\x01\x01@\x01\x04when\x03\0\x08\x04\
+\0\x11subscribe-instant\x01\x09\x01@\x01\x04when\x05\0\x08\x04\0\x12subscribe-du\
+ration\x01\x0a\x03\0!wasi:clocks/monotonic-clock@0.2.3\x05\"\x01B\x05\x01r\x02\x07\
+secondsw\x0bnanosecondsy\x04\0\x08datetime\x03\0\0\x01@\0\0\x01\x04\0\x03now\x01\
+\x02\x04\0\x0aresolution\x01\x02\x03\0\x1cwasi:clocks/wall-clock@0.2.3\x05#\x02\x03\
+\0\x02\x05error\x02\x03\0\x12\x08datetime\x01Br\x02\x03\x02\x01\x07\x04\0\x0cinp\
+ut-stream\x03\0\0\x02\x03\x02\x01\x13\x04\0\x0doutput-stream\x03\0\x02\x02\x03\x02\
+\x01$\x04\0\x05error\x03\0\x04\x02\x03\x02\x01%\x04\0\x08datetime\x03\0\x06\x01w\
+\x04\0\x08filesize\x03\0\x08\x01m\x08\x07unknown\x0cblock-device\x10character-de\
+vice\x09directory\x04fifo\x0dsymbolic-link\x0cregular-file\x06socket\x04\0\x0fde\
+scriptor-type\x03\0\x0a\x01n\x06\x04read\x05write\x13file-integrity-sync\x13data\
+-integrity-sync\x14requested-write-sync\x10mutate-directory\x04\0\x10descriptor-\
+flags\x03\0\x0c\x01n\x01\x0esymlink-follow\x04\0\x0apath-flags\x03\0\x0e\x01n\x04\
+\x06create\x09directory\x09exclusive\x08truncate\x04\0\x0aopen-flags\x03\0\x10\x01\
+w\x04\0\x0alink-count\x03\0\x12\x01k\x07\x01r\x06\x04type\x0b\x0alink-count\x13\x04\
+size\x09\x15data-access-timestamp\x14\x1bdata-modification-timestamp\x14\x17stat\
+us-change-timestamp\x14\x04\0\x0fdescriptor-stat\x03\0\x15\x01q\x03\x09no-change\
+\0\0\x03now\0\0\x09timestamp\x01\x07\0\x04\0\x0dnew-timestamp\x03\0\x17\x01r\x02\
+\x04type\x0b\x04names\x04\0\x0fdirectory-entry\x03\0\x19\x01m%\x06access\x0bwoul\
+d-block\x07already\x0ebad-descriptor\x04busy\x08deadlock\x05quota\x05exist\x0efi\
+le-too-large\x15illegal-byte-sequence\x0bin-progress\x0binterrupted\x07invalid\x02\
+io\x0cis-directory\x04loop\x0etoo-many-links\x0cmessage-size\x0dname-too-long\x09\
+no-device\x08no-entry\x07no-lock\x13insufficient-memory\x12insufficient-space\x0d\
+not-directory\x09not-empty\x0fnot-recoverable\x0bunsupported\x06no-tty\x0eno-suc\
+h-device\x08overflow\x0dnot-permitted\x04pipe\x09read-only\x0cinvalid-seek\x0ete\
+xt-file-busy\x0ccross-device\x04\0\x0aerror-code\x03\0\x1b\x01m\x06\x06normal\x0a\
+sequential\x06random\x09will-need\x09dont-need\x08no-reuse\x04\0\x06advice\x03\0\
+\x1d\x01r\x02\x05lowerw\x05upperw\x04\0\x13metadata-hash-value\x03\0\x1f\x04\0\x0a\
+descriptor\x03\x01\x04\0\x16directory-entry-stream\x03\x01\x01h!\x01i\x01\x01j\x01\
+$\x01\x1c\x01@\x02\x04self#\x06offset\x09\0%\x04\0\"[method]descriptor.read-via-\
+stream\x01&\x01i\x03\x01j\x01'\x01\x1c\x01@\x02\x04self#\x06offset\x09\0(\x04\0#\
+[method]descriptor.write-via-stream\x01)\x01@\x01\x04self#\0(\x04\0$[method]desc\
+riptor.append-via-stream\x01*\x01j\0\x01\x1c\x01@\x04\x04self#\x06offset\x09\x06\
+length\x09\x06advice\x1e\0+\x04\0\x19[method]descriptor.advise\x01,\x01@\x01\x04\
+self#\0+\x04\0\x1c[method]descriptor.sync-data\x01-\x01j\x01\x0d\x01\x1c\x01@\x01\
+\x04self#\0.\x04\0\x1c[method]descriptor.get-flags\x01/\x01j\x01\x0b\x01\x1c\x01\
+@\x01\x04self#\00\x04\0\x1b[method]descriptor.get-type\x011\x01@\x02\x04self#\x04\
+size\x09\0+\x04\0\x1b[method]descriptor.set-size\x012\x01@\x03\x04self#\x15data-\
+access-timestamp\x18\x1bdata-modification-timestamp\x18\0+\x04\0\x1c[method]desc\
+riptor.set-times\x013\x01p}\x01o\x024\x7f\x01j\x015\x01\x1c\x01@\x03\x04self#\x06\
+length\x09\x06offset\x09\06\x04\0\x17[method]descriptor.read\x017\x01j\x01\x09\x01\
+\x1c\x01@\x03\x04self#\x06buffer4\x06offset\x09\08\x04\0\x18[method]descriptor.w\
+rite\x019\x01i\"\x01j\x01:\x01\x1c\x01@\x01\x04self#\0;\x04\0![method]descriptor\
+.read-directory\x01<\x04\0\x17[method]descriptor.sync\x01-\x01@\x02\x04self#\x04\
+paths\0+\x04\0&[method]descriptor.create-directory-at\x01=\x01j\x01\x16\x01\x1c\x01\
+@\x01\x04self#\0>\x04\0\x17[method]descriptor.stat\x01?\x01@\x03\x04self#\x0apat\
+h-flags\x0f\x04paths\0>\x04\0\x1a[method]descriptor.stat-at\x01@\x01@\x05\x04sel\
+f#\x0apath-flags\x0f\x04paths\x15data-access-timestamp\x18\x1bdata-modification-\
+timestamp\x18\0+\x04\0\x1f[method]descriptor.set-times-at\x01A\x01@\x05\x04self#\
+\x0eold-path-flags\x0f\x08old-paths\x0enew-descriptor#\x08new-paths\0+\x04\0\x1a\
+[method]descriptor.link-at\x01B\x01i!\x01j\x01\xc3\0\x01\x1c\x01@\x05\x04self#\x0a\
+path-flags\x0f\x04paths\x0aopen-flags\x11\x05flags\x0d\0\xc4\0\x04\0\x1a[method]\
+descriptor.open-at\x01E\x01j\x01s\x01\x1c\x01@\x02\x04self#\x04paths\0\xc6\0\x04\
+\0\x1e[method]descriptor.readlink-at\x01G\x04\0&[method]descriptor.remove-direct\
+ory-at\x01=\x01@\x04\x04self#\x08old-paths\x0enew-descriptor#\x08new-paths\0+\x04\
+\0\x1c[method]descriptor.rename-at\x01H\x01@\x03\x04self#\x08old-paths\x08new-pa\
+ths\0+\x04\0\x1d[method]descriptor.symlink-at\x01I\x04\0![method]descriptor.unli\
+nk-file-at\x01=\x01@\x02\x04self#\x05other#\0\x7f\x04\0![method]descriptor.is-sa\
+me-object\x01J\x01j\x01\x20\x01\x1c\x01@\x01\x04self#\0\xcb\0\x04\0\x20[method]d\
+escriptor.metadata-hash\x01L\x01@\x03\x04self#\x0apath-flags\x0f\x04paths\0\xcb\0\
+\x04\0#[method]descriptor.metadata-hash-at\x01M\x01h\"\x01k\x1a\x01j\x01\xcf\0\x01\
+\x1c\x01@\x01\x04self\xce\0\0\xd0\0\x04\03[method]directory-entry-stream.read-di\
+rectory-entry\x01Q\x01h\x05\x01k\x1c\x01@\x01\x03err\xd2\0\0\xd3\0\x04\0\x15file\
+system-error-code\x01T\x03\0\x1bwasi:filesystem/types@0.2.3\x05&\x02\x03\0\x13\x0a\
+descriptor\x01B\x07\x02\x03\x02\x01'\x04\0\x0adescriptor\x03\0\0\x01i\x01\x01o\x02\
+\x02s\x01p\x03\x01@\0\0\x04\x04\0\x0fget-directories\x01\x05\x03\0\x1ewasi:files\
+ystem/preopens@0.2.3\x05(\x01B\x11\x04\0\x07network\x03\x01\x01m\x15\x07unknown\x0d\
+access-denied\x0dnot-supported\x10invalid-argument\x0dout-of-memory\x07timeout\x14\
+concurrency-conflict\x0fnot-in-progress\x0bwould-block\x0dinvalid-state\x10new-s\
+ocket-limit\x14address-not-bindable\x0eaddress-in-use\x12remote-unreachable\x12c\
+onnection-refused\x10connection-reset\x12connection-aborted\x12datagram-too-larg\
+e\x11name-unresolvable\x1atemporary-resolver-failure\x1apermanent-resolver-failu\
+re\x04\0\x0aerror-code\x03\0\x01\x01m\x02\x04ipv4\x04ipv6\x04\0\x11ip-address-fa\
+mily\x03\0\x03\x01o\x04}}}}\x04\0\x0cipv4-address\x03\0\x05\x01o\x08{{{{{{{{\x04\
+\0\x0cipv6-address\x03\0\x07\x01q\x02\x04ipv4\x01\x06\0\x04ipv6\x01\x08\0\x04\0\x0a\
+ip-address\x03\0\x09\x01r\x02\x04port{\x07address\x06\x04\0\x13ipv4-socket-addre\
+ss\x03\0\x0b\x01r\x04\x04port{\x09flow-infoy\x07address\x08\x08scope-idy\x04\0\x13\
+ipv6-socket-address\x03\0\x0d\x01q\x02\x04ipv4\x01\x0c\0\x04ipv6\x01\x0e\0\x04\0\
+\x11ip-socket-address\x03\0\x0f\x03\0\x1awasi:sockets/network@0.2.3\x05)\x02\x03\
+\0\x15\x07network\x01B\x05\x02\x03\x02\x01*\x04\0\x07network\x03\0\0\x01i\x01\x01\
+@\0\0\x02\x04\0\x10instance-network\x01\x03\x03\0#wasi:sockets/instance-network@\
+0.2.3\x05+\x02\x03\0\x15\x0aerror-code\x02\x03\0\x15\x11ip-socket-address\x02\x03\
+\0\x15\x11ip-address-family\x01BD\x02\x03\x02\x01\x03\x04\0\x08pollable\x03\0\0\x02\
+\x03\x02\x01*\x04\0\x07network\x03\0\x02\x02\x03\x02\x01,\x04\0\x0aerror-code\x03\
+\0\x04\x02\x03\x02\x01-\x04\0\x11ip-socket-address\x03\0\x06\x02\x03\x02\x01.\x04\
+\0\x11ip-address-family\x03\0\x08\x01p}\x01r\x02\x04data\x0a\x0eremote-address\x07\
+\x04\0\x11incoming-datagram\x03\0\x0b\x01k\x07\x01r\x02\x04data\x0a\x0eremote-ad\
+dress\x0d\x04\0\x11outgoing-datagram\x03\0\x0e\x04\0\x0audp-socket\x03\x01\x04\0\
+\x18incoming-datagram-stream\x03\x01\x04\0\x18outgoing-datagram-stream\x03\x01\x01\
+h\x10\x01h\x03\x01j\0\x01\x05\x01@\x03\x04self\x13\x07network\x14\x0dlocal-addre\
+ss\x07\0\x15\x04\0\x1d[method]udp-socket.start-bind\x01\x16\x01@\x01\x04self\x13\
+\0\x15\x04\0\x1e[method]udp-socket.finish-bind\x01\x17\x01i\x11\x01i\x12\x01o\x02\
+\x18\x19\x01j\x01\x1a\x01\x05\x01@\x02\x04self\x13\x0eremote-address\x0d\0\x1b\x04\
+\0\x19[method]udp-socket.stream\x01\x1c\x01j\x01\x07\x01\x05\x01@\x01\x04self\x13\
+\0\x1d\x04\0\x20[method]udp-socket.local-address\x01\x1e\x04\0![method]udp-socke\
+t.remote-address\x01\x1e\x01@\x01\x04self\x13\0\x09\x04\0![method]udp-socket.add\
+ress-family\x01\x1f\x01j\x01}\x01\x05\x01@\x01\x04self\x13\0\x20\x04\0$[method]u\
+dp-socket.unicast-hop-limit\x01!\x01@\x02\x04self\x13\x05value}\0\x15\x04\0([met\
+hod]udp-socket.set-unicast-hop-limit\x01\"\x01j\x01w\x01\x05\x01@\x01\x04self\x13\
+\0#\x04\0&[method]udp-socket.receive-buffer-size\x01$\x01@\x02\x04self\x13\x05va\
+luew\0\x15\x04\0*[method]udp-socket.set-receive-buffer-size\x01%\x04\0#[method]u\
+dp-socket.send-buffer-size\x01$\x04\0'[method]udp-socket.set-send-buffer-size\x01\
+%\x01i\x01\x01@\x01\x04self\x13\0&\x04\0\x1c[method]udp-socket.subscribe\x01'\x01\
+h\x11\x01p\x0c\x01j\x01)\x01\x05\x01@\x02\x04self(\x0bmax-resultsw\0*\x04\0([met\
+hod]incoming-datagram-stream.receive\x01+\x01@\x01\x04self(\0&\x04\0*[method]inc\
+oming-datagram-stream.subscribe\x01,\x01h\x12\x01@\x01\x04self-\0#\x04\0+[method\
+]outgoing-datagram-stream.check-send\x01.\x01p\x0f\x01@\x02\x04self-\x09datagram\
+s/\0#\x04\0%[method]outgoing-datagram-stream.send\x010\x01@\x01\x04self-\0&\x04\0\
+*[method]outgoing-datagram-stream.subscribe\x011\x03\0\x16wasi:sockets/udp@0.2.3\
+\x05/\x02\x03\0\x17\x0audp-socket\x01B\x0c\x02\x03\x02\x01*\x04\0\x07network\x03\
+\0\0\x02\x03\x02\x01,\x04\0\x0aerror-code\x03\0\x02\x02\x03\x02\x01.\x04\0\x11ip\
+-address-family\x03\0\x04\x02\x03\x02\x010\x04\0\x0audp-socket\x03\0\x06\x01i\x07\
+\x01j\x01\x08\x01\x03\x01@\x01\x0eaddress-family\x05\0\x09\x04\0\x11create-udp-s\
+ocket\x01\x0a\x03\0$wasi:sockets/udp-create-socket@0.2.3\x051\x02\x03\0\x11\x08d\
+uration\x01BT\x02\x03\x02\x01\x07\x04\0\x0cinput-stream\x03\0\0\x02\x03\x02\x01\x13\
+\x04\0\x0doutput-stream\x03\0\x02\x02\x03\x02\x01\x03\x04\0\x08pollable\x03\0\x04\
+\x02\x03\x02\x012\x04\0\x08duration\x03\0\x06\x02\x03\x02\x01*\x04\0\x07network\x03\
+\0\x08\x02\x03\x02\x01,\x04\0\x0aerror-code\x03\0\x0a\x02\x03\x02\x01-\x04\0\x11\
+ip-socket-address\x03\0\x0c\x02\x03\x02\x01.\x04\0\x11ip-address-family\x03\0\x0e\
+\x01m\x03\x07receive\x04send\x04both\x04\0\x0dshutdown-type\x03\0\x10\x04\0\x0at\
+cp-socket\x03\x01\x01h\x12\x01h\x09\x01j\0\x01\x0b\x01@\x03\x04self\x13\x07netwo\
+rk\x14\x0dlocal-address\x0d\0\x15\x04\0\x1d[method]tcp-socket.start-bind\x01\x16\
+\x01@\x01\x04self\x13\0\x15\x04\0\x1e[method]tcp-socket.finish-bind\x01\x17\x01@\
+\x03\x04self\x13\x07network\x14\x0eremote-address\x0d\0\x15\x04\0\x20[method]tcp\
+-socket.start-connect\x01\x18\x01i\x01\x01i\x03\x01o\x02\x19\x1a\x01j\x01\x1b\x01\
+\x0b\x01@\x01\x04self\x13\0\x1c\x04\0![method]tcp-socket.finish-connect\x01\x1d\x04\
+\0\x1f[method]tcp-socket.start-listen\x01\x17\x04\0\x20[method]tcp-socket.finish\
+-listen\x01\x17\x01i\x12\x01o\x03\x1e\x19\x1a\x01j\x01\x1f\x01\x0b\x01@\x01\x04s\
+elf\x13\0\x20\x04\0\x19[method]tcp-socket.accept\x01!\x01j\x01\x0d\x01\x0b\x01@\x01\
+\x04self\x13\0\"\x04\0\x20[method]tcp-socket.local-address\x01#\x04\0![method]tc\
+p-socket.remote-address\x01#\x01@\x01\x04self\x13\0\x7f\x04\0\x1f[method]tcp-soc\
+ket.is-listening\x01$\x01@\x01\x04self\x13\0\x0f\x04\0![method]tcp-socket.addres\
+s-family\x01%\x01@\x02\x04self\x13\x05valuew\0\x15\x04\0*[method]tcp-socket.set-\
+listen-backlog-size\x01&\x01j\x01\x7f\x01\x0b\x01@\x01\x04self\x13\0'\x04\0%[met\
+hod]tcp-socket.keep-alive-enabled\x01(\x01@\x02\x04self\x13\x05value\x7f\0\x15\x04\
+\0)[method]tcp-socket.set-keep-alive-enabled\x01)\x01j\x01\x07\x01\x0b\x01@\x01\x04\
+self\x13\0*\x04\0'[method]tcp-socket.keep-alive-idle-time\x01+\x01@\x02\x04self\x13\
+\x05value\x07\0\x15\x04\0+[method]tcp-socket.set-keep-alive-idle-time\x01,\x04\0\
+&[method]tcp-socket.keep-alive-interval\x01+\x04\0*[method]tcp-socket.set-keep-a\
+live-interval\x01,\x01j\x01y\x01\x0b\x01@\x01\x04self\x13\0-\x04\0#[method]tcp-s\
+ocket.keep-alive-count\x01.\x01@\x02\x04self\x13\x05valuey\0\x15\x04\0'[method]t\
+cp-socket.set-keep-alive-count\x01/\x01j\x01}\x01\x0b\x01@\x01\x04self\x13\00\x04\
+\0\x1c[method]tcp-socket.hop-limit\x011\x01@\x02\x04self\x13\x05value}\0\x15\x04\
+\0\x20[method]tcp-socket.set-hop-limit\x012\x01j\x01w\x01\x0b\x01@\x01\x04self\x13\
+\03\x04\0&[method]tcp-socket.receive-buffer-size\x014\x04\0*[method]tcp-socket.s\
+et-receive-buffer-size\x01&\x04\0#[method]tcp-socket.send-buffer-size\x014\x04\0\
+'[method]tcp-socket.set-send-buffer-size\x01&\x01i\x05\x01@\x01\x04self\x13\05\x04\
+\0\x1c[method]tcp-socket.subscribe\x016\x01@\x02\x04self\x13\x0dshutdown-type\x11\
+\0\x15\x04\0\x1b[method]tcp-socket.shutdown\x017\x03\0\x16wasi:sockets/tcp@0.2.3\
+\x053\x02\x03\0\x19\x0atcp-socket\x01B\x0c\x02\x03\x02\x01*\x04\0\x07network\x03\
+\0\0\x02\x03\x02\x01,\x04\0\x0aerror-code\x03\0\x02\x02\x03\x02\x01.\x04\0\x11ip\
+-address-family\x03\0\x04\x02\x03\x02\x014\x04\0\x0atcp-socket\x03\0\x06\x01i\x07\
+\x01j\x01\x08\x01\x03\x01@\x01\x0eaddress-family\x05\0\x09\x04\0\x11create-tcp-s\
+ocket\x01\x0a\x03\0$wasi:sockets/tcp-create-socket@0.2.3\x055\x02\x03\0\x15\x0ai\
+p-address\x01B\x16\x02\x03\x02\x01\x03\x04\0\x08pollable\x03\0\0\x02\x03\x02\x01\
+*\x04\0\x07network\x03\0\x02\x02\x03\x02\x01,\x04\0\x0aerror-code\x03\0\x04\x02\x03\
+\x02\x016\x04\0\x0aip-address\x03\0\x06\x04\0\x16resolve-address-stream\x03\x01\x01\
+h\x08\x01k\x07\x01j\x01\x0a\x01\x05\x01@\x01\x04self\x09\0\x0b\x04\03[method]res\
+olve-address-stream.resolve-next-address\x01\x0c\x01i\x01\x01@\x01\x04self\x09\0\
+\x0d\x04\0([method]resolve-address-stream.subscribe\x01\x0e\x01h\x03\x01i\x08\x01\
+j\x01\x10\x01\x05\x01@\x02\x07network\x0f\x04names\0\x11\x04\0\x11resolve-addres\
+ses\x01\x12\x03\0!wasi:sockets/ip-name-lookup@0.2.3\x057\x01B\x05\x01p}\x01@\x01\
+\x03lenw\0\0\x04\0\x10get-random-bytes\x01\x01\x01@\0\0w\x04\0\x0eget-random-u64\
+\x01\x02\x03\0\x18wasi:random/random@0.2.3\x058\x01B\x05\x01p}\x01@\x01\x03lenw\0\
+\0\x04\0\x19get-insecure-random-bytes\x01\x01\x01@\0\0w\x04\0\x17get-insecure-ra\
+ndom-u64\x01\x02\x03\0\x1awasi:random/insecure@0.2.3\x059\x01B\x03\x01o\x02ww\x01\
+@\0\0\0\x04\0\x0dinsecure-seed\x01\x01\x03\0\x1fwasi:random/insecure-seed@0.2.3\x05\
+:\x01B\x03\x01j\0\0\x01@\0\0\0\x04\0\x03run\x01\x01\x04\0\x12wasi:cli/run@0.2.3\x05\
+;\x04\0\x20wasmcp:mcp/stdio-transport@0.3.0\x04\0\x0b\x15\x01\0\x0fstdio-transpo\
+rt\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10\
+wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

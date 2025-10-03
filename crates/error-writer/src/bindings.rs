@@ -1617,20 +1617,19 @@ pub mod exports {
                     ) -> Result<(), StreamError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_error_result_0_3_0_alpha_59_cabi {
+                macro_rules! __export_wasmcp_mcp_error_result_0_3_0_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/error-result@0.3.0-alpha.59#write")] unsafe extern
-                        "C" fn export_write(arg0 : i32, arg1 :
-                        ::core::mem::MaybeUninit::< u64 >, arg2 : usize, arg3 : i32, arg4
-                        : i32, arg5 : * mut u8, arg6 : usize, arg7 : i32, arg8 : * mut
-                        u8, arg9 : usize,) -> * mut u8 { unsafe { $($path_to_types)*::
-                        _export_write_cabi::<$ty > (arg0, arg1, arg2, arg3, arg4, arg5,
-                        arg6, arg7, arg8, arg9) } } };
+                        "wasmcp:mcp/error-result@0.3.0#write")] unsafe extern "C" fn
+                        export_write(arg0 : i32, arg1 : ::core::mem::MaybeUninit::< u64
+                        >, arg2 : usize, arg3 : i32, arg4 : i32, arg5 : * mut u8, arg6 :
+                        usize, arg7 : i32, arg8 : * mut u8, arg9 : usize,) -> * mut u8 {
+                        unsafe { $($path_to_types)*:: _export_write_cabi::<$ty > (arg0,
+                        arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) } } };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_error_result_0_3_0_alpha_59_cabi;
+                pub(crate) use __export_wasmcp_mcp_error_result_0_3_0_cabi;
                 #[repr(align(4))]
                 struct _RetArea([::core::mem::MaybeUninit<u8>; 12]);
                 static mut _RET_AREA: _RetArea = _RetArea(
@@ -1798,18 +1797,18 @@ macro_rules! __export_error_writer_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::wasmcp::mcp::error_result::__export_wasmcp_mcp_error_result_0_3_0_alpha_59_cabi!($ty
+        exports::wasmcp::mcp::error_result::__export_wasmcp_mcp_error_result_0_3_0_cabi!($ty
         with_types_in $($path_to_types_root)*:: exports::wasmcp::mcp::error_result);
     };
 }
 #[doc(inline)]
 pub(crate) use __export_error_writer_impl as export;
 #[cfg(target_arch = "wasm32")]
-#[unsafe(link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0-alpha.59:error-writer:encoded world")]
+#[unsafe(link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0:error-writer:encoded world")]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2092] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xa9\x0f\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2056] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x85\x0f\x01A\x02\x01\
 A\x12\x01B\x04\x04\0\x05error\x03\x01\x01h\0\x01@\x01\x04self\x01\0s\x04\0\x1d[m\
 ethod]error.to-debug-string\x01\x02\x03\0\x13wasi:io/error@0.2.3\x05\0\x01B\x0a\x04\
 \0\x08pollable\x03\x01\x01h\0\x01@\x01\x04self\x01\0\x7f\x04\0\x16[method]pollab\
@@ -1840,19 +1839,19 @@ erimental\x04\0\x13client-capabilities\x03\0\x0a\x01n\x05\x0bcompletions\x07prom
 pts\x09resources\x05tools\x0cexperimental\x04\0\x13server-capabilities\x03\0\x0c\
 \x01m\x03\x09v20250618\x09v20250326\x09v20241105\x04\0\x10protocol-version\x03\0\
 \x0e\x01ks\x01r\x03\x04names\x05title\x10\x07versions\x04\0\x0eimplementation\x03\
-\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x1f\
-wasmcp:mcp/types@0.3.0-alpha.59\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finva\
-lid-request\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerr\
-or-code\x03\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05erro\
-r\x03\0\x03\x03\0\x1fwasmcp:mcp/error@0.3.0-alpha.59\x05\x06\x02\x03\0\x02\x0dou\
-tput-stream\x02\x03\0\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x04\x05e\
-rror\x01B\x0c\x02\x03\x02\x01\x07\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\
-\x08\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\
-\x03\x02\x01\x0a\x04\0\x09mcp-error\x03\0\x06\x01i\x01\x01j\0\x01\x03\x01@\x03\x02\
-id\x05\x06output\x08\x05error\x07\0\x09\x04\0\x05write\x01\x0a\x04\0&wasmcp:mcp/\
-error-result@0.3.0-alpha.59\x05\x0b\x04\0&wasmcp:mcp/error-writer@0.3.0-alpha.59\
-\x04\0\x0b\x12\x01\0\x0cerror-writer\x03\0\0\0G\x09producers\x01\x0cprocessed-by\
-\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x16\
+wasmcp:mcp/types@0.3.0\x05\x05\x01B\x05\x01m\x05\x0bparse-error\x0finvalid-reque\
+st\x10method-not-found\x0einvalid-params\x0einternal-error\x04\0\x0aerror-code\x03\
+\0\0\x01ks\x01r\x03\x04code\x01\x07messages\x04data\x02\x04\0\x05error\x03\0\x03\
+\x03\0\x16wasmcp:mcp/error@0.3.0\x05\x06\x02\x03\0\x02\x0doutput-stream\x02\x03\0\
+\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x04\x05error\x01B\x0c\x02\x03\
+\x02\x01\x07\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x08\x04\0\x0cstream-\
+error\x03\0\x02\x02\x03\x02\x01\x09\x04\0\x02id\x03\0\x04\x02\x03\x02\x01\x0a\x04\
+\0\x09mcp-error\x03\0\x06\x01i\x01\x01j\0\x01\x03\x01@\x03\x02id\x05\x06output\x08\
+\x05error\x07\0\x09\x04\0\x05write\x01\x0a\x04\0\x1dwasmcp:mcp/error-result@0.3.\
+0\x05\x0b\x04\0\x1dwasmcp:mcp/error-writer@0.3.0\x04\0\x0b\x12\x01\0\x0cerror-wr\
+iter\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\
+\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

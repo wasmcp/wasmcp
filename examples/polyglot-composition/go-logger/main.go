@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/go_logger/gen/wasi/io/v0.2.3/streams"
-	incominghandler "github.com/go_logger/gen/wasmcp/mcp/v0.3.0-alpha.59/incoming-handler"
-	"github.com/go_logger/gen/wasmcp/mcp/v0.3.0-alpha.59/request"
+	incominghandler "github.com/go_logger/gen/wasmcp/mcp/v0.3.0/incoming-handler"
+	"github.com/go_logger/gen/wasmcp/mcp/v0.3.0/request"
 )
 
 func init() {

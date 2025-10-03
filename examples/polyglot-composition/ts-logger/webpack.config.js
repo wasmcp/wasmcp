@@ -41,7 +41,7 @@ export default {
   externalsType: "module",
   externals: {
     "./generated/interfaces/wasmcp-mcp-incoming-handler.js":
-      "wasmcp:mcp/incoming-handler@0.3.0-alpha.59",
+      "wasmcp:mcp/incoming-handler@0.3.0",
   },
   optimization: {
     minimize: false,
