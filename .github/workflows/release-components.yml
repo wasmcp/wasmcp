@@ -218,13 +218,30 @@ jobs:
           find artifacts -name "*.wasm" -exec cp {} components/ \;
           ls -la components/
 
-      - name: Generate workspace SBOM
+      - name: Generate component SBOMs
         run: |
-          cd crates
-          cargo cyclonedx --all --format json --override-filename wasmcp-components-sbom
-          cargo cyclonedx --all --format xml --override-filename wasmcp-components-sbom
-          mv wasmcp-components-sbom.* ../
-          echo "✅ Generated workspace SBOM"
+          # Generate individual SBOM for each component
+          cargo cyclonedx --all --format json --override-filename sbom
+          cargo cyclonedx --all --format xml --override-filename sbom
+          echo "✅ Generated component SBOMs"
+
+      - name: Collect SBOMs
+        run: |
+          mkdir -p sboms
+          # Copy each component's SBOM with component name in filename
+          for crate in crates/*; do
+            if [ -d "$crate" ]; then
+              component=$(basename "$crate")
+              if [ -f "$crate/sbom.json" ]; then
+                cp "$crate/sbom.json" "sboms/${component}-sbom.json"
+              fi
+              if [ -f "$crate/sbom.xml" ]; then
+                cp "$crate/sbom.xml" "sboms/${component}-sbom.xml"
+              fi
+            fi
+          done
+          ls -la sboms/
+          echo "✅ Collected component SBOMs"
 
       - name: Generate component checksums
         run: |
@@ -239,13 +256,12 @@ jobs:
           name: wasmcp-components-${{ inputs.version }}
           path: components/*.wasm
 
-      - name: Upload SBOM and checksums
+      - name: Upload SBOMs and checksums
         uses: actions/upload-artifact@v4
         with:
           name: wasmcp-components-security-${{ inputs.version }}
           path: |
-            wasmcp-components-sbom.json
-            wasmcp-components-sbom.xml
+            sboms/
             checksums-components.txt
 
   create-release:
@@ -275,6 +291,7 @@ jobs:
           files: |
             artifacts/wasmcp-components-${{ inputs.version }}/*.wasm
             artifacts/wasmcp-components-security-${{ inputs.version }}/*
+            artifacts/wasmcp-components-security-${{ inputs.version }}/sboms/*
           body: |
             # Components v${{ inputs.version }}
 
@@ -294,8 +311,18 @@ jobs:
             ## 🔒 Supply Chain Security
 
             This release includes:
-            - **SBOM** (CycloneDX format) for framework components
+            - **Individual SBOMs** (CycloneDX format) for each component in JSON and XML formats
             - **SHA256 checksums** for all component artifacts
+
+            Each component has its own SBOM:
+            - `error-writer-sbom.{json,xml}`
+            - `http-transport-sbom.{json,xml}`
+            - `initialize-handler-sbom.{json,xml}`
+            - `initialize-writer-sbom.{json,xml}`
+            - `request-sbom.{json,xml}`
+            - `resources-writer-sbom.{json,xml}`
+            - `stdio-transport-sbom.{json,xml}`
+            - `tools-writer-sbom.{json,xml}`
 
             ### Verifying Component Downloads
 

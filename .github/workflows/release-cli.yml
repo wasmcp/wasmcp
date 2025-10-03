@@ -95,11 +95,11 @@ jobs:
 
       - name: Strip binary
         run: |
-          strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }} || true
+          strip cli/target/${{ matrix.target }}/release/${{ matrix.artifact_name }} || true
 
       - name: Create tarball
         run: |
-          cd target/${{ matrix.target }}/release
+          cd cli/target/${{ matrix.target }}/release
           tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
           mv ${{ matrix.asset_name }}.tar.gz ${{ github.workspace }}/
 
