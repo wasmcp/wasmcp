@@ -80,7 +80,12 @@ They are a natural fit.
 
 ## Installation
 
-Download the latest release binary for your platform from [GitHub Releases](https://github.com/wasmcp/wasmcp/releases):
+**Build from source:**
+```bash
+cargo install --git https://github.com/wasmcp/wasmcp
+```
+
+Or download the latest release binary for your platform from [GitHub Releases](https://github.com/wasmcp/wasmcp/releases):
 
 
 **Linux (x86_64):**
@@ -110,11 +115,6 @@ sudo mv wasmcp /usr/local/bin/
 **Verify installation:**
 ```bash
 wasmcp --version
-```
-
-**Or build from source:**
-```bash
-cargo install --git https://github.com/wasmcp/wasmcp wasmcp
 ```
 
 ## Architecture
