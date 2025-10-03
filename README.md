@@ -22,7 +22,7 @@ wasmcp compose \
   --resources ./my-resources.wasm \
   -o server.wasm
 
-# Serve a complete MCP server over HTTP
+# Run a complete MCP server over HTTP
 wasmtime serve -Scommon server.wasm
 
 # Or compose with stdio transport
