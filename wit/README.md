@@ -145,4 +145,4 @@ wac plug handler.wasm --plug wasmcp:mcp-transport-stdio
 
 ## Version History
 
-All interfaces are marked with `@since(version = 0.3.0-alpha.45)` annotations for version tracking. Future additions will include appropriate version annotations to maintain compatibility.
+All interfaces are marked with `@since(version = 0.3.0)` annotations for version tracking. Future additions will include appropriate version annotations to maintain compatibility.

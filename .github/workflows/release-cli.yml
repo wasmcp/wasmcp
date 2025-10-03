@@ -31,8 +31,6 @@ jobs:
           cli_version=$(grep -oP '^version = "\K[^"]+' cli/Cargo.toml)
           if [ "$cli_version" != "${{ inputs.version }}" ]; then
             echo "⚠️ Warning: CLI Cargo.toml has version $cli_version but releasing ${{ inputs.version }}"
-            echo "Run: ./scripts/bump-version.sh ${{ inputs.version }}"
-            echo "This is OK if you've manually updated the version"
           fi
 
   build-cli:
