@@ -12,7 +12,7 @@ This middleware intercepts all requests and logs them before forwarding to the n
 ## Building
 
 ```bash
-make build
+make
 ```
 
 ## Usage

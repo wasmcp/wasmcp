@@ -15,7 +15,7 @@ This component implements MCP tools handling with an example echo tool. Build up
 ## Building
 
 ```bash
-make build
+make
 ```
 
 This produces a WebAssembly component at `target/wasm32-wasip2/release/{{ package_name }}.wasm`.
@@ -65,10 +65,4 @@ fn handle_my_tool(arguments: Option<&str>) -> Result<String, Box<dyn std::error:
 
 ```bash
 cargo test
-```
-
-## Clean Up
-
-```bash
-make clean
 ```
