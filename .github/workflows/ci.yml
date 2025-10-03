@@ -72,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wasmcp-cli-linux
-          path: target/release/wasmcp
+          path: cli/target/release/wasmcp
 
   build-components:
     name: Build Framework Components
