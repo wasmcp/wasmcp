@@ -85,11 +85,15 @@ jobs:
           wkg publish wasmcp:mcp@${{ inputs.version }}.wasm
           echo "✅ Published WIT package: wasmcp:mcp@${{ inputs.version }}"
 
+      - name: Rename WIT package for artifact upload
+        run: |
+          mv "wasmcp:mcp@${{ inputs.version }}.wasm" "wasmcp_mcp@${{ inputs.version }}.wasm"
+
       - name: Upload WIT package artifact
         uses: actions/upload-artifact@v4
         with:
           name: wit-package-${{ inputs.version }}
-          path: wasmcp:mcp@${{ inputs.version }}.wasm
+          path: wasmcp_mcp@${{ inputs.version }}.wasm
 
       - name: Summary
         run: |
