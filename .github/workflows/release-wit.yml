@@ -32,7 +32,6 @@ jobs:
           wit_version=$(grep -oP 'package wasmcp:mcp@\K[^;]+' wit/world.wit)
           if [ "$wit_version" != "${{ inputs.version }}" ]; then
             echo "Error: WIT package version ($wit_version) does not match release version (${{ inputs.version }})"
-            echo "Run: ./scripts/bump-version.sh ${{ inputs.version }}"
             exit 1
           fi
 
