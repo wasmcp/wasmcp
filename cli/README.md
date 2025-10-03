@@ -42,7 +42,7 @@ wasmcp new <name> --type <TYPE> --language <LANG> [OPTIONS]
 **Options:**
 - `-t, --type <TYPE>` - Handler type: `middleware`, `tools`, `resources`, `prompts`, `completion`
 - `-l, --language <LANG>` - Programming language: `rust`, `go`, `typescript`, `python`
-- `--version <VERSION>` - wasmcp version for dependencies (default: `0.3.0-alpha.59`)
+- `--version <VERSION>` - wasmcp version for dependencies (default: `0.3.0`)
 - `-o, --output <PATH>` - Output directory (defaults to current directory)
 - `--force` - Overwrite existing directory
 
@@ -106,7 +106,7 @@ wasmcp compose \
 - `--completion <SPEC>` - Completion handler component (repeatable)
 - `-t, --transport <TYPE>` - Transport type: `http` or `stdio` (default: `http`)
 - `-o, --output <PATH>` - Output file path (default: `mcp-server.wasm`)
-- `--version <VERSION>` - wasmcp version for dependencies (default: `0.3.0-alpha.59`)
+- `--version <VERSION>` - wasmcp version for dependencies (default: `0.3.0`)
 - `--deps-dir <PATH>` - Dependency download directory (default: `deps`)
 - `--skip-download` - Use existing dependencies without downloading
 - `--force` - Overwrite existing output file
@@ -440,8 +440,8 @@ wasmcp compose \
 Component versions must match across the composition. The `--version` flag ensures consistent wasmcp framework versions:
 
 ```bash
-wasmcp new my-handler --type tools --language rust --version 0.3.0-alpha.59
-wasmcp compose --tools my-handler.wasm --version 0.3.0-alpha.59
+wasmcp new my-handler --type tools --language rust --version 0.3.0
+wasmcp compose --tools my-handler.wasm --version 0.3.0
 ```
 
 Mismatched versions may cause interface incompatibilities during composition.
@@ -463,8 +463,8 @@ let handler_inst = graph.instantiate(handler_pkg);
 
 graph.set_instantiation_argument(
     handler_inst,
-    "wasmcp:mcp/request@0.3.0-alpha.59",
-    graph.alias_instance_export(request_inst, "wasmcp:mcp/request@0.3.0-alpha.59")?,
+    "wasmcp:mcp/request@0.3.0",
+    graph.alias_instance_export(request_inst, "wasmcp:mcp/request@0.3.0")?,
 )?;
 
 // Encode to bytes

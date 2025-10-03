@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'WIT package version (e.g. 0.3.0 or 0.3.0-alpha.60)'
+        description: 'WIT package version (e.g. 0.3.0 or 0.3.0)'
         required: true
         type: string
 
@@ -85,15 +85,11 @@ jobs:
           wkg publish wasmcp:mcp@${{ inputs.version }}.wasm
           echo "✅ Published WIT package: wasmcp:mcp@${{ inputs.version }}"
 
-      - name: Create git tag
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          tag_name="wit-v${{ inputs.version }}"
-          git tag -a "$tag_name" -m "WIT package v${{ inputs.version }}"
-          git push origin "$tag_name"
-          echo "✅ Created tag: $tag_name"
+      - name: Upload WIT package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wit-package-${{ inputs.version }}
+          path: wasmcp:mcp@${{ inputs.version }}.wasm
 
       - name: Summary
         run: |
@@ -106,3 +102,76 @@ jobs:
           echo "1. Update component lockfile: \`cargo component update\`" >> $GITHUB_STEP_SUMMARY
           echo "2. Commit lockfile: \`git commit -am 'chore: update lockfile for WIT v${{ inputs.version }}'\`" >> $GITHUB_STEP_SUMMARY
           echo "3. Run component/CLI release: Go to Actions → Release → Run workflow" >> $GITHUB_STEP_SUMMARY
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish-wit
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download WIT package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wit-package-${{ inputs.version }}
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: wit-v${{ inputs.version }}
+          name: WIT v${{ inputs.version }}
+          draft: false
+          prerelease: ${{ contains(inputs.version, '-') }}
+          files: artifacts/*
+          body: |
+            # WIT Package v${{ inputs.version }}
+
+            ## WIT Interface Package
+
+            This release publishes the WIT interface definitions for wasmcp:mcp.
+
+            **Package:** `wasmcp:mcp@${{ inputs.version }}`
+            **Registry:** `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/mcp:${{ inputs.version }}`
+
+            ## Usage
+
+            The WIT package is automatically downloaded by components during composition. You can also fetch it directly:
+
+            ```bash
+            wkg get wasmcp:mcp@${{ inputs.version }}
+            ```
+
+            ## Next Steps
+
+            1. Update component lockfile: `cargo component update`
+            2. Commit lockfile: `git commit -am 'chore: update lockfile for WIT v${{ inputs.version }}'`
+            3. Run component/CLI release: Go to Actions → Release → Run workflow
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/wit-v${{ inputs.version }}
+
+  all-jobs-complete:
+    name: All Jobs Complete
+    runs-on: ubuntu-latest
+    needs: [validate, publish-wit, create-release]
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.validate.result }}" != "success" ] || \
+             [ "${{ needs.publish-wit.result }}" != "success" ] || \
+             [ "${{ needs.create-release.result }}" != "success" ]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "✅ WIT package release v${{ inputs.version }} completed successfully!"
+          echo ""
+          echo "Next steps:"
+          echo "  1. Update component lockfile: cargo component update"
+          echo "  2. Release components with this WIT version"
+          echo "  3. Update release notes at https://github.com/${{ github.repository }}/releases/tag/wit-v${{ inputs.version }}"

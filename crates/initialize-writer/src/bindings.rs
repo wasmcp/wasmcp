@@ -1694,16 +1694,16 @@ pub mod exports {
                     ) -> Result<(), StreamError>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_wasmcp_mcp_initialize_result_0_3_0_alpha_59_cabi {
+                macro_rules! __export_wasmcp_mcp_initialize_result_0_3_0_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "wasmcp:mcp/initialize-result@0.3.0-alpha.59#write")] unsafe
-                        extern "C" fn export_write(arg0 : * mut u8,) -> * mut u8 { unsafe
-                        { $($path_to_types)*:: _export_write_cabi::<$ty > (arg0) } } };
+                        "wasmcp:mcp/initialize-result@0.3.0#write")] unsafe extern "C" fn
+                        export_write(arg0 : * mut u8,) -> * mut u8 { unsafe {
+                        $($path_to_types)*:: _export_write_cabi::<$ty > (arg0) } } };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_wasmcp_mcp_initialize_result_0_3_0_alpha_59_cabi;
+                pub(crate) use __export_wasmcp_mcp_initialize_result_0_3_0_cabi;
                 #[repr(align(4))]
                 struct _RetArea([::core::mem::MaybeUninit<u8>; 12]);
                 static mut _RET_AREA: _RetArea = _RetArea(
@@ -1878,7 +1878,7 @@ macro_rules! __export_initialize_writer_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::wasmcp::mcp::initialize_result::__export_wasmcp_mcp_initialize_result_0_3_0_alpha_59_cabi!($ty
+        exports::wasmcp::mcp::initialize_result::__export_wasmcp_mcp_initialize_result_0_3_0_cabi!($ty
         with_types_in $($path_to_types_root)*:: exports::wasmcp::mcp::initialize_result);
     };
 }
@@ -1886,12 +1886,12 @@ macro_rules! __export_initialize_writer_impl {
 pub(crate) use __export_initialize_writer_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0-alpha.59:initialize-writer:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:wasmcp:mcp@0.3.0:initialize-writer:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2217] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xa1\x10\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2190] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x86\x10\x01A\x02\x01\
 A\x13\x01B\x04\x04\0\x05error\x03\x01\x01h\0\x01@\x01\x04self\x01\0s\x04\0\x1d[m\
 ethod]error.to-debug-string\x01\x02\x03\0\x13wasi:io/error@0.2.3\x05\0\x01B\x0a\x04\
 \0\x08pollable\x03\x01\x01h\0\x01@\x01\x04self\x01\0\x7f\x04\0\x16[method]pollab\
@@ -1922,22 +1922,22 @@ erimental\x04\0\x13client-capabilities\x03\0\x0a\x01n\x05\x0bcompletions\x07prom
 pts\x09resources\x05tools\x0cexperimental\x04\0\x13server-capabilities\x03\0\x0c\
 \x01m\x03\x09v20250618\x09v20250326\x09v20241105\x04\0\x10protocol-version\x03\0\
 \x0e\x01ks\x01r\x03\x04names\x05title\x10\x07versions\x04\0\x0eimplementation\x03\
-\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x1f\
-wasmcp:mcp/types@0.3.0-alpha.59\x05\x05\x02\x03\0\x02\x0doutput-stream\x02\x03\0\
-\x02\x0cstream-error\x02\x03\0\x03\x02id\x02\x03\0\x03\x0eimplementation\x02\x03\
-\0\x03\x04meta\x02\x03\0\x03\x10protocol-version\x02\x03\0\x03\x13server-capabil\
-ities\x01B\x18\x02\x03\x02\x01\x06\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\
-\x07\x04\0\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x08\x04\0\x02id\x03\0\x04\x02\
-\x03\x02\x01\x09\x04\0\x0eimplementation\x03\0\x06\x02\x03\x02\x01\x0a\x04\0\x04\
-meta\x03\0\x08\x02\x03\x02\x01\x0b\x04\0\x10protocol-version\x03\0\x0a\x02\x03\x02\
-\x01\x0c\x04\0\x13server-capabilities\x03\0\x0c\x01ks\x01r\x02\x0cinstructions\x0e\
-\x04meta\x09\x04\0\x19initialize-result-options\x03\0\x0f\x01k\x10\x01r\x04\x0bs\
-erver-info\x07\x0ccapabilities\x0d\x10protocol-version\x0b\x07options\x11\x04\0\x11\
-initialize-result\x03\0\x12\x01i\x01\x01j\0\x01\x03\x01@\x03\x02id\x05\x06output\
-\x14\x06result\x13\0\x15\x04\0\x05write\x01\x16\x04\0+wasmcp:mcp/initialize-resu\
-lt@0.3.0-alpha.59\x05\x0d\x04\0+wasmcp:mcp/initialize-writer@0.3.0-alpha.59\x04\0\
-\x0b\x17\x01\0\x11initialize-writer\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\
-\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+\0\x11\x01q\x02\x06number\x01x\0\x06string\x01s\0\x04\0\x02id\x03\0\x13\x03\0\x16\
+wasmcp:mcp/types@0.3.0\x05\x05\x02\x03\0\x02\x0doutput-stream\x02\x03\0\x02\x0cs\
+tream-error\x02\x03\0\x03\x02id\x02\x03\0\x03\x0eimplementation\x02\x03\0\x03\x04\
+meta\x02\x03\0\x03\x10protocol-version\x02\x03\0\x03\x13server-capabilities\x01B\
+\x18\x02\x03\x02\x01\x06\x04\0\x0doutput-stream\x03\0\0\x02\x03\x02\x01\x07\x04\0\
+\x0cstream-error\x03\0\x02\x02\x03\x02\x01\x08\x04\0\x02id\x03\0\x04\x02\x03\x02\
+\x01\x09\x04\0\x0eimplementation\x03\0\x06\x02\x03\x02\x01\x0a\x04\0\x04meta\x03\
+\0\x08\x02\x03\x02\x01\x0b\x04\0\x10protocol-version\x03\0\x0a\x02\x03\x02\x01\x0c\
+\x04\0\x13server-capabilities\x03\0\x0c\x01ks\x01r\x02\x0cinstructions\x0e\x04me\
+ta\x09\x04\0\x19initialize-result-options\x03\0\x0f\x01k\x10\x01r\x04\x0bserver-\
+info\x07\x0ccapabilities\x0d\x10protocol-version\x0b\x07options\x11\x04\0\x11ini\
+tialize-result\x03\0\x12\x01i\x01\x01j\0\x01\x03\x01@\x03\x02id\x05\x06output\x14\
+\x06result\x13\0\x15\x04\0\x05write\x01\x16\x04\0\"wasmcp:mcp/initialize-result@\
+0.3.0\x05\x0d\x04\0\"wasmcp:mcp/initialize-writer@0.3.0\x04\0\x0b\x17\x01\0\x11i\
+nitialize-writer\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-componen\
+t\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

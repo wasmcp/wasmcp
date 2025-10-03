@@ -1,5 +1,5 @@
 package component:typescript;
 
 world tools-handler {
-    include wasmcp:mcp/tools-handler@0.3.0-alpha.59;
+    include wasmcp:mcp/tools-handler@0.3.0;
 }

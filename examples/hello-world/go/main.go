@@ -7,12 +7,12 @@ import (
 	"fmt"
 
 	"github.com/go/gen/wasi/io/v0.2.3/streams"
-	errorresult "github.com/go/gen/wasmcp/mcp/v0.3.0-alpha.49/error-result"
-	incominghandler "github.com/go/gen/wasmcp/mcp/v0.3.0-alpha.49/incoming-handler"
-	"github.com/go/gen/wasmcp/mcp/v0.3.0-alpha.49/request"
-	toolscallcontent "github.com/go/gen/wasmcp/mcp/v0.3.0-alpha.49/tools-call-content"
-	toolslistresult "github.com/go/gen/wasmcp/mcp/v0.3.0-alpha.49/tools-list-result"
-	"github.com/go/gen/wasmcp/mcp/v0.3.0-alpha.49/types"
+	errorresult "github.com/go/gen/wasmcp/mcp/v0.3.0/error-result"
+	incominghandler "github.com/go/gen/wasmcp/mcp/v0.3.0/incoming-handler"
+	"github.com/go/gen/wasmcp/mcp/v0.3.0/request"
+	toolscallcontent "github.com/go/gen/wasmcp/mcp/v0.3.0/tools-call-content"
+	toolslistresult "github.com/go/gen/wasmcp/mcp/v0.3.0/tools-list-result"
+	"github.com/go/gen/wasmcp/mcp/v0.3.0/types"
 	"go.bytecodealliance.org/cm"
 )
 

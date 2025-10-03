@@ -67,21 +67,21 @@ clean-all:
 # Publish all components to registry
 publish-all: build
 	@echo "Publishing all components to wkg registry..."
-	@echo "Publishing wasmcp:request@0.3.0-alpha.59..."
-	@wkg publish --package 'wasmcp:request@0.3.0-alpha.59' ../target/wasm32-wasip1/$(TARGET_DIR)/request.wasm
-	@echo "Publishing wasmcp:error-writer@0.3.0-alpha.59..."
-	@wkg publish --package 'wasmcp:error-writer@0.3.0-alpha.59' ../target/wasm32-wasip1/$(TARGET_DIR)/error_writer.wasm
-	@echo "Publishing wasmcp:initialize-writer@0.3.0-alpha.59..."
-	@wkg publish --package 'wasmcp:initialize-writer@0.3.0-alpha.59' ../target/wasm32-wasip1/$(TARGET_DIR)/initialize_writer.wasm
-	@echo "Publishing wasmcp:tools-writer@0.3.0-alpha.59..."
-	@wkg publish --package 'wasmcp:tools-writer@0.3.0-alpha.59' ../target/wasm32-wasip1/$(TARGET_DIR)/tools_writer.wasm
-	@echo "Publishing wasmcp:resources-writer@0.3.0-alpha.59..."
-	@wkg publish --package 'wasmcp:resources-writer@0.3.0-alpha.59' ../target/wasm32-wasip1/$(TARGET_DIR)/resources_writer.wasm
-	@echo "Publishing wasmcp:http-transport@0.3.0-alpha.59..."
-	@wkg publish --package 'wasmcp:http-transport@0.3.0-alpha.59' ../target/wasm32-wasip1/$(TARGET_DIR)/http_transport.wasm
-	@echo "Publishing wasmcp:stdio-transport@0.3.0-alpha.59..."
-	@wkg publish --package 'wasmcp:stdio-transport@0.3.0-alpha.59' ../target/wasm32-wasip1/$(TARGET_DIR)/stdio_transport.wasm
-	@echo "Publishing wasmcp:initialize-handler@0.3.0-alpha.59..."
-	@wkg publish --package 'wasmcp:initialize-handler@0.3.0-alpha.59' ../target/wasm32-wasip1/$(TARGET_DIR)/initialize_handler.wasm
+	@echo "Publishing wasmcp:request@0.3.0..."
+	@wkg publish --package 'wasmcp:request@0.3.0' ../target/wasm32-wasip1/$(TARGET_DIR)/request.wasm
+	@echo "Publishing wasmcp:error-writer@0.3.0..."
+	@wkg publish --package 'wasmcp:error-writer@0.3.0' ../target/wasm32-wasip1/$(TARGET_DIR)/error_writer.wasm
+	@echo "Publishing wasmcp:initialize-writer@0.3.0..."
+	@wkg publish --package 'wasmcp:initialize-writer@0.3.0' ../target/wasm32-wasip1/$(TARGET_DIR)/initialize_writer.wasm
+	@echo "Publishing wasmcp:tools-writer@0.3.0..."
+	@wkg publish --package 'wasmcp:tools-writer@0.3.0' ../target/wasm32-wasip1/$(TARGET_DIR)/tools_writer.wasm
+	@echo "Publishing wasmcp:resources-writer@0.3.0..."
+	@wkg publish --package 'wasmcp:resources-writer@0.3.0' ../target/wasm32-wasip1/$(TARGET_DIR)/resources_writer.wasm
+	@echo "Publishing wasmcp:http-transport@0.3.0..."
+	@wkg publish --package 'wasmcp:http-transport@0.3.0' ../target/wasm32-wasip1/$(TARGET_DIR)/http_transport.wasm
+	@echo "Publishing wasmcp:stdio-transport@0.3.0..."
+	@wkg publish --package 'wasmcp:stdio-transport@0.3.0' ../target/wasm32-wasip1/$(TARGET_DIR)/stdio_transport.wasm
+	@echo "Publishing wasmcp:initialize-handler@0.3.0..."
+	@wkg publish --package 'wasmcp:initialize-handler@0.3.0' ../target/wasm32-wasip1/$(TARGET_DIR)/initialize_handler.wasm
 	@echo "All components published successfully!"
 

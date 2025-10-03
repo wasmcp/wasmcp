@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 
 [package.metadata.component]
 package = "wasmcp:error-writer"
-target = "wasmcp:mcp/error-writer@0.3.0-alpha.59"
+target = "wasmcp:mcp/error-writer@0.3.0"
 
 [package.metadata.component.dependencies]
 

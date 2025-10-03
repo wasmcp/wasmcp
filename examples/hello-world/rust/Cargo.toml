@@ -21,4 +21,4 @@ path = "wit"
 world = "tools-handler"
 
 [package.metadata.component.target.dependencies]
-"wasmcp:mcp" = { version = "0.3.0-alpha.59" }
+"wasmcp:mcp" = { version = "0.3.0" }

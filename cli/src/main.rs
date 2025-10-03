@@ -90,7 +90,7 @@ enum Command {
         language: Language,
 
         /// wasmcp version to use
-        #[arg(long, default_value = "0.3.0-alpha.59")]
+        #[arg(long, default_value = "0.3.0")]
         version: String,
 
         /// Overwrite existing directory
@@ -133,7 +133,7 @@ enum Command {
         output: PathBuf,
 
         /// wasmcp version for dependencies
-        #[arg(long, default_value = "0.3.0-alpha.59")]
+        #[arg(long, default_value = "0.3.0")]
         version: String,
 
         /// Directory for dependency components
