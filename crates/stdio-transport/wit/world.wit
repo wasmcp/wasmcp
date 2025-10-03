@@ -1,0 +1,11 @@
+package wasmcp:stdio-transport@0.3.1;
+
+/// Transport world for stdio-based MCP communication.
+///
+/// This world provides MCP server functionality over standard I/O,
+/// suitable for command-line tools and local process communication.
+@since(version = 0.3.0)
+world stdio-transport {
+    include wasi:cli/command@0.2.3;
+    import wasmcp:mcp/incoming-handler@0.3.0;
+}
