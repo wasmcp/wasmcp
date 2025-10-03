@@ -1,7 +1,12 @@
 //! Tools handler for MCP.
 
 #[allow(warnings)]
-mod bindings;
+mod bindings {
+    wit_bindgen::generate!({
+        world: "tools-handler",
+        generate_all,
+    });
+}
 
 use bindings::exports::wasmcp::mcp::incoming_handler::{Guest, OutputStream, Request};
 use bindings::wasmcp::mcp::incoming_handler as next_handler;

@@ -1,4 +1,4 @@
-use crate::{HandlerType, Language};
+use crate::{pkg, HandlerType, Language};
 use anyhow::{Context, Result};
 use include_dir::{include_dir, Dir};
 use liquid::ParserBuilder;
@@ -8,7 +8,7 @@ use std::path::Path;
 // Embed templates at compile time
 static TEMPLATES: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/templates");
 
-pub fn create_project(
+pub async fn create_project(
     output_dir: &Path,
     name: &str,
     handler_type: HandlerType,
@@ -74,6 +74,9 @@ pub fn create_project(
 
     // Render the template directory
     render_embedded_dir(template_dir, output_dir, &parser, &context)?;
+
+    // Download WIT dependencies for all languages
+    pkg::fetch_wit_dependencies(output_dir, false).await?;
 
     Ok(())
 }

@@ -188,3 +188,73 @@ pub async fn download_packages(
     println!("   ✅ All dependencies downloaded");
     Ok(())
 }
+
+/// Fetch WIT dependencies for a project
+///
+/// This uses wasm-pkg-core to fetch all transitive WIT dependencies
+/// (same as `wkg wit fetch`) and writes them to wit/deps/
+///
+/// If `update` is true, clears existing lock file packages to force re-resolution
+/// (same as `wkg wit update`)
+pub async fn fetch_wit_dependencies(project_dir: &Path, update: bool) -> Result<()> {
+    println!("📦 Downloading WIT dependencies...");
+
+    // Save current dir and cd into project to make LockFile::load work
+    let original_dir = std::env::current_dir()?;
+    std::env::set_current_dir(project_dir)?;
+
+    // Use global cache directory (same as wkg)
+    let cache_dir = dirs::cache_dir()
+        .context("Failed to get cache directory")?
+        .join("wasm-pkg");
+
+    // Create cache directory
+    tokio::fs::create_dir_all(&cache_dir)
+        .await
+        .context("Failed to create cache directory")?;
+
+    // Create package client with wasmcp namespace configured
+    let client = create_client(&cache_dir)
+        .await
+        .context("Failed to create package client")?;
+
+    // Load wkg.toml config (if present) or use default
+    // This allows users to override dependencies locally
+    let wkg_config = wasm_pkg_core::config::Config::default();
+
+    // Load or create lock file
+    let mut lock_file = wasm_pkg_core::lock::LockFile::load(false)
+        .await
+        .context("Failed to load lock file")?;
+
+    // If update flag is set, clear existing packages to force re-resolution
+    if update {
+        lock_file.packages.clear();
+    }
+
+    // Use wasm-pkg-core to fetch all transitive dependencies
+    // This is exactly what `wkg wit fetch` does internally
+    // Pass "wit" as relative path since we changed to project_dir
+    wasm_pkg_core::wit::fetch_dependencies(
+        &wkg_config,
+        "wit",
+        &mut lock_file,
+        client,
+        wasm_pkg_core::wit::OutputType::Wit,
+    )
+    .await
+    .context("Failed to fetch WIT dependencies")?;
+
+    // Write lock file
+    lock_file
+        .write()
+        .await
+        .context("Failed to write wkg.lock file")?;
+
+    // Restore original directory
+    std::env::set_current_dir(original_dir)?;
+
+    println!("   ✅ WIT dependencies resolved");
+
+    Ok(())
+}

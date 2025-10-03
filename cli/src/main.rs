@@ -152,9 +152,29 @@ enum Command {
         #[command(flatten)]
         overrides: ComponentOverrideArgs,
     },
+
+    /// WIT dependency management commands
+    Wit {
+        #[command(subcommand)]
+        command: WitCommand,
+    },
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Parser)]
+enum WitCommand {
+    /// Fetch WIT dependencies for a project
+    Fetch {
+        /// Directory containing wit/ folder
+        #[arg(long, default_value = ".")]
+        dir: PathBuf,
+
+        /// Update dependencies to latest compatible versions
+        #[arg(long)]
+        update: bool,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, ValueEnum)]
 #[value(rename_all = "lowercase")]
 enum Language {
     Rust,
@@ -293,6 +313,7 @@ async fn main() -> Result<()> {
 
             // Scaffold the project
             scaffold::create_project(&output_dir, &name, handler_type, language, &version)
+                .await
                 .context("Failed to create project")?;
 
             println!("Created {} {} handler in {}", language, handler_type, name);
@@ -374,6 +395,31 @@ async fn main() -> Result<()> {
 
             compose::compose(options).await
         }
+
+        Command::Wit { command } => match command {
+            WitCommand::Fetch { dir, update } => {
+                // Validate directory exists
+                if !dir.exists() {
+                    anyhow::bail!("Directory '{}' does not exist", dir.display());
+                }
+
+                // Check if wit/ directory exists
+                let wit_dir = dir.join("wit");
+                if !wit_dir.exists() {
+                    anyhow::bail!(
+                        "Directory '{}' does not contain a wit/ folder",
+                        dir.display()
+                    );
+                }
+
+                // Fetch WIT dependencies
+                pkg::fetch_wit_dependencies(&dir, update)
+                    .await
+                    .context("Failed to fetch WIT dependencies")?;
+
+                Ok(())
+            }
+        },
     }
 }
 
