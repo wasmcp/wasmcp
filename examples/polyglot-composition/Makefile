@@ -21,10 +21,10 @@ help:
 
 build:
 	@echo "Building all components..."
-	cd rust-tools && make build
-	cd python-resources && make build
-	cd ts-logger && make build
-	cd go-logger && make build
+	cd rust-tools && make
+	cd python-resources && make
+	cd ts-logger && make
+	cd go-logger && make
 	@echo "✅ All components built"
 
 compose: build
@@ -32,7 +32,7 @@ compose: build
 	@wasmcp compose \
 		--middleware ts-logger/target/ts_logger.wasm \
 		--middleware go-logger/target/go_logger.wasm \
-		--tools rust-tools/target/wasm32-wasip1/release/rust_tools.wasm \
+		--tools rust-tools/target/wasm32-wasip2/release/rust_tools.wasm \
 		--resources python-resources/target/python_resources.wasm \
 		-o $(SERVER)
 	@echo "✅ Composed: $(SERVER)"
@@ -42,7 +42,7 @@ compose-stdio: build
 	@wasmcp compose \
 		--middleware ts-logger/target/ts_logger.wasm \
 		--middleware go-logger/target/go_logger.wasm \
-		--tools rust-tools/target/wasm32-wasip1/release/rust_tools.wasm \
+		--tools rust-tools/target/wasm32-wasip2/release/rust_tools.wasm \
 		--resources python-resources/target/python_resources.wasm \
 		--transport stdio \
 		-o $(SERVER_STDIO)
@@ -71,9 +71,9 @@ test-stdio: compose-stdio
 	@npx @modelcontextprotocol/inspector@0.16.8 --cli --transport stdio --method resources/list wasmtime run -Shttp $(SERVER_STDIO) | jq '.'
 
 clean:
-	cd rust-tools && make clean || true
-	cd python-resources && make clean || true
-	cd ts-logger && make clean || true
-	cd go-logger && make clean || true
+	rm -rf rust-tools/target rust-tools/venv rust-tools/gen
+	rm -rf python-resources/target python-resources/venv python-resources/wit_world
+	rm -rf ts-logger/target ts-logger/node_modules ts-logger/build ts-logger/src/generated
+	rm -rf go-logger/target go-logger/gen
 	rm -rf deps $(SERVER) $(SERVER_STDIO)
 	@echo "✅ Cleaned"

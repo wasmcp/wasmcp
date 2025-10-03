@@ -2,12 +2,17 @@
 
 .PHONY: work setup build
 
+# Output directory and component name
+OUT_DIR = target/wasm32-wasip2/release
+COMPONENT_NAME = rust
+
 # Default target - full workflow
 work: setup build
 
-# Setup (Rust has no setup step - cargo handles everything)
+# Install required tools
 setup:
+	@rustup target add wasm32-wasip2
 
-# Build the Rust component
+# Build the component
 build:
-	@cargo component build --release
+	@cargo build --target wasm32-wasip2 --release

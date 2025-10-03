@@ -168,31 +168,11 @@ jobs:
           curl -fsSL https://github.com/bytecodealliance/wasmtime/releases/download/v29.0.0/wasmtime-v29.0.0-x86_64-linux.tar.xz | tar -xJ
           sudo mv wasmtime-v29.0.0-x86_64-linux/wasmtime /usr/local/bin/
 
-      - name: Install wkg
-        run: |
-          curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
-          chmod +x wkg
-          sudo mv wkg /usr/local/bin/
-
-      - name: Configure wkg registry
-        run: |
-          mkdir -p ~/.config/wasm-pkg
-          cat > ~/.config/wasm-pkg/config.toml <<EOF
-          [namespace_registries]
-          wasmcp = "ghcr.io"
-          EOF
-
       - name: Install language tooling (Rust)
         if: matrix.language == 'rust'
         run: |
           rustup update stable
           rustup target add wasm32-wasip2
-
-      - name: Install cargo-component (Rust)
-        if: matrix.language == 'rust'
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-component@${{ env.CARGO_COMPONENT_VERSION }}
 
       - name: Install language tooling (Python)
         if: matrix.language == 'python'
@@ -219,11 +199,34 @@ jobs:
         run: |
           wasmcp new ci-test-${{ matrix.language }} -t tools -l ${{ matrix.language }}
 
-      - name: Build HTTP server
-        run: cd ci-test-${{ matrix.language }} && make compose
+      - name: Build component
+        run: cd ci-test-${{ matrix.language }} && make
 
-      - name: Build stdio server
-        run: cd ci-test-${{ matrix.language }} && make compose-stdio
+      - name: Compose HTTP server
+        run: |
+          cd ci-test-${{ matrix.language }}
+          # Determine component path based on language
+          if [ "${{ matrix.language }}" = "rust" ]; then
+            COMPONENT="target/wasm32-wasip2/release/ci_test_${{ matrix.language }}.wasm"
+          elif [ "${{ matrix.language }}" = "go" ]; then
+            COMPONENT="target/ci_test_${{ matrix.language }}.wasm"
+          else
+            COMPONENT="target/ci_test_${{ matrix.language }}.wasm"
+          fi
+          wasmcp compose --tools $COMPONENT -o mcp-server.wasm
+
+      - name: Compose stdio server
+        run: |
+          cd ci-test-${{ matrix.language }}
+          # Determine component path based on language
+          if [ "${{ matrix.language }}" = "rust" ]; then
+            COMPONENT="target/wasm32-wasip2/release/ci_test_${{ matrix.language }}.wasm"
+          elif [ "${{ matrix.language }}" = "go" ]; then
+            COMPONENT="target/ci_test_${{ matrix.language }}.wasm"
+          else
+            COMPONENT="target/ci_test_${{ matrix.language }}.wasm"
+          fi
+          wasmcp compose --tools $COMPONENT --transport stdio -o mcp-server-stdio.wasm
 
       - name: Start HTTP server (background)
         run: |
