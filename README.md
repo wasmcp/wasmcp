@@ -14,7 +14,7 @@ See [Installation](#installation)
 # Scaffold a new handler
 wasmcp new my-tools --type tools --language rust
 
-# Compose handlers with an HTTP transport and middleware
+# Compose handlers with HTTP transport and middleware
 wasmcp compose \
   --middleware ./auth.wasm \
   --tools ./my-tools.wasm \
@@ -39,7 +39,7 @@ See [cli/README.md](cli/README.md) and [examples/hello-world](examples/hello-wor
 ## Why?
 
 > [!TIP]
-> You only write the handlers for the individual MCP features and middlewares that you need.
+> You only write handlers for the individual MCP server features and middleware that you need.
 
 Wasmcp provides [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) definitions and [published](https://github.com/orgs/wasmcp/packages) framework components for building complete, deployable MCP servers as WebAssembly components.
 

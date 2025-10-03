@@ -1,0 +1,109 @@
+name: Release WIT Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'WIT package version (e.g. 0.3.0 or 0.3.0-alpha.60)'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  REGISTRY_NAMESPACE: wasmcp
+
+jobs:
+  validate:
+    name: Validate Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate version format
+        run: |
+          if ! echo "${{ inputs.version }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'; then
+            echo "Error: Invalid version format: ${{ inputs.version }}"
+            echo "Expected: X.Y.Z or X.Y.Z-prerelease"
+            exit 1
+          fi
+
+      - name: Check WIT package version matches
+        run: |
+          wit_version=$(grep -oP 'package wasmcp:mcp@\K[^;]+' wit/world.wit)
+          if [ "$wit_version" != "${{ inputs.version }}" ]; then
+            echo "Error: WIT package version ($wit_version) does not match release version (${{ inputs.version }})"
+            echo "Run: ./scripts/bump-version.sh ${{ inputs.version }}"
+            exit 1
+          fi
+
+  publish-wit:
+    name: Publish WIT Package
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install wkg
+        run: |
+          curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
+          chmod +x wkg
+          sudo mv wkg /usr/local/bin/
+
+      - name: Configure wkg registry
+        run: |
+          mkdir -p ~/.config/wasm-pkg
+          cat > ~/.config/wasm-pkg/config.toml <<EOF
+          [namespace_registries]
+          wasmcp = "ghcr.io"
+
+          [registry."ghcr.io".oci.auth]
+          username = "${{ github.actor }}"
+          password = "${{ secrets.GHCR_TOKEN }}"
+          EOF
+
+      - name: Check if WIT package already exists
+        id: check-wit
+        run: |
+          if wkg get wasmcp:mcp@${{ inputs.version }} >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ WIT package wasmcp:mcp@${{ inputs.version }} already exists"
+            exit 1
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "📦 WIT package wasmcp:mcp@${{ inputs.version }} not found, will publish"
+          fi
+
+      - name: Build WIT package
+        run: |
+          wkg wit build
+          echo "✅ Built WIT package: wasmcp:mcp@${{ inputs.version }}.wasm"
+
+      - name: Publish WIT package
+        run: |
+          wkg publish wasmcp:mcp@${{ inputs.version }}.wasm
+          echo "✅ Published WIT package: wasmcp:mcp@${{ inputs.version }}"
+
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          tag_name="wit-v${{ inputs.version }}"
+          git tag -a "$tag_name" -m "WIT package v${{ inputs.version }}"
+          git push origin "$tag_name"
+          echo "✅ Created tag: $tag_name"
+
+      - name: Summary
+        run: |
+          echo "## 🎉 WIT Package Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** \`wasmcp:mcp@${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/mcp:${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Update component lockfile: \`cargo component update\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. Commit lockfile: \`git commit -am 'chore: update lockfile for WIT v${{ inputs.version }}'\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Run component/CLI release: Go to Actions → Release → Run workflow" >> $GITHUB_STEP_SUMMARY

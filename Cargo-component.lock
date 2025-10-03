@@ -8,4 +8,4 @@ name = "wasmcp:mcp"
 [[package.version]]
 requirement = "^0.3.0-alpha.59"
 version = "0.3.0-alpha.59"
-digest = "sha256:b29bd35f9bc1e10a0d8f469e3493b7e65cb639b559875ed79765410e0523692b"
+digest = "sha256:5cba6080a84bc7f13bf7096c98d26499e6b52aa437e1adcbaa16e1f4d854bbb2"

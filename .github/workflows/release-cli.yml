@@ -1,0 +1,236 @@
+name: Release CLI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'CLI version (e.g. 0.3.0 or 0.3.0-alpha.60)'
+        required: true
+        type: string
+
+env:
+  RUST_VERSION: "1.89"
+
+jobs:
+  validate:
+    name: Validate Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate version format
+        run: |
+          if ! echo "${{ inputs.version }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'; then
+            echo "Error: Invalid version format: ${{ inputs.version }}"
+            echo "Expected: X.Y.Z or X.Y.Z-prerelease"
+            exit 1
+          fi
+
+      - name: Check CLI version matches
+        run: |
+          cli_version=$(grep -oP '^version = "\K[^"]+' cli/Cargo.toml)
+          if [ "$cli_version" != "${{ inputs.version }}" ]; then
+            echo "⚠️ Warning: CLI Cargo.toml has version $cli_version but releasing ${{ inputs.version }}"
+            echo "Run: ./scripts/bump-version.sh ${{ inputs.version }}"
+            echo "This is OK if you've manually updated the version"
+          fi
+
+  build-cli:
+    name: Build CLI (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    needs: validate
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: wasmcp
+            asset_name: wasmcp-x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: wasmcp
+            asset_name: wasmcp-aarch64-unknown-linux-gnu
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: wasmcp
+            asset_name: wasmcp-x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: wasmcp
+            asset_name: wasmcp-aarch64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          targets: ${{ matrix.target }}
+          cache-key: release-cli-${{ matrix.target }}
+          workspaces: cli
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Install cargo-cyclonedx
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-cyclonedx
+
+      - name: Build CLI
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: |
+          cd cli
+          cargo build --release --target ${{ matrix.target }}
+          echo "✅ Built CLI for ${{ matrix.target }}"
+
+      - name: Generate CLI SBOM
+        run: |
+          cd cli
+          cargo cyclonedx --format json --override-filename wasmcp-cli-${{ matrix.target }}-sbom
+          cargo cyclonedx --format xml --override-filename wasmcp-cli-${{ matrix.target }}-sbom
+
+      - name: Strip binary
+        run: |
+          strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }} || true
+
+      - name: Create tarball
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
+          mv ${{ matrix.asset_name }}.tar.gz ${{ github.workspace }}/
+
+      - name: Generate checksum
+        run: |
+          sha256sum ${{ matrix.asset_name }}.tar.gz > ${{ matrix.asset_name }}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}-${{ inputs.version }}
+          path: |
+            ${{ matrix.asset_name }}.tar.gz
+            ${{ matrix.asset_name }}.sha256
+            cli/wasmcp-cli-${{ matrix.target }}-sbom.json
+            cli/wasmcp-cli-${{ matrix.target }}-sbom.xml
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-cli
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Organize artifacts for upload
+        run: |
+          mkdir -p release-files
+          find artifacts -type f -exec cp {} release-files/ \;
+          ls -la release-files/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: cli-v${{ inputs.version }}
+          name: CLI v${{ inputs.version }}
+          draft: false
+          prerelease: ${{ contains(inputs.version, '-') }}
+          files: release-files/*
+          body: |
+            # CLI v${{ inputs.version }}
+
+            ## wasmcp CLI
+
+            Download the CLI for your platform:
+
+            **Linux (x86_64):**
+            ```bash
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/cli-v${{ inputs.version }}/wasmcp-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+            sudo mv wasmcp /usr/local/bin/
+            ```
+
+            **Linux (ARM64):**
+            ```bash
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/cli-v${{ inputs.version }}/wasmcp-aarch64-unknown-linux-gnu.tar.gz | tar -xz
+            sudo mv wasmcp /usr/local/bin/
+            ```
+
+            **macOS (Apple Silicon):**
+            ```bash
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/cli-v${{ inputs.version }}/wasmcp-aarch64-apple-darwin.tar.gz | tar -xz
+            sudo mv wasmcp /usr/local/bin/
+            ```
+
+            **macOS (Intel):**
+            ```bash
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/cli-v${{ inputs.version }}/wasmcp-x86_64-apple-darwin.tar.gz | tar -xz
+            sudo mv wasmcp /usr/local/bin/
+            ```
+
+            ## 🔒 Supply Chain Security
+
+            This release includes:
+            - **SBOM** (CycloneDX format) for CLI binaries
+            - **SHA256 checksums** for all artifacts
+
+            ### Verifying Downloads
+
+            ```bash
+            # Download CLI for Linux x86_64
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/cli-v${{ inputs.version }}/wasmcp-x86_64-unknown-linux-gnu.tar.gz -o wasmcp.tar.gz
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/cli-v${{ inputs.version }}/wasmcp-x86_64-unknown-linux-gnu.sha256 -o wasmcp.sha256
+
+            # Verify checksum
+            sha256sum -c wasmcp.sha256
+            ```
+
+            ## Quick Start
+
+            ```bash
+            # Verify installation
+            wasmcp --version
+
+            # Create a new tools handler
+            wasmcp new my-tools --type tools --language rust
+
+            # Build and compose
+            cd my-tools
+            make compose
+
+            # Run
+            wasmtime serve -Scommon mcp-server.wasm
+            ```
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/cli-v${{ inputs.version }}
+
+  all-jobs-complete:
+    name: All Jobs Complete
+    runs-on: ubuntu-latest
+    needs: [validate, build-cli, create-release]
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.validate.result }}" != "success" ] || \
+             [ "${{ needs.build-cli.result }}" != "success" ] || \
+             [ "${{ needs.create-release.result }}" != "success" ]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "✅ CLI release v${{ inputs.version }} completed successfully!"
+          echo ""
+          echo "Next steps:"
+          echo "  1. Test CLI: curl -fsSL https://github.com/${{ github.repository }}/releases/download/cli-v${{ inputs.version }}/wasmcp-x86_64-unknown-linux-gnu.tar.gz | tar -xz"
+          echo "  2. Update release notes at https://github.com/${{ github.repository }}/releases/tag/cli-v${{ inputs.version }}"

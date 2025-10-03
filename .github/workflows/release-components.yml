@@ -1,0 +1,335 @@
+name: Release Components
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Component version (e.g. 0.3.0 or 0.3.0-alpha.60)'
+        required: true
+        type: string
+      wit_version:
+        description: 'WIT package version (defaults to same as component version)'
+        required: false
+        type: string
+
+env:
+  RUST_VERSION: "1.89"
+  CARGO_COMPONENT_VERSION: "0.21.1"
+  REGISTRY: ghcr.io
+  REGISTRY_NAMESPACE: wasmcp
+
+jobs:
+  validate:
+    name: Validate Version
+    runs-on: ubuntu-latest
+    outputs:
+      wit_version: ${{ steps.wit-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate version format
+        run: |
+          if ! echo "${{ inputs.version }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'; then
+            echo "Error: Invalid version format: ${{ inputs.version }}"
+            echo "Expected: X.Y.Z or X.Y.Z-prerelease"
+            exit 1
+          fi
+
+      - name: Determine WIT version
+        id: wit-version
+        run: |
+          if [ -n "${{ inputs.wit_version }}" ]; then
+            echo "version=${{ inputs.wit_version }}" >> $GITHUB_OUTPUT
+            echo "Using specified WIT version: ${{ inputs.wit_version }}"
+          else
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "Using component version for WIT: ${{ inputs.version }}"
+          fi
+
+      - name: Check WIT file version
+        run: |
+          WIT_VERSION="${{ steps.wit-version.outputs.version }}"
+          wit_file_version=$(grep -oP 'package wasmcp:mcp@\K[^;]+' wit/world.wit)
+
+          if [ "$wit_file_version" != "$WIT_VERSION" ]; then
+            echo "⚠️ Warning: WIT file has version $wit_file_version but expecting $WIT_VERSION"
+            echo "This is OK if you're releasing components for an older WIT version"
+          fi
+
+          echo "Will use WIT package: wasmcp:mcp@$WIT_VERSION"
+
+  verify-wit-package:
+    name: Verify WIT Package
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install wkg
+        run: |
+          curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
+          chmod +x wkg
+          sudo mv wkg /usr/local/bin/
+
+      - name: Configure wkg registry
+        run: |
+          mkdir -p ~/.config/wasm-pkg
+          cat > ~/.config/wasm-pkg/config.toml <<EOF
+          [namespace_registries]
+          wasmcp = "ghcr.io"
+
+          [registry."ghcr.io".oci.auth]
+          username = "${{ github.actor }}"
+          password = "${{ secrets.GHCR_TOKEN }}"
+          EOF
+
+      - name: Verify WIT package exists
+        run: |
+          WIT_VERSION="${{ needs.validate.outputs.wit_version }}"
+
+          if ! wkg get wasmcp:mcp@$WIT_VERSION >/dev/null 2>&1; then
+            echo "❌ Error: WIT package wasmcp:mcp@$WIT_VERSION not found!"
+            echo ""
+            echo "Please publish the WIT package first:"
+            echo "  1. Go to Actions → Release WIT Package"
+            echo "  2. Run workflow with version: $WIT_VERSION"
+            echo "  3. Wait for completion"
+            echo "  4. Then re-run this release"
+            exit 1
+          fi
+
+          echo "✅ WIT package wasmcp:mcp@$WIT_VERSION exists"
+
+  build-and-publish-component:
+    name: Build ${{ matrix.component.name }}
+    runs-on: ubuntu-latest
+    needs: verify-wit-package
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        component:
+          - name: request
+            package: request
+            binary: request.wasm
+          - name: error-writer
+            package: error-writer
+            binary: error_writer.wasm
+          - name: initialize-writer
+            package: initialize-writer
+            binary: initialize_writer.wasm
+          - name: tools-writer
+            package: tools-writer
+            binary: tools_writer.wasm
+          - name: resources-writer
+            package: resources-writer
+            binary: resources_writer.wasm
+          - name: http-transport
+            package: http-transport
+            binary: http_transport.wasm
+          - name: stdio-transport
+            package: stdio-transport
+            binary: stdio_transport.wasm
+          - name: initialize-handler
+            package: initialize-handler
+            binary: initialize_handler.wasm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          targets: wasm32-wasip2
+          cache-key: release-${{ matrix.component.name }}
+          workspaces: crates/${{ matrix.component.name }}
+
+      - name: Install cargo-component
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-component@${{ env.CARGO_COMPONENT_VERSION }}
+
+      - name: Install wkg
+        run: |
+          curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
+          chmod +x wkg
+          sudo mv wkg /usr/local/bin/
+
+      - name: Configure wkg registry
+        run: |
+          mkdir -p ~/.config/wasm-pkg
+          cat > ~/.config/wasm-pkg/config.toml <<EOF
+          [namespace_registries]
+          wasmcp = "ghcr.io"
+
+          [registry."ghcr.io".oci.auth]
+          username = "${{ github.actor }}"
+          password = "${{ secrets.GHCR_TOKEN }}"
+          EOF
+
+      - name: Build component
+        run: |
+          cd crates/${{ matrix.component.name }}
+          cargo component build --release
+          echo "✅ Built ${{ matrix.component.name }}"
+
+      - name: Publish component
+        run: |
+          wkg publish --package 'wasmcp:${{ matrix.component.package }}@${{ inputs.version }}' \
+            target/wasm32-wasip1/release/${{ matrix.component.binary }}
+          echo "✅ Published wasmcp:${{ matrix.component.package }}@${{ inputs.version }}"
+
+      - name: Upload component artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.component.name }}-${{ inputs.version }}
+          path: target/wasm32-wasip1/release/${{ matrix.component.binary }}
+
+  generate-sbom-and-checksums:
+    name: Generate SBOM and Checksums
+    runs-on: ubuntu-latest
+    needs: build-and-publish-component
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: sbom
+          workspaces: crates
+
+      - name: Install cargo-cyclonedx
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-cyclonedx
+
+      - name: Download all component artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: '*-${{ inputs.version }}'
+
+      - name: Organize components for checksums
+        run: |
+          mkdir -p components
+          find artifacts -name "*.wasm" -exec cp {} components/ \;
+          ls -la components/
+
+      - name: Generate workspace SBOM
+        run: |
+          cd crates
+          cargo cyclonedx --all --format json --override-filename wasmcp-components-sbom
+          cargo cyclonedx --all --format xml --override-filename wasmcp-components-sbom
+          mv wasmcp-components-sbom.* ../
+          echo "✅ Generated workspace SBOM"
+
+      - name: Generate component checksums
+        run: |
+          cd components
+          sha256sum *.wasm > checksums-components.txt
+          mv checksums-components.txt ../
+          echo "✅ Generated component checksums"
+
+      - name: Upload all components
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasmcp-components-${{ inputs.version }}
+          path: components/*.wasm
+
+      - name: Upload SBOM and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasmcp-components-security-${{ inputs.version }}
+          path: |
+            wasmcp-components-sbom.json
+            wasmcp-components-sbom.xml
+            checksums-components.txt
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: generate-sbom-and-checksums
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: components-v${{ inputs.version }}
+          name: Components v${{ inputs.version }}
+          draft: false
+          prerelease: ${{ contains(inputs.version, '-') }}
+          files: |
+            artifacts/wasmcp-components-${{ inputs.version }}/*.wasm
+            artifacts/wasmcp-components-security-${{ inputs.version }}/*
+          body: |
+            # Components v${{ inputs.version }}
+
+            ## Framework Components Released
+
+            This release includes 8 framework components published to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}`:
+
+            - `wasmcp:request@${{ inputs.version }}`
+            - `wasmcp:error-writer@${{ inputs.version }}`
+            - `wasmcp:initialize-writer@${{ inputs.version }}`
+            - `wasmcp:tools-writer@${{ inputs.version }}`
+            - `wasmcp:resources-writer@${{ inputs.version }}`
+            - `wasmcp:http-transport@${{ inputs.version }}`
+            - `wasmcp:stdio-transport@${{ inputs.version }}`
+            - `wasmcp:initialize-handler@${{ inputs.version }}`
+
+            ## 🔒 Supply Chain Security
+
+            This release includes:
+            - **SBOM** (CycloneDX format) for framework components
+            - **SHA256 checksums** for all component artifacts
+
+            ### Verifying Component Downloads
+
+            ```bash
+            # Download checksum file
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/components-v${{ inputs.version }}/checksums-components.txt -o checksums-components.txt
+
+            # Verify downloaded component
+            sha256sum -c checksums-components.txt
+            ```
+
+            ## Usage
+
+            Framework components are published to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}` and automatically downloaded during composition.
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/components-v${{ inputs.version }}
+
+  all-jobs-complete:
+    name: All Jobs Complete
+    runs-on: ubuntu-latest
+    needs: [verify-wit-package, build-and-publish-component, generate-sbom-and-checksums, create-release]
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.verify-wit-package.result }}" != "success" ] || \
+             [ "${{ needs.build-and-publish-component.result }}" != "success" ] || \
+             [ "${{ needs.generate-sbom-and-checksums.result }}" != "success" ] || \
+             [ "${{ needs.create-release.result }}" != "success" ]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "✅ Component release v${{ inputs.version }} completed successfully!"
+          echo ""
+          echo "Next steps:"
+          echo "  1. Make packages public at https://github.com/orgs/${{ env.REGISTRY_NAMESPACE }}/packages"
+          echo "  2. Update release notes at https://github.com/${{ github.repository }}/releases/tag/components-v${{ inputs.version }}"
