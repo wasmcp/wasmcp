@@ -319,7 +319,8 @@ async fn main() -> Result<()> {
             println!("Created {} {} handler in {}", language, handler_type, name);
             println!("\nNext steps:");
             println!("  cd {}", name);
-            println!("  make build");
+            println!("  make");
+            println!("  wasmcp compose --help");
 
             Ok(())
         }

@@ -12,22 +12,28 @@ See [Installation](#installation)
 
 ```bash
 # Scaffold a new handler
-wasmcp new my-tools --type tools --language rust
+wasmcp new my-tools --type tools --language python
 
-# Compose handlers with HTTP transport and middleware
+# Build your handler; develop
+make
+
+# Compose your handler with the default HTTP transport component
+wasmcp compose --tools target/my_tools.wasm
+
+# Or compose multiple handlers and middleware in any sequence
 wasmcp compose \
-  --middleware ./auth.wasm \
-  --tools ./my-tools.wasm \
-  --middleware ./logging.wasm \
-  --resources ./my-resources.wasm \
-  -o server.wasm
+  --middleware ../logging.wasm \
+  --tools target/my_tools.wasm \
+  --middleware ../other_stuff.wasm \
+  --resources ../my_resources.wasm \
+  -o mcp-server.wasm
 
-# Run a complete MCP server over HTTP
-wasmtime serve -Scommon server.wasm
+# Run the composed MCP server over HTTP
+wasmtime serve -Scommon mcp-server.wasm
 
 # Or compose with stdio transport
 wasmcp compose \
-  --tools ./my-tools.wasm \
+  --tools ./my_tools.wasm \
   --transport stdio \
   -o server-stdio.wasm
 
@@ -41,7 +47,7 @@ See [cli/README.md](cli/README.md) and [examples/hello-world](examples/hello-wor
 > [!TIP]
 > You only write handlers for the individual MCP server features and middleware that you need.
 
-Wasmcp provides [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) definitions and [published](https://github.com/orgs/wasmcp/packages) framework components for building complete, deployable MCP servers as WebAssembly components.
+Wasmcp provides [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) definitions and [published](https://github.com/orgs/wasmcp/packages?repo_name=wasmcp) framework components for building complete, deployable MCP servers as WebAssembly components.
 
 Any language with a [component toolchain](https://component-model.bytecodealliance.org/language-support.html) can be used for any individual component in the server.
 
@@ -91,24 +97,27 @@ Or download the latest release binary for your platform from [GitHub Releases](h
 **Linux (x86_64):**
 ```bash
 curl -fsSL https://github.com/wasmcp/wasmcp/releases/latest/download/wasmcp-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-sudo mv wasmcp /usr/local/bin/
 ```
 
 **Linux (ARM64):**
 ```bash
 curl -fsSL https://github.com/wasmcp/wasmcp/releases/latest/download/wasmcp-aarch64-unknown-linux-gnu.tar.gz | tar -xz
-sudo mv wasmcp /usr/local/bin/
 ```
 
 **macOS (Apple Silicon):**
 ```bash
 curl -fsSL https://github.com/wasmcp/wasmcp/releases/latest/download/wasmcp-aarch64-apple-darwin.tar.gz | tar -xz
-sudo mv wasmcp /usr/local/bin/
 ```
 
 **macOS (Intel):**
 ```bash
 curl -fsSL https://github.com/wasmcp/wasmcp/releases/latest/download/wasmcp-x86_64-apple-darwin.tar.gz | tar -xz
+```
+
+---
+
+**Move the binary to a directory in your PATH:**
+```bash
 sudo mv wasmcp /usr/local/bin/
 ```
 
@@ -122,10 +131,10 @@ wasmcp --version
 Wasmcp prescribes a [chain-of-responsibility](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) pattern where components are composed into request processing pipelines. A typical chain:
 
 ```
-Transport → Middleware/Handlers -> Terminus
+transport → middleware/handlers -> terminal handler
 ```
 
-**Transport components** terminate the transport protocol (HTTP or stdio) and pass the JSON-RPC request and `wasi:io/streams.{output-stream}` to the next component. They import the `incoming-handler` interface and export transport-specific interfaces:
+**Transport components** terminate the transport protocol (HTTP or stdio) and pass a handle to the JSON-RPC request and `wasi:io/streams.{output-stream}` to the next component. They import the `incoming-handler` interface and export transport-specific interfaces:
 - **HTTP transport** - Exports `wasi:http/incoming-handler` for use with `wasmtime serve`
 - **Stdio transport** - Exports `wasi:cli/run` and uses newline-delimited JSON-RPC over stdin/stdout per the MCP specification
 

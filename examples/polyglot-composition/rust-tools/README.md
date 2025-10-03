@@ -15,7 +15,7 @@ This component implements MCP tools handling with an example echo tool. Build up
 ## Building
 
 ```bash
-make build
+make
 ```
 
 This produces a WebAssembly component at `target/wasm32-wasip2/release/rust_tools.wasm`.
