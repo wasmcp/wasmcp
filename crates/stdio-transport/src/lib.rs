@@ -1,5 +1,10 @@
 #[allow(warnings)]
-mod bindings;
+mod bindings {
+    wit_bindgen::generate!({
+        world: "stdio-transport",
+        generate_all,
+    });
+}
 
 use bindings::exports::wasi::cli::run::Guest;
 use bindings::wasi::cli::{stderr, stdin, stdout};
