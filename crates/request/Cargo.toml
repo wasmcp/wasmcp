@@ -19,5 +19,5 @@ path = "wit"
 world = "request"
 
 [package.metadata.component.target.dependencies]
-"wasmcp:mcp" = { version = "0.3.0" }
+"wasmcp:mcp" = { version = "=0.3.0" }
 

@@ -21,4 +21,4 @@ path = "wit"
 world = "{{ world_name }}"
 
 [package.metadata.component.target.dependencies]
-"wasmcp:mcp" = { version = "{{ wasmcp_version }}" }
+"wasmcp:mcp" = { version = "={{ wasmcp_version }}" }

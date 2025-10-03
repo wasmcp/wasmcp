@@ -21,4 +21,4 @@ path = "wit"
 world = "{{ handler_type }}-handler"
 
 [package.metadata.component.target.dependencies]
-"wasmcp:mcp" = { version = "{{ wasmcp_version }}" }
+"wasmcp:mcp" = { version = "={{ wasmcp_version }}" }
