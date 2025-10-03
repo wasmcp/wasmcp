@@ -31,8 +31,6 @@ jobs:
           cli_version=$(grep -oP '^version = "\K[^"]+' cli/Cargo.toml)
           if [ "$cli_version" != "${{ inputs.version }}" ]; then
             echo "⚠️ Warning: CLI Cargo.toml has version $cli_version but releasing ${{ inputs.version }}"
-            echo "Run: ./scripts/bump-version.sh ${{ inputs.version }}"
-            echo "This is OK if you've manually updated the version"
           fi
 
   build-cli:
@@ -95,11 +93,11 @@ jobs:
 
       - name: Strip binary
         run: |
-          strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }} || true
+          strip cli/target/${{ matrix.target }}/release/${{ matrix.artifact_name }} || true
 
       - name: Create tarball
         run: |
-          cd target/${{ matrix.target }}/release
+          cd cli/target/${{ matrix.target }}/release
           tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
           mv ${{ matrix.asset_name }}.tar.gz ${{ github.workspace }}/
 

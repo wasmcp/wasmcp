@@ -1,4 +1,4 @@
-package wasmcp:mcp@0.3.0-alpha.59;
+package wasmcp:mcp@0.3.0;
 
 // A WIT framework for composing Model Context Protocol servers as WebAssembly components.
 //
@@ -16,7 +16,7 @@ package wasmcp:mcp@0.3.0-alpha.59;
 ///
 /// This world provides MCP server functionality over standard I/O,
 /// suitable for command-line tools and local process communication.
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world stdio-transport {
     include wasi:cli/command@0.2.3;
     import incoming-handler;
@@ -26,7 +26,7 @@ world stdio-transport {
 ///
 /// This world provides MCP server functionality over HTTP,
 /// suitable for network-based communication and web services.
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world http-transport {
     include wasi:http/proxy@0.2.3;
     import incoming-handler;
@@ -36,7 +36,7 @@ world http-transport {
 ///
 /// Terminates the middleware chain by processing initialize requests
 /// using capabilities accumulated from upstream handlers.
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world initialize-handler {
     import error-result;
     import initialize-result;
@@ -47,14 +47,14 @@ world initialize-handler {
 ///
 /// Both imports and exports the handler interface, enabling components
 /// to intercept requests before forwarding to the next handler.
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world middleware {
     import incoming-handler;
     export incoming-handler;
 }
 
 /// Handler world for MCP tool operations.
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world tools-handler {
     include middleware;
     import error-result;
@@ -64,7 +64,7 @@ world tools-handler {
 }
 
 /// Handler world for MCP resource operations.
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world resources-handler {
     include middleware;
     import error-result;
@@ -74,7 +74,7 @@ world resources-handler {
 }
 
 /// Handler world for MCP prompt operations.
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world prompts-handler {
     include middleware;
     import error-result;
@@ -83,7 +83,7 @@ world prompts-handler {
 }
 
 /// Handler world for MCP completion operations.
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world completion-handler {
     include middleware;
     import error-result;

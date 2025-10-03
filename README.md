@@ -51,10 +51,10 @@ MCP servers are:
 - **Performance-sensitive** - Scalability and efficiency dictate the types of clients that can be served. Real-time AI applications require real-time tool responses
 
 WebAssembly components are
-- **Efficient** - Run portably on a wide variety of hosts, including edge workers
-- **Secure** - Execute in a least-privilege sandbox
-- **Lean** - Published framework components are each under 300KB
 - **Composable** - Compose multiple components together into new ones, like binary lego bricks
+- **Secure** - Execute in a least-privilege sandbox
+- **Efficient** - Run portably on a wide variety of hosts, including edge workers
+- **Lean** - Published framework components are each under 300KB
 
 They are a natural fit.
 
@@ -80,7 +80,12 @@ They are a natural fit.
 
 ## Installation
 
-Download the latest release binary for your platform from [GitHub Releases](https://github.com/wasmcp/wasmcp/releases):
+**Build from source:**
+```bash
+cargo install --git https://github.com/wasmcp/wasmcp
+```
+
+Or download the latest release binary for your platform from [GitHub Releases](https://github.com/wasmcp/wasmcp/releases):
 
 
 **Linux (x86_64):**
@@ -110,11 +115,6 @@ sudo mv wasmcp /usr/local/bin/
 **Verify installation:**
 ```bash
 wasmcp --version
-```
-
-**Or build from source:**
-```bash
-cargo install --git https://github.com/wasmcp/wasmcp wasmcp
 ```
 
 ## Architecture

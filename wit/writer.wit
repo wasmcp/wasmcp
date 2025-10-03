@@ -6,7 +6,7 @@ use wasi:io/streams@0.2.3;
 /// mapping directly to the ContentBlock type union in the MCP specification.
 ///
 /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface content {
     use types.{meta};
 
@@ -17,7 +17,7 @@ interface content {
     /// Valid values: "user" | "assistant"
     ///
     /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#role>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     enum role {
         user,
         assistant,
@@ -27,7 +27,7 @@ interface content {
     ///
     /// The client can use annotations to inform how objects are used or displayed.
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#annotations>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record annotations {
         /// Describes who the intended customer of this object or data is.
         ///
@@ -48,7 +48,7 @@ interface content {
     }
 
     /// Options for content blocks.
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record content-options {
         /// Optional annotations for the client.
         annotations: option<annotations>,
@@ -61,7 +61,7 @@ interface content {
     /// Text provided to or from an LLM.
     ///
     /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#textcontent>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record text-content {
         /// The text content of the message.
         text: string,
@@ -71,7 +71,7 @@ interface content {
     /// An image provided to or from an LLM.
     ///
     /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#imagecontent>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record image-content {
         /// The base64-encoded image data.
         data: list<u8>,
@@ -83,7 +83,7 @@ interface content {
     /// Audio provided to or from an LLM.
     ///
     /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#audiocontent>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record audio-content {
         /// The base64-encoded audio data.
         data: list<u8>,
@@ -93,7 +93,7 @@ interface content {
     }
 
     /// Options for resource link content.
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record resource-link-content-options {
         title: option<string>,
         description: option<string>,
@@ -112,7 +112,7 @@ interface content {
     /// Note: resource links returned by tools are not guaranteed to appear in the results of resources/list requests.
     ///
     /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcelink>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record resource-link-content {
         /// The URI of this resource.
         uri: string,
@@ -122,7 +122,7 @@ interface content {
     }
 
     /// Options for embedded resources.
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record embedded-resource-options {
         mime-type: option<string>,
         meta: meta,
@@ -130,7 +130,7 @@ interface content {
 
     /// Text resource contents.
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#textresourcecontents>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record text-resource-contents {
         uri: string,
         text: string,
@@ -139,7 +139,7 @@ interface content {
 
     /// Binary resource contents.
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#blobresourcecontents>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record blob-resource-contents {
         uri: string,
         blob: list<u8>,
@@ -147,7 +147,7 @@ interface content {
     }
 
     /// Embedded resource data.
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     variant embedded-resource {
         text(text-resource-contents),
         blob(blob-resource-contents),
@@ -155,7 +155,7 @@ interface content {
 
     /// Embedded resource with content options.
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#embeddedresource>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record embedded-resource-content {
         %resource: embedded-resource,
         options: option<content-options>,
@@ -164,7 +164,7 @@ interface content {
     /// Content blocks that can be included in messages.
     ///
     /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     variant content-block {
         text(text-content),
         image(image-content),
@@ -180,7 +180,7 @@ interface content {
 /// that conform to the JSON-RPC 2.0 specification.
 ///
 /// See: <https://spec.json-rpc.org/specification>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface error-result {
     use streams.{output-stream, stream-error};
     use types.{id};
@@ -196,13 +196,13 @@ interface error-result {
 /// Writes initialization results to an output stream.
 ///
 /// initialize: <https://modelcontextprotocol.io/specification/2025-06-18/schema#initialize>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface initialize-result {
     use streams.{output-stream, stream-error};
     use types.{id, implementation, meta, protocol-version, server-capabilities};
 
     /// Options for initialization results.
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record initialize-result-options {
         instructions: option<string>,
         meta: meta,
@@ -210,7 +210,7 @@ interface initialize-result {
 
     /// Initialization result structure.
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializeresult>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record initialize-result {
         server-info: implementation,
         capabilities: server-capabilities,
@@ -218,20 +218,20 @@ interface initialize-result {
         options: option<initialize-result-options>,
     }
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     write: func(id: id, output: output-stream, %result: initialize-result) -> result<_, stream-error>;
 }
 
 /// Writes tools/list results to an output stream.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-list>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface tools-list-result {
     use streams.{output-stream, stream-error};
     use types.{id, cursor, meta, json};
 
     /// Hints about tool behavior.
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     flags tool-hints {
         destructive,
         idempotent,
@@ -241,14 +241,14 @@ interface tools-list-result {
 
     /// Annotations for tool capabilities.
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record tool-annotations {
         hints: tool-hints,
         title: option<string>,
     }
 
     /// Optional properties for tool definitions.
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record tool-options {
         meta: meta,
         annotations: option<tool-annotations>,
@@ -259,7 +259,7 @@ interface tools-list-result {
 
     /// Tool definition.
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record tool {
         name: string,
         input-schema: string,
@@ -267,7 +267,7 @@ interface tools-list-result {
     }
 
     /// Options for list-tools results.
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record options {
         meta: meta,
         next-cursor: option<cursor>,
@@ -296,13 +296,13 @@ interface tools-list-result {
 /// Writes tools/call content results (unstructured).
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-call>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface tools-call-content {
     use streams.{output-stream, stream-error};
     use content.{content-block};
     use types.{id, meta};
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record options {
         is-error: bool,
         meta: meta,
@@ -345,12 +345,12 @@ interface tools-call-content {
 /// Writes tools/call structured results.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-call>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface tools-call-structured {
     use streams.{output-stream, stream-error};
     use types.{id, meta, json};
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record options {
         is-error: bool,
         meta: meta,
@@ -367,13 +367,13 @@ interface tools-call-structured {
 /// Writes resources/list results to an output stream.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-list>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface resources-list-result {
     use streams.{output-stream, stream-error};
     use types.{id, cursor, meta};
     use content.{annotations};
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record resource-options {
         size: option<u64>,
         title: option<string>,
@@ -384,14 +384,14 @@ interface resources-list-result {
     }
 
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resource>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record %resource {
         uri: string,
         name: string,
         options: option<resource-options>,
     }
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record options {
         meta: meta,
         next-cursor: option<cursor>,
@@ -420,25 +420,25 @@ interface resources-list-result {
 /// Writes resources/read results to an output stream.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-read>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface resources-read-result {
     use streams.{output-stream, stream-error};
     use types.{id, meta};
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record contents-options {
         mime-type: option<string>,
         meta: meta,
     }
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record contents {
         uri: string,
         data: list<u8>,
         options: option<contents-options>,
     }
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record options {
         meta: meta,
     }
@@ -466,13 +466,13 @@ interface resources-read-result {
 /// Writes resource-templates/list results to an output stream.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-templates-list>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface resource-templates-list-result {
     use streams.{output-stream, stream-error};
     use types.{id, cursor, meta};
     use content.{annotations};
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record template-options {
         description: option<string>,
         title: option<string>,
@@ -482,14 +482,14 @@ interface resource-templates-list-result {
     }
 
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplate>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record template {
         uri-template: string,
         name: string,
         options: option<template-options>,
     }
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record options {
         meta: meta,
         next-cursor: option<cursor>,
@@ -517,13 +517,13 @@ interface resource-templates-list-result {
 /// Writes prompts/list results to an output stream.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts-list>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface prompts-list-result {
     use streams.{output-stream, stream-error};
     use types.{id, meta};
 
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptargument>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record argument {
         name: string,
         description: option<string>,
@@ -531,7 +531,7 @@ interface prompts-list-result {
         title: option<string>,
     }
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record prompt-options {
         meta: meta,
         arguments: option<list<argument>>,
@@ -540,13 +540,13 @@ interface prompts-list-result {
     }
 
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompt>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record prompt {
         name: string,
         options: option<prompt-options>,
     }
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record options {
         meta: meta,
         next-cursor: option<string>,
@@ -574,20 +574,20 @@ interface prompts-list-result {
 /// Writes prompts/get results to an output stream.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts%2Fget>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface prompts-get-result {
     use streams.{output-stream, stream-error};
     use types.{id, meta};
     use content.{content-block, role};
 
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptmessage>
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record message {
         content: content-block,
         role: role,
     }
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record options {
         meta: meta,
         description: option<string>,
@@ -615,12 +615,12 @@ interface prompts-get-result {
 /// Writes completion/complete results to an output stream.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#completion-complete>
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 interface completion-complete-result {
     use streams.{output-stream, stream-error};
     use types.{id};
 
-    @since(version = 0.3.0-alpha.45)
+    @since(version = 0.3.0)
     record options {
         has-more: option<bool>,
     }
@@ -644,37 +644,37 @@ interface completion-complete-result {
     ) -> result<writer, stream-error>;
 }
 
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world error-writer {
     export error-result;
 }
 
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world initialize-writer {
     export initialize-result;
 }
 
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world tools-writer {
     export tools-list-result;
     export tools-call-content;
     export tools-call-structured;
 }
 
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world resources-writer {
     export resources-list-result;
     export resources-read-result;
     export resource-templates-list-result;
 }
 
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world prompts-writer {
     export prompts-list-result;
     export prompts-get-result;
 }
 
-@since(version = 0.3.0-alpha.45)
+@since(version = 0.3.0)
 world completion-writer {
     export completion-complete-result;
 }
