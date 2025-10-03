@@ -1,11 +1,15 @@
-name: Release
+name: Release Components
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g. 0.3.0 or 0.3.0-alpha.49)'
+        description: 'Component version (e.g. 0.3.0 or 0.3.0-alpha.60)'
         required: true
+        type: string
+      wit_version:
+        description: 'WIT package version (defaults to same as component version)'
+        required: false
         type: string
 
 env:
@@ -18,6 +22,8 @@ jobs:
   validate:
     name: Validate Version
     runs-on: ubuntu-latest
+    outputs:
+      wit_version: ${{ steps.wit-version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -29,22 +35,36 @@ jobs:
             exit 1
           fi
 
-      - name: Check WIT package version matches
+      - name: Determine WIT version
+        id: wit-version
         run: |
-          wit_version=$(grep -oP 'package wasmcp:mcp@\K[^;]+' wit/world.wit)
-          if [ "$wit_version" != "${{ inputs.version }}" ]; then
-            echo "Error: WIT package version ($wit_version) does not match release version (${{ inputs.version }})"
-            echo "Run: ./scripts/bump-version.sh ${{ inputs.version }}"
-            exit 1
+          if [ -n "${{ inputs.wit_version }}" ]; then
+            echo "version=${{ inputs.wit_version }}" >> $GITHUB_OUTPUT
+            echo "Using specified WIT version: ${{ inputs.wit_version }}"
+          else
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "Using component version for WIT: ${{ inputs.version }}"
           fi
 
-  publish-wit-package:
-    name: Publish WIT Package
+      - name: Check WIT file version
+        run: |
+          WIT_VERSION="${{ steps.wit-version.outputs.version }}"
+          wit_file_version=$(grep -oP 'package wasmcp:mcp@\K[^;]+' wit/world.wit)
+
+          if [ "$wit_file_version" != "$WIT_VERSION" ]; then
+            echo "⚠️ Warning: WIT file has version $wit_file_version but expecting $WIT_VERSION"
+            echo "This is OK if you're releasing components for an older WIT version"
+          fi
+
+          echo "Will use WIT package: wasmcp:mcp@$WIT_VERSION"
+
+  verify-wit-package:
+    name: Verify WIT Package
     runs-on: ubuntu-latest
     needs: validate
     permissions:
       contents: read
-      packages: write
+      packages: read
     steps:
       - uses: actions/checkout@v4
 
@@ -66,16 +86,27 @@ jobs:
           password = "${{ secrets.GHCR_TOKEN }}"
           EOF
 
-      - name: Build and publish WIT package
+      - name: Verify WIT package exists
         run: |
-          wkg wit build
-          wkg publish wasmcp:mcp@${{ inputs.version }}.wasm
-          echo "✅ Published WIT package: mcp@${{ inputs.version }}"
+          WIT_VERSION="${{ needs.validate.outputs.wit_version }}"
+
+          if ! wkg get wasmcp:mcp@$WIT_VERSION >/dev/null 2>&1; then
+            echo "❌ Error: WIT package wasmcp:mcp@$WIT_VERSION not found!"
+            echo ""
+            echo "Please publish the WIT package first:"
+            echo "  1. Go to Actions → Release WIT Package"
+            echo "  2. Run workflow with version: $WIT_VERSION"
+            echo "  3. Wait for completion"
+            echo "  4. Then re-run this release"
+            exit 1
+          fi
+
+          echo "✅ WIT package wasmcp:mcp@$WIT_VERSION exists"
 
   build-and-publish-component:
     name: Build ${{ matrix.component.name }}
     runs-on: ubuntu-latest
-    needs: publish-wit-package
+    needs: verify-wit-package
     permissions:
       contents: read
       packages: write
@@ -211,97 +242,16 @@ jobs:
       - name: Upload SBOM and checksums
         uses: actions/upload-artifact@v4
         with:
-          name: wasmcp-security-artifacts-${{ inputs.version }}
+          name: wasmcp-components-security-${{ inputs.version }}
           path: |
             wasmcp-components-sbom.json
             wasmcp-components-sbom.xml
             checksums-components.txt
 
-  build-cli:
-    name: Build CLI (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    needs: validate
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact_name: wasmcp
-            asset_name: wasmcp-x86_64-unknown-linux-gnu
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            artifact_name: wasmcp
-            asset_name: wasmcp-aarch64-unknown-linux-gnu
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact_name: wasmcp
-            asset_name: wasmcp-x86_64-apple-darwin
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact_name: wasmcp
-            asset_name: wasmcp-aarch64-apple-darwin
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          targets: ${{ matrix.target }}
-          cache-key: release-cli-${{ matrix.target }}
-          workspaces: cli
-
-      - name: Install cross-compilation tools (Linux ARM64)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-
-      - name: Install cargo-cyclonedx
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-cyclonedx
-
-      - name: Build CLI
-        env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-        run: |
-          cd cli
-          cargo build --release --target ${{ matrix.target }}
-
-      - name: Generate CLI SBOM
-        run: |
-          cd cli
-          cargo cyclonedx --format json --override-filename wasmcp-cli-${{ matrix.target }}-sbom
-          cargo cyclonedx --format xml --override-filename wasmcp-cli-${{ matrix.target }}-sbom
-
-      - name: Strip binary
-        run: |
-          strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }} || true
-
-      - name: Create tarball
-        run: |
-          cd target/${{ matrix.target }}/release
-          tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
-          mv ${{ matrix.asset_name }}.tar.gz ${{ github.workspace }}/
-
-      - name: Generate checksum
-        run: |
-          sha256sum ${{ matrix.asset_name }}.tar.gz > ${{ matrix.asset_name }}.sha256
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.asset_name }}
-          path: |
-            ${{ matrix.asset_name }}.tar.gz
-            ${{ matrix.asset_name }}.sha256
-            cli/wasmcp-cli-${{ matrix.target }}-sbom.json
-            cli/wasmcp-cli-${{ matrix.target }}-sbom.xml
-
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [generate-sbom-and-checksums, build-cli]
+    needs: generate-sbom-and-checksums
     permissions:
       contents: write
     steps:
@@ -318,98 +268,68 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ inputs.version }}
-          name: Release v${{ inputs.version }}
+          tag_name: components-v${{ inputs.version }}
+          name: Components v${{ inputs.version }}
           draft: false
           prerelease: ${{ contains(inputs.version, '-') }}
           files: |
-            artifacts/*/*
+            artifacts/wasmcp-components-${{ inputs.version }}/*.wasm
+            artifacts/wasmcp-components-security-${{ inputs.version }}/*
           body: |
-            # wasmcp v${{ inputs.version }}
+            # Components v${{ inputs.version }}
+
+            ## Framework Components Released
+
+            This release includes 8 framework components published to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}`:
+
+            - `wasmcp:request@${{ inputs.version }}`
+            - `wasmcp:error-writer@${{ inputs.version }}`
+            - `wasmcp:initialize-writer@${{ inputs.version }}`
+            - `wasmcp:tools-writer@${{ inputs.version }}`
+            - `wasmcp:resources-writer@${{ inputs.version }}`
+            - `wasmcp:http-transport@${{ inputs.version }}`
+            - `wasmcp:stdio-transport@${{ inputs.version }}`
+            - `wasmcp:initialize-handler@${{ inputs.version }}`
 
             ## 🔒 Supply Chain Security
 
             This release includes:
-            - **SBOM** (CycloneDX format) for framework components and CLI binaries
-            - **SHA256 checksums** for all artifacts
+            - **SBOM** (CycloneDX format) for framework components
+            - **SHA256 checksums** for all component artifacts
 
-            ### Verifying Downloads
-
-            ```bash
-            # Download CLI for Linux x86_64
-            curl -fsSL https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/wasmcp-x86_64-unknown-linux-gnu.tar.gz -o wasmcp.tar.gz
-            curl -fsSL https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/wasmcp-x86_64-unknown-linux-gnu.sha256 -o wasmcp.sha256
-
-            # Verify checksum
-            sha256sum -c wasmcp.sha256
-            ```
-
-            ## Installation
-
-            ### CLI
-
-            Download the appropriate binary for your platform:
-
-            **Linux (x86_64):**
-            ```bash
-            curl -fsSL https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/wasmcp-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-            sudo mv wasmcp /usr/local/bin/
-            ```
-
-            **macOS (Apple Silicon):**
-            ```bash
-            curl -fsSL https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/wasmcp-aarch64-apple-darwin.tar.gz | tar -xz
-            sudo mv wasmcp /usr/local/bin/
-            ```
-
-            **macOS (Intel):**
-            ```bash
-            curl -fsSL https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/wasmcp-x86_64-apple-darwin.tar.gz | tar -xz
-            sudo mv wasmcp /usr/local/bin/
-            ```
-
-            ### Components
-
-            Framework components are published to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}` and are automatically downloaded during composition.
-
-            ## Quick Start
+            ### Verifying Component Downloads
 
             ```bash
-            # Create a new tools handler
-            wasmcp new my-tools --type tools --language rust
+            # Download checksum file
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/components-v${{ inputs.version }}/checksums-components.txt -o checksums-components.txt
 
-            # Build and compose
-            cd my-tools
-            make compose
-
-            # Run
-            wasmtime serve -Scommon mcp-server.wasm
+            # Verify downloaded component
+            sha256sum -c checksums-components.txt
             ```
 
-            ## What's Changed
+            ## Usage
 
-            <!-- Add release notes here -->
+            Framework components are published to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}` and automatically downloaded during composition.
 
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ inputs.version }}
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/components-v${{ inputs.version }}
 
   all-jobs-complete:
     name: All Jobs Complete
     runs-on: ubuntu-latest
-    needs: [publish-wit-package, build-and-publish-component, generate-sbom-and-checksums, build-cli, create-release]
+    needs: [verify-wit-package, build-and-publish-component, generate-sbom-and-checksums, create-release]
     if: always()
     steps:
       - name: Check results
         run: |
-          if [ "${{ needs.publish-wit-package.result }}" != "success" ] || \
+          if [ "${{ needs.verify-wit-package.result }}" != "success" ] || \
              [ "${{ needs.build-and-publish-component.result }}" != "success" ] || \
              [ "${{ needs.generate-sbom-and-checksums.result }}" != "success" ] || \
-             [ "${{ needs.build-cli.result }}" != "success" ] || \
              [ "${{ needs.create-release.result }}" != "success" ]; then
             echo "One or more jobs failed"
             exit 1
           fi
-          echo "✅ Release v${{ inputs.version }} completed successfully!"
+          echo "✅ Component release v${{ inputs.version }} completed successfully!"
           echo ""
           echo "Next steps:"
           echo "  1. Make packages public at https://github.com/orgs/${{ env.REGISTRY_NAMESPACE }}/packages"
-          echo "  2. Update release notes at https://github.com/${{ github.repository }}/releases/tag/v${{ inputs.version }}"
+          echo "  2. Update release notes at https://github.com/${{ github.repository }}/releases/tag/components-v${{ inputs.version }}"
