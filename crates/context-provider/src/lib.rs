@@ -38,13 +38,13 @@ impl Guest for Component {
     }
 
     /// Inject span context into context carriers
-    fn inject_context(context: SpanContext, carriers: Vec<ContextCarrier>) -> Vec<ContextCarrier> {
-        context::inject_context(context, carriers)
+    fn inject_context(context: SpanContext, _carriers: Vec<ContextCarrier>) -> Vec<ContextCarrier> {
+        context::inject_context(&context)
     }
 
     /// Create context carriers from span context
     fn create_carriers(context: SpanContext) -> Vec<ContextCarrier> {
-        context::create_carriers(context)
+        context::inject_context(&context)
     }
 
     /// Parse W3C TraceContext traceparent header format
@@ -54,7 +54,7 @@ impl Guest for Component {
 
     /// Format span context as W3C TraceContext traceparent
     fn format_traceparent(context: SpanContext) -> String {
-        context::format_traceparent(context)
+        context::format_traceparent(&context)
     }
 
     /// Parse W3C TraceState header format
@@ -69,7 +69,11 @@ impl Guest for Component {
 
     /// Validate W3C TraceContext format compliance
     fn validate_traceparent(traceparent: String) -> Result<(), String> {
-        context::validate_traceparent(traceparent)
+        if context::validate_traceparent(traceparent) {
+            Ok(())
+        } else {
+            Err("Invalid traceparent format".to_string())
+        }
     }
 
     /// Generate random trace ID (16 bytes)
@@ -84,27 +88,27 @@ impl Guest for Component {
 
     /// Create root span context (no parent)
     fn create_root_context(trace_id: Vec<u8>, span_id: Vec<u8>, trace_flags: u8) -> SpanContext {
-        context::create_root_context(trace_id, span_id, trace_flags)
+        context::create_root_context(&trace_id, &span_id, trace_flags)
     }
 
     /// Create child span context from parent
     fn create_child_context(parent: SpanContext, span_id: Vec<u8>) -> SpanContext {
-        context::create_child_context(parent, span_id)
+        context::create_child_context(&parent, &span_id)
     }
 
     /// Check if span context is valid
     fn is_valid_context(context: SpanContext) -> bool {
-        context::is_valid_context(context)
+        context::is_valid_context(&context)
     }
 
     /// Check if context indicates sampling
     fn is_sampled(context: SpanContext) -> bool {
-        context::is_sampled(context)
+        context::is_sampled(&context)
     }
 
     /// Set sampling flag in context
     fn set_sampled(context: SpanContext, sampled: bool) -> SpanContext {
-        context::set_sampled(context, sampled)
+        context::set_sampled(&context, sampled)
     }
 }
 

@@ -211,3 +211,69 @@ fn parse_url(url: &str) -> Result<(Scheme, String, String), String> {
 
     Ok((scheme, authority.to_string(), path.to_string()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_url_https() {
+        let result = parse_url("https://api.example.com/v1/traces");
+        assert!(result.is_ok());
+        let (scheme, authority, path) = result.unwrap();
+        assert_eq!(authority, "api.example.com");
+        assert_eq!(path, "/v1/traces");
+    }
+
+    #[test]
+    fn test_parse_url_http() {
+        let result = parse_url("http://localhost:4318/v1/traces");
+        assert!(result.is_ok());
+        let (scheme, authority, path) = result.unwrap();
+        assert_eq!(authority, "localhost:4318");
+        assert_eq!(path, "/v1/traces");
+    }
+
+    #[test]
+    fn test_parse_url_no_path() {
+        let result = parse_url("https://example.com");
+        assert!(result.is_ok());
+        let (scheme, authority, path) = result.unwrap();
+        assert_eq!(authority, "example.com");
+        assert_eq!(path, "/");
+    }
+
+    #[test]
+    fn test_parse_url_with_port() {
+        let result = parse_url("https://example.com:443/v1/traces");
+        assert!(result.is_ok());
+        let (scheme, authority, path) = result.unwrap();
+        assert_eq!(authority, "example.com:443");
+        assert_eq!(path, "/v1/traces");
+    }
+
+    #[test]
+    fn test_parse_url_invalid_scheme() {
+        let result = parse_url("ftp://example.com/v1/traces");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("must start with http"));
+    }
+
+    #[test]
+    fn test_parse_url_with_query() {
+        let result = parse_url("https://example.com/v1/traces?key=value");
+        assert!(result.is_ok());
+        let (scheme, authority, path) = result.unwrap();
+        assert_eq!(authority, "example.com");
+        assert_eq!(path, "/v1/traces?key=value");
+    }
+
+    #[test]
+    fn test_parse_url_trimming() {
+        let result = parse_url("  https://example.com/path  ");
+        assert!(result.is_ok());
+        let (scheme, authority, path) = result.unwrap();
+        assert_eq!(authority, "example.com");
+        assert_eq!(path, "/path");
+    }
+}

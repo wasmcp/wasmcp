@@ -236,3 +236,372 @@ fn current_timestamp_nanos() -> u64 {
         .unwrap()
         .as_nanos() as u64
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bindings::exports::wasi::otel_sdk::trace::GuestSpan;
+
+    #[test]
+    fn test_span_creation() {
+        let context = context::SpanContext {
+            trace_id: vec![1u8; 16],
+            span_id: vec![2u8; 8],
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+
+        let scope = foundation::InstrumentationScope {
+            name: "test-library".to_string(),
+            version: Some("1.0.0".to_string()),
+            schema_url: None,
+            attributes: vec![],
+        };
+
+        let span = SpanImpl::new(
+            "test-span".to_string(),
+            context.clone(),
+            None,
+            trace::SpanKind::Internal,
+            Some(123456789),
+            vec![],
+            vec![],
+            scope.clone(),
+        );
+
+        let inner = span.inner.lock().unwrap();
+        assert_eq!(inner.name, "test-span");
+        assert_eq!(inner.context.trace_id, context.trace_id);
+        assert_eq!(inner.start_time, 123456789);
+        assert!(inner.is_recording);
+        assert!(matches!(inner.status, trace::SpanStatus::Unset));
+    }
+
+    #[test]
+    fn test_span_get_context() {
+        let context = context::SpanContext {
+            trace_id: vec![1u8; 16],
+            span_id: vec![2u8; 8],
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+
+        let scope = foundation::InstrumentationScope {
+            name: "test-library".to_string(),
+            version: None,
+            schema_url: None,
+            attributes: vec![],
+        };
+
+        let span = SpanImpl::new(
+            "test-span".to_string(),
+            context.clone(),
+            None,
+            trace::SpanKind::Internal,
+            None,
+            vec![],
+            vec![],
+            scope,
+        );
+
+        let retrieved_context = span.get_context();
+        assert_eq!(retrieved_context.trace_id, context.trace_id);
+        assert_eq!(retrieved_context.span_id, context.span_id);
+    }
+
+    #[test]
+    fn test_span_is_recording() {
+        let context = context::SpanContext {
+            trace_id: vec![1u8; 16],
+            span_id: vec![2u8; 8],
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+
+        let scope = foundation::InstrumentationScope {
+            name: "test-library".to_string(),
+            version: None,
+            schema_url: None,
+            attributes: vec![],
+        };
+
+        let span = SpanImpl::new(
+            "test-span".to_string(),
+            context,
+            None,
+            trace::SpanKind::Internal,
+            None,
+            vec![],
+            vec![],
+            scope,
+        );
+
+        assert!(span.is_recording());
+    }
+
+    #[test]
+    fn test_span_set_attribute() {
+        let context = context::SpanContext {
+            trace_id: vec![1u8; 16],
+            span_id: vec![2u8; 8],
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+
+        let scope = foundation::InstrumentationScope {
+            name: "test-library".to_string(),
+            version: None,
+            schema_url: None,
+            attributes: vec![],
+        };
+
+        let span = SpanImpl::new(
+            "test-span".to_string(),
+            context,
+            None,
+            trace::SpanKind::Internal,
+            None,
+            vec![],
+            vec![],
+            scope,
+        );
+
+        span.set_attribute(
+            "key1".to_string(),
+            foundation::AttributeValue::String("value1".to_string()),
+        );
+
+        let inner = span.inner.lock().unwrap();
+        assert_eq!(inner.attributes.len(), 1);
+        assert_eq!(inner.attributes[0].key, "key1");
+    }
+
+    #[test]
+    fn test_span_set_attribute_update_existing() {
+        let context = context::SpanContext {
+            trace_id: vec![1u8; 16],
+            span_id: vec![2u8; 8],
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+
+        let scope = foundation::InstrumentationScope {
+            name: "test-library".to_string(),
+            version: None,
+            schema_url: None,
+            attributes: vec![],
+        };
+
+        let span = SpanImpl::new(
+            "test-span".to_string(),
+            context,
+            None,
+            trace::SpanKind::Internal,
+            None,
+            vec![],
+            vec![],
+            scope,
+        );
+
+        span.set_attribute(
+            "key1".to_string(),
+            foundation::AttributeValue::String("value1".to_string()),
+        );
+        span.set_attribute(
+            "key1".to_string(),
+            foundation::AttributeValue::String("value2".to_string()),
+        );
+
+        let inner = span.inner.lock().unwrap();
+        assert_eq!(inner.attributes.len(), 1);
+        assert_eq!(inner.attributes[0].key, "key1");
+        match &inner.attributes[0].value {
+            foundation::AttributeValue::String(s) => assert_eq!(s, "value2"),
+            _ => panic!("Expected String value"),
+        }
+    }
+
+    #[test]
+    fn test_span_add_event() {
+        let context = context::SpanContext {
+            trace_id: vec![1u8; 16],
+            span_id: vec![2u8; 8],
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+
+        let scope = foundation::InstrumentationScope {
+            name: "test-library".to_string(),
+            version: None,
+            schema_url: None,
+            attributes: vec![],
+        };
+
+        let span = SpanImpl::new(
+            "test-span".to_string(),
+            context,
+            None,
+            trace::SpanKind::Internal,
+            None,
+            vec![],
+            vec![],
+            scope,
+        );
+
+        span.add_event(
+            "test-event".to_string(),
+            vec![foundation::Attribute {
+                key: "event-key".to_string(),
+                value: foundation::AttributeValue::String("event-value".to_string()),
+            }],
+            Some(987654321),
+        );
+
+        let inner = span.inner.lock().unwrap();
+        assert_eq!(inner.events.len(), 1);
+        assert_eq!(inner.events[0].name, "test-event");
+        assert_eq!(inner.events[0].timestamp, 987654321);
+        assert_eq!(inner.events[0].attributes.len(), 1);
+    }
+
+    #[test]
+    fn test_span_set_status() {
+        let context = context::SpanContext {
+            trace_id: vec![1u8; 16],
+            span_id: vec![2u8; 8],
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+
+        let scope = foundation::InstrumentationScope {
+            name: "test-library".to_string(),
+            version: None,
+            schema_url: None,
+            attributes: vec![],
+        };
+
+        let span = SpanImpl::new(
+            "test-span".to_string(),
+            context,
+            None,
+            trace::SpanKind::Internal,
+            None,
+            vec![],
+            vec![],
+            scope,
+        );
+
+        span.set_status(trace::SpanStatus::Ok);
+        {
+            let inner = span.inner.lock().unwrap();
+            assert!(matches!(inner.status, trace::SpanStatus::Ok));
+        }
+
+        // Should allow error status to override ok status
+        span.set_status(trace::SpanStatus::Error("test error".to_string()));
+        {
+            let inner = span.inner.lock().unwrap();
+            match &inner.status {
+                trace::SpanStatus::Error(msg) => assert_eq!(msg, "test error"),
+                _ => panic!("Expected Error status"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_span_update_name() {
+        let context = context::SpanContext {
+            trace_id: vec![1u8; 16],
+            span_id: vec![2u8; 8],
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+
+        let scope = foundation::InstrumentationScope {
+            name: "test-library".to_string(),
+            version: None,
+            schema_url: None,
+            attributes: vec![],
+        };
+
+        let span = SpanImpl::new(
+            "original-name".to_string(),
+            context,
+            None,
+            trace::SpanKind::Internal,
+            None,
+            vec![],
+            vec![],
+            scope,
+        );
+
+        span.update_name("updated-name".to_string());
+
+        let inner = span.inner.lock().unwrap();
+        assert_eq!(inner.name, "updated-name");
+    }
+
+    #[test]
+    fn test_span_record_exception() {
+        let context = context::SpanContext {
+            trace_id: vec![1u8; 16],
+            span_id: vec![2u8; 8],
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+
+        let scope = foundation::InstrumentationScope {
+            name: "test-library".to_string(),
+            version: None,
+            schema_url: None,
+            attributes: vec![],
+        };
+
+        let span = SpanImpl::new(
+            "test-span".to_string(),
+            context,
+            None,
+            trace::SpanKind::Internal,
+            None,
+            vec![],
+            vec![],
+            scope,
+        );
+
+        span.record_exception(
+            "TestException".to_string(),
+            "Something went wrong".to_string(),
+            Some("line 1\nline 2".to_string()),
+        );
+
+        let inner = span.inner.lock().unwrap();
+        assert_eq!(inner.events.len(), 1);
+        assert_eq!(inner.events[0].name, "exception");
+        assert_eq!(inner.events[0].attributes.len(), 3);
+
+        // Should set status to error
+        match &inner.status {
+            trace::SpanStatus::Error(msg) => assert_eq!(msg, "Exception recorded"),
+            _ => panic!("Expected Error status"),
+        }
+    }
+
+    #[test]
+    fn test_current_timestamp_nanos() {
+        let timestamp = current_timestamp_nanos();
+        assert!(timestamp > 0, "Timestamp should be positive");
+
+        // Should be a reasonable timestamp (after 2020)
+        let min_timestamp = 1577836800_000_000_000u64; // 2020-01-01
+        assert!(timestamp > min_timestamp, "Timestamp should be after 2020");
+    }
+}

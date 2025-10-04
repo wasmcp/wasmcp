@@ -431,3 +431,90 @@ fn extract_json_field(json: &str, field: &str) -> Option<String> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_token_url_https() {
+        let result = parse_token_url("https://example.com/token");
+        assert!(result.is_ok());
+        let (scheme, authority, path) = result.unwrap();
+        assert_eq!(authority, "example.com");
+        assert_eq!(path, "/token");
+    }
+
+    #[test]
+    fn test_parse_token_url_http() {
+        let result = parse_token_url("http://localhost:8080/auth/token");
+        assert!(result.is_ok());
+        let (scheme, authority, path) = result.unwrap();
+        assert_eq!(authority, "localhost:8080");
+        assert_eq!(path, "/auth/token");
+    }
+
+    #[test]
+    fn test_parse_token_url_no_path() {
+        let result = parse_token_url("https://example.com");
+        assert!(result.is_ok());
+        let (scheme, authority, path) = result.unwrap();
+        assert_eq!(authority, "example.com");
+        assert_eq!(path, "/");
+    }
+
+    #[test]
+    fn test_parse_token_url_invalid() {
+        let result = parse_token_url("ftp://example.com/token");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_extract_json_field_string() {
+        let json = r#"{"access_token": "abc123", "expires_in": 3600}"#;
+        let token = extract_json_field(json, "access_token");
+        assert_eq!(token, Some("abc123".to_string()));
+    }
+
+    #[test]
+    fn test_extract_json_field_number() {
+        let json = r#"{"access_token": "abc123", "expires_in": 3600}"#;
+        let expires = extract_json_field(json, "expires_in");
+        assert_eq!(expires, Some("3600".to_string()));
+    }
+
+    #[test]
+    fn test_extract_json_field_nested() {
+        let json = r#"{"data": {"token": "xyz789"}, "status": "ok"}"#;
+        let token = extract_json_field(json, "token");
+        assert_eq!(token, Some("xyz789".to_string()));
+    }
+
+    #[test]
+    fn test_extract_json_field_not_found() {
+        let json = r#"{"access_token": "abc123"}"#;
+        let result = extract_json_field(json, "refresh_token");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_extract_json_field_escaped_chars() {
+        let json = r#"{"message": "Hello\nWorld\t!"}"#;
+        let message = extract_json_field(json, "message");
+        assert_eq!(message, Some("Hello\nWorld\t!".to_string()));
+    }
+
+    #[test]
+    fn test_extract_json_field_with_spaces() {
+        let json = r#"{ "access_token" : "abc123" }"#;
+        let token = extract_json_field(json, "access_token");
+        assert_eq!(token, Some("abc123".to_string()));
+    }
+
+    #[test]
+    fn test_extract_json_field_empty_string() {
+        let json = r#"{"value": ""}"#;
+        let value = extract_json_field(json, "value");
+        assert_eq!(value, Some("".to_string()));
+    }
+}

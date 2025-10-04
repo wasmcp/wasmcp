@@ -56,104 +56,111 @@ pub fn extract_context(carriers: Vec<ContextCarrier>) -> ContextResult {
 }
 
 /// Inject span context into context carriers
-pub fn inject_context(context: SpanContext, mut carriers: Vec<ContextCarrier>) -> Vec<ContextCarrier> {
-    // Remove any existing traceparent/tracestate
-    carriers.retain(|c| {
-        let key_lower = c.key.to_lowercase();
-        key_lower != "traceparent" && key_lower != "tracestate"
-    });
+pub fn inject_context(context: &SpanContext) -> Vec<ContextCarrier> {
+    let mut carriers = Vec::new();
 
-    // Add new traceparent
+    // Add traceparent header
+    let traceparent_value = format_traceparent_internal(context);
     carriers.push(ContextCarrier {
         key: "traceparent".to_string(),
-        value: format_traceparent(context.clone()),
+        value: traceparent_value,
     });
 
-    // Add tracestate if not empty
+    // Add tracestate header if present
     if !context.trace_state.is_empty() {
         carriers.push(ContextCarrier {
             key: "tracestate".to_string(),
-            value: context.trace_state,
+            value: context.trace_state.clone(),
         });
     }
 
     carriers
 }
 
-/// Create context carriers from span context
-pub fn create_carriers(context: SpanContext) -> Vec<ContextCarrier> {
-    let mut carriers = vec![
-        ContextCarrier {
-            key: "traceparent".to_string(),
-            value: format_traceparent(context.clone()),
-        },
-    ];
+/// Create context carriers from W3C TraceContext headers
+pub fn create_carriers(traceparent: String, tracestate: Option<String>) -> Vec<ContextCarrier> {
+    let mut carriers = vec![ContextCarrier {
+        key: "traceparent".to_string(),
+        value: traceparent,
+    }];
 
-    if !context.trace_state.is_empty() {
-        carriers.push(ContextCarrier {
-            key: "tracestate".to_string(),
-            value: context.trace_state,
-        });
+    if let Some(ts) = tracestate {
+        if !ts.is_empty() {
+            carriers.push(ContextCarrier {
+                key: "tracestate".to_string(),
+                value: ts,
+            });
+        }
     }
 
     carriers
 }
 
-/// Parse W3C TraceContext traceparent header format
-pub fn parse_traceparent(traceparent: String) -> ContextResult {
-    match parse_traceparent_internal(&traceparent) {
-        Ok(context) => ContextResult::Success(context),
-        Err(e) => ContextResult::Invalid(e),
-    }
-}
-
-/// Internal traceparent parsing logic
+/// Parse traceparent header (internal implementation)
 fn parse_traceparent_internal(traceparent: &str) -> Result<SpanContext, String> {
-    // W3C format: version-trace_id-span_id-trace_flags
-    // Example: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
-
+    // Format: version-trace_id-span_id-flags
     let parts: Vec<&str> = traceparent.split('-').collect();
+
     if parts.len() != 4 {
-        return Err("Invalid traceparent format: expected 4 parts separated by '-'".to_string());
+        return Err(format!(
+            "Invalid traceparent format: expected 4 parts, got {}",
+            parts.len()
+        ));
     }
 
-    // Check version
-    if parts[0] != "00" {
-        return Err(format!("Unsupported traceparent version: {}", parts[0]));
+    // Parse version
+    let version = parts[0];
+    if version != "00" {
+        return Err(format!("Unsupported traceparent version: {}", version));
     }
 
-    // Parse trace ID (32 hex chars = 16 bytes)
-    if parts[1].len() != 32 {
-        return Err("Invalid trace ID: must be 32 hex characters".to_string());
+    // Parse trace_id (32 hex chars = 16 bytes)
+    let trace_id = hex::decode(parts[1]).map_err(|e| format!("Invalid trace_id hex: {}", e))?;
+    if trace_id.len() != 16 {
+        return Err(format!(
+            "Invalid trace_id length: expected 16 bytes, got {}",
+            trace_id.len()
+        ));
     }
-    let trace_id = hex::decode(parts[1])
-        .map_err(|_| "Invalid trace ID: not valid hex".to_string())?;
 
-    // Parse span ID (16 hex chars = 8 bytes)
-    if parts[2].len() != 16 {
-        return Err("Invalid span ID: must be 16 hex characters".to_string());
+    // Check for all-zeros trace_id
+    if trace_id.iter().all(|&b| b == 0) {
+        return Err("trace_id cannot be all zeros".to_string());
     }
-    let span_id = hex::decode(parts[2])
-        .map_err(|_| "Invalid span ID: not valid hex".to_string())?;
 
-    // Parse trace flags (2 hex chars = 1 byte)
-    if parts[3].len() != 2 {
-        return Err("Invalid trace flags: must be 2 hex characters".to_string());
+    // Parse span_id (16 hex chars = 8 bytes)
+    let span_id = hex::decode(parts[2]).map_err(|e| format!("Invalid span_id hex: {}", e))?;
+    if span_id.len() != 8 {
+        return Err(format!(
+            "Invalid span_id length: expected 8 bytes, got {}",
+            span_id.len()
+        ));
     }
-    let trace_flags = u8::from_str_radix(parts[3], 16)
-        .map_err(|_| "Invalid trace flags: not valid hex".to_string())?;
+
+    // Check for all-zeros span_id
+    if span_id.iter().all(|&b| b == 0) {
+        return Err("span_id cannot be all zeros".to_string());
+    }
+
+    // Parse flags (2 hex chars = 1 byte)
+    let flags_str = parts[3];
+    if flags_str.len() != 2 {
+        return Err(format!("Invalid flags length: expected 2 chars, got {}", flags_str.len()));
+    }
+    let flags = u8::from_str_radix(flags_str, 16)
+        .map_err(|e| format!("Invalid flags hex: {}", e))?;
 
     Ok(SpanContext {
         trace_id,
         span_id,
-        trace_flags,
-        trace_state: String::new(),
-        is_remote: false,
+        trace_flags: flags,
+        trace_state: String::new(), // Will be filled in by caller
+        is_remote: false,           // Will be set by caller
     })
 }
 
-/// Format span context as W3C TraceContext traceparent
-pub fn format_traceparent(context: SpanContext) -> String {
+/// Format traceparent header (internal implementation)
+fn format_traceparent_internal(context: &SpanContext) -> String {
     format!(
         "00-{}-{}-{:02x}",
         hex::encode(&context.trace_id),
@@ -162,117 +169,89 @@ pub fn format_traceparent(context: SpanContext) -> String {
     )
 }
 
-/// Parse W3C TraceState header format
-pub fn parse_tracestate(tracestate: String) -> Result<String, String> {
-    // TraceState format: key1=value1,key2=value2
-    // Basic validation - ensure it's properly formatted
+/// Parse traceparent header string into span context
+pub fn parse_traceparent(traceparent: String) -> ContextResult {
+    match parse_traceparent_internal(&traceparent) {
+        Ok(context) => ContextResult::Success(context),
+        Err(e) => ContextResult::Invalid(e),
+    }
+}
 
+/// Format span context as traceparent header string
+pub fn format_traceparent(context: &SpanContext) -> String {
+    format_traceparent_internal(context)
+}
+
+/// Parse tracestate header (pass-through validation)
+pub fn parse_tracestate(tracestate: String) -> Result<String, String> {
+    // Basic validation: tracestate should be a list of key=value pairs separated by commas
+    // We don't need to parse it, just validate format
     if tracestate.is_empty() {
-        return Ok(String::new());
+        return Ok(tracestate);
     }
 
-    // Validate each key-value pair
-    for pair in tracestate.split(',') {
-        let parts: Vec<&str> = pair.split('=').collect();
-        if parts.len() != 2 {
-            return Err(format!("Invalid tracestate pair: '{}'", pair));
-        }
-
-        let key = parts[0].trim();
-        let value = parts[1].trim();
-
-        // Basic key validation (simplified W3C rules)
-        if key.is_empty() || key.len() > 256 {
-            return Err(format!("Invalid tracestate key: '{}'", key));
-        }
-
-        // Basic value validation
-        if value.is_empty() || value.len() > 256 {
-            return Err(format!("Invalid tracestate value for key '{}'", key));
-        }
+    // Basic check: should contain key=value pairs
+    if !tracestate.contains('=') {
+        return Err("Invalid tracestate format: must contain key=value pairs".to_string());
     }
 
     Ok(tracestate)
 }
 
-/// Format trace state as W3C TraceState header
+/// Format tracestate (pass-through)
 pub fn format_tracestate(tracestate: String) -> String {
-    // Already in the correct format, just return it
     tracestate
 }
 
-/// Validate W3C TraceContext format compliance
-pub fn validate_traceparent(traceparent: String) -> Result<(), String> {
-    parse_traceparent_internal(&traceparent)?;
-    Ok(())
+/// Validate traceparent format
+pub fn validate_traceparent(traceparent: String) -> bool {
+    parse_traceparent_internal(&traceparent).is_ok()
 }
 
-/// Generate random trace ID (16 bytes)
+/// Generate a random trace ID (16 bytes)
 pub fn generate_trace_id() -> Vec<u8> {
-    // Generate 16 random bytes for trace ID
-    let mut trace_id = vec![0u8; 16];
-
-    // Use rand crate for random generation
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    rng.fill(&mut trace_id[..]);
-
-    // Ensure trace ID is not all zeros (invalid per spec)
-    if trace_id.iter().all(|&b| b == 0) {
-        trace_id[0] = 1;
-    }
-
-    trace_id
+    use uuid::Uuid;
+    let uuid = Uuid::new_v4();
+    uuid.as_bytes().to_vec()
 }
 
-/// Generate random span ID (8 bytes)
+/// Generate a random span ID (8 bytes)
 pub fn generate_span_id() -> Vec<u8> {
-    // Generate 8 random bytes for span ID
-    let mut span_id = vec![0u8; 8];
-
-    // Use rand crate for random generation
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    rng.fill(&mut span_id[..]);
-
-    // Ensure span ID is not all zeros (invalid per spec)
-    if span_id.iter().all(|&b| b == 0) {
-        span_id[0] = 1;
-    }
-
-    span_id
+    use uuid::Uuid;
+    let uuid = Uuid::new_v4();
+    uuid.as_bytes()[0..8].to_vec()
 }
 
-/// Create root span context (no parent)
-pub fn create_root_context(trace_id: Vec<u8>, span_id: Vec<u8>, trace_flags: u8) -> SpanContext {
+/// Create a root span context
+pub fn create_root_context(trace_id: &[u8], span_id: &[u8], trace_flags: u8) -> SpanContext {
     SpanContext {
-        trace_id,
-        span_id,
+        trace_id: trace_id.to_vec(),
+        span_id: span_id.to_vec(),
         trace_flags,
         trace_state: String::new(),
         is_remote: false,
     }
 }
 
-/// Create child span context from parent
-pub fn create_child_context(parent: SpanContext, span_id: Vec<u8>) -> SpanContext {
+/// Create a child span context (inherits trace_id from parent)
+pub fn create_child_context(parent: &SpanContext, span_id: &[u8]) -> SpanContext {
     SpanContext {
-        trace_id: parent.trace_id,
-        span_id,
+        trace_id: parent.trace_id.clone(),
+        span_id: span_id.to_vec(),
         trace_flags: parent.trace_flags,
-        trace_state: parent.trace_state,
+        trace_state: parent.trace_state.clone(),
         is_remote: false,
     }
 }
 
-/// Check if span context is valid
-pub fn is_valid_context(context: SpanContext) -> bool {
-    // Trace ID must be exactly 16 bytes and not all zeros
+/// Check if context is valid
+pub fn is_valid_context(context: &SpanContext) -> bool {
+    // Check trace_id length and non-zero
     if context.trace_id.len() != 16 || context.trace_id.iter().all(|&b| b == 0) {
         return false;
     }
 
-    // Span ID must be exactly 8 bytes and not all zeros
+    // Check span_id length and non-zero
     if context.span_id.len() != 8 || context.span_id.iter().all(|&b| b == 0) {
         return false;
     }
@@ -280,20 +259,255 @@ pub fn is_valid_context(context: SpanContext) -> bool {
     true
 }
 
-/// Check if context indicates sampling
-pub fn is_sampled(context: SpanContext) -> bool {
-    // Check the sampled bit (bit 0) in trace flags
+/// Check if context is sampled (bit 0 of trace_flags)
+pub fn is_sampled(context: &SpanContext) -> bool {
     (context.trace_flags & 0x01) != 0
 }
 
-/// Set sampling flag in context
-pub fn set_sampled(mut context: SpanContext, sampled: bool) -> SpanContext {
+/// Set sampled flag in context
+pub fn set_sampled(context: &SpanContext, sampled: bool) -> SpanContext {
+    let mut new_context = context.clone();
     if sampled {
-        // Set the sampled bit
-        context.trace_flags |= 0x01;
+        new_context.trace_flags |= 0x01;
     } else {
-        // Clear the sampled bit
-        context.trace_flags &= !0x01;
+        new_context.trace_flags &= !0x01;
     }
-    context
+    new_context
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_trace_id() {
+        let trace_id = generate_trace_id();
+        assert_eq!(trace_id.len(), 16, "trace_id should be 16 bytes");
+        assert!(!trace_id.iter().all(|&b| b == 0), "trace_id should not be all zeros");
+    }
+
+    #[test]
+    fn test_generate_span_id() {
+        let span_id = generate_span_id();
+        assert_eq!(span_id.len(), 8, "span_id should be 8 bytes");
+        assert!(!span_id.iter().all(|&b| b == 0), "span_id should not be all zeros");
+    }
+
+    #[test]
+    fn test_create_root_context() {
+        let trace_id = vec![1u8; 16];
+        let span_id = vec![2u8; 8];
+        let context = create_root_context(&trace_id, &span_id, 0x01);
+
+        assert_eq!(context.trace_id, trace_id);
+        assert_eq!(context.span_id, span_id);
+        assert_eq!(context.trace_flags, 0x01);
+        assert!(!context.is_remote);
+    }
+
+    #[test]
+    fn test_create_child_context() {
+        let parent_trace_id = vec![1u8; 16];
+        let parent_span_id = vec![2u8; 8];
+        let parent = create_root_context(&parent_trace_id, &parent_span_id, 0x01);
+
+        let child_span_id = vec![3u8; 8];
+        let child = create_child_context(&parent, &child_span_id);
+
+        assert_eq!(child.trace_id, parent.trace_id, "Child should inherit parent trace_id");
+        assert_eq!(child.span_id, child_span_id);
+        assert_eq!(child.trace_flags, parent.trace_flags);
+    }
+
+    #[test]
+    fn test_is_valid_context() {
+        let valid = create_root_context(&vec![1u8; 16], &vec![2u8; 8], 0x01);
+        assert!(is_valid_context(&valid));
+
+        let invalid_trace_id = create_root_context(&vec![0u8; 16], &vec![2u8; 8], 0x01);
+        assert!(!is_valid_context(&invalid_trace_id));
+
+        let invalid_span_id = create_root_context(&vec![1u8; 16], &vec![0u8; 8], 0x01);
+        assert!(!is_valid_context(&invalid_span_id));
+
+        let wrong_trace_length = SpanContext {
+            trace_id: vec![1u8; 15],
+            span_id: vec![2u8; 8],
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+        assert!(!is_valid_context(&wrong_trace_length));
+    }
+
+    #[test]
+    fn test_is_sampled() {
+        let sampled = create_root_context(&vec![1u8; 16], &vec![2u8; 8], 0x01);
+        assert!(is_sampled(&sampled));
+
+        let not_sampled = create_root_context(&vec![1u8; 16], &vec![2u8; 8], 0x00);
+        assert!(!is_sampled(&not_sampled));
+    }
+
+    #[test]
+    fn test_set_sampled() {
+        let context = create_root_context(&vec![1u8; 16], &vec![2u8; 8], 0x00);
+        assert!(!is_sampled(&context));
+
+        let sampled_context = set_sampled(&context, true);
+        assert!(is_sampled(&sampled_context));
+
+        let unsampled_context = set_sampled(&sampled_context, false);
+        assert!(!is_sampled(&unsampled_context));
+    }
+
+    #[test]
+    fn test_parse_traceparent_valid() {
+        let traceparent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
+        let result = parse_traceparent_internal(traceparent);
+        assert!(result.is_ok());
+
+        let context = result.unwrap();
+        assert_eq!(context.trace_id.len(), 16);
+        assert_eq!(context.span_id.len(), 8);
+        assert_eq!(context.trace_flags, 0x01);
+    }
+
+    #[test]
+    fn test_parse_traceparent_invalid_version() {
+        let traceparent = "01-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
+        let result = parse_traceparent_internal(traceparent);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Unsupported traceparent version"));
+    }
+
+    #[test]
+    fn test_parse_traceparent_invalid_parts() {
+        let traceparent = "00-0af7651916cd43dd8448eb211c80319c-01";
+        let result = parse_traceparent_internal(traceparent);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("expected 4 parts"));
+    }
+
+    #[test]
+    fn test_parse_traceparent_all_zeros_trace_id() {
+        let traceparent = "00-00000000000000000000000000000000-b7ad6b7169203331-01";
+        let result = parse_traceparent_internal(traceparent);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("trace_id cannot be all zeros"));
+    }
+
+    #[test]
+    fn test_parse_traceparent_all_zeros_span_id() {
+        let traceparent = "00-0af7651916cd43dd8448eb211c80319c-0000000000000000-01";
+        let result = parse_traceparent_internal(traceparent);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("span_id cannot be all zeros"));
+    }
+
+    #[test]
+    fn test_format_traceparent() {
+        let context = SpanContext {
+            trace_id: hex::decode("0af7651916cd43dd8448eb211c80319c").unwrap(),
+            span_id: hex::decode("b7ad6b7169203331").unwrap(),
+            trace_flags: 0x01,
+            trace_state: String::new(),
+            is_remote: false,
+        };
+
+        let formatted = format_traceparent_internal(&context);
+        assert_eq!(formatted, "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01");
+    }
+
+    #[test]
+    fn test_traceparent_roundtrip() {
+        let original = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
+        let parsed = parse_traceparent_internal(original).unwrap();
+        let formatted = format_traceparent_internal(&parsed);
+        assert_eq!(formatted, original);
+    }
+
+    #[test]
+    fn test_validate_traceparent() {
+        assert!(validate_traceparent("00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01".to_string()));
+        assert!(!validate_traceparent("invalid".to_string()));
+        assert!(!validate_traceparent("01-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01".to_string()));
+    }
+
+    #[test]
+    fn test_parse_tracestate() {
+        assert!(parse_tracestate("".to_string()).is_ok());
+        assert!(parse_tracestate("vendor1=value1".to_string()).is_ok());
+        assert!(parse_tracestate("vendor1=value1,vendor2=value2".to_string()).is_ok());
+        assert!(parse_tracestate("invalid".to_string()).is_err());
+    }
+
+    #[test]
+    fn test_inject_context() {
+        let context = SpanContext {
+            trace_id: hex::decode("0af7651916cd43dd8448eb211c80319c").unwrap(),
+            span_id: hex::decode("b7ad6b7169203331").unwrap(),
+            trace_flags: 0x01,
+            trace_state: "vendor=value".to_string(),
+            is_remote: false,
+        };
+
+        let carriers = inject_context(&context);
+        assert_eq!(carriers.len(), 2);
+        assert_eq!(carriers[0].key, "traceparent");
+        assert_eq!(carriers[0].value, "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01");
+        assert_eq!(carriers[1].key, "tracestate");
+        assert_eq!(carriers[1].value, "vendor=value");
+    }
+
+    #[test]
+    fn test_extract_context() {
+        let carriers = vec![
+            ContextCarrier {
+                key: "traceparent".to_string(),
+                value: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01".to_string(),
+            },
+            ContextCarrier {
+                key: "tracestate".to_string(),
+                value: "vendor=value".to_string(),
+            },
+        ];
+
+        let result = extract_context(carriers);
+        match result {
+            ContextResult::Success(context) => {
+                assert_eq!(context.trace_id.len(), 16);
+                assert_eq!(context.span_id.len(), 8);
+                assert_eq!(context.trace_flags, 0x01);
+                assert_eq!(context.trace_state, "vendor=value");
+                assert!(context.is_remote);
+            }
+            ContextResult::Invalid(e) => panic!("Expected Success, got Invalid: {}", e),
+            ContextResult::NotFound => panic!("Expected Success, got NotFound"),
+        }
+    }
+
+    #[test]
+    fn test_active_context_management() {
+        // Clear any previous state
+        clear_active_context();
+
+        // Should be None initially
+        assert!(get_active_context().is_none());
+
+        // Set a context
+        let context = create_root_context(&vec![1u8; 16], &vec![2u8; 8], 0x01);
+        set_active_context(context.clone());
+
+        // Should retrieve the same context
+        let retrieved = get_active_context();
+        assert!(retrieved.is_some());
+        let retrieved = retrieved.unwrap();
+        assert_eq!(retrieved.trace_id, context.trace_id);
+        assert_eq!(retrieved.span_id, context.span_id);
+
+        // Clear should reset to None
+        clear_active_context();
+        assert!(get_active_context().is_none());
+    }
 }
