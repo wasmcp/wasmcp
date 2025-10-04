@@ -1,0 +1,8 @@
+package wasmcp:context-provider@1.0.0;
+
+// Use the context-provider world from wasi:otel-sdk
+world context-provider {
+  import wasi:otel-sdk/foundation@0.1.0-alpha.2;
+
+  export wasi:otel-sdk/context@0.1.0-alpha.2;
+}

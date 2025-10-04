@@ -1,0 +1,11 @@
+package wasmcp:otel-trace@1.0.0;
+
+world trace-sdk {
+  // Import foundation infrastructure
+  import wasi:otel-sdk/foundation@0.1.0-alpha.2;
+  import wasi:otel-sdk/context@0.1.0-alpha.2;
+  import wasi:otel-sdk/otel-export@0.1.0-alpha.2;
+
+  // Export complete trace interface
+  export wasi:otel-sdk/trace@0.1.0-alpha.2;
+}

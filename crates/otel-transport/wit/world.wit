@@ -1,0 +1,10 @@
+package wasmcp:otel-transport@1.0.0;
+
+// Use the otel-transport world from wasi:otel-sdk
+world otel-transport {
+  import wasi:http/outgoing-handler@0.2.0;
+  import wasi:http/types@0.2.0;
+  import wasi:otel-sdk/foundation@0.1.0-alpha.2;
+
+  export wasi:otel-sdk/otel-export@0.1.0-alpha.2;
+}

@@ -3,10 +3,13 @@
 
 [workspace]
 members = [
+    "crates/context-provider",
     "crates/error-writer",
     "crates/http-transport",
     "crates/initialize-handler",
     "crates/initialize-writer",
+    "crates/otel-trace",
+    "crates/otel-transport",
     "crates/request",
     "crates/resources-writer",
     "crates/stdio-transport",

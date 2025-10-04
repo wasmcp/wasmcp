@@ -1,0 +1,953 @@
+package wasi:otel-sdk@0.1.0-alpha.2;
+
+/// ============================================================================
+/// FOUNDATIONAL TYPES - Used by all observability signals
+/// ============================================================================
+interface foundation {
+  /// Simple attribute values (no nesting to avoid circular dependency)
+  variant simple-value {
+    /// String value (UTF-8)
+    %string(string),
+    /// Boolean value
+    %bool(bool),
+    /// 64-bit signed integer
+    int64(s64),
+    /// IEEE 754 64-bit floating point
+    %float64(f64),
+    /// Binary data / byte sequences
+    bytes(list<u8>),
+  }
+
+  /// Key-value pair for nested attributes (OTLP KeyValue)
+  record key-value {
+    /// Attribute name
+    key: string,
+    /// Simple attribute value (no nesting to avoid circularity)
+    value: simple-value,
+  }
+
+  /// OpenTelemetry attribute value types (OTLP AnyValue compliant)
+  variant attribute-value {
+    /// String value (UTF-8)
+    %string(string),
+    /// Boolean value
+    %bool(bool),
+    /// 64-bit signed integer
+    int64(s64),
+    /// IEEE 754 64-bit floating point
+    %float64(f64),
+    /// Binary data / byte sequences
+    bytes(list<u8>),
+    /// Homogeneous array of strings
+    array-string(list<string>),
+    /// Homogeneous array of booleans
+    array-bool(list<bool>),
+    /// Homogeneous array of 64-bit signed integers
+    array-int64(list<s64>),
+    /// Homogeneous array of 64-bit floats
+    array-float64(list<f64>),
+    /// Nested key-value structure (OTLP kvlist_value)
+    kvlist(list<key-value>),
+  }
+
+  /// Common attribute key-value pair for telemetry metadata
+  record attribute {
+    /// Attribute name
+    key: string,
+    /// Typed attribute value
+    value: attribute-value,
+  }
+
+  /// Resource identification attributes
+  record otel-resource {
+    /// Entity identification attributes
+    attributes: list<attribute>,
+    /// Schema URL for semantic conventions version
+    schema-url: option<string>,
+  }
+
+  /// Instrumentation scope identification
+  record instrumentation-scope {
+    /// Library/component name
+    name: string,
+    /// Library/component version
+    version: option<string>,
+    /// Schema URL for conventions version
+    schema-url: option<string>,
+    /// Scope metadata
+    attributes: list<attribute>,
+  }
+}
+
+/// Distributed tracing context management and W3C TraceContext utilities
+interface context {
+  use foundation.{attribute};
+
+  /// W3C TraceContext compliant span context for trace correlation
+  record span-context {
+    /// Unique trace identifier (MUST be exactly 16 bytes, W3C TraceContext)
+    trace-id: list<u8>,
+    /// Unique span identifier within trace (MUST be exactly 8 bytes, W3C TraceContext)
+    span-id: list<u8>,
+    /// W3C trace flags (1 byte: sampling, debug bits)
+    trace-flags: u8,
+    /// W3C TraceState header value (key=value,key=value format)
+    trace-state: string,
+    /// Whether context originated from external source (OpenTelemetry)
+    is-remote: bool,
+  }
+
+  /// Context carriers for W3C TraceContext propagation
+  record context-carrier {
+    /// Context field name (e.g., "traceparent", "tracestate")
+    key: string,
+    /// Serialized context value (W3C format)
+    value: string,
+  }
+
+  /// Context propagation result with error handling
+  variant context-result {
+    /// Successfully extracted or injected context
+    success(span-context),
+    /// No context found (not an error)
+    not-found,
+    /// Invalid context format or parsing error
+    invalid(string),
+  }
+
+  /// Component-managed context (not parameter-passed)
+  /// Set the active span context for this component
+  set-active-context: func(context: span-context);
+
+  /// Get the currently active span context
+  get-active-context: func() -> option<span-context>;
+
+  /// Clear the active context
+  clear-active-context: func();
+
+  /// W3C TraceContext propagation utilities
+  /// Extract span context from context carriers
+  /// Used by receiving components to continue traces
+  extract-context: func(carriers: list<context-carrier>) -> context-result;
+
+  /// Inject span context into context carriers
+  /// Used by calling components to propagate traces
+  inject-context: func(context: span-context, carriers: list<context-carrier>) -> list<context-carrier>;
+
+  /// Create context carriers from span context
+  /// Generates W3C TraceContext format carriers
+  create-carriers: func(context: span-context) -> list<context-carrier>;
+
+  /// Parse W3C TraceContext traceparent header format
+  /// Converts "00-trace_id-span_id-flags" to span-context
+  parse-traceparent: func(traceparent: string) -> context-result;
+
+  /// Format span context as W3C TraceContext traceparent
+  /// Converts span-context to "00-trace_id-span_id-flags"
+  format-traceparent: func(context: span-context) -> string;
+
+  /// Parse W3C TraceState header format
+  /// Converts "key1=value1,key2=value2" to trace-state string
+  parse-tracestate: func(tracestate: string) -> result<string, string>;
+
+  /// Format trace state as W3C TraceState header
+  /// Converts trace-state string to "key1=value1,key2=value2"
+  format-tracestate: func(tracestate: string) -> string;
+
+  /// Validate W3C TraceContext format compliance
+  validate-traceparent: func(traceparent: string) -> result<_, string>;
+
+  /// Generate random trace ID (16 bytes)
+  generate-trace-id: func() -> list<u8>;
+
+  /// Generate random span ID (8 bytes)
+  generate-span-id: func() -> list<u8>;
+
+  /// Create root span context (no parent)
+  create-root-context: func(trace-id: list<u8>, span-id: list<u8>, trace-flags: u8) -> span-context;
+
+  /// Create child span context from parent
+  create-child-context: func(parent: span-context, span-id: list<u8>) -> span-context;
+
+  /// Check if span context is valid
+  is-valid-context: func(context: span-context) -> bool;
+
+  /// Check if context indicates sampling
+  is-sampled: func(context: span-context) -> bool;
+
+  /// Set sampling flag in context
+  set-sampled: func(context: span-context, sampled: bool) -> span-context;
+}
+
+/// OTLP export configuration and result types
+interface otel-export {
+  /// OTLP export protocol options
+  variant export-protocol {
+    /// OTLP over gRPC with Protocol Buffers
+    grpc,
+    /// OTLP over HTTP with Protocol Buffers
+    http-protobuf,
+    /// OTLP over HTTP with JSON encoding
+    http-json,
+  }
+
+  /// Compression options for export
+  variant compression-type {
+    /// No compression
+    none,
+    /// Gzip compression
+    gzip,
+  }
+
+  /// HTTP header key-value pair
+  record header-pair {
+    /// Header name
+    key: string,
+    /// Header value
+    value: string,
+  }
+
+  /// Basic authentication configuration
+  record basic-auth-config {
+    /// Username for basic authentication
+    username: string,
+    /// Password for basic authentication
+    password: string,
+  }
+
+  /// Bearer token authentication configuration
+  record bearer-token-config {
+    /// Bearer token value
+    token: string,
+  }
+
+  /// OAuth2 client credentials authentication configuration
+  record oauth2-config {
+    /// OAuth2 client identifier
+    client-id: string,
+    /// OAuth2 client secret
+    client-secret: string,
+    /// Token endpoint URL
+    token-url: string,
+    /// OAuth2 scopes (optional)
+    scopes: list<string>,
+  }
+
+  /// OpenID Connect authentication configuration
+  record oidc-config {
+    /// OIDC issuer URL
+    issuer-url: string,
+    /// OIDC audience
+    audience: string,
+    /// OIDC client ID (optional for some flows)
+    client-id: option<string>,
+    /// OIDC client secret (optional for some flows)
+    client-secret: option<string>,
+  }
+
+  /// Authentication configuration variants for OTLP exporters
+  variant auth-config {
+    /// No authentication
+    none,
+    /// HTTP Basic authentication
+    basic(basic-auth-config),
+    /// Bearer token authentication
+    bearer(bearer-token-config),
+    /// OAuth2 client credentials flow
+    oauth2(oauth2-config),
+    /// OpenID Connect authentication
+    oidc(oidc-config),
+    /// Custom headers for other authentication mechanisms
+    headers(list<header-pair>),
+  }
+
+  /// Retry configuration for export operations
+  record retry-config {
+    /// Maximum retry attempts
+    max-attempts: u32,
+    /// Initial retry delay in milliseconds
+    initial-delay-ms: u32,
+    /// Maximum retry delay in milliseconds (for exponential backoff)
+    max-delay-ms: u32,
+  }
+
+  /// Export configuration for OTLP exporters
+  record export-config {
+    /// OTLP endpoint URL
+    endpoint: string,
+    /// Authentication configuration
+    authentication: auth-config,
+    /// Request timeout in milliseconds
+    timeout-ms: u32,
+    /// Export protocol (gRPC/HTTP+protobuf/HTTP+JSON)
+    protocol: export-protocol,
+    /// Compression type
+    compression: compression-type,
+    /// Retry configuration (optional, for unreliable networks)
+    retry: option<retry-config>,
+  }
+
+  /// Export error details
+  record export-error {
+    /// Number of failed items
+    failed-count: u32,
+    /// Error description
+    error-message: string,
+  }
+
+  /// Export operation result
+  variant export-result {
+    /// Export completed successfully
+    success,
+    /// Export failed completely
+    failure(string),
+    /// Export partially succeeded
+    partial-failure(export-error),
+  }
+
+  /// Shared HTTP client for all observability signals
+  /// Handles authentication, compression, retries, and protocol differences
+  /// Signal-agnostic - does not reference spans, logs, or metrics types
+  resource http-client {
+    /// Create HTTP client from export configuration
+    /// Returns error if configuration is invalid
+    constructor(config: export-config);
+    /// Send OTLP request to specific signal endpoint
+    /// Handles: authentication, compression, retries, protocol encoding
+    /// BLOCKING call - waits for HTTP response or retry exhaustion
+    ///
+    /// Parameters:
+    /// - signal-path: Signal-specific endpoint path (e.g., "/v1/traces", "/v1/logs", "/v1/metrics")
+    /// - otlp-payload: Pre-serialized OTLP data (protobuf or JSON bytes)
+    /// - content-type: Signal and protocol-specific content type
+    send-otlp: func(signal-path: string, otlp-payload: list<u8>, content-type: string) -> export-result;
+    /// Force flush any buffered data (if client implements internal buffering)
+    force-flush: func() -> bool;
+    /// Shutdown HTTP client and release resources
+    /// Consumes the client handle (WASI pattern)
+    shutdown: static func(this: http-client) -> bool;
+  }
+}
+
+/// Complete OpenTelemetry logging interface
+///
+/// This interface contains all logging functionality: types, API resources,
+/// configuration, and export. A logging-only component imports just this
+/// interface plus common foundation - no cross-signal dependencies.
+interface logs {
+  use foundation.{attribute, attribute-value, otel-resource, instrumentation-scope};
+  use otel-export.{http-client, export-result, export-protocol};
+
+  /// ============================================================================
+  /// LOG TYPES
+  /// ============================================================================
+  /// Severity levels following OpenTelemetry conventions
+  variant severity-number {
+    /// Unspecified (0)
+    unspecified,
+    /// TRACE (1-4) - Fine-grained debugging events
+    trace1,
+    trace2,
+    trace3,
+    trace4,
+    /// DEBUG (5-8) - Debugging events
+    debug1,
+    debug2,
+    debug3,
+    debug4,
+    /// INFO (9-12) - Informational events
+    info1,
+    info2,
+    info3,
+    info4,
+    /// WARN (13-16) - Warning events
+    warn1,
+    warn2,
+    warn3,
+    warn4,
+    /// ERROR (17-20) - Error events
+    error1,
+    error2,
+    error3,
+    error4,
+    /// FATAL (21-24) - Fatal errors
+    fatal1,
+    fatal2,
+    fatal3,
+    fatal4,
+  }
+
+  /// Log record body types (OTLP AnyValue compliant)
+  variant log-body {
+    /// String log message
+    %string(string),
+    /// Binary data
+    bytes(list<u8>),
+    /// Structured log data
+    kvlist(list<attribute>),
+  }
+
+  /// Complete log record for export
+  record log-record {
+    /// Event timestamp (Unix epoch nanoseconds)
+    timestamp: option<u64>,
+    /// Observed timestamp (when recorded by collector)
+    observed-timestamp: u64,
+    /// Trace correlation - trace ID (16 bytes)
+    trace-id: option<list<u8>>,
+    /// Trace correlation - span ID (8 bytes)
+    span-id: option<list<u8>>,
+    /// W3C trace flags
+    trace-flags: option<u8>,
+    /// Severity text (log level)
+    severity-text: option<string>,
+    /// Numerical severity
+    severity-number: option<severity-number>,
+    /// Log message body
+    body: option<log-body>,
+    /// Log metadata
+    attributes: list<attribute>,
+    /// Event name (identifies event class/type)
+    event-name: option<string>,
+    /// Instrumentation scope that created this log (OTLP requirement)
+    instrumentation-scope: instrumentation-scope,
+  }
+
+  /// ============================================================================
+  /// LOG CONFIGURATION
+  /// ============================================================================
+  /// Per-signal data limits to prevent resource exhaustion
+  record log-limits-config {
+    /// Maximum attributes per log record
+    max-attributes-per-record: u32,
+    /// Maximum length of attribute values
+    attribute-value-length-limit: u32,
+    /// Maximum total attributes per log record
+    log-attribute-count-limit: u32,
+  }
+
+  /// ============================================================================
+  /// LOG API - Leverages component-managed context from common interface
+  /// ============================================================================
+  /// Telemetry provider handle types
+  /// These are opaque handles to provider instances
+  type logger = u32;
+
+  /// Logger provider resource for structured logging
+  /// Creates and manages logger instances
+  resource logger-provider {
+    /// Get a logger for the given instrumentation scope
+    get-logger: func(name: string, version: option<string>, schema-url: option<string>, attributes: list<attribute>) -> logger;
+    /// Emit a log record with correlation to active trace context
+    /// Uses component-managed context for trace correlation
+    emit: func(logger: logger, severity-number: option<severity-number>, severity-text: option<string>, body: option<log-body>, attributes: list<attribute>, timestamp: option<u64>) -> log-record;
+    /// Check if logging is enabled (optimization)
+    logger-enabled: func(logger: logger) -> bool;
+  }
+
+  /// ============================================================================
+  /// LOG EXPORT - Signal-specific export functionality (OTLP /v1/logs)
+  /// ============================================================================
+  /// Log exporter resource for OTLP log export
+  /// Handles export to OTLP /v1/logs endpoint
+  resource log-exporter {
+    /// Create log exporter with borrowed HTTP client
+    /// The http-client is shared across all signals
+    constructor(client: borrow<http-client>);
+    /// Add log records to internal batch (does not trigger export)
+    add-logs: func(logs: list<log-record>);
+    /// Set resource information for OTLP export
+    set-resource: func(service-resource: otel-resource);
+    /// Export accumulated log records using the shared HTTP client
+    /// Serializes logs to OTLP format and sends to /v1/logs
+    /// Non-consuming - exporter can be reused for multiple batches
+    export-batch: func() -> export-result;
+    /// Force flush any pending log records
+    force-flush: func() -> bool;
+    /// Finalize the exporter and flush remaining data
+    /// Consumes the exporter handle (WASI pattern)
+    finish: static func(this: log-exporter) -> bool;
+  }
+
+  /// Convert severity level to numeric value for OTLP compliance
+  severity-to-number: func(severity: severity-number) -> u8;
+
+  /// Serialize log records to OTLP format for export
+  /// Returns raw bytes ready for HTTP transport
+  /// Used internally by log-exporter.export-batch()
+  serialize-logs: func(logs: list<log-record>, service-resource: otel-resource, protocol: export-protocol) -> result<list<u8>, string>;
+}
+
+/// Complete OpenTelemetry metrics interface
+///
+/// This interface contains all metrics functionality: types, API resources,
+/// configuration, and export. A metrics-only component imports just this
+/// interface plus common foundation - no cross-signal dependencies.
+interface metrics {
+  use foundation.{attribute, attribute-value, otel-resource, instrumentation-scope};
+  use otel-export.{http-client, export-result, export-protocol};
+
+  /// ============================================================================
+  /// METRIC TYPES
+  /// ============================================================================
+  /// Metric instrument types following OpenTelemetry conventions
+  variant instrument-kind {
+    /// Counter - monotonically increasing values
+    counter,
+    /// UpDownCounter - values that can increase and decrease
+    up-down-counter,
+    /// Histogram - distribution of measurements
+    histogram,
+    /// Gauge - current value at a point in time
+    gauge,
+  }
+
+  /// Aggregation temporality for metric data points
+  variant aggregation-temporality {
+    /// Delta - measurements since last export
+    delta,
+    /// Cumulative - measurements since process start
+    cumulative,
+  }
+
+  /// Metric data point value types
+  variant metric-value {
+    /// 64-bit signed integer value
+    int64(s64),
+    /// IEEE 754 64-bit floating point value
+    %float64(f64),
+  }
+
+  /// Histogram bucket boundary and count
+  record histogram-bucket {
+    /// Upper boundary (exclusive, +Inf for last bucket)
+    upper-bound: f64,
+    /// Count of measurements in this bucket
+    count: u64,
+  }
+
+  /// Histogram data with distribution information
+  record histogram-data {
+    /// Total count of measurements
+    count: u64,
+    /// Sum of all measurements (optional)
+    sum: option<f64>,
+    /// Minimum measurement (optional)
+    min: option<f64>,
+    /// Maximum measurement (optional)
+    max: option<f64>,
+    /// Histogram buckets with counts
+    buckets: list<histogram-bucket>,
+  }
+
+  /// Exemplar - sample measurement with trace context
+  record exemplar {
+    /// Measurement value
+    value: f64,
+    /// Measurement timestamp (Unix epoch nanoseconds)
+    timestamp: u64,
+    /// Trace ID for correlation (16 bytes)
+    trace-id: option<list<u8>>,
+    /// Span ID for correlation (8 bytes)
+    span-id: option<list<u8>>,
+    /// Exemplar attributes
+    attributes: list<attribute>,
+  }
+
+  /// Complete metric data point for export
+  record metric-data-point {
+    /// Data point start time (Unix epoch nanoseconds)
+    start-time: u64,
+    /// Data point timestamp (Unix epoch nanoseconds)
+    timestamp: u64,
+    /// Metric value (counter, gauge, etc.)
+    value: option<metric-value>,
+    /// Histogram distribution data
+    histogram: option<histogram-data>,
+    /// Data point attributes (series identity)
+    attributes: list<attribute>,
+    /// Sample measurements with trace context
+    exemplars: list<exemplar>,
+  }
+
+  /// Complete metric for export
+  record metric-data {
+    /// Metric name (should be low cardinality)
+    name: string,
+    /// Metric description
+    description: option<string>,
+    /// Metric unit (e.g., "ms", "bytes", "1")
+    unit: option<string>,
+    /// Instrument type
+    kind: instrument-kind,
+    /// Aggregation temporality
+    temporality: aggregation-temporality,
+    /// Metric data points
+    data-points: list<metric-data-point>,
+    /// Instrumentation scope that created this metric (OTLP requirement)
+    instrumentation-scope: instrumentation-scope,
+  }
+
+  /// ============================================================================
+  /// METRIC CONFIGURATION
+  /// ============================================================================
+  /// Per-signal data limits to prevent resource exhaustion
+  record metric-limits-config {
+    /// Maximum attributes per metric data point
+    max-attributes-per-data-point: u32,
+    /// Maximum length of attribute values
+    attribute-value-length-limit: u32,
+    /// Maximum total attributes per metric
+    metric-attribute-count-limit: u32,
+    /// Maximum number of exemplars per data point
+    max-exemplars-per-data-point: u32,
+  }
+
+  /// ============================================================================
+  /// METRIC API - Leverages component-managed context from common interface
+  /// ============================================================================
+  /// Telemetry provider handle types
+  /// These are opaque handles to provider instances
+  type instrument = u32;
+
+  /// Meter provider resource for metrics collection
+  /// Creates and manages meter instances
+  resource meter-provider {
+    /// Get a meter for the given instrumentation scope
+    get-meter: func(name: string, version: option<string>, schema-url: option<string>, attributes: list<attribute>) -> meter;
+  }
+
+  /// Meter resource for metrics instrumentation
+  /// Creates instruments and records measurements
+  resource meter {
+    /// Create a counter instrument
+    create-counter: func(name: string, description: option<string>, unit: option<string>) -> instrument;
+    /// Create an up-down counter instrument
+    create-up-down-counter: func(name: string, description: option<string>, unit: option<string>) -> instrument;
+    /// Create a histogram instrument
+    create-histogram: func(name: string, description: option<string>, unit: option<string>) -> instrument;
+    /// Create a gauge instrument
+    create-gauge: func(name: string, description: option<string>, unit: option<string>) -> instrument;
+    /// Record a measurement on an instrument
+    record-measurement: func(instrument: instrument, value: f64, attributes: list<attribute>);
+    /// Check if this meter is enabled (optimization)
+    enabled: func() -> bool;
+  }
+
+  /// ============================================================================
+  /// METRIC EXPORT - Signal-specific export functionality (OTLP /v1/metrics)
+  /// ============================================================================
+  /// Metric exporter resource for OTLP metric export
+  /// Handles export to OTLP /v1/metrics endpoint
+  resource metric-exporter {
+    /// Create metric exporter with borrowed HTTP client
+    /// The http-client is shared across all signals
+    constructor(client: borrow<http-client>);
+    /// Add metrics to internal batch (does not trigger export)
+    add-metrics: func(metrics: list<metric-data>);
+    /// Set resource information for OTLP export
+    set-resource: func(service-resource: otel-resource);
+    /// Export accumulated metrics using the shared HTTP client
+    /// Serializes metrics to OTLP format and sends to /v1/metrics
+    /// Non-consuming - exporter can be reused for multiple batches
+    export-batch: func() -> export-result;
+    /// Force flush any pending metrics
+    force-flush: func() -> bool;
+    /// Finalize the exporter and flush remaining data
+    /// Consumes the exporter handle (WASI pattern)
+    finish: static func(this: metric-exporter) -> bool;
+  }
+
+  /// Serialize metrics to OTLP format for export
+  /// Returns raw bytes ready for HTTP transport
+  /// Used internally by metric-exporter.export-batch()
+  serialize-metrics: func(metrics: list<metric-data>, service-resource: otel-resource, protocol: export-protocol) -> result<list<u8>, string>;
+}
+
+/// Complete OpenTelemetry tracing interface
+///
+/// This interface contains all tracing functionality: types, API resources,
+/// configuration, and export. A tracing-only component imports just this
+/// interface plus common foundation - no cross-signal dependencies.
+interface trace {
+  use foundation.{attribute, attribute-value, otel-resource, instrumentation-scope};
+  use context.{span-context};
+  use otel-export.{http-client, export-result, export-protocol};
+
+  /// ============================================================================
+  /// TRACE TYPES
+  /// ============================================================================
+  /// OpenTelemetry span kind classification
+  variant span-kind {
+    /// Default internal operation
+    internal,
+    /// Incoming request handler
+    server,
+    /// Outgoing request caller
+    client,
+    /// Async operation initiator (doesn't wait for response)
+    producer,
+    /// Async operation processor
+    consumer,
+  }
+
+  /// Span completion status following OpenTelemetry conventions
+  variant span-status {
+    /// Default status - not explicitly set
+    unset,
+    /// Operation completed successfully
+    ok,
+    /// Operation completed with error
+    error(string),
+  }
+
+  /// Timestamped event within a span
+  record span-event {
+    /// Event name/type identifier
+    name: string,
+    /// Event occurrence timestamp (Unix epoch nanoseconds)
+    timestamp: u64,
+    /// Event metadata
+    attributes: list<attribute>,
+  }
+
+  /// Link to another span (for distributed tracing)
+  record span-link {
+    /// Target span context
+    context: span-context,
+    /// Link metadata
+    attributes: list<attribute>,
+  }
+
+  /// Complete span data for export
+  record span-data {
+    /// Operation name (should be low cardinality)
+    name: string,
+    /// Span identity and propagation context
+    context: span-context,
+    /// Parent span ID if this is a child span
+    parent-span-id: option<list<u8>>,
+    /// Operation type classification
+    kind: span-kind,
+    /// Span start time (Unix epoch nanoseconds)
+    start-time: u64,
+    /// Span end time (Unix epoch nanoseconds, none if still active)
+    end-time: option<u64>,
+    /// Span metadata
+    attributes: list<attribute>,
+    /// Timestamped events within span
+    events: list<span-event>,
+    /// Links to related spans
+    links: list<span-link>,
+    /// Final span status
+    status: span-status,
+    /// Instrumentation scope that created this span (OTLP requirement)
+    instrumentation-scope: instrumentation-scope,
+  }
+
+  /// ============================================================================
+  /// TRACE CONFIGURATION
+  /// ============================================================================
+  /// Sampling strategy configuration variants
+  variant sampler-config {
+    /// Sample all traces (100% sampling)
+    always-on,
+    /// Sample no traces (0% sampling)
+    always-off,
+    /// Sample based on trace ID hash ratio (0.0-1.0)
+    trace-id-ratio(f64),
+    /// Defer to parent span sampling decision (simplified)
+    parent-based,
+  }
+
+  /// Per-signal data limits to prevent resource exhaustion
+  record trace-limits-config {
+    /// Maximum attributes per span
+    max-attributes-per-span: u32,
+    /// Maximum events per span
+    max-events-per-span: u32,
+    /// Maximum links per span
+    max-links-per-span: u32,
+    /// Maximum length of attribute values
+    attribute-value-length-limit: u32,
+    /// Maximum total attributes per span
+    span-attribute-count-limit: u32,
+  }
+
+  /// ============================================================================
+  /// TRACE API - Leverages component-managed context from common interface
+  /// ============================================================================
+  /// Telemetry provider handle types
+  /// These are opaque handles to provider instances
+  type tracer = u32;
+
+  /// Span resource for distributed tracing
+  /// Follows WASI resource lifecycle with static finish method
+  resource span {
+    /// Get the span's context for propagation
+    get-context: func() -> span-context;
+    /// Check if span is recording telemetry data
+    is-recording: func() -> bool;
+    /// Add or update a span attribute
+    set-attribute: func(key: string, value: attribute-value);
+    /// Add a timestamped event to the span
+    add-event: func(name: string, attributes: list<attribute>, timestamp: option<u64>);
+    /// Add a link to another span (after span creation)
+    /// Links added after creation may not be considered by samplers
+    add-link: func(link: span-link);
+    /// Set the span's final status
+    set-status: func(status: span-status);
+    /// Update the span's operation name
+    update-name: func(name: string);
+    /// Record an exception as a span event
+    record-exception: func(exception-type: string, message: string, stacktrace: option<string>);
+    /// Finalize the span and return complete span data
+    /// This consumes the span resource (WASI pattern)
+    /// Must be called to complete telemetry collection
+    finish: static func(this: span, end-time: option<u64>) -> span-data;
+  }
+
+  /// Tracer provider resource for distributed tracing
+  /// Creates and manages tracer instances
+  resource tracer-provider {
+    /// Get a tracer for the given instrumentation scope
+    get-tracer: func(name: string, version: option<string>, schema-url: option<string>, attributes: list<attribute>) -> tracer;
+    /// Create a new span using active context from common interface
+    /// No context parameter needed - uses component-managed context
+    start-span: func(tracer: tracer, name: string, kind: span-kind, attributes: list<attribute>, links: list<span-link>, start-time: option<u64>) -> span;
+    /// Check if tracing is enabled (optimization)
+    tracer-enabled: func(tracer: tracer) -> bool;
+  }
+
+  /// ============================================================================
+  /// TRACE EXPORT - Signal-specific export functionality (OTLP /v1/traces)
+  /// ============================================================================
+  /// Trace exporter resource for OTLP trace export
+  /// Handles batching and export to OTLP /v1/traces endpoint
+  /// Uses shared http-client for actual HTTP transport
+  resource trace-exporter {
+    /// Create trace exporter with borrowed HTTP client
+    /// The http-client is shared across all signals
+    constructor(client: borrow<http-client>);
+    /// Add spans to internal batch (does not trigger export)
+    add-spans: func(spans: list<span-data>);
+    /// Set resource information for OTLP export
+    set-resource: func(service-resource: otel-resource);
+    /// Export accumulated spans using the shared HTTP client
+    /// Serializes spans to OTLP format and sends to /v1/traces
+    /// Non-consuming - exporter can be reused for multiple batches
+    export-batch: func() -> export-result;
+    /// Force flush any pending spans
+    force-flush: func() -> bool;
+    /// Finalize the exporter and flush remaining data
+    /// Consumes the exporter handle (WASI pattern)
+    finish: static func(this: trace-exporter) -> bool;
+  }
+
+  /// Serialize spans to OTLP format for export
+  /// Returns raw bytes ready for HTTP transport
+  /// Used internally by trace-exporter.export-batch()
+  serialize-spans: func(spans: list<span-data>, service-resource: otel-resource, protocol: export-protocol) -> result<list<u8>, string>;
+}
+
+/// World definitions for OpenTelemetry observability component composition
+///
+/// This file defines WebAssembly Component Model worlds for signal-specific
+/// and multi-signal component composition following Component Model best practices.
+/// Uses focused interface imports for minimal dependency surfaces.
+///
+/// Architecture:
+/// - otel-transport: HTTP transport component (imports wasi:http, exports otel-export)
+/// - Signal SDKs: Signal components (import otel-export, export signals)
+/// - WAC composition wires transport → signals for complete observability stack
+/// ============================================================================
+/// TRANSPORT COMPONENT WORLD
+/// ============================================================================
+/// Context provider component world
+/// Implements W3C TraceContext utilities and trace/span ID generation
+/// Exported as standalone component for WAC composition with signal components
+world context-provider {
+  import wasi:random/random@0.2.0;
+  import foundation;
+
+  export context;
+}
+/// OpenTelemetry HTTP transport component world
+/// Implements the http-client resource using WASI HTTP
+/// Exported as standalone component for WAC composition with signal components
+world otel-transport {
+  import wasi:io/poll@0.2.0;
+  import wasi:clocks/monotonic-clock@0.2.0;
+  import wasi:io/error@0.2.0;
+  import wasi:io/streams@0.2.0;
+  import wasi:http/types@0.2.0;
+  import wasi:http/outgoing-handler@0.2.0;
+  import foundation;
+
+  export otel-export;
+}
+/// ============================================================================
+/// SINGLE-SIGNAL WORLDS
+/// ============================================================================
+/// Tracing-only SDK component world
+/// Provides tracing providers and span management capabilities
+/// Composed with otel-transport via WAC for HTTP export
+world trace-sdk {
+  import foundation;
+  import context;
+  import otel-export;
+
+  export trace;
+}
+/// Tracing-instrumented application world
+world trace-app {
+  import foundation;
+  import context;
+  import otel-export;
+  import trace;
+}
+/// Logging-only SDK component world
+/// Provides logging providers and structured logging capabilities
+/// Composed with otel-transport via WAC for HTTP export
+world logs-sdk {
+  import foundation;
+  import otel-export;
+
+  export logs;
+}
+/// Logging-instrumented application world
+world logs-app {
+  import foundation;
+  import otel-export;
+  import logs;
+}
+/// Metrics-only SDK component world
+/// Provides meter providers and instrumentation capabilities
+/// Composed with otel-transport via WAC for HTTP export
+world metrics-sdk {
+  import foundation;
+  import otel-export;
+
+  export metrics;
+}
+/// Metrics-instrumented application world
+world metrics-app {
+  import foundation;
+  import otel-export;
+  import metrics;
+}
+/// ============================================================================
+/// MULTI-SIGNAL WORLDS
+/// ============================================================================
+/// Complete OpenTelemetry SDK component world
+/// Provides all observability signals with unified export
+/// Composed with otel-transport via WAC for HTTP export
+world otel-sdk {
+  import foundation;
+  import context;
+  import otel-export;
+
+  export trace;
+  export logs;
+  export metrics;
+}
