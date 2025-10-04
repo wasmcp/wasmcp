@@ -11,13 +11,12 @@
 //! - Returns JSON responses for successful requests
 //! - Provides appropriate error responses with HTTP status codes
 
-// Generated code - not formatted or linted
-#[rustfmt::skip]
-#[allow(clippy::all)]
-#[allow(dead_code)]
-#[allow(unused_imports)]
-#[allow(non_snake_case)]
-mod bindings;
+mod bindings {
+    wit_bindgen::generate!({
+        world: "http-transport",
+        generate_all,
+    });
+}
 
 pub mod http;
 
@@ -83,7 +82,10 @@ impl Guest for Component {
         let headers = Headers::new();
         let content_type = http::content_type_for_response(false);
         headers
-            .set("content-type", &[content_type.as_bytes().to_vec()])
+            .set(
+                &"content-type".to_string(),
+                &[content_type.as_bytes().to_vec()],
+            )
             .expect("Failed to set content-type header");
 
         let response = OutgoingResponse::new(headers);
@@ -112,7 +114,10 @@ fn send_error_response(response_out: ResponseOutparam, status: u16, message: &[u
     let headers = Headers::new();
     let content_type = http::content_type_for_response(true);
     headers
-        .set("content-type", &[content_type.as_bytes().to_vec()])
+        .set(
+            &"content-type".to_string(),
+            &[content_type.as_bytes().to_vec()],
+        )
         .expect("Failed to set content-type header");
 
     let response = OutgoingResponse::new(headers);

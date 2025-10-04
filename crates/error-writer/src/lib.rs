@@ -3,8 +3,12 @@
 //! This component exports the error-result interface for writing
 //! JSON-RPC error responses to output streams.
 
-#[allow(warnings)]
-mod bindings;
+mod bindings {
+    wit_bindgen::generate!({
+        world: "error-writer",
+        generate_all,
+    });
+}
 
 use bindings::exports::wasmcp::mcp::error_result::{
     Guest, Id, McpError, OutputStream, StreamError,
