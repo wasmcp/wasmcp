@@ -11,7 +11,7 @@ pub struct TraceExporterImpl {
 }
 
 pub struct TraceExporterInner {
-    http_client_id: u32, // Store the HTTP client ID instead of the resource
+    http_client_handle: u32, // Store the HTTP client handle from wit-bindgen
     spans: Vec<trace::SpanData>,
     resource: Option<foundation::OtelResource>,
     batch_size: usize,
@@ -93,12 +93,12 @@ impl TraceExporterImpl {
 }
 
 impl trace::GuestTraceExporter for TraceExporterImpl {
-    fn new(_client: &otel_export::HttpClient) -> Self {
-        // Store a reference to the HTTP client
-        // In a real implementation, we'd need to properly handle the borrow
-        // For now, we'll store an ID or handle
+    fn new(client: &otel_export::HttpClient) -> Self {
+        // Store the HTTP client handle so we can use it in export methods
+        let client_handle = client.handle();
+
         let inner = Arc::new(Mutex::new(TraceExporterInner {
-            http_client_id: 0, // This would be the actual client handle/ID
+            http_client_handle: client_handle,
             spans: Vec::new(),
             resource: None,
             batch_size: TraceExporterImpl::MAX_BATCH_SIZE,
@@ -128,51 +128,68 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
     }
 
     fn export_batch(&self) -> otel_export::ExportResult {
-        // Get the resource
-        let _resource = {
-            let inner = self.inner.lock().unwrap();
-            inner.resource.clone().unwrap_or_else(|| {
-                // Create a default resource if none set
-                foundation::OtelResource {
-                    attributes: vec![
-                        foundation::Attribute {
-                            key: "service.name".to_string(),
-                            value: foundation::AttributeValue::String("unknown_service".to_string()),
-                        },
-                    ],
-                    schema_url: None,
-                }
-            })
-        };
+        let mut inner = self.inner.lock().unwrap();
 
-        // Prepare a batch of spans
-        // Note: This is a workaround - in the real implementation, we'd need a mutable reference
-        // For now, we'll just check if we have spans
-        let span_count = {
-            let inner = self.inner.lock().unwrap();
-            inner.spans.len()
-        };
+        // If no spans, nothing to export
+        if inner.spans.is_empty() {
+            return otel_export::ExportResult::Success;
+        }
 
-        if span_count > 0 {
-            // In a real implementation, we'd get the actual HTTP client here
-            // For now, we'll return success if we have spans to export
+        // Get the resource (use default if not set)
+        let resource = inner.resource.clone().unwrap_or_else(|| {
+            foundation::OtelResource {
+                attributes: vec![
+                    foundation::Attribute {
+                        key: "service.name".to_string(),
+                        value: foundation::AttributeValue::String("unknown_service".to_string()),
+                    },
+                ],
+                schema_url: None,
+            }
+        });
 
-            // Simulate successful export
-            // In real implementation, this would call export_batch_internal
-            otel_export::ExportResult::Success
-        } else {
-            // No spans to export
-            otel_export::ExportResult::Success
+        // Take up to MAX_BATCH_SIZE spans
+        let batch_size = inner.spans.len().min(Self::MAX_BATCH_SIZE);
+        let batch: Vec<trace::SpanData> = inner.spans.drain(..batch_size).collect();
+
+        // Get the HTTP client handle
+        let client_handle = inner.http_client_handle;
+
+        // Release the lock before doing the export
+        drop(inner);
+
+        // Reconstruct the HttpClient from the handle
+        let http_client = unsafe { otel_export::HttpClient::from_handle(client_handle) };
+
+        // Export the batch using the internal implementation
+        match self.export_batch_internal(batch, &resource, &http_client) {
+            Ok(()) => otel_export::ExportResult::Success,
+            Err(msg) => otel_export::ExportResult::Failure(msg),
         }
     }
 
     fn force_flush(&self) -> bool {
-        // Export all pending spans
-        // In a real implementation, we'd actually export the spans
-        let mut inner = self.inner.lock().unwrap();
-        inner.spans.clear(); // Clear the spans as if they were exported
+        // Export all pending spans by repeatedly calling export_batch
+        loop {
+            let has_spans = {
+                let inner = self.inner.lock().unwrap();
+                !inner.spans.is_empty()
+            };
 
-        true // Return success
+            if !has_spans {
+                break;
+            }
+
+            // Export a batch
+            match self.export_batch() {
+                otel_export::ExportResult::Success => continue,
+                otel_export::ExportResult::Failure(_) | otel_export::ExportResult::PartialFailure(_) => {
+                    return false; // Export failed
+                }
+            }
+        }
+
+        true // All spans successfully exported
     }
 
     fn finish(exporter: trace::TraceExporter) -> bool {

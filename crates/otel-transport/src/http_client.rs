@@ -10,6 +10,9 @@ use crate::bindings::exports::wasi::otel_sdk::otel_export::{
 };
 
 use std::time::Duration;
+use std::io::Write;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 
 /// Send an OTLP request to the specified endpoint
 pub fn send_otlp_request(
@@ -68,6 +71,21 @@ fn send_single_request(
         Err(e) => return ExportResult::Failure(format!("Invalid URL: {}", e)),
     };
 
+    // Apply compression first (before setting content-length)
+    let final_payload = match config.compression {
+        CompressionType::Gzip => {
+            let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+            if let Err(_) = encoder.write_all(payload) {
+                return ExportResult::Failure("Failed to compress payload".to_string());
+            }
+            match encoder.finish() {
+                Ok(compressed) => compressed,
+                Err(_) => return ExportResult::Failure("Failed to finish compression".to_string()),
+            }
+        }
+        CompressionType::None => payload.to_vec(),
+    };
+
     // Create headers
     let headers = Fields::new();
 
@@ -76,29 +94,23 @@ fn send_single_request(
         return ExportResult::Failure("Failed to set content-type header".to_string());
     }
 
-    // Set content-length header
-    let content_length = payload.len().to_string();
+    // Set content-length header (using final payload size after compression)
+    let content_length = final_payload.len().to_string();
     if let Err(_) = headers.set(&"content-length".to_string(), &[content_length.as_bytes().to_vec()]) {
         return ExportResult::Failure("Failed to set content-length header".to_string());
+    }
+
+    // Set content-encoding header if compressed
+    if matches!(config.compression, CompressionType::Gzip) {
+        if let Err(_) = headers.set(&"content-encoding".to_string(), &[b"gzip".to_vec()]) {
+            return ExportResult::Failure("Failed to set content-encoding header".to_string());
+        }
     }
 
     // Apply authentication
     if let Err(e) = auth::apply_authentication(&config.authentication, &headers) {
         return ExportResult::Failure(format!("Failed to apply authentication: {}", e));
     }
-
-    // Apply compression if needed
-    let final_payload = match config.compression {
-        CompressionType::Gzip => {
-            // TODO: Implement gzip compression
-            // For now, just use uncompressed
-            if let Err(_) = headers.set(&"content-encoding".to_string(), &[b"gzip".to_vec()]) {
-                return ExportResult::Failure("Failed to set content-encoding header".to_string());
-            }
-            payload.to_vec()
-        }
-        CompressionType::None => payload.to_vec(),
-    };
 
     // Create the request
     let request = OutgoingRequest::new(headers);
