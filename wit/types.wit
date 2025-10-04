@@ -250,12 +250,19 @@ interface request {
         completion-complete(completion-params),
     }
 
-    enum feature {
+    @since(version = 0.3.1-alpha.1)
+    enum method {
         initialize,
-        tools,
-        resources,
-        prompts,
-        completion,
+        tools-list,
+        tools-call,
+        resources-list,
+        resources-read,
+        resources-templates-list,
+        prompts-list,
+        prompts-get,
+        completion-complete,
+        notifications-initialized,
+        ping,
     }
 
     /// MCP request resource providing lazy access to request data
@@ -279,9 +286,9 @@ interface request {
         @since(version = 0.3.0)
         id: func() -> id;
 
-        /// Get the capability required for this request.
-        @since(version = 0.3.0) 
-        feature: func() -> feature;
+        /// Get the method name of this request.
+        @since(version = 0.3.1-alpha.1)
+        method: func() -> method;
 
         /// Get the request parameters.
         @since(version = 0.3.0)
@@ -297,12 +304,418 @@ interface request {
 
         /// Check if this request needs the provided capabilities.
         /// Registers capabilities during initialize requests and returns false (forward to next handler).
-        /// For other requests, returns true if the request feature matches the provided capabilities.
+        /// For other requests, returns true if the request method matches the provided capabilities.
         @since(version = 0.3.0)
         needs: func(capabilities: server-capabilities) -> bool;
 
         /// Get the server capabilities associated with this request.
         @since(version = 0.3.0)
         get-capabilities: func() -> result<option<server-capabilities>>;
+    }
+}
+
+/// MCP session management and related features
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#session>
+@since(version = 0.3.1-alpha.1)
+interface session {
+    use request.{request};
+
+    /// Errors that can occur during session operations.
+    @since(version = 0.3.1-alpha.1)
+    variant session-error {
+        /// Access to the session's store is denied.
+        access-denied,
+        /// Some error occurred.
+        other(string),
+    }
+
+    /// MCP session resource for request-scoped context storage
+    @since(version = 0.3.1-alpha.1)
+    resource session {
+        /// Get the session ID.
+        @since(version = 0.3.1-alpha.1)
+        id: func() -> string;
+
+        /// Check if the session is still active.
+        /// Returns false if the session has been terminated.
+        @since(version = 0.3.1-alpha.1)
+        is-active: func() -> result<bool, session-error>;
+
+        /// Get a persistent session context value by key.
+        @since(version = 0.3.1-alpha.1)
+        get: func(key: string) -> result<option<list<u8>>, session-error>;
+
+        /// Set a persistent session context value by key.
+        @since(version = 0.3.1-alpha.1)
+        set: func(key: string, value: list<u8>) -> result<_, session-error>;
+
+        /// Terminate the session, optionally providing a reason.
+        /// is-active will return false after termination.
+        ///
+        /// Data associated with the terminated session is NOT deleted.
+        /// Use delete() to remove all session data.
+        ///
+        /// Idempotent - terminating an already terminated session is a no-op.
+        @since(version = 0.3.1-alpha.1)
+        terminate: func(reason: option<string>) -> result<_, session-error>;
+    }
+
+    /// Create a new session with a globally unique and cryptographically secure ID.
+    /// The session is initially empty and can be populated with persistent context values.
+    @since(version = 0.3.1-alpha.1)
+    new: func() -> result<session, session-error>;
+
+    /// Attach a session to an MCP request context.
+    /// This allows downstream handlers to retrieve the session.
+    /// Fails if the request already has a session ID registered.
+    @since(version = 0.3.1-alpha.1)
+    attach: func(session: borrow<session>, req: borrow<request>) -> result<_, session-error>;
+
+    /// Get an existing session from an MCP request context, if one is attached.
+    @since(version = 0.3.1-alpha.1)
+    get: func(req: borrow<request>) -> result<option<session>, session-error>;
+
+    /// Deletes all data associated with the session.
+    /// After deleting, the session is invalid and cannot be used.
+    @since(version = 0.3.1-alpha.1)
+    delete: func(session: session) -> result<_, session-error>;
+}
+
+@since(version = 0.3.1-alpha.1)
+interface elicitation {
+    use wasi:io/streams@0.2.3.{output-stream, stream-error};
+    use types.{meta};
+    use session.{session};
+
+    @since(version = 0.3.1-alpha.1)
+    enum string-schema-format {
+        uri,
+        email,
+        date,
+        date-time,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#stringschema
+    @since(version = 0.3.1-alpha.1)
+    record string-schema {
+        description: option<string>,
+        format: option<string-schema-format>,
+        max-length: option<u32>,
+        min-length: option<u32>,
+        title: option<string>,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    enum number-schema-type {
+        number,
+        integer,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#numberschema
+    @since(version = 0.3.1-alpha.1)
+    record number-schema {
+        description: option<string>,
+        maximum: option<f64>,
+        minimum: option<f64>,
+        title: option<string>,
+        %type: number-schema-type,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#booleanschema
+    @since(version = 0.3.1-alpha.1)
+    record boolean-schema {
+        default: option<bool>,
+        description: option<string>,
+        title: option<string>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#enumschema
+    @since(version = 0.3.1-alpha.1)
+    record enum-schema {
+        description: option<string>,
+        %enum: list<string>,
+        enum-names: option<list<string>>,
+        title: option<string>,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    variant primitive-schema-definition {
+        string-schema(string-schema),
+        number-schema(number-schema),
+        boolean-schema(boolean-schema),
+        enum-schema(enum-schema),
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    record requested-schema {
+        properties: list<tuple<string, primitive-schema-definition>>,
+        required: option<list<string>>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitrequest
+    @since(version = 0.3.1-alpha.1)
+    record elicit-request {
+        message: string,
+        requested-schema: requested-schema,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    enum elicit-result-action {
+        accept,
+        decline,
+        cancel,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    variant elicit-result-content {
+        %string(string),
+        number(f64),
+        boolean(bool),
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitresult
+    @since(version = 0.3.1-alpha.1)
+    record elicit-result {
+        meta: meta,
+        action: elicit-result-action,
+        content: option<list<tuple<string, elicit-result-content>>>,
+    }
+
+    /// Elicit information from the client.
+    /// Blocks until the elicitation is complete.
+    /// 
+    /// https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
+    @since(version = 0.3.1-alpha.1)
+    elicit: func(session: borrow<session>, output: borrow<output-stream>, elicitation: elicit-request) -> result<elicit-result, stream-error>;
+}
+
+/// Content types and structures for MCP messages.
+///
+/// This interface defines the content blocks that can be included in MCP messages,
+/// mapping directly to the ContentBlock type union in the MCP specification.
+///
+/// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
+@since(version = 0.3.0)
+interface content {
+    use types.{meta};
+
+    /// Role in a conversation.
+    ///
+    /// Maps to the Role type in the MCP spec:
+    /// "The sender or recipient of messages and data in a conversation."
+    /// Valid values: "user" | "assistant"
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#role>
+    @since(version = 0.3.0)
+    enum role {
+        user,
+        assistant,
+    }
+
+    /// Optional annotations for the client.
+    ///
+    /// The client can use annotations to inform how objects are used or displayed.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#annotations>
+    @since(version = 0.3.0)
+    record annotations {
+        /// Describes who the intended customer of this object or data is.
+        ///
+        /// It can include multiple entries to indicate content useful for multiple audiences (e.g., [“user”, “assistant”]).
+        audience: option<list<role>>,
+
+        /// The moment the resource was last modified, as an ISO 8601 formatted string.
+        ///
+        /// Should be an ISO 8601 formatted string (e.g., “2025-01-12T15:00:58Z”).
+        ///
+        /// Examples: last activity timestamp in an open file, timestamp when the resource was attached, etc.
+        last-modified: option<string>,
+
+        /// Describes how important this data is for operating the server.
+        ///
+        /// A value of 1 means “most important,” and indicates that the data is effectively required, while 0 means “least important,” and indicates that the data is entirely optional.
+        priority: f64,
+    }
+
+    /// Options for content blocks.
+    @since(version = 0.3.0)
+    record content-options {
+        /// Optional annotations for the client.
+        annotations: option<annotations>,
+        /// Optional metadata.
+        ///
+        /// See: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
+        meta: meta,
+    }
+    
+    /// Text provided to or from an LLM.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#textcontent>
+    @since(version = 0.3.0)
+    record text-content {
+        /// The text content of the message.
+        text: string,
+        options: option<content-options>,
+    }
+
+    /// An image provided to or from an LLM.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#imagecontent>
+    @since(version = 0.3.0)
+    record image-content {
+        /// The base64-encoded image data.
+        data: list<u8>,
+        /// The MIME type of the image. Different providers may support different image types.
+        mime-type: string,
+        options: option<content-options>,
+    }
+
+    /// Audio provided to or from an LLM.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#audiocontent>
+    @since(version = 0.3.0)
+    record audio-content {
+        /// The base64-encoded audio data.
+        data: list<u8>,
+        /// The MIME type of the audio. Different providers may support different audio types.
+        mime-type: string,
+        options: option<content-options>,
+    }
+
+    /// Options for resource link content.
+    @since(version = 0.3.0)
+    record resource-link-content-options {
+        title: option<string>,
+        description: option<string>,
+        size: option<u64>,
+        mime-type: option<string>,
+        /// Optional annotations for the client.
+        annotations: option<annotations>,
+        /// Optional metadata.
+        ///
+        /// See: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
+        meta: meta,
+    }
+    
+    /// A resource that the server is capable of reading, included in a prompt or tool call result.
+    ///
+    /// Note: resource links returned by tools are not guaranteed to appear in the results of resources/list requests.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcelink>
+    @since(version = 0.3.0)
+    record resource-link-content {
+        /// The URI of this resource.
+        uri: string,
+        /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn’t present).
+        name: string,
+        options: option<resource-link-content-options>,
+    }
+
+    /// Options for embedded resources.
+    @since(version = 0.3.0)
+    record embedded-resource-options {
+        mime-type: option<string>,
+        meta: meta,
+    }
+
+    /// Text resource contents.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#textresourcecontents>
+    @since(version = 0.3.0)
+    record text-resource-contents {
+        uri: string,
+        text: string,
+        options: option<embedded-resource-options>,
+    }
+
+    /// Binary resource contents.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#blobresourcecontents>
+    @since(version = 0.3.0)
+    record blob-resource-contents {
+        uri: string,
+        blob: list<u8>,
+        options: option<embedded-resource-options>,
+    }
+
+    /// Embedded resource data.
+    @since(version = 0.3.0)
+    variant embedded-resource {
+        text(text-resource-contents),
+        blob(blob-resource-contents),
+    }
+
+    /// Embedded resource with content options.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#embeddedresource>
+    @since(version = 0.3.0)
+    record embedded-resource-content {
+        %resource: embedded-resource,
+        options: option<content-options>,
+    }
+
+    /// Content blocks that can be included in messages.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
+    @since(version = 0.3.0)
+    variant content-block {
+        text(text-content),
+        image(image-content),
+        audio(audio-content),
+        resource-link(resource-link-content),
+        embedded-resource(embedded-resource-content),
+    }
+}
+
+@since(version = 0.3.1-alpha.1)
+interface tool-types {
+    use types.{cursor, meta, json};
+    use content.{content-block};
+
+    /// Hints about tool behavior.
+    @since(version = 0.3.0)
+    flags tool-hints {
+        destructive,
+        idempotent,
+        open-world,
+        read-only,
+    }
+
+    /// Annotations for tool capabilities.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
+    @since(version = 0.3.0)
+    record tool-annotations {
+        hints: tool-hints,
+        title: option<string>,
+    }
+
+    /// Optional properties for tool definitions.
+    @since(version = 0.3.0)
+    record tool-options {
+        meta: meta,
+        annotations: option<tool-annotations>,
+        description: option<string>,
+        output-schema: option<json>,
+        title: option<string>,
+    }
+
+    /// Tool definition.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
+    @since(version = 0.3.0)
+    record tool {
+        name: string,
+        input-schema: string,
+        options: option<tool-options>,
+    }
+
+    /// Options for list-tools results.
+    @since(version = 0.3.0)
+    record options {
+        meta: meta,
+        next-cursor: option<cursor>,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    variant call-tool-result {
+        text(string),
+        error(string),
+        content(list<content-block>),        
     }
 }

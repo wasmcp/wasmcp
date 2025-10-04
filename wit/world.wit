@@ -1,4 +1,4 @@
-package wasmcp:mcp@0.3.0;
+package wasmcp:mcp@0.3.1-alpha.1;
 
 // A WIT framework for composing Model Context Protocol servers as WebAssembly components.
 //
@@ -32,17 +32,6 @@ world http-transport {
     import incoming-handler;
 }
 
-/// Handler world for MCP initialization.
-///
-/// Terminates the middleware chain by processing initialize requests
-/// using capabilities accumulated from upstream handlers.
-@since(version = 0.3.0)
-world initialize-handler {
-    import error-result;
-    import initialize-result;
-    export incoming-handler;
-}
-
 /// Middleware world for request interception.
 ///
 /// Both imports and exports the handler interface, enabling components
@@ -51,41 +40,4 @@ world initialize-handler {
 world middleware {
     import incoming-handler;
     export incoming-handler;
-}
-
-/// Handler world for MCP tool operations.
-@since(version = 0.3.0)
-world tools-handler {
-    include middleware;
-    import error-result;
-    import tools-list-result;
-    import tools-call-content;
-    import tools-call-structured;
-}
-
-/// Handler world for MCP resource operations.
-@since(version = 0.3.0)
-world resources-handler {
-    include middleware;
-    import error-result;
-    import resources-list-result;
-    import resources-read-result;
-    import resource-templates-list-result;
-}
-
-/// Handler world for MCP prompt operations.
-@since(version = 0.3.0)
-world prompts-handler {
-    include middleware;
-    import error-result;
-    import prompts-list-result;
-    import prompts-get-result;
-}
-
-/// Handler world for MCP completion operations.
-@since(version = 0.3.0)
-world completion-handler {
-    include middleware;
-    import error-result;
-    import completion-complete-result;
 }

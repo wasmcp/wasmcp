@@ -1,179 +1,5 @@
 use wasi:io/streams@0.2.3;
 
-/// Content types and structures for MCP messages.
-///
-/// This interface defines the content blocks that can be included in MCP messages,
-/// mapping directly to the ContentBlock type union in the MCP specification.
-///
-/// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
-@since(version = 0.3.0)
-interface content {
-    use types.{meta};
-
-    /// Role in a conversation.
-    ///
-    /// Maps to the Role type in the MCP spec:
-    /// "The sender or recipient of messages and data in a conversation."
-    /// Valid values: "user" | "assistant"
-    ///
-    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#role>
-    @since(version = 0.3.0)
-    enum role {
-        user,
-        assistant,
-    }
-
-    /// Optional annotations for the client.
-    ///
-    /// The client can use annotations to inform how objects are used or displayed.
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#annotations>
-    @since(version = 0.3.0)
-    record annotations {
-        /// Describes who the intended customer of this object or data is.
-        ///
-        /// It can include multiple entries to indicate content useful for multiple audiences (e.g., [“user”, “assistant”]).
-        audience: option<list<role>>,
-
-        /// The moment the resource was last modified, as an ISO 8601 formatted string.
-        ///
-        /// Should be an ISO 8601 formatted string (e.g., “2025-01-12T15:00:58Z”).
-        ///
-        /// Examples: last activity timestamp in an open file, timestamp when the resource was attached, etc.
-        last-modified: option<string>,
-
-        /// Describes how important this data is for operating the server.
-        ///
-        /// A value of 1 means “most important,” and indicates that the data is effectively required, while 0 means “least important,” and indicates that the data is entirely optional.
-        priority: f64,
-    }
-
-    /// Options for content blocks.
-    @since(version = 0.3.0)
-    record content-options {
-        /// Optional annotations for the client.
-        annotations: option<annotations>,
-        /// Optional metadata.
-        ///
-        /// See: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
-        meta: meta,
-    }
-    
-    /// Text provided to or from an LLM.
-    ///
-    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#textcontent>
-    @since(version = 0.3.0)
-    record text-content {
-        /// The text content of the message.
-        text: string,
-        options: option<content-options>,
-    }
-
-    /// An image provided to or from an LLM.
-    ///
-    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#imagecontent>
-    @since(version = 0.3.0)
-    record image-content {
-        /// The base64-encoded image data.
-        data: list<u8>,
-        /// The MIME type of the image. Different providers may support different image types.
-        mime-type: string,
-        options: option<content-options>,
-    }
-
-    /// Audio provided to or from an LLM.
-    ///
-    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#audiocontent>
-    @since(version = 0.3.0)
-    record audio-content {
-        /// The base64-encoded audio data.
-        data: list<u8>,
-        /// The MIME type of the audio. Different providers may support different audio types.
-        mime-type: string,
-        options: option<content-options>,
-    }
-
-    /// Options for resource link content.
-    @since(version = 0.3.0)
-    record resource-link-content-options {
-        title: option<string>,
-        description: option<string>,
-        size: option<u64>,
-        mime-type: option<string>,
-        /// Optional annotations for the client.
-        annotations: option<annotations>,
-        /// Optional metadata.
-        ///
-        /// See: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
-        meta: meta,
-    }
-    
-    /// A resource that the server is capable of reading, included in a prompt or tool call result.
-    ///
-    /// Note: resource links returned by tools are not guaranteed to appear in the results of resources/list requests.
-    ///
-    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcelink>
-    @since(version = 0.3.0)
-    record resource-link-content {
-        /// The URI of this resource.
-        uri: string,
-        /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn’t present).
-        name: string,
-        options: option<resource-link-content-options>,
-    }
-
-    /// Options for embedded resources.
-    @since(version = 0.3.0)
-    record embedded-resource-options {
-        mime-type: option<string>,
-        meta: meta,
-    }
-
-    /// Text resource contents.
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#textresourcecontents>
-    @since(version = 0.3.0)
-    record text-resource-contents {
-        uri: string,
-        text: string,
-        options: option<embedded-resource-options>,
-    }
-
-    /// Binary resource contents.
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#blobresourcecontents>
-    @since(version = 0.3.0)
-    record blob-resource-contents {
-        uri: string,
-        blob: list<u8>,
-        options: option<embedded-resource-options>,
-    }
-
-    /// Embedded resource data.
-    @since(version = 0.3.0)
-    variant embedded-resource {
-        text(text-resource-contents),
-        blob(blob-resource-contents),
-    }
-
-    /// Embedded resource with content options.
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#embeddedresource>
-    @since(version = 0.3.0)
-    record embedded-resource-content {
-        %resource: embedded-resource,
-        options: option<content-options>,
-    }
-
-    /// Content blocks that can be included in messages.
-    ///
-    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
-    @since(version = 0.3.0)
-    variant content-block {
-        text(text-content),
-        image(image-content),
-        audio(audio-content),
-        resource-link(resource-link-content),
-        embedded-resource(embedded-resource-content),
-    }
-}
-
 /// Writes JSON-RPC error responses to an output stream.
 ///
 /// This interface provides a standardized way to write error responses
@@ -219,7 +45,7 @@ interface initialize-result {
     }
 
     @since(version = 0.3.0)
-    write: func(id: id, output: output-stream, %result: initialize-result) -> result<_, stream-error>;
+    write: func(id: id, output: borrow<output-stream>, %result: initialize-result) -> result<_, stream-error>;
 }
 
 /// Writes tools/list results to an output stream.
@@ -227,55 +53,13 @@ interface initialize-result {
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-list>
 @since(version = 0.3.0)
 interface tools-list-result {
+    use types.{id};
     use streams.{output-stream, stream-error};
-    use types.{id, cursor, meta, json};
-
-    /// Hints about tool behavior.
-    @since(version = 0.3.0)
-    flags tool-hints {
-        destructive,
-        idempotent,
-        open-world,
-        read-only,
-    }
-
-    /// Annotations for tool capabilities.
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
-    @since(version = 0.3.0)
-    record tool-annotations {
-        hints: tool-hints,
-        title: option<string>,
-    }
-
-    /// Optional properties for tool definitions.
-    @since(version = 0.3.0)
-    record tool-options {
-        meta: meta,
-        annotations: option<tool-annotations>,
-        description: option<string>,
-        output-schema: option<json>,
-        title: option<string>,
-    }
-
-    /// Tool definition.
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
-    @since(version = 0.3.0)
-    record tool {
-        name: string,
-        input-schema: string,
-        options: option<tool-options>,
-    }
-
-    /// Options for list-tools results.
-    @since(version = 0.3.0)
-    record options {
-        meta: meta,
-        next-cursor: option<cursor>,
-    }
+    use tool-types.{tool, options};
 
     write: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         tools: list<tool>,
         options: option<options>
     ) -> result<_, stream-error>;
@@ -310,20 +94,20 @@ interface tools-call-content {
 
     write-text: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         text: string,
         options: option<options>
     ) -> result<_, stream-error>;
 
     write-error: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         reason: string
     ) -> result<_, stream-error>;
 
     write: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         content: list<content-block>,
         options: option<options>
     ) -> result<_, stream-error>;
@@ -358,7 +142,7 @@ interface tools-call-structured {
 
     write: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         structured: json,
         options: option<options>
     ) -> result<_, stream-error>;
@@ -399,7 +183,7 @@ interface resources-list-result {
 
     write: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         resources: list<%resource>,
         options: option<options>
     ) -> result<_, stream-error>;
@@ -445,7 +229,7 @@ interface resources-read-result {
 
     write: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         contents: contents,
         options: option<options>
     ) -> result<_, stream-error>;
@@ -497,7 +281,7 @@ interface resource-templates-list-result {
 
     write: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         templates: list<template>,
         options: option<options>
     ) -> result<_, stream-error>;
@@ -554,7 +338,7 @@ interface prompts-list-result {
 
     write: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         prompts: list<prompt>,
         options: option<options>
     ) -> result<_, stream-error>;
@@ -595,7 +379,7 @@ interface prompts-get-result {
 
     write: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         messages: list<message>,
         options: option<options>
     ) -> result<_, stream-error>;
@@ -627,7 +411,7 @@ interface completion-complete-result {
 
     write: func(
         id: id,
-        output: output-stream,
+        output: borrow<output-stream>,
         values: list<string>,
         options: option<options>
     ) -> result<_, stream-error>;
@@ -644,37 +428,64 @@ interface completion-complete-result {
     ) -> result<writer, stream-error>;
 }
 
-@since(version = 0.3.0)
-world error-writer {
-    export error-result;
-}
+/// Notifications from MCP server to client.
+///
+/// https://modelcontextprotocol.io/specification/2025-06-18/server/tools#list-changed-notification
+@since(version = 0.3.1-alpha.1)
+interface notifications {
+    use wasi:io/streams@0.2.3.{output-stream, stream-error};
 
-@since(version = 0.3.0)
-world initialize-writer {
-    export initialize-result;
-}
+    @since(version = 0.3.1-alpha.1)
+    enum changed {
+        /// https://modelcontextprotocol.io/specification/2025-06-18/schema#notifications%2Ftools%2Flist-changed
+        tools,
+        /// https://modelcontextprotocol.io/specification/2025-06-18/schema#notifications%2Fresources%2Flist-changed
+        resources,
+        /// https://modelcontextprotocol.io/specification/2025-06-18/schema#notifications%2Fprompts%2Flist-changed
+        prompts,
+    }
 
-@since(version = 0.3.0)
-world tools-writer {
-    export tools-list-result;
-    export tools-call-content;
-    export tools-call-structured;
-}
+    @since(version = 0.3.1-alpha.1)
+    list-changed: func(output: borrow<output-stream>, changed: changed) -> result<_, stream-error>;
 
-@since(version = 0.3.0)
-world resources-writer {
-    export resources-list-result;
-    export resources-read-result;
-    export resource-templates-list-result;
-}
+    @since(version = 0.3.1-alpha.1)
+    variant updated {
+        /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resourceupdatednotification
+        resource-uri(string),
+    }
 
-@since(version = 0.3.0)
-world prompts-writer {
-    export prompts-list-result;
-    export prompts-get-result;
-}
+    @since(version = 0.3.1-alpha.1)
+    update: func(output: borrow<output-stream>, updated: updated) -> result<_, stream-error>;
 
-@since(version = 0.3.0)
-world completion-writer {
-    export completion-complete-result;
+    /// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/logging#log-levels
+    @since(version = 0.3.1-alpha.1)
+    enum log-level {
+        /// Detailed debugging information
+        debug,
+        /// General informational messages
+        info,
+        /// Normal but significant events
+        notice,
+        /// Warning conditions
+        warning,
+        /// Error conditions
+        error,
+        /// Critical conditions
+        critical,
+        /// Action must be taken immediately
+        alert,
+        /// System is unusable
+        emergency,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#loggingmessagenotification
+    @since(version = 0.3.1-alpha.1)
+    record log-message {
+        level: log-level,
+        logger: option<string>,
+        data: list<u8>,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    log: func(output: borrow<output-stream>, message: log-message) -> result<_, stream-error>;
 }
