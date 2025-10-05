@@ -1,7 +1,7 @@
 /// MCP request context
 @since(version = 0.3.1-alpha.1)
-interface context {
-    use wasi:io/streams@0.2.3.{input-stream, output-stream, stream-error};
+interface request {
+    use wasi:io/streams@0.2.3.{input-stream, stream-error};
 
     @since(version = 0.3.1-alpha.1)
     enum method {
@@ -107,7 +107,7 @@ interface context {
     /// Initialize request parameters.
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
     @since(version = 0.3.0)
-    record initialize-request {
+    record initialize-params {
         capabilities: client-capabilities,
         client-info: implementation,
         protocol-version: protocol-version,
@@ -147,7 +147,7 @@ interface context {
 
     /// Parameters for completion requests.
     @since(version = 0.3.0)
-    record complete-request {
+    record complete-params {
         argument: completion-argument,
         ref: completion-ref,
         context: option<completion-context>,
@@ -169,7 +169,7 @@ interface context {
     variant params {
         /// initialize
         /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
-        initialize(initialize-request),
+        initialize(initialize-params),
 
         /// tools/list
         tools-list(cursor),
@@ -195,7 +195,7 @@ interface context {
         prompts-get(args),
 
         /// completion/complete
-        completion-complete(complete-request),
+        completion-complete(complete-params),
     }
 
     enum transport {
@@ -213,11 +213,7 @@ interface context {
 
     /// MCP request context
     @since(version = 0.3.0)
-    resource context {
-        /// Buffer a JSON-RPC 2.0 request from an input stream.
-        /// The transport protocol must be specified because the parsing implementation varies.
-        parse: static func(input: borrow<input-stream>, output: output-stream, transport: transport) -> result<context, stream-error>;
-
+    resource request {
         /// Get the request ID.
         @since(version = 0.3.0)
         id: func() -> id;
@@ -241,13 +237,11 @@ interface context {
         /// Set a request-scoped context value by key.
         @since(version = 0.3.0)
         set: func(key: string, value: string);
-
-        /// Get the output stream associated with this request.
-        /// Used for writing incremental responses and notifications.
-        ///
-        /// This can only be called once per context instance, because it transfers ownership of the output stream
-        /// to the caller. Subsequent calls will return an error.
-        @since(version = 0.3.1-alpha.1)
-        consume-output: func() -> result<output-stream>;
     }
+
+    /// Parse a JSON-RPC 2.0 request from an HTTP input stream.
+    parse-http: func(input: borrow<input-stream>) -> result<request, stream-error>;
+
+    /// Parse a JSON-RPC 2.0 request from a standard input stream.
+    parse-stdio: func(input: borrow<input-stream>) -> result<request, stream-error>;
 }

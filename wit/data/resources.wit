@@ -67,15 +67,15 @@ interface resources-handler {
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Flist
     @since(version = 0.3.1-alpha.1)
-    list-resources: func(ctx: borrow<context>, cursor: cursor) -> result<list<%resource>, error>;
+    list-resources: func(req: request, res: output-stream) -> result<_, error>;
  
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Fread
     @since(version = 0.3.1-alpha.1)
-    read-resource: func(ctx: borrow<context>, uri: uri) -> result<list<resource-contents>, error>;
+    read-resource: func(req: request, res: output-stream) -> result<_, error>;
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Ftemplates%2Flist
     @since(version = 0.3.1-alpha.1)
-    list-resource-templates: func(ctx: borrow<context>, cursor: cursor) -> result<list<template>, error>;
+    list-resource-templates: func(req: request, res: output-stream) -> result<_, error>;
 }
 
 /// Handle resource subscriptions methods
@@ -87,11 +87,11 @@ interface resource-subscriptions-handler {
     /// 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Fsubscribe
     @since(version = 0.3.1-alpha.1)
-    subscribe: func(ctx: borrow<context>, uri: uri) -> result<_, error>;
+    subscribe: func(req: request, res: output-stream) -> result<_, error>;
 
     /// Unsubscribe from resource updates.
     /// 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Funsubscribe
     @since(version = 0.3.1-alpha.1)
-    unsubscribe: func(ctx: borrow<context>, uri: uri) -> result<_, error>;
+    unsubscribe: func(req: request, res: output-stream) -> result<_, error>;
 }

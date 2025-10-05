@@ -4,7 +4,7 @@
 @since(version = 0.3.1-alpha.1)
 interface session {
     use wasi:io/streams@0.2.3.{output-stream, stream-error};
-    use context.{context};
+    use request.{request};
 
     @since(version = 0.3.1-alpha.1)
     enum string-schema-format {
@@ -160,9 +160,9 @@ interface session {
     /// Attach a session to an MCP request context.
     /// This allows downstream handlers to retrieve the session.
     @since(version = 0.3.1-alpha.1)
-    attach: func(ctx: borrow<context>, session: borrow<session>);
+    attach: func(req: borrow<request>, session: borrow<session>);
 
     /// Get an existing session from an MCP request context, if one is attached.
     @since(version = 0.3.1-alpha.1)
-    get: func(ctx: borrow<context>) -> result<option<session>, session-error>;
+    get: func(req: borrow<request>) -> result<option<session>, session-error>;
 }

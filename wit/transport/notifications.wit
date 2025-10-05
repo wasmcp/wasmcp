@@ -53,4 +53,26 @@ interface notifications {
     /// Send a `notifications/resources/updated` notification to the client.
     @since(version = 0.3.1-alpha.1)
     resource-updated: func(output: borrow<output-stream>, uri: string) -> result<_, stream-error>;
+
+    resource notifications {
+        constructor(output: output-stream);
+
+        // Send a JSON-RPC notification to the client.
+        @since(version = 0.3.1-alpha.1)
+        send: func(notification: notification) -> result<_, stream-error>;
+
+        /// Log a message to the client.
+        @since(version = 0.3.1-alpha.1)
+        log: func(message: log-message) -> result<_, stream-error>;
+
+        tools-list-changed: func() -> result<_, stream-error>;
+
+        resources-list-changed: func() -> result<_, stream-error>;
+
+        prompts-list-changed: func() -> result<_, stream-error>;
+
+        /// Send a `notifications/resources/updated` notification to the client.
+        @since(version = 0.3.1-alpha.1)
+        resource-updated: func(uri: string) -> result<_, stream-error>;
+    }
 }

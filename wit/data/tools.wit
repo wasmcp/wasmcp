@@ -1,8 +1,23 @@
+interface tools-context {
+    use request.{request};
+    resource list-tools-context {
+        request: func() -> request;
+        cursor: func() -> option<string>;
+    }
+
+    resource call-tool-context {
+        request: func() -> request;
+        name: func() -> string;
+        args: func() -> option<string>;
+    }
+}
+
 /// Handle tools/ methods
 @since(version = 0.3.1-alpha.1)
 interface tools-handler {
     use wasi:io/streams@0.2.3.{output-stream};
-    use context.{context, cursor, args, error};
+    use context.{context};
+    use request.{cursor, error};
     use content.{content-block};
 
     /// Hints about tool behavior.
@@ -51,9 +66,9 @@ interface tools-handler {
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#tools%2Flist
     @since(version = 0.3.1-alpha.1)
-    list-tools: func(ctx: borrow<context>, cursor: cursor) -> result<list<tool>, error>;
+    list-tools: func(req: request, res: output-stream) -> result<_, error>;
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#tools%2Fcall
     @since(version = 0.3.1-alpha.1)
-    call-tool: func(ctx: borrow<context>, req: args) -> result<tool-result, error>;
+    call-tool: func(req: request, res: output-stream) -> result<_, error>;
 }

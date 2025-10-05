@@ -2,7 +2,7 @@
 @since(version = 0.3.1-alpha.1)
 interface completions-handler {
     use wasi:io/streams@0.2.3.{output-stream};
-    use context.{context, complete-request, error};
+    use wasmcp:lifecycle/context.{context, complete-request, error};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/schema#completeresult
     record complete-result {

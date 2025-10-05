@@ -5,13 +5,13 @@
 @since(version = 0.3.0)
 interface incoming-handler {
     use wasi:io/streams@0.2.3.{output-stream};
-    use context.{context};
+    use request.{request};
 
     /// Handle an incoming MCP request and write the response to the output stream.
     /// The handler receives ownership of the request resource, allowing it to
     /// either process the request or forward it to the next handler in the chain.
     @since(version = 0.3.0)
-    handle: func(ctx: context, output: output-stream);
+    handle: func(req: request, output: output-stream);
 }
 
 /// Middleware world for request interception.
