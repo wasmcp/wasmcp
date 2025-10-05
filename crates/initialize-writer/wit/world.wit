@@ -1,0 +1,5 @@
+package wasmcp:initialize-writer@0.3.1-alpha.1;
+
+world initialize-writer {
+    export wasmcp:mcp/initialize-result@0.3.1-alpha.1;
+}

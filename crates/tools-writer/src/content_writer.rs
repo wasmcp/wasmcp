@@ -37,17 +37,7 @@ impl ContentWriter {
         if inner.header_written {
             return Ok(());
         }
-
-        // Write the JSON-RPC envelope opening and start of content array
-        let header = format!(
-            r#"{{"jsonrpc":"2.0","id":{},"result":{{"content":["#,
-            match &inner.id {
-                Id::Number(n) => n.to_string(),
-                Id::String(s) => serde_json::to_string(s).unwrap_or_else(|_| "\"\"".to_string()),
-            }
-        );
-
-        write_to_stream(&inner.output, header.as_bytes())?;
+        write_header_to_stream(&inner.output, &inner.id)?;
         inner.header_written = true;
         Ok(())
     }
@@ -114,23 +104,34 @@ impl ContentWriter {
         inner: &mut ContentWriterInner,
         options: Option<&Options>,
     ) -> Result<(), StreamError> {
-        // Ensure header is written
         Self::write_header(inner)?;
-
-        // Close the content array
-        write_to_stream(&inner.output, b"]")?;
-
-        // Add isError if present
-        if let Some(opts) = options {
-            if opts.is_error {
-                write_to_stream(&inner.output, b",\"isError\":true")?;
-            }
-        }
-
-        // Close the result and JSON-RPC envelope, add newline for stdio protocol
-        write_to_stream(&inner.output, b"}}\n")?;
-        Ok(())
+        write_footer_to_stream(&inner.output, options)
     }
+}
+
+// Helper to write header to any stream
+fn write_header_to_stream(output: &OutputStream, id: &Id) -> Result<(), StreamError> {
+    let header = format!(
+        r#"{{"jsonrpc":"2.0","id":{},"result":{{"content":["#,
+        match id {
+            Id::Number(n) => n.to_string(),
+            Id::String(s) => serde_json::to_string(s).unwrap_or_else(|_| "\"\"".to_string()),
+        }
+    );
+    write_to_stream(output, header.as_bytes())
+}
+
+// Helper to write footer to any stream
+fn write_footer_to_stream(output: &OutputStream, options: Option<&Options>) -> Result<(), StreamError> {
+    write_to_stream(output, b"]")?;
+
+    if let Some(opts) = options {
+        if opts.is_error {
+            write_to_stream(output, b",\"isError\":true")?;
+        }
+    }
+
+    write_to_stream(output, b"}}\n")
 }
 
 // Guest trait - top-level static functions
@@ -139,86 +140,50 @@ impl crate::bindings::exports::wasmcp::mcp::tools_call_content::Guest for crate:
 
     fn write_text(
         id: Id,
-        output: OutputStream,
+        output: &OutputStream,
         text: String,
         options: Option<Options>,
     ) -> Result<(), StreamError> {
-        let writer = ContentWriter::new(id, output);
-        let mut inner = writer.inner.borrow_mut();
+        write_header_to_stream(output, &id)?;
 
-        // Write header
-        ContentWriter::write_header(&mut inner)?;
-
-        // Write the text block directly
-        let block = json!({
-            "type": "text",
-            "text": text
-        });
+        let block = json!({"type": "text", "text": text});
         let block_str = serde_json::to_string(&block).map_err(|_| StreamError::Closed)?;
-        write_to_stream(&inner.output, block_str.as_bytes())?;
+        write_to_stream(output, block_str.as_bytes())?;
 
-        // Write footer
-        ContentWriter::write_footer(&mut inner, options.as_ref())?;
-
-        // Flush
-        inner.output.flush().map_err(|_| StreamError::Closed)
+        write_footer_to_stream(output, options.as_ref())?;
+        output.flush().map_err(|_| StreamError::Closed)
     }
 
-    fn write_error(id: Id, output: OutputStream, reason: String) -> Result<(), StreamError> {
-        let writer = ContentWriter::new(id, output);
-        let mut inner = writer.inner.borrow_mut();
+    fn write_error(id: Id, output: &OutputStream, reason: String) -> Result<(), StreamError> {
+        write_header_to_stream(output, &id)?;
 
-        // Write header
-        ContentWriter::write_header(&mut inner)?;
-
-        // Write the error text block
-        let block = json!({
-            "type": "text",
-            "text": reason
-        });
+        let block = json!({"type": "text", "text": reason});
         let block_str = serde_json::to_string(&block).map_err(|_| StreamError::Closed)?;
-        write_to_stream(&inner.output, block_str.as_bytes())?;
+        write_to_stream(output, block_str.as_bytes())?;
 
-        // Write footer with error flag
-        ContentWriter::write_footer(
-            &mut inner,
-            Some(&Options {
-                is_error: true,
-                meta: None,
-            }),
-        )?;
-
-        // Flush
-        inner.output.flush().map_err(|_| StreamError::Closed)
+        write_footer_to_stream(output, Some(&Options { is_error: true, meta: None }))?;
+        output.flush().map_err(|_| StreamError::Closed)
     }
 
     fn write(
         id: Id,
-        output: OutputStream,
+        output: &OutputStream,
         content: Vec<ContentBlock>,
         options: Option<Options>,
     ) -> Result<(), StreamError> {
-        let writer = ContentWriter::new(id, output);
-        let mut inner = writer.inner.borrow_mut();
+        write_header_to_stream(output, &id)?;
 
-        // Write header
-        ContentWriter::write_header(&mut inner)?;
-
-        // Write all content blocks
         for (i, block) in content.iter().enumerate() {
             if i > 0 {
-                write_to_stream(&inner.output, b",")?;
+                write_to_stream(output, b",")?;
             }
             let block_json = content_block_to_json(block);
             let block_str = serde_json::to_string(&block_json).map_err(|_| StreamError::Closed)?;
-            write_to_stream(&inner.output, block_str.as_bytes())?;
+            write_to_stream(output, block_str.as_bytes())?;
         }
 
-        // Write footer
-        ContentWriter::write_footer(&mut inner, options.as_ref())?;
-
-        // Flush
-        inner.output.flush().map_err(|_| StreamError::Closed)
+        write_footer_to_stream(output, options.as_ref())?;
+        output.flush().map_err(|_| StreamError::Closed)
     }
 
     fn open(

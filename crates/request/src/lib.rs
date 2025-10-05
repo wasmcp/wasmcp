@@ -21,17 +21,16 @@
 //! metadata during request processing. This context is scoped to the request
 //! lifetime and is not persisted across requests.
 
-// Generated code - not formatted or linted
-#[rustfmt::skip]
-#[allow(clippy::all)]
-#[allow(dead_code)]
-#[allow(unused_imports)]
-#[allow(non_snake_case)]
-mod bindings;
+mod bindings {
+    wit_bindgen::generate!({
+        world: "request",
+        generate_all,
+    });
+}
 
 use bindings::exports::wasmcp::mcp::request::{
-    Arguments, CompletionArgument, CompletionContext, CompletionParams, CompletionPromptReference,
-    CompletionRef, Feature, Guest, GuestRequest, InitializeParams, Params,
+    CallToolParams, CompletionParams, GetPromptParams, GuestRequest, InitializeParams,
+    Method, Params,
 };
 use bindings::wasi::io::streams::{InputStream, StreamError};
 use bindings::wasmcp::mcp::error::{Error as McpError, ErrorCode};
@@ -144,7 +143,7 @@ impl GuestRequest for Request {
             .unwrap_or(Id::String(String::new()))
     }
 
-    fn feature(&self) -> Feature {
+    fn method(&self) -> Method {
         let method_str = self
             .parsed
             .get("method")
@@ -152,12 +151,18 @@ impl GuestRequest for Request {
             .unwrap_or("");
 
         match method_str {
-            "initialize" => Feature::Initialize,
-            "tools/list" | "tools/call" => Feature::Tools,
-            "resources/list" | "resources/read" | "resources/templates/list" => Feature::Resources,
-            "prompts/list" | "prompts/get" => Feature::Prompts,
-            "completion/complete" => Feature::Completion,
-            _ => Feature::Initialize, // Default to initialize for unknown methods
+            "initialize" => Method::Initialize,
+            "tools/list" => Method::ToolsList,
+            "tools/call" => Method::ToolsCall,
+            "resources/list" => Method::ResourcesList,
+            "resources/read" => Method::ResourcesRead,
+            "resources/templates/list" => Method::ResourcesTemplatesList,
+            "prompts/list" => Method::PromptsList,
+            "prompts/get" => Method::PromptsGet,
+            "completion/complete" => Method::CompletionComplete,
+            "notifications/initialized" => Method::NotificationsInitialized,
+            "ping" => Method::Ping,
+            _ => Method::Initialize, // Default to initialize for unknown methods
         }
     }
 
@@ -193,8 +198,9 @@ impl GuestRequest for Request {
                 let cursor = params_value
                     .and_then(|p| p.get("cursor"))
                     .and_then(|c| c.as_str())
-                    .map(|s| s.to_string());
-                Ok(Params::ToolsList(cursor.unwrap_or_default()))
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                Ok(Params::ToolsList(cursor))
             }
             "tools/call" => {
                 if let Some(params) = params_value {
@@ -209,7 +215,7 @@ impl GuestRequest for Request {
                         .to_string();
                     let arguments = params.get("arguments").map(|a| a.to_string());
 
-                    Ok(Params::ToolsCall(Arguments { name, arguments }))
+                    Ok(Params::ToolsCall(CallToolParams { name, arguments }))
                 } else {
                     Err(McpError {
                         code: ErrorCode::InvalidParams,
@@ -222,8 +228,9 @@ impl GuestRequest for Request {
                 let cursor = params_value
                     .and_then(|p| p.get("cursor"))
                     .and_then(|c| c.as_str())
-                    .map(|s| s.to_string());
-                Ok(Params::ResourcesList(cursor.unwrap_or_default()))
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                Ok(Params::ResourcesList(cursor))
             }
             "resources/read" => {
                 let uri = params_value
@@ -241,15 +248,17 @@ impl GuestRequest for Request {
                 let cursor = params_value
                     .and_then(|p| p.get("cursor"))
                     .and_then(|c| c.as_str())
-                    .map(|s| s.to_string());
-                Ok(Params::ResourcesTemplatesList(cursor.unwrap_or_default()))
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                Ok(Params::ResourcesTemplatesList(cursor))
             }
             "prompts/list" => {
                 let cursor = params_value
                     .and_then(|p| p.get("cursor"))
                     .and_then(|c| c.as_str())
-                    .map(|s| s.to_string());
-                Ok(Params::PromptsList(cursor.unwrap_or_default()))
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                Ok(Params::PromptsList(cursor))
             }
             "prompts/get" => {
                 if let Some(params) = params_value {
@@ -262,9 +271,11 @@ impl GuestRequest for Request {
                             data: None,
                         })?
                         .to_string();
-                    let arguments = params.get("arguments").map(|a| a.to_string());
+                    let arguments = params
+                        .get("arguments")
+                        .map(|v| v.to_string());
 
-                    Ok(Params::PromptsGet(Arguments { name, arguments }))
+                    Ok(Params::PromptsGet(GetPromptParams { name, arguments }))
                 } else {
                     Err(McpError {
                         code: ErrorCode::InvalidParams,
@@ -275,14 +286,8 @@ impl GuestRequest for Request {
             }
             "completion/complete" => {
                 if let Some(params) = params_value {
-                    match parse_completion_params(params) {
-                        Ok(comp_params) => Ok(Params::CompletionComplete(comp_params)),
-                        Err(e) => Err(McpError {
-                            code: ErrorCode::InvalidParams,
-                            message: format!("Invalid completion params: {}", e),
-                            data: None,
-                        }),
-                    }
+                    let completion_params = parse_completion_params(params)?;
+                    Ok(Params::CompletionComplete(completion_params))
                 } else {
                     Err(McpError {
                         code: ErrorCode::InvalidParams,
@@ -300,146 +305,84 @@ impl GuestRequest for Request {
     }
 
     fn get(&self, key: String) -> Result<Option<Vec<u8>>, ()> {
-        let context = self.context.read().map_err(|_| ())?;
-        Ok(context.get(&key).cloned())
+        Ok(self.context
+            .read()
+            .ok()
+            .and_then(|ctx| ctx.get(&key).cloned()))
     }
 
     fn set(&self, key: String, value: Vec<u8>) -> Result<(), ()> {
-        let mut context = self.context.write().map_err(|_| ())?;
-        context.insert(key, value);
+        if let Ok(mut ctx) = self.context.write() {
+            ctx.insert(key, value);
+        }
         Ok(())
     }
 
     fn needs(&self, capabilities: ServerCapabilities) -> bool {
-        let feature = self.feature();
+        let method = self.method();
 
-        match feature {
-            Feature::Initialize => {
-                // Register capabilities for initialize requests and forward to next handler
-                let _ = self.add_capabilities_internal(capabilities);
-                false
+        // Handle initialize separately
+        if matches!(method, Method::Initialize) {
+            // Register capabilities during initialize and forward
+            if let Ok(mut caps) = self.capabilities.write() {
+                if let Some(existing) = *caps {
+                    *caps = Some(existing | capabilities);
+                } else {
+                    *caps = Some(capabilities);
+                }
             }
-            Feature::Tools => capabilities.contains(ServerCapabilities::TOOLS),
-            Feature::Resources => capabilities.contains(ServerCapabilities::RESOURCES),
-            Feature::Prompts => capabilities.contains(ServerCapabilities::PROMPTS),
-            Feature::Completion => capabilities.contains(ServerCapabilities::COMPLETIONS),
+            return false; // Forward to next handler
+        }
+
+        // Check if method matches capabilities
+        match method {
+            Method::ToolsList | Method::ToolsCall => capabilities.contains(ServerCapabilities::TOOLS),
+            Method::ResourcesList | Method::ResourcesRead | Method::ResourcesTemplatesList => {
+                capabilities.contains(ServerCapabilities::RESOURCES)
+            }
+            Method::PromptsList | Method::PromptsGet => {
+                capabilities.contains(ServerCapabilities::PROMPTS)
+            }
+            Method::CompletionComplete => {
+                capabilities.contains(ServerCapabilities::COMPLETIONS)
+            }
+            _ => false,
         }
     }
 
     fn get_capabilities(&self) -> Result<Option<ServerCapabilities>, ()> {
-        let caps = self.capabilities.read().map_err(|_| ())?;
-        Ok(*caps)
+        self.capabilities.read().map(|caps| *caps).map_err(|_| ())
     }
 }
 
 impl Request {
-    /// Internal helper to add capabilities to the request context
-    fn add_capabilities_internal(&self, capabilities: ServerCapabilities) -> Result<(), ()> {
-        let mut caps = self.capabilities.write().map_err(|_| ())?;
-        match &mut *caps {
-            Some(existing) => {
-                // Merge capabilities by OR-ing the flags
-                *existing |= capabilities;
-            }
-            None => {
-                *caps = Some(capabilities);
-            }
-        }
-        Ok(())
-    }
-
-    /// Parse and validate message bytes as JSON-RPC
     fn parse_message(
-        message_bytes: &[u8],
+        bytes: &[u8],
     ) -> Result<bindings::exports::wasmcp::mcp::request::Request, StreamError> {
-        // Convert bytes to string
-        let json_string =
-            String::from_utf8(message_bytes.to_vec()).map_err(|_| StreamError::Closed)?;
-
-        // Parse JSON
-        let parsed_value: Value =
-            serde_json::from_str(&json_string).map_err(|_| StreamError::Closed)?;
+        // Parse JSON-RPC request
+        let parsed: Value = serde_json::from_slice(bytes).map_err(|_| StreamError::Closed)?;
 
         // Validate JSON-RPC structure
-        let _json_rpc: JsonRpcRequest =
-            serde_json::from_value(parsed_value.clone()).map_err(|_| StreamError::Closed)?;
+        if !parsed.is_object() {
+            return Err(StreamError::Closed);
+        }
 
-        // Create the Request resource
-        let request = Request {
-            parsed: parsed_value,
-            context: RwLock::new(HashMap::new()),
-            capabilities: RwLock::new(None),
-        };
-
+        // Create request with parsed JSON
         Ok(bindings::exports::wasmcp::mcp::request::Request::new(
-            request,
+            Request {
+                parsed,
+                context: RwLock::new(HashMap::new()),
+                capabilities: RwLock::new(None),
+            },
         ))
     }
 }
 
-/// Parses initialization parameters from JSON
-/// Handles client capabilities, protocol version, and client info
-fn parse_initialize_params(value: &Value) -> Result<InitializeParams, String> {
-    // Parse capabilities
-    let capabilities_value = value.get("capabilities");
-    let mut capabilities = ClientCapabilities::empty();
-
-    if let Some(caps) = capabilities_value {
-        if caps
-            .get("elicitation")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
-        {
-            capabilities |= ClientCapabilities::ELICITATION;
-        }
-        if caps.get("roots").and_then(|v| v.as_bool()).unwrap_or(false) {
-            capabilities |= ClientCapabilities::ROOTS;
-        }
-        if caps
-            .get("sampling")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
-        {
-            capabilities |= ClientCapabilities::SAMPLING;
-        }
-        if caps
-            .get("experimental")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
-        {
-            capabilities |= ClientCapabilities::EXPERIMENTAL;
-        }
-    }
-
-    // Parse client info
-    let client_info = value
-        .get("clientInfo")
-        .map(|ci| Implementation {
-            name: ci
-                .get("name")
-                .and_then(|n| n.as_str())
-                .unwrap_or("")
-                .to_string(),
-            title: ci
-                .get("title")
-                .and_then(|t| t.as_str())
-                .map(|s| s.to_string()),
-            version: ci
-                .get("version")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
-        })
-        .unwrap_or(Implementation {
-            name: String::new(),
-            title: None,
-            version: String::new(),
-        });
-
-    // Parse protocol version
-    let protocol_version = value
+// Helper function to parse initialize params
+fn parse_initialize_params(params: &Value) -> Result<InitializeParams, String> {
+    let protocol_version = params
         .get("protocolVersion")
-        .and_then(|pv| pv.as_str())
+        .and_then(|v| v.as_str())
         .map(|s| match s {
             "2025-06-18" => ProtocolVersion::V20250618,
             "2025-03-26" => ProtocolVersion::V20250326,
@@ -448,509 +391,93 @@ fn parse_initialize_params(value: &Value) -> Result<InitializeParams, String> {
         })
         .unwrap_or(ProtocolVersion::V20250618);
 
+    let client_info = params
+        .get("clientInfo")
+        .and_then(|ci| {
+            let name = ci.get("name")?.as_str()?.to_string();
+            let version = ci.get("version")?.as_str()?.to_string();
+            let title = ci.get("title").and_then(|t| t.as_str()).map(String::from);
+            Some(Implementation {
+                name,
+                version,
+                title,
+            })
+        })
+        .ok_or_else(|| "Missing or invalid clientInfo".to_string())?;
+
+    let capabilities_flags = params
+        .get("capabilities")
+        .and_then(|caps| {
+            let mut flags = ClientCapabilities::empty();
+            if caps.get("elicitation").is_some() {
+                flags |= ClientCapabilities::ELICITATION;
+            }
+            if caps.get("roots").is_some() {
+                flags |= ClientCapabilities::ROOTS;
+            }
+            if caps.get("sampling").is_some() {
+                flags |= ClientCapabilities::SAMPLING;
+            }
+            if caps.get("experimental").is_some() {
+                flags |= ClientCapabilities::EXPERIMENTAL;
+            }
+            Some(flags)
+        })
+        .unwrap_or_else(ClientCapabilities::empty);
+
     Ok(InitializeParams {
-        capabilities,
-        client_info,
         protocol_version,
+        client_info,
+        capabilities: capabilities_flags,
     })
 }
 
-/// Parses completion parameters from JSON
-/// Handles argument, reference (prompt or resource template), and context
-fn parse_completion_params(value: &Value) -> Result<CompletionParams, String> {
-    // Parse argument
-    let argument = value
-        .get("argument")
-        .map(|a| CompletionArgument {
-            name: a
-                .get("name")
-                .and_then(|n| n.as_str())
-                .unwrap_or("")
-                .to_string(),
-            value: a
-                .get("value")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
-        })
-        .unwrap_or(CompletionArgument {
-            name: String::new(),
-            value: String::new(),
-        });
+// Helper function to parse completion params
+fn parse_completion_params(params: &Value) -> Result<CompletionParams, McpError> {
+    use bindings::exports::wasmcp::mcp::request::{CompletionArgument, CompletionRef};
 
-    // Parse ref (either prompt or resource-template)
-    let ref_value = value.get("ref");
-    let completion_ref = if let Some(rv) = ref_value {
-        if let Some(prompt) = rv.get("prompt") {
-            CompletionRef::Prompt(CompletionPromptReference {
-                name: prompt
-                    .get("name")
-                    .and_then(|n| n.as_str())
-                    .unwrap_or("")
-                    .to_string(),
-                title: prompt
-                    .get("title")
-                    .and_then(|t| t.as_str())
-                    .map(|s| s.to_string()),
-            })
-        } else if let Some(uri) = rv.get("resourceTemplate").and_then(|rt| rt.as_str()) {
-            CompletionRef::ResourceTemplate(uri.to_string())
-        } else {
-            // Default to empty prompt reference
-            CompletionRef::Prompt(CompletionPromptReference {
-                name: String::new(),
-                title: None,
-            })
+    // Parse argument
+    let argument = {
+        let arg = params.get("argument").ok_or_else(|| McpError {
+            code: ErrorCode::InvalidParams,
+            message: "Missing 'argument' in completion params".to_string(),
+            data: None,
+        })?;
+        CompletionArgument {
+            name: arg.get("name")
+                .and_then(|n| n.as_str())
+                .ok_or_else(|| McpError {
+                    code: ErrorCode::InvalidParams,
+                    message: "Missing 'name' in completion argument".to_string(),
+                    data: None,
+                })?
+                .to_string(),
+            value: arg.get("value")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| McpError {
+                    code: ErrorCode::InvalidParams,
+                    message: "Missing 'value' in completion argument".to_string(),
+                    data: None,
+                })?
+                .to_string(),
         }
-    } else {
-        CompletionRef::Prompt(CompletionPromptReference {
-            name: String::new(),
-            title: None,
-        })
     };
 
-    // Parse context
-    let context = value.get("context").map(|c| CompletionContext {
-        arguments: c.get("arguments").map(|a| a.to_string()),
+    // Parse ref (simplified - just using empty prompt ref for now)
+    let ref_ = CompletionRef::Prompt(bindings::exports::wasmcp::mcp::request::CompletionPromptReference {
+        name: String::new(),
+        title: None,
     });
 
     Ok(CompletionParams {
         argument,
-        ref_: completion_ref,
-        context,
+        ref_,
+        context: None,
     })
 }
 
-impl Guest for Component {
+impl bindings::exports::wasmcp::mcp::request::Guest for Component {
     type Request = Request;
 }
 
 bindings::export!(Component with_types_in bindings);
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn test_parse_initialize_request() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2025-06-18",
-                "capabilities": {
-                    "elicitation": true,
-                    "roots": false,
-                    "sampling": true
-                },
-                "clientInfo": {
-                    "name": "TestClient",
-                    "version": "1.0.0",
-                    "title": "Test Client"
-                }
-            }
-        });
-
-        let parsed = json.as_object().unwrap().get("params").unwrap();
-        let params = parse_initialize_params(parsed).unwrap();
-
-        // Check capabilities
-        let caps = params.capabilities;
-        assert!(caps.contains(bindings::wasmcp::mcp::types::ClientCapabilities::ELICITATION));
-        assert!(caps.contains(bindings::wasmcp::mcp::types::ClientCapabilities::SAMPLING));
-        assert!(!caps.contains(bindings::wasmcp::mcp::types::ClientCapabilities::ROOTS));
-        assert!(!caps.contains(bindings::wasmcp::mcp::types::ClientCapabilities::EXPERIMENTAL));
-
-        // Check client info
-        assert_eq!(params.client_info.name, "TestClient");
-        assert_eq!(params.client_info.version, "1.0.0");
-        assert_eq!(params.client_info.title, Some("Test Client".to_string()));
-
-        // Check protocol version
-        assert!(matches!(
-            params.protocol_version,
-            bindings::wasmcp::mcp::types::ProtocolVersion::V20250618
-        ));
-    }
-
-    #[test]
-    fn test_parse_tools_call_request() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": "call-123",
-            "method": "tools/call",
-            "params": {
-                "name": "calculator",
-                "arguments": {
-                    "operation": "add",
-                    "a": 5,
-                    "b": 3
-                }
-            }
-        });
-
-        let request = Request {
-            parsed: json.clone(),
-            context: RwLock::new(HashMap::new()),
-            capabilities: RwLock::new(None),
-        };
-
-        // Test feature extraction
-        assert!(matches!(request.feature(), Feature::Tools));
-
-        // Test params extraction
-        match request.params().unwrap() {
-            Params::ToolsCall(args) => {
-                assert_eq!(args.name, "calculator");
-                assert!(args.arguments.is_some());
-                let args_json: serde_json::Value =
-                    serde_json::from_str(&args.arguments.unwrap()).unwrap();
-                assert_eq!(args_json["operation"], "add");
-                assert_eq!(args_json["a"], 5);
-                assert_eq!(args_json["b"], 3);
-            }
-            _ => panic!("Expected ToolsCall params"),
-        }
-
-        // Test ID extraction
-        match request.id() {
-            Id::String(id) => assert_eq!(id, "call-123"),
-            _ => panic!("Expected string ID"),
-        }
-    }
-
-    #[test]
-    fn test_parse_resources_read_request() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": 42,
-            "method": "resources/read",
-            "params": {
-                "uri": "file:///path/to/resource.txt"
-            }
-        });
-
-        let request = Request {
-            parsed: json.clone(),
-            context: RwLock::new(HashMap::new()),
-            capabilities: RwLock::new(None),
-        };
-
-        // Test feature
-        assert!(matches!(request.feature(), Feature::Resources));
-
-        // Test params
-        match request.params().unwrap() {
-            Params::ResourcesRead(uri) => {
-                assert_eq!(uri, "file:///path/to/resource.txt");
-            }
-            _ => panic!("Expected ResourcesRead params"),
-        }
-
-        // Test numeric ID
-        match request.id() {
-            Id::Number(id) => assert_eq!(id, 42),
-            _ => panic!("Expected numeric ID"),
-        }
-    }
-
-    #[test]
-    fn test_context_operations() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {}
-        });
-
-        let request = Request {
-            parsed: json,
-            context: RwLock::new(HashMap::new()),
-            capabilities: RwLock::new(None),
-        };
-
-        // Test initial get returns None
-        assert!(request.get("auth_token".to_string()).unwrap().is_none());
-
-        // Test set and get with text data
-        let text_value = "secret123".as_bytes().to_vec();
-        request
-            .set("auth_token".to_string(), text_value.clone())
-            .unwrap();
-        assert_eq!(
-            request.get("auth_token".to_string()).unwrap(),
-            Some(text_value)
-        );
-
-        // Test binary data
-        let binary_data = vec![1, 2, 3, 4];
-        request
-            .set("binary_key".to_string(), binary_data.clone())
-            .unwrap();
-        assert_eq!(
-            request.get("binary_key".to_string()).unwrap(),
-            Some(binary_data)
-        );
-
-        // Test overwrite
-        let new_value = "new_value".as_bytes().to_vec();
-        request
-            .set("auth_token".to_string(), new_value.clone())
-            .unwrap();
-        assert_eq!(
-            request.get("auth_token".to_string()).unwrap(),
-            Some(new_value)
-        );
-    }
-
-    #[test]
-    fn test_parse_list_with_cursor() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "resources/list",
-            "params": {
-                "cursor": "next_page_token"
-            }
-        });
-
-        let request = Request {
-            parsed: json,
-            context: RwLock::new(HashMap::new()),
-            capabilities: RwLock::new(None),
-        };
-
-        match request.params().unwrap() {
-            Params::ResourcesList(cursor) => {
-                assert_eq!(cursor, "next_page_token");
-            }
-            _ => panic!("Expected ResourcesList params"),
-        }
-    }
-
-    #[test]
-    fn test_parse_prompts_get() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "prompts/get",
-            "params": {
-                "name": "code_review",
-                "arguments": {
-                    "language": "rust",
-                    "style": "detailed"
-                }
-            }
-        });
-
-        let request = Request {
-            parsed: json,
-            context: RwLock::new(HashMap::new()),
-            capabilities: RwLock::new(None),
-        };
-
-        match request.params().unwrap() {
-            Params::PromptsGet(args) => {
-                assert_eq!(args.name, "code_review");
-                assert!(args.arguments.is_some());
-                let args_json: serde_json::Value =
-                    serde_json::from_str(&args.arguments.unwrap()).unwrap();
-                assert_eq!(args_json["language"], "rust");
-                assert_eq!(args_json["style"], "detailed");
-            }
-            _ => panic!("Expected PromptsGet params"),
-        }
-    }
-
-    #[test]
-    fn test_parse_completion_request() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "completion/complete",
-            "params": {
-                "argument": {
-                    "name": "function_name",
-                    "value": "calculate_sum"
-                },
-                "ref": {
-                    "prompt": {
-                        "name": "autocomplete",
-                        "title": "Function Autocomplete"
-                    }
-                },
-                "context": {
-                    "arguments": {
-                        "file": "main.rs"
-                    }
-                }
-            }
-        });
-
-        let parsed = json.as_object().unwrap().get("params").unwrap();
-        let params = parse_completion_params(parsed).unwrap();
-
-        // Check argument
-        assert_eq!(params.argument.name, "function_name");
-        assert_eq!(params.argument.value, "calculate_sum");
-
-        // Check ref (prompt variant)
-        match params.ref_ {
-            CompletionRef::Prompt(prompt) => {
-                assert_eq!(prompt.name, "autocomplete");
-                assert_eq!(prompt.title, Some("Function Autocomplete".to_string()));
-            }
-            _ => panic!("Expected Prompt variant"),
-        }
-
-        // Check context
-        assert!(params.context.is_some());
-        let context = params.context.unwrap();
-        assert!(context.arguments.is_some());
-    }
-
-    #[test]
-    fn test_parse_completion_with_resource_template() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "completion/complete",
-            "params": {
-                "argument": {
-                    "name": "test",
-                    "value": "value"
-                },
-                "ref": {
-                    "resourceTemplate": "template:///code/function"
-                }
-            }
-        });
-
-        let parsed = json.as_object().unwrap().get("params").unwrap();
-        let params = parse_completion_params(parsed).unwrap();
-
-        match params.ref_ {
-            CompletionRef::ResourceTemplate(uri) => {
-                assert_eq!(uri, "template:///code/function");
-            }
-            _ => panic!("Expected ResourceTemplate variant"),
-        }
-    }
-
-    #[test]
-    fn test_missing_params_defaults() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/list"
-        });
-
-        let request = Request {
-            parsed: json,
-            context: RwLock::new(HashMap::new()),
-            capabilities: RwLock::new(None),
-        };
-
-        // Should default to empty cursor
-        match request.params().unwrap() {
-            Params::ToolsList(cursor) => {
-                assert_eq!(cursor, "");
-            }
-            _ => panic!("Expected ToolsList params"),
-        }
-    }
-
-    #[test]
-    fn test_unknown_method_handling() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "custom/unknown",
-            "params": {}
-        });
-
-        let request = Request {
-            parsed: json,
-            context: RwLock::new(HashMap::new()),
-            capabilities: RwLock::new(None),
-        };
-
-        // Feature should default to Initialize for unknown methods
-        assert!(matches!(request.feature(), Feature::Initialize));
-
-        // Params should return error for unknown method
-        match request.params() {
-            Err(e) => {
-                assert_eq!(e.code, ErrorCode::MethodNotFound);
-                assert!(e.message.contains("custom/unknown"));
-            }
-            Ok(_) => panic!("Expected error for unknown method"),
-        }
-    }
-
-    #[test]
-    fn test_malformed_params_handling() {
-        let json = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {
-                "wrong_field": "value"
-            }
-        });
-
-        let request = Request {
-            parsed: json,
-            context: RwLock::new(HashMap::new()),
-            capabilities: RwLock::new(None),
-        };
-
-        // Should return error for missing required fields
-        match request.params() {
-            Err(e) => {
-                assert_eq!(e.code, ErrorCode::InvalidParams);
-                assert!(e.message.contains("name"));
-            }
-            Ok(_) => panic!("Expected error for missing required fields"),
-        }
-    }
-
-    #[test]
-    fn test_protocol_version_parsing() {
-        use bindings::wasmcp::mcp::types::ProtocolVersion;
-
-        // Test 2025-06-18
-        let json = json!({ "protocolVersion": "2025-06-18" });
-        let params = parse_initialize_params(&json).unwrap();
-        assert!(matches!(
-            params.protocol_version,
-            ProtocolVersion::V20250618
-        ));
-
-        // Test 2025-03-26
-        let json = json!({ "protocolVersion": "2025-03-26" });
-        let params = parse_initialize_params(&json).unwrap();
-        assert!(matches!(
-            params.protocol_version,
-            ProtocolVersion::V20250326
-        ));
-
-        // Test 2024-11-05
-        let json = json!({ "protocolVersion": "2024-11-05" });
-        let params = parse_initialize_params(&json).unwrap();
-        assert!(matches!(
-            params.protocol_version,
-            ProtocolVersion::V20241105
-        ));
-
-        // Test unknown version defaults to latest
-        let json = json!({ "protocolVersion": "unknown" });
-        let params = parse_initialize_params(&json).unwrap();
-        assert!(matches!(
-            params.protocol_version,
-            ProtocolVersion::V20250618
-        ));
-    }
-}

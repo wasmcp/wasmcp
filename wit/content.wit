@@ -1,0 +1,171 @@
+/// Content types and structures for MCP messages.
+///
+/// This interface defines the content blocks that can be included in MCP messages,
+/// mapping directly to the ContentBlock type union in the MCP specification.
+///
+/// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
+@since(version = 0.3.0)
+interface content {
+    /// Role in a conversation.
+    ///
+    /// Maps to the Role type in the MCP spec:
+    /// "The sender or recipient of messages and data in a conversation."
+    /// Valid values: "user" | "assistant"
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#role>
+    @since(version = 0.3.0)
+    enum role {
+        user,
+        assistant,
+    }
+
+    /// Optional annotations for the client.
+    ///
+    /// The client can use annotations to inform how objects are used or displayed.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#annotations>
+    @since(version = 0.3.0)
+    record annotations {
+        /// Describes who the intended customer of this object or data is.
+        ///
+        /// It can include multiple entries to indicate content useful for multiple audiences (e.g., [“user”, “assistant”]).
+        audience: option<list<role>>,
+
+        /// The moment the resource was last modified, as an ISO 8601 formatted string.
+        ///
+        /// Should be an ISO 8601 formatted string (e.g., “2025-01-12T15:00:58Z”).
+        ///
+        /// Examples: last activity timestamp in an open file, timestamp when the resource was attached, etc.
+        last-modified: option<string>,
+
+        /// Describes how important this data is for operating the server.
+        ///
+        /// A value of 1 means “most important,” and indicates that the data is effectively required, while 0 means “least important,” and indicates that the data is entirely optional.
+        priority: f64,
+    }
+
+    /// Options for content blocks.
+    @since(version = 0.3.0)
+    record content-options {
+        /// Optional annotations for the client.
+        annotations: option<annotations>,
+        /// Optional metadata.
+        ///
+        /// See: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
+        meta: option<list<tuple<string, string>>>,
+    }
+    
+    /// Text provided to or from an LLM.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#textcontent>
+    @since(version = 0.3.0)
+    record text-content {
+        /// The text content of the message.
+        text: string,
+        options: option<content-options>,
+    }
+
+    /// An image provided to or from an LLM.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#imagecontent>
+    @since(version = 0.3.0)
+    record image-content {
+        /// The base64-encoded image data.
+        data: list<u8>,
+        /// The MIME type of the image. Different providers may support different image types.
+        mime-type: string,
+        options: option<content-options>,
+    }
+
+    /// Audio provided to or from an LLM.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#audiocontent>
+    @since(version = 0.3.0)
+    record audio-content {
+        /// The base64-encoded audio data.
+        data: list<u8>,
+        /// The MIME type of the audio. Different providers may support different audio types.
+        mime-type: string,
+        options: option<content-options>,
+    }
+
+    /// Options for resource link content.
+    @since(version = 0.3.0)
+    record resource-link-content-options {
+        title: option<string>,
+        description: option<string>,
+        size: option<u64>,
+        mime-type: option<string>,
+        /// Optional annotations for the client.
+        annotations: option<annotations>,
+        /// Optional metadata.
+        ///
+        /// See: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
+        meta: option<list<tuple<string, string>>>,
+    }
+    
+    /// A resource that the server is capable of reading, included in a prompt or tool call result.
+    ///
+    /// Note: resource links returned by tools are not guaranteed to appear in the results of resources/list requests.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcelink>
+    @since(version = 0.3.0)
+    record resource-link-content {
+        /// The URI of this resource.
+        uri: string,
+        /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn’t present).
+        name: string,
+        options: option<resource-link-content-options>,
+    }
+
+    /// Options for embedded resources.
+    @since(version = 0.3.0)
+    record embedded-resource-options {
+        mime-type: option<string>,
+        meta: option<list<tuple<string, string>>>,
+    }
+
+    /// Text resource contents.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#textresourcecontents>
+    @since(version = 0.3.0)
+    record text-resource-contents {
+        uri: string,
+        text: string,
+        options: option<embedded-resource-options>,
+    }
+
+    /// Binary resource contents.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#blobresourcecontents>
+    @since(version = 0.3.0)
+    record blob-resource-contents {
+        uri: string,
+        blob: list<u8>,
+        options: option<embedded-resource-options>,
+    }
+
+    /// Embedded resource data.
+    @since(version = 0.3.0)
+    variant embedded-resource {
+        text(text-resource-contents),
+        blob(blob-resource-contents),
+    }
+
+    /// Embedded resource with content options.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#embeddedresource>
+    @since(version = 0.3.0)
+    record embedded-resource-content {
+        %resource: embedded-resource,
+        options: option<content-options>,
+    }
+
+    /// Content blocks that can be included in messages.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
+    @since(version = 0.3.0)
+    variant content-block {
+        text(text-content),
+        image(image-content),
+        audio(audio-content),
+        resource-link(resource-link-content),
+        embedded-resource(embedded-resource-content),
+    }
+}

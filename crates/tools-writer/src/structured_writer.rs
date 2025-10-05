@@ -13,7 +13,7 @@ use serde_json::json;
 /// This is a one-shot operation with no streaming support.
 pub fn write_structured(
     id: Id,
-    output: OutputStream,
+    output: &OutputStream,
     structured: String,
     options: Option<Options>,
 ) -> Result<(), StreamError> {
@@ -45,8 +45,8 @@ pub fn write_structured(
 
     // Write to stream with newline for stdio protocol
     let response_str = serde_json::to_string(&response).map_err(|_| StreamError::Closed)?;
-    write_to_stream(&output, response_str.as_bytes())?;
-    write_to_stream(&output, b"\n")?;
+    write_to_stream(output, response_str.as_bytes())?;
+    write_to_stream(output, b"\n")?;
     output.flush().map_err(|_| StreamError::Closed)?;
 
     Ok(())
@@ -56,7 +56,7 @@ pub fn write_structured(
 impl crate::bindings::exports::wasmcp::mcp::tools_call_structured::Guest for crate::Component {
     fn write(
         id: Id,
-        output: OutputStream,
+        output: &OutputStream,
         structured: String,
         options: Option<Options>,
     ) -> Result<(), StreamError> {

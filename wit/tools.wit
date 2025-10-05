@@ -1,0 +1,59 @@
+/// Handle tools/ methods
+@since(version = 0.3.1-alpha.1)
+interface tools-handler {
+    use wasi:io/streams@0.2.3.{output-stream};
+    use context.{context, cursor, args, error};
+    use content.{content-block};
+
+    /// Hints about tool behavior.
+    @since(version = 0.3.0)
+    flags tool-hints {
+        destructive,
+        idempotent,
+        open-world,
+        read-only,
+    }
+
+    /// Annotations for tool capabilities.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
+    @since(version = 0.3.0)
+    record tool-annotations {
+        hints: tool-hints,
+        title: option<string>,
+    }
+
+    /// Optional properties for tool definitions.
+    @since(version = 0.3.0)
+    record tool-options {
+        meta: option<list<tuple<string, string>>>,
+        annotations: option<tool-annotations>,
+        description: option<string>,
+        output-schema: option<string>,
+        title: option<string>,
+    }
+
+    /// Tool definition.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
+    @since(version = 0.3.0)
+    record tool {
+        name: string,
+        input-schema: string,
+        options: option<tool-options>,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    variant tool-result {
+        text(string),
+        error(string),
+        content(list<content-block>),
+        structured(string),     
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#tools%2Flist
+    @since(version = 0.3.1-alpha.1)
+    list-tools: func(ctx: borrow<context>, cursor: cursor) -> result<list<tool>, error>;
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#tools%2Fcall
+    @since(version = 0.3.1-alpha.1)
+    call-tool: func(ctx: borrow<context>, req: args) -> result<tool-result, error>;
+}

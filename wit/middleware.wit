@@ -1,0 +1,25 @@
+/// Handler interface for incoming MCP requests.
+///
+/// This interface defines the contract for handling MCP requests
+/// and writing responses to an output stream.
+@since(version = 0.3.0)
+interface incoming-handler {
+    use wasi:io/streams@0.2.3.{output-stream};
+    use context.{context};
+
+    /// Handle an incoming MCP request and write the response to the output stream.
+    /// The handler receives ownership of the request resource, allowing it to
+    /// either process the request or forward it to the next handler in the chain.
+    @since(version = 0.3.0)
+    handle: func(ctx: context, output: output-stream);
+}
+
+/// Middleware world for request interception.
+///
+/// Both imports and exports the handler interface, enabling components
+/// to intercept requests before forwarding to the next handler.
+@since(version = 0.3.0)
+world middleware {
+    import incoming-handler;
+    export incoming-handler;
+}

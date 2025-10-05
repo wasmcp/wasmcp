@@ -140,30 +140,42 @@ impl crate::bindings::exports::wasmcp::mcp::resources_read_result::Guest for cra
 
     fn write(
         id: Id,
-        output: OutputStream,
+        output: &OutputStream,
         contents: Contents,
         _options: Option<Options>,
     ) -> Result<(), StreamError> {
-        let writer = ContentWriter::new(id, output, contents.uri.clone());
-        let mut inner = writer.inner.borrow_mut();
+        // Write directly to borrowed stream without creating writer struct
 
-        // Set mime type if present
+        // Write the JSON-RPC envelope opening and start of contents
+        let mut header = format!(
+            r#"{{"jsonrpc":"2.0","id":{},"result":{{"contents":[{{"uri":{}"#,
+            match &id {
+                Id::Number(n) => n.to_string(),
+                Id::String(s) => serde_json::to_string(s).unwrap_or_else(|_| "\"\"".to_string()),
+            },
+            serde_json::to_string(&contents.uri).unwrap_or_else(|_| "\"\"".to_string())
+        );
+
+        // Add mimeType if present
         if let Some(opts) = &contents.options {
-            inner.mime_type = opts.mime_type.clone();
+            if let Some(mime) = &opts.mime_type {
+                header.push_str(r#","mimeType":"#);
+                header.push_str(&serde_json::to_string(mime).unwrap_or_else(|_| "\"\"".to_string()));
+            }
         }
 
-        // Write header
-        ContentWriter::write_header(&mut inner)?;
+        header.push_str(r#","blob":""#);
+        write_to_stream(output, header.as_bytes())?;
 
         // Write the data as base64
         let encoded = BASE64.encode(&contents.data);
-        write_to_stream(&inner.output, encoded.as_bytes())?;
+        write_to_stream(output, encoded.as_bytes())?;
 
-        // Write footer (options parameter is currently unused in resources-read-result)
-        ContentWriter::write_footer(&mut inner)?;
+        // Write footer
+        write_to_stream(output, b"\"]}}\n")?;
 
         // Flush
-        inner.output.flush().map_err(|_| StreamError::Closed)
+        output.flush().map_err(|_| StreamError::Closed)
     }
 
     fn open(

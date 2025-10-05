@@ -1,6 +1,7 @@
 //! Helper functions for JSON conversion and stream writing.
 
-use crate::bindings::exports::wasmcp::mcp::tools_list_result::{Tool, ToolAnnotations, ToolHints};
+use crate::bindings::exports::wasmcp::mcp::tools_list_result::Tool;
+use crate::bindings::wasmcp::mcp::tool_types::{ToolAnnotations, ToolHints};
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
 use crate::bindings::wasmcp::mcp::content::{
     AudioContent, BlobResourceContents, ContentBlock, EmbeddedResource, EmbeddedResourceContent,

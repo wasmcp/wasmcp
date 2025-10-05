@@ -13,13 +13,12 @@
 //! - `content_writer`: Writer for resource contents
 //! - `helpers`: Utility functions for JSON conversion and streaming
 
-// Generated code - not formatted or linted
-#[rustfmt::skip]
-#[allow(clippy::all)]
-#[allow(dead_code)]
-#[allow(unused_imports)]
-#[allow(non_snake_case)]
-mod bindings;
+mod bindings {
+    wit_bindgen::generate!({
+        world: "resources-writer",
+        generate_all,
+    });
+}
 
 mod content_writer;
 mod helpers;

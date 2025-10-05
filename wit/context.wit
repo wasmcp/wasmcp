@@ -1,0 +1,253 @@
+/// MCP request context
+@since(version = 0.3.1-alpha.1)
+interface context {
+    use wasi:io/streams@0.2.3.{input-stream, output-stream, stream-error};
+
+    @since(version = 0.3.1-alpha.1)
+    enum method {
+        initialize,
+        tools-list,
+        tools-call,
+        resources-list,
+        resources-read,
+        resources-templates-list,
+        prompts-list,
+        prompts-get,
+        completion-complete,
+        notifications-initialized,
+        ping,
+    }
+
+    /// MCP protocol versions.
+    @since(version = 0.3.0)
+    enum protocol-version {
+        /// Version 2025-06-18
+        v20250618,
+        /// Version 2025-03-26
+        v20250326,
+        /// Version 2024-11-05
+        v20241105,
+    }
+
+    /// Standard JSON-RPC error codes.
+    ///
+    /// Maps to the error codes in JSONRPCError as defined in the MCP spec.
+    /// Standard codes per JSON-RPC 2.0:
+    /// - Parse error: -32700
+    /// - Invalid request: -32600
+    /// - Method not found: -32601
+    /// - Invalid params: -32602
+    /// - Internal error: -32603
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#jsonrpcerror>
+    @since(version = 0.3.0)
+    enum error-code {
+        /// Parse error (-32700)
+        parse-error,
+        /// Invalid request (-32600)
+        invalid-request,
+        /// Method not found (-32601)
+        method-not-found,
+        /// Invalid parameters (-32602)
+        invalid-params,
+        /// Internal error (-32603)
+        internal-error,
+    }
+
+    /// Standard MCP error structure.
+    ///
+    /// Maps to JSONRPCError.error in the MCP spec:
+    /// - code: number - "The error type that occurred"
+    /// - message: string - "A short description of the error"
+    /// - data?: unknown - "Additional information about the error"
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#jsonrpcerror>
+    @since(version = 0.3.0)
+    record error {
+        code: error-code,
+        message: string,
+        data: option<string>,
+    }
+
+    /// Capabilities that a server supports.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#servercapabilities>
+    @since(version = 0.3.0)
+    flags server-capabilities {
+        /// Argument autocompletion
+        completions,
+        /// Prompts
+        prompts,
+        /// Resources
+        resources,
+        /// Tools
+        tools,
+        /// Experimental features
+        experimental,
+    }
+
+    /// Client capabilities (extensible).
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#clientcapabilities>
+    @since(version = 0.3.0)
+    flags client-capabilities {
+        elicitation,
+        roots,
+        sampling,
+        experimental,
+    }
+
+    /// MCP implementation metadata.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#implementation>
+    @since(version = 0.3.0)
+    record implementation {
+        name: string,
+        title: option<string>,
+        version: string,
+    }
+
+    /// Initialize request parameters.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
+    @since(version = 0.3.0)
+    record initialize-request {
+        capabilities: client-capabilities,
+        client-info: implementation,
+        protocol-version: protocol-version,
+    }
+
+    /// Argument for completion requests.
+    @since(version = 0.3.0)
+    record completion-argument {
+        name: string,
+        value: string,
+    }
+
+    /// Context for completion requests.
+    @since(version = 0.3.0)
+    record completion-context {
+        arguments: option<string>
+    }
+
+    /// Reference to a prompt for completion.
+    @since(version = 0.3.0)
+    record completion-prompt-reference {
+        name: string,
+        title: option<string>,
+    }
+
+    /// Reference types for completions.
+    @since(version = 0.3.0)
+    variant completion-ref {
+        /// Prompt reference.
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptreference>
+        prompt(completion-prompt-reference),
+
+        /// Resource template reference.
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplatereference>
+        resource-template(string),
+    }
+
+    /// Parameters for completion requests.
+    @since(version = 0.3.0)
+    record complete-request {
+        argument: completion-argument,
+        ref: completion-ref,
+        context: option<completion-context>,
+    }
+
+    type cursor = option<string>;
+    type uri = string;
+
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest
+    @since(version = 0.3.1-alpha.1)
+    record args {
+        name: string,
+        arguments: option<string>,
+    }
+
+    /// Parameters for different MCP methods.
+    @since(version = 0.3.0)
+    variant params {
+        /// initialize
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
+        initialize(initialize-request),
+
+        /// tools/list
+        tools-list(cursor),
+
+        /// tools/call
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
+        tools-call(args),
+
+        /// resources/list
+        resources-list(cursor),
+
+        /// resources/read
+        resources-read(uri),
+
+        /// resources/templates/list
+        resources-templates-list(cursor),
+
+        /// prompts/list
+        prompts-list(cursor),
+
+        /// prompts/get
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest>
+        prompts-get(args),
+
+        /// completion/complete
+        completion-complete(complete-request),
+    }
+
+    enum transport {
+        http,
+        stdio,
+    }
+
+    /// JSON-RPC request ID (string or number).
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#requestid>
+    @since(version = 0.3.0)
+    variant id {
+        number(s64),
+        %string(string),
+    }
+
+    /// MCP request context
+    @since(version = 0.3.0)
+    resource context {
+        /// Buffer a JSON-RPC 2.0 request from an input stream.
+        /// The transport protocol must be specified because the parsing implementation varies.
+        parse: static func(input: borrow<input-stream>, output: output-stream, transport: transport) -> result<context, stream-error>;
+
+        /// Get the request ID.
+        @since(version = 0.3.0)
+        id: func() -> id;
+
+        /// Get the method name of this request.
+        @since(version = 0.3.1-alpha.1)
+        method: func() -> method;
+
+        /// Get the request parameters.
+        @since(version = 0.3.0)
+        params: func() -> params;
+
+        /// Get the transport protocol of this request.
+        @since(version = 0.3.1-alpha.1)
+        transport: func() -> transport;
+
+        /// Get a request-scoped context value by key.
+        @since(version = 0.3.0)
+        get: func(key: string) -> option<string>;
+
+        /// Set a request-scoped context value by key.
+        @since(version = 0.3.0)
+        set: func(key: string, value: string);
+
+        /// Get the output stream associated with this request.
+        /// Used for writing incremental responses and notifications.
+        ///
+        /// This can only be called once per context instance, because it transfers ownership of the output stream
+        /// to the caller. Subsequent calls will return an error.
+        @since(version = 0.3.1-alpha.1)
+        consume-output: func() -> result<output-stream>;
+    }
+}

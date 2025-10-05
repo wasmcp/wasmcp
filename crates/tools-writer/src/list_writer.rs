@@ -38,17 +38,7 @@ impl ListWriter {
         if inner.header_written {
             return Ok(());
         }
-
-        // Write the JSON-RPC envelope opening and start of tools array
-        let header = format!(
-            r#"{{"jsonrpc":"2.0","id":{},"result":{{"tools":["#,
-            match &inner.id {
-                Id::Number(n) => n.to_string(),
-                Id::String(s) => serde_json::to_string(s).unwrap_or_else(|_| "\"\"".to_string()),
-            }
-        );
-
-        write_to_stream(&inner.output, header.as_bytes())?;
+        write_header_to_stream(&inner.output, &inner.id)?;
         inner.header_written = true;
         Ok(())
     }
@@ -73,20 +63,7 @@ impl ListWriter {
         inner: &mut ListWriterInner,
         options: Option<&Options>,
     ) -> Result<(), StreamError> {
-        // Close the tools array
-        write_to_stream(&inner.output, b"]")?;
-
-        // Add nextCursor if present
-        if let Some(cursor) = options.and_then(|o| o.next_cursor.as_ref()) {
-            let cursor_json = format!(",\"nextCursor\":{}", serde_json::to_string(cursor).unwrap());
-            write_to_stream(&inner.output, cursor_json.as_bytes())?;
-        } else {
-            write_to_stream(&inner.output, b"}")?;
-        }
-
-        // Close the JSON-RPC envelope and add newline for stdio protocol
-        write_to_stream(&inner.output, b"}\n")?;
-        Ok(())
+        write_footer_to_stream(&inner.output, options)
     }
 }
 
@@ -149,31 +126,54 @@ impl GuestWriter for ListWriter {
     }
 }
 
+// Helper to write header to any stream
+fn write_header_to_stream(output: &OutputStream, id: &Id) -> Result<(), StreamError> {
+    let header = format!(
+        r#"{{"jsonrpc":"2.0","id":{},"result":{{"tools":["#,
+        match id {
+            Id::Number(n) => n.to_string(),
+            Id::String(s) => serde_json::to_string(s).unwrap_or_else(|_| "\"\"".to_string()),
+        }
+    );
+    write_to_stream(output, header.as_bytes())
+}
+
+// Helper to write footer to any stream
+fn write_footer_to_stream(output: &OutputStream, options: Option<&Options>) -> Result<(), StreamError> {
+    write_to_stream(output, b"]")?;
+
+    if let Some(cursor) = options.and_then(|o| o.next_cursor.as_ref()) {
+        let cursor_json = format!(",\"nextCursor\":{}", serde_json::to_string(cursor).unwrap());
+        write_to_stream(output, cursor_json.as_bytes())?;
+    } else {
+        write_to_stream(output, b"}")?;
+    }
+
+    write_to_stream(output, b"}\n")
+}
+
 impl crate::bindings::exports::wasmcp::mcp::tools_list_result::Guest for crate::Component {
     type Writer = ListWriter;
 
     fn write(
         id: Id,
-        output: OutputStream,
+        output: &OutputStream,
         tools: Vec<Tool>,
         options: Option<Options>,
     ) -> Result<(), StreamError> {
-        let writer = ListWriter::new(id, output, vec![]);
-        let mut inner = writer.inner.borrow_mut();
+        write_header_to_stream(output, &id)?;
 
-        // For write, we stream everything in one go
-        ListWriter::write_header(&mut inner)?;
-
-        // Write all tools
-        for tool in &tools {
-            ListWriter::write_single_tool(&mut inner, tool)?;
+        for (i, tool) in tools.iter().enumerate() {
+            if i > 0 {
+                write_to_stream(output, b",")?;
+            }
+            let tool_json = tool_to_json(tool);
+            let tool_str = serde_json::to_string(&tool_json).map_err(|_| StreamError::Closed)?;
+            write_to_stream(output, tool_str.as_bytes())?;
         }
 
-        // Write footer
-        ListWriter::write_footer(&mut inner, options.as_ref())?;
-
-        // Flush the stream
-        inner.output.flush().map_err(|_| StreamError::Closed)
+        write_footer_to_stream(output, options.as_ref())?;
+        output.flush().map_err(|_| StreamError::Closed)
     }
 
     fn open(

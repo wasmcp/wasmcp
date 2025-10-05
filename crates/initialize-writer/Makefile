@@ -1,43 +1,18 @@
-# Makefile for initialize-writer component
+# Makefile for rust
 
-COMPONENT = initialize-writer
-PACKAGE = wasmcp:initialize-writer
-VERSION = 0.3.0
+.PHONY: work setup build
 
-# Build mode (debug or release)
-MODE ?= release
+# Output directory and component name
+OUT_DIR = target/wasm32-wasip2/release
+COMPONENT_NAME = rust
 
-# Build flags
-ifeq ($(MODE),release)
-	BUILD_FLAGS = --release
-	TARGET_DIR = release
-else
-	BUILD_FLAGS =
-	TARGET_DIR = debug
-endif
+# Default target - full workflow
+work: setup build
 
-.PHONY: build publish clean help
+# Install required tools
+setup:
+	@rustup target add wasm32-wasip2
 
-# Default target
+# Build the component
 build:
-	@echo "Building $(COMPONENT) in $(MODE) mode..."
-	@cargo component build $(BUILD_FLAGS)
-	@echo "$(COMPONENT) built successfully!"
-
-# Publish to registry
-publish: build
-	@echo "Publishing $(PACKAGE)@$(VERSION)..."
-	wkg publish --package '$(PACKAGE)@$(VERSION)' \
-		target/wasm32-wasip1/$(TARGET_DIR)/initialize_writer.wasm
-	@echo "Published $(PACKAGE)@$(VERSION)"
-
-clean:
-	@cargo clean
-
-help:
-	@echo "$(COMPONENT) component"
-	@echo ""
-	@echo "Targets:"
-	@echo "  build    - Build the component"
-	@echo "  publish  - Build and publish to wkg registry"
-	@echo "  clean    - Remove build artifacts"
+	@cargo build --target wasm32-wasip2 --release

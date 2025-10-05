@@ -1,0 +1,28 @@
+/// Lifecycle management interface for MCP requests.
+@since(version = 0.3.1-alpha.1)
+interface lifecycle-handler {
+    use wasi:io/streams@0.2.3.{output-stream};
+    use context.{context, error, server-capabilities, implementation, protocol-version, initialize-request};
+
+    /// Initialization result structure.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializeresult>
+    @since(version = 0.3.1-alpha.1)
+    record initialize-result {
+        server-info: implementation,
+        capabilities: server-capabilities,
+        protocol-version: protocol-version,
+        instructions: option<string>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#initialize
+    @since(version = 0.3.1-alpha.1)
+    initialize: func(ctx: borrow<context>, req: initialize-request) -> result<initialize-result, error>;
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#ping
+    @since(version = 0.3.1-alpha.1)
+    ping: func(ctx: borrow<context>) -> result<_, error>;
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#notifications%2Finitialized
+    @since(version = 0.3.1-alpha.1)
+    notifications-initialized: func(ctx: borrow<context>) -> result<_, error>;
+}

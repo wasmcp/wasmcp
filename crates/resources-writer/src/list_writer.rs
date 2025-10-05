@@ -165,26 +165,48 @@ impl crate::bindings::exports::wasmcp::mcp::resources_list_result::Guest for cra
 
     fn write(
         id: Id,
-        output: OutputStream,
+        output: &OutputStream,
         resources: Vec<Resource>,
         options: Option<Options>,
     ) -> Result<(), StreamError> {
-        let writer = ListWriter::new(id, output, vec![]);
-        let mut inner = writer.inner.borrow_mut();
+        // Write directly to borrowed stream without creating writer struct
 
-        // For write, we stream everything in one go
-        ListWriter::write_header(&mut inner)?;
+        // Write the JSON-RPC envelope opening and start of resources array
+        let header = format!(
+            r#"{{"jsonrpc":"2.0","id":{},"result":{{"resources":["#,
+            match &id {
+                Id::Number(n) => n.to_string(),
+                Id::String(s) => serde_json::to_string(s).unwrap_or_else(|_| "\"\"".to_string()),
+            }
+        );
+        write_to_stream(output, header.as_bytes())?;
 
         // Write all resources
-        for resource in &resources {
-            ListWriter::write_single_resource(&mut inner, resource)?;
+        for (i, resource) in resources.iter().enumerate() {
+            if i > 0 {
+                write_to_stream(output, b",")?;
+            }
+            let resource_json = resource_to_json(resource);
+            let resource_str = serde_json::to_string(&resource_json).map_err(|_| StreamError::Closed)?;
+            write_to_stream(output, resource_str.as_bytes())?;
         }
 
-        // Write footer
-        ListWriter::write_footer(&mut inner, options.as_ref())?;
+        // Close the resources array
+        write_to_stream(output, b"]")?;
+
+        // Add nextCursor if present
+        if let Some(cursor) = options.as_ref().and_then(|o| o.next_cursor.as_ref()) {
+            let cursor_json = format!(",\"nextCursor\":{}", serde_json::to_string(cursor).unwrap());
+            write_to_stream(output, cursor_json.as_bytes())?;
+        } else {
+            write_to_stream(output, b"}")?;
+        }
+
+        // Close the JSON-RPC envelope and add newline for stdio protocol
+        write_to_stream(output, b"}\n")?;
 
         // Flush the stream
-        inner.output.flush().map_err(|_| StreamError::Closed)
+        output.flush().map_err(|_| StreamError::Closed)
     }
 
     fn open(

@@ -3,12 +3,12 @@
 //! This component exports the initialize-writer interface for writing
 //! initialization results to output streams in the JSON-RPC format.
 
-#[rustfmt::skip]
-#[allow(clippy::all)]
-#[allow(dead_code)]
-#[allow(unused_imports)]
-#[allow(non_snake_case)]
-mod bindings;
+mod bindings {
+    wit_bindgen::generate!({
+        world: "initialize-writer",
+        generate_all,
+    });
+}
 
 use bindings::exports::wasmcp::mcp::initialize_result::{
     Guest, Id, InitializeResult, OutputStream, ProtocolVersion, ServerCapabilities, StreamError,
@@ -17,7 +17,7 @@ use bindings::exports::wasmcp::mcp::initialize_result::{
 pub struct Component;
 
 impl Guest for Component {
-    fn write(id: Id, output: OutputStream, result: InitializeResult) -> Result<(), StreamError> {
+    fn write(id: Id, output: &OutputStream, result: InitializeResult) -> Result<(), StreamError> {
         // Build the complete response as a single string
         // This is more efficient for small, bounded payloads like initialize results
         let mut response = String::with_capacity(1024); // Pre-allocate reasonable capacity
@@ -73,21 +73,21 @@ impl Guest for Component {
         push_escaped_string(&mut response, &result.server_info.version);
         response.push('"');
 
-        if let Some(title) = &result.server_info.title {
+        if let Some(title) = result.server_info.title {
             response.push_str(r#","title":""#);
-            push_escaped_string(&mut response, title);
+            push_escaped_string(&mut response, &title);
             response.push('"');
         }
         response.push('}');
 
         // Optional fields
-        if let Some(options) = &result.options {
-            if let Some(instructions) = &options.instructions {
+        if let Some(options) = result.options {
+            if let Some(instructions) = options.instructions {
                 response.push_str(r#","instructions":""#);
-                push_escaped_string(&mut response, instructions);
+                push_escaped_string(&mut response, &instructions);
                 response.push('"');
             }
-            if let Some(meta) = &options.meta {
+            if let Some(meta) = options.meta {
                 response.push_str(r#","meta":{"#);
                 let mut first_meta = true;
                 for (key, value) in meta {
@@ -95,9 +95,9 @@ impl Guest for Component {
                         response.push(',');
                     }
                     response.push('"');
-                    push_escaped_string(&mut response, key);
+                    push_escaped_string(&mut response, &key);
                     response.push_str(r#"":""#);
-                    push_escaped_string(&mut response, value);
+                    push_escaped_string(&mut response, &value);
                     response.push('"');
                     first_meta = false;
                 }
@@ -112,7 +112,7 @@ impl Guest for Component {
         response.push('\n');
 
         // Write the complete response efficiently
-        write_bytes_to_stream(&output, response.as_bytes())
+        write_bytes_to_stream(output, response.as_bytes())
     }
 }
 

@@ -1,0 +1,97 @@
+/// Handle resources methods
+@since(version = 0.3.1-alpha.1)
+interface resources-handler {
+    use wasi:io/streams@0.2.3.{output-stream};
+    use context.{context, uri, cursor, error};
+    use content.{annotations};
+
+    @since(version = 0.3.0)
+    record resource-options {
+        size: option<u64>,
+        title: option<string>,
+        description: option<string>,
+        mime-type: option<string>,
+        annotations: option<annotations>,
+        meta: option<list<tuple<string, string>>>,
+    }
+
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resource>
+    @since(version = 0.3.0)
+    record %resource {
+        uri: string,
+        name: string,
+        options: option<resource-options>,
+    }
+
+    @since(version = 0.3.0)
+    record contents-options {
+        mime-type: option<string>,
+        meta: option<list<tuple<string, string>>>,
+    }
+
+    @since(version = 0.3.0)
+    record blob-contents {
+        uri: string,
+        blob: string,
+        options: option<contents-options>,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    record text-contents {
+        uri: string,
+        text: string,
+        options: option<contents-options>,
+    }
+
+    variant resource-contents {
+        blob(blob-contents),
+        text(text-contents),
+    }
+
+    @since(version = 0.3.0)
+    record template-options {
+        description: option<string>,
+        title: option<string>,
+        mime-type: option<string>,
+        annotations: option<annotations>,
+        meta: option<list<tuple<string, string>>>,
+    }
+
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplate>
+    @since(version = 0.3.0)
+    record template {
+        uri-template: string,
+        name: string,
+        options: option<template-options>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Flist
+    @since(version = 0.3.1-alpha.1)
+    list-resources: func(ctx: borrow<context>, cursor: cursor) -> result<list<%resource>, error>;
+ 
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Fread
+    @since(version = 0.3.1-alpha.1)
+    read-resource: func(ctx: borrow<context>, uri: uri) -> result<list<resource-contents>, error>;
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Ftemplates%2Flist
+    @since(version = 0.3.1-alpha.1)
+    list-resource-templates: func(ctx: borrow<context>, cursor: cursor) -> result<list<template>, error>;
+}
+
+/// Handle resource subscriptions methods
+@since(version = 0.3.1-alpha.1)
+interface resource-subscriptions-handler {
+    use context.{context, uri, error};
+
+    /// Subscribe to resource updates.
+    /// 
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Fsubscribe
+    @since(version = 0.3.1-alpha.1)
+    subscribe: func(ctx: borrow<context>, uri: uri) -> result<_, error>;
+
+    /// Unsubscribe from resource updates.
+    /// 
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#resources%2Funsubscribe
+    @since(version = 0.3.1-alpha.1)
+    unsubscribe: func(ctx: borrow<context>, uri: uri) -> result<_, error>;
+}

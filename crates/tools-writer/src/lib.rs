@@ -14,13 +14,12 @@
 //! - `helpers`: Utility functions for JSON conversion and streaming
 //! - `types`: Type definitions for MCP response structures
 
-// Generated code - not formatted or linted
-#[rustfmt::skip]
-#[allow(clippy::all)]
-#[allow(dead_code)]
-#[allow(unused_imports)]
-#[allow(non_snake_case)]
-mod bindings;
+mod bindings {
+    wit_bindgen::generate!({
+        world: "tools-writer",
+        generate_all,
+    });
+}
 
 mod content_writer;
 mod helpers;

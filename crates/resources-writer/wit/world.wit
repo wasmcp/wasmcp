@@ -1,0 +1,7 @@
+package wasmcp:resources-writer@0.3.1-alpha.1;
+
+world resources-writer {
+    export wasmcp:mcp/resources-list-result@0.3.1-alpha.1;
+    export wasmcp:mcp/resources-read-result@0.3.1-alpha.1;
+    export wasmcp:mcp/resource-templates-list-result@0.3.1-alpha.1;
+}

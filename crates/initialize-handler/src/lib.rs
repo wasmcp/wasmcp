@@ -3,18 +3,18 @@
 //! This is the terminal handler in the MCP chain that handles initialize requests.
 //! All MCP servers must have an initialize handler as it's required by the protocol.
 
-#[rustfmt::skip]
-#[allow(clippy::all)]
-#[allow(dead_code)]
-#[allow(unused_imports)]
-#[allow(non_snake_case)]
-mod bindings;
+mod bindings {
+    wit_bindgen::generate!({
+        world: "initialize-handler",
+        generate_all,
+    });
+}
 
 use bindings::exports::wasmcp::mcp::incoming_handler::{Guest, OutputStream, Request};
 use bindings::wasmcp::mcp::initialize_result::{
     InitializeResult, InitializeResultOptions, ServerCapabilities,
 };
-use bindings::wasmcp::mcp::request::Feature;
+use bindings::wasmcp::mcp::request::Method;
 use bindings::wasmcp::mcp::types::{Implementation, ProtocolVersion};
 
 pub struct Component;
@@ -23,16 +23,16 @@ pub struct Component;
 /// method not found error for all other requests.
 impl Guest for Component {
     fn handle(request: Request, output: OutputStream) {
-        // Get the feature from the request to check if it's an initialize request
-        let feature = request.feature();
+        // Get the method from the request to check if it's an initialize request
+        let method = request.method();
 
         // Check if this is an initialize request
-        if matches!(feature, Feature::Initialize) {
+        if matches!(method, Method::Initialize) {
             // Handle initialize request directly
             handle_initialize_request(request, output);
         } else {
             // Return method not found error for unhandled requests
-            write_method_not_found_error(request, output, feature);
+            write_method_not_found_error(request, output, method);
         }
     }
 }
@@ -82,20 +82,26 @@ fn handle_initialize_request(request: Request, output: OutputStream) {
     };
 
     // Use the initialize-writer to send the complete response with ID
-    let _ = bindings::wasmcp::mcp::initialize_result::write(&id, output, &result);
+    let _ = bindings::wasmcp::mcp::initialize_result::write(&id, &output, &result);
 }
 
 /// Writes a JSON-RPC error response for method not found
-fn write_method_not_found_error(request: Request, output: OutputStream, feature: Feature) {
+fn write_method_not_found_error(request: Request, output: OutputStream, method: Method) {
     let id = request.id();
 
-    // Convert feature to method name for error message
-    let method = match feature {
-        Feature::Initialize => "initialize",
-        Feature::Tools => "tools/*",
-        Feature::Resources => "resources/*",
-        Feature::Prompts => "prompts/*",
-        Feature::Completion => "completion/complete",
+    // Convert method enum to method name for error message
+    let method_name = match method {
+        Method::Initialize => "initialize",
+        Method::ToolsList => "tools/list",
+        Method::ToolsCall => "tools/call",
+        Method::ResourcesList => "resources/list",
+        Method::ResourcesRead => "resources/read",
+        Method::ResourcesTemplatesList => "resources/templates/list",
+        Method::PromptsList => "prompts/list",
+        Method::PromptsGet => "prompts/get",
+        Method::CompletionComplete => "completion/complete",
+        Method::NotificationsInitialized => "notifications/initialized",
+        Method::Ping => "ping",
     };
 
     // Write JSON-RPC error response
@@ -106,7 +112,7 @@ fn write_method_not_found_error(request: Request, output: OutputStream, feature:
             bindings::wasmcp::mcp::request::Id::String(s) =>
                 serde_json::to_string(&s).unwrap_or_else(|_| r#""""#.to_string()),
         },
-        method
+        method_name
     );
 
     let _ = output.blocking_write_and_flush(error_response.as_bytes());

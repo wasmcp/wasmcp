@@ -1,0 +1,17 @@
+/// Handle completions methods
+@since(version = 0.3.1-alpha.1)
+interface completions-handler {
+    use wasi:io/streams@0.2.3.{output-stream};
+    use context.{context, complete-request, error};
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#completeresult
+    record complete-result {
+        has-more: option<bool>,
+        total: option<u64>,
+        values: list<string>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#completion%2Fcomplete
+    @since(version = 0.3.1-alpha.1)
+    complete: func(ctx: borrow<context>, req: complete-request) -> result<complete-result, error>;
+}
