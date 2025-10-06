@@ -7,9 +7,13 @@ interface incoming-handler {
     use wasi:io/streams@0.2.3.{output-stream};
     use request.{request};
 
-    /// Handle an incoming MCP request and write the response to the output stream.
+    /// Handle an incoming MCP request and write the response to the output-stream.
+    ///
+    /// The response may consist of zero or more notifications and server-sent requests
+    /// before concluding with the result.
+    ///
     /// The handler receives ownership of the request resource, allowing it to
     /// either process the request or forward it to the next handler in the chain.
     @since(version = 0.3.0)
-    handle: func(req: request, output: output-stream);
+    handle: func(req: request, out: output-stream);
 }

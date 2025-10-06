@@ -112,7 +112,7 @@ interface session {
         /// 
         /// https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
         @since(version = 0.3.1-alpha.1)
-        elicit: func(output: borrow<output-stream>, elicitation: elicit-request) -> result<elicit-result, stream-error>;
+        elicit: func(out: borrow<output-stream>, elicitation: elicit-request) -> result<elicit-result, stream-error>;
 
         /// Terminate the session, optionally providing a reason.
         /// is-active will return false after termination.

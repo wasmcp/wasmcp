@@ -48,15 +48,15 @@ interface notifications {
 
     /// Log a message to the client.
     @since(version = 0.3.1-alpha.1)
-    log: func(output: borrow<output-stream>, message: log-message) -> result<_, stream-error>;
+    log: func(out: borrow<output-stream>, message: log-message) -> result<_, stream-error>;
 
     // Send a JSON-RPC notification to the client.
     @since(version = 0.3.1-alpha.1)
-    send: func(output: borrow<output-stream>, notification: notification) -> result<_, stream-error>;
+    send: func(out: borrow<output-stream>, notification: notification) -> result<_, stream-error>;
 
     /// Send a `notifications/*/list_changed` notification to the client.
-    send-list-changed: func(output: borrow<output-stream>, change: change) -> result<_, stream-error>;
+    send-list-changed: func(out: borrow<output-stream>, change: change) -> result<_, stream-error>;
 
     /// Send a `notifications/*/updated` notification to the client.
-    send-updated: func(output: borrow<output-stream>, update: update) -> result<_, stream-error>;
+    send-updated: func(out: borrow<output-stream>, update: update) -> result<_, stream-error>;
 }

@@ -15,6 +15,7 @@ world middleware {
 // <https://modelcontextprotocol.io/specification/2025-06-18/schema>
 world tools-handler {
     include middleware;
+    import error-result;
     import list-tools-result;
     import content-tool-result;
     import structured-tool-result;
@@ -22,6 +23,7 @@ world tools-handler {
 
 world resources-handler {
     include middleware;
+    import error-result;
     import list-resources-result;
     import read-resource-result;
     import list-resource-templates-result;
@@ -29,17 +31,20 @@ world resources-handler {
 
 world prompts-handler {
     include middleware;
+    import error-result;
     import list-prompts-result;
     import get-prompt-result;
 }
 
 world completions-handler {
     include middleware;
+    import error-result;
     import complete-result;
 }
 
 world lifecycle-handler {
     export incoming-handler;
+    import error-result;
     import initialize-result;
-    import notification-result;
+    import empty-result;
 }
