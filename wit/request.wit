@@ -162,7 +162,7 @@ interface request {
     }
 
     // The variant below could be expanded in the future with more framings for new transport types.
-    //   variant message-framing {
+    //   variant message-frame {
     //       content-length(u64),
     //       delimiter(list<u8>),
     //       chunked-encoding,              // Future: HTTP chunked
