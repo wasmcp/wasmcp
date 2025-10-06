@@ -37,45 +37,44 @@ struct TracerProviderInner {
 }
 
 impl TracerProviderImpl {
-    /// Create a new tracer provider
-    pub fn new() -> Self {
+    /// Create a new tracer provider with configuration
+    fn with_config(
+        sampler: Option<trace::SamplerConfig>,
+        limits: Option<trace::TraceLimitsConfig>,
+        service_resource: Option<foundation::OtelResource>,
+    ) -> Self {
         ensure_registry();
+
+        // Convert WIT sampler config to internal type
+        let sampler_config = sampler.map(|s| match s {
+            trace::SamplerConfig::AlwaysOn => SamplerConfig::AlwaysOn,
+            trace::SamplerConfig::AlwaysOff => SamplerConfig::AlwaysOff,
+            trace::SamplerConfig::TraceIdRatio(ratio) => SamplerConfig::TraceIdRatio(ratio),
+            trace::SamplerConfig::ParentBased => SamplerConfig::ParentBased,
+        }).unwrap_or(SamplerConfig::AlwaysOn);
+
+        // Convert WIT limits config to internal type
+        let limits_config = limits.map(|l| TraceLimitsConfig {
+            max_attributes_per_span: l.max_attributes_per_span,
+            max_events_per_span: l.max_events_per_span,
+            max_links_per_span: l.max_links_per_span,
+            attribute_value_length_limit: l.attribute_value_length_limit,
+            span_attribute_count_limit: l.span_attribute_count_limit,
+        }).unwrap_or(TraceLimitsConfig {
+            max_attributes_per_span: 128,
+            max_events_per_span: 128,
+            max_links_per_span: 128,
+            attribute_value_length_limit: 1024,
+            span_attribute_count_limit: 256,
+        });
 
         Self {
             inner: Mutex::new(TracerProviderInner {
-                resource: None,
-                sampler_config: SamplerConfig::AlwaysOn,
-                limits: TraceLimitsConfig {
-                    max_attributes_per_span: 128,
-                    max_events_per_span: 128,
-                    max_links_per_span: 32,
-                    attribute_value_length_limit: 1024,
-                    span_attribute_count_limit: 256,
-                },
+                resource: service_resource,
+                sampler_config,
+                limits: limits_config,
                 enabled: true,
             }),
-        }
-    }
-
-    /// Configure the tracer provider with resource and sampling
-    pub fn configure(
-        &self,
-        resource: Option<foundation::OtelResource>,
-        sampler_config: Option<SamplerConfig>,
-        limits: Option<TraceLimitsConfig>,
-    ) {
-        let mut inner = self.inner.lock().unwrap();
-
-        if let Some(res) = resource {
-            inner.resource = Some(res);
-        }
-
-        if let Some(sampler) = sampler_config {
-            inner.sampler_config = sampler;
-        }
-
-        if let Some(lim) = limits {
-            inner.limits = lim;
         }
     }
 
@@ -87,18 +86,22 @@ impl TracerProviderImpl {
             SamplerConfig::AlwaysOn => true,
             SamplerConfig::AlwaysOff => false,
             SamplerConfig::TraceIdRatio(ratio) => {
-                // Use the last 8 bytes of trace ID for sampling decision
-                if trace_id.len() >= 8 {
-                    let last_8_bytes = &trace_id[trace_id.len() - 8..];
-                    let mut value = 0u64;
-                    for (i, byte) in last_8_bytes.iter().enumerate() {
-                        value |= (*byte as u64) << (i * 8);
-                    }
-                    let threshold = (ratio * u64::MAX as f64) as u64;
-                    value < threshold
-                } else {
-                    true // Sample if trace ID is invalid
+                // Match OpenTelemetry spec: use big-endian last 8 bytes
+                if *ratio >= 1.0 {
+                    return true;
                 }
+
+                if trace_id.len() < 8 {
+                    return true; // Sample if trace ID is invalid
+                }
+
+                // Use last 8 bytes of trace ID for deterministic sampling
+                let last_8_bytes = &trace_id[trace_id.len() - 8..];
+                let trace_id_low = u64::from_be_bytes(last_8_bytes.try_into().unwrap());
+                let rnd_from_trace_id = trace_id_low >> 1;
+                let prob_upper_bound = (ratio.max(0.0) * (1u64 << 63) as f64) as u64;
+
+                rnd_from_trace_id < prob_upper_bound
             }
             SamplerConfig::ParentBased => {
                 // Check if parent context is sampled
@@ -132,13 +135,6 @@ impl TracerProviderImpl {
         attributes
     }
 
-    /// Apply limits to events
-    fn apply_event_limits(&self, mut events: Vec<trace::SpanEvent>) -> Vec<trace::SpanEvent> {
-        let inner = self.inner.lock().unwrap();
-        events.truncate(inner.limits.max_events_per_span as usize);
-        events
-    }
-
     /// Apply limits to links
     fn apply_link_limits(&self, mut links: Vec<trace::SpanLink>) -> Vec<trace::SpanLink> {
         let inner = self.inner.lock().unwrap();
@@ -148,6 +144,14 @@ impl TracerProviderImpl {
 }
 
 impl trace::GuestTracerProvider for TracerProviderImpl {
+    fn new(
+        sampler: Option<trace::SamplerConfig>,
+        limits: Option<trace::TraceLimitsConfig>,
+        service_resource: Option<foundation::OtelResource>,
+    ) -> Self {
+        Self::with_config(sampler, limits, service_resource)
+    }
+
     fn get_tracer(
         &self,
         name: String,

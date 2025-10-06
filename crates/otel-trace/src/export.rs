@@ -11,10 +11,8 @@ pub struct TraceExporterImpl {
 }
 
 pub struct TraceExporterInner {
-    http_client_handle: u32, // Store the HTTP client handle from wit-bindgen
     spans: Vec<trace::SpanData>,
     resource: Option<foundation::OtelResource>,
-    batch_size: usize,
 }
 
 impl TraceExporterImpl {
@@ -30,21 +28,6 @@ impl TraceExporterImpl {
         }
     }
 
-    /// Prepare spans for export by batching them
-    fn prepare_batch(&mut self) -> Option<Vec<trace::SpanData>> {
-        let mut inner = self.inner.lock().unwrap();
-
-        if inner.spans.is_empty() {
-            return None;
-        }
-
-        // Take up to MAX_BATCH_SIZE spans
-        let batch_size = inner.spans.len().min(Self::MAX_BATCH_SIZE);
-        let batch: Vec<trace::SpanData> = inner.spans.drain(..batch_size).collect();
-
-        Some(batch)
-    }
-
     /// Export a batch of spans via HTTP
     fn export_batch_internal(
         &self,
@@ -52,8 +35,8 @@ impl TraceExporterImpl {
         resource: &foundation::OtelResource,
         http_client: &otel_export::HttpClient,
     ) -> Result<(), String> {
-        // Get the export protocol from the HTTP client configuration
-        let protocol = otel_export::ExportProtocol::HttpProtobuf; // Default to protobuf
+        // Get the export protocol from the HTTP client
+        let protocol = http_client.get_protocol();
 
         // Serialize spans to OTLP format
         let body = otlp::serialize_spans_to_otlp(spans, resource.clone(), protocol.clone())?;
@@ -93,15 +76,10 @@ impl TraceExporterImpl {
 }
 
 impl trace::GuestTraceExporter for TraceExporterImpl {
-    fn new(client: &otel_export::HttpClient) -> Self {
-        // Store the HTTP client handle so we can use it in export methods
-        let client_handle = client.handle();
-
+    fn new() -> Self {
         let inner = Arc::new(Mutex::new(TraceExporterInner {
-            http_client_handle: client_handle,
             spans: Vec::new(),
             resource: None,
-            batch_size: TraceExporterImpl::MAX_BATCH_SIZE,
         }));
 
         Self {
@@ -114,12 +92,6 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
 
         // Add spans to the internal buffer
         inner.spans.extend(spans);
-
-        // Optional: Trigger export if buffer is full
-        if inner.spans.len() >= inner.batch_size {
-            // In a real implementation, we might trigger an async export here
-            // For now, we just accumulate spans
-        }
     }
 
     fn set_resource(&self, service_resource: foundation::OtelResource) {
@@ -127,7 +99,7 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
         inner.resource = Some(service_resource);
     }
 
-    fn export_batch(&self) -> otel_export::ExportResult {
+    fn export_batch(&self, client: &otel_export::HttpClient) -> otel_export::ExportResult {
         let mut inner = self.inner.lock().unwrap();
 
         // If no spans, nothing to export
@@ -152,23 +124,17 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
         let batch_size = inner.spans.len().min(Self::MAX_BATCH_SIZE);
         let batch: Vec<trace::SpanData> = inner.spans.drain(..batch_size).collect();
 
-        // Get the HTTP client handle
-        let client_handle = inner.http_client_handle;
-
         // Release the lock before doing the export
         drop(inner);
 
-        // Reconstruct the HttpClient from the handle
-        let http_client = unsafe { otel_export::HttpClient::from_handle(client_handle) };
-
         // Export the batch using the internal implementation
-        match self.export_batch_internal(batch, &resource, &http_client) {
+        match self.export_batch_internal(batch, &resource, client) {
             Ok(()) => otel_export::ExportResult::Success,
             Err(msg) => otel_export::ExportResult::Failure(msg),
         }
     }
 
-    fn force_flush(&self) -> bool {
+    fn force_flush(&self, client: &otel_export::HttpClient) -> bool {
         // Export all pending spans by repeatedly calling export_batch
         loop {
             let has_spans = {
@@ -181,7 +147,7 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
             }
 
             // Export a batch
-            match self.export_batch() {
+            match self.export_batch(client) {
                 otel_export::ExportResult::Success => continue,
                 otel_export::ExportResult::Failure(_) | otel_export::ExportResult::PartialFailure(_) => {
                     return false; // Export failed
@@ -192,22 +158,20 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
         true // All spans successfully exported
     }
 
-    fn finish(exporter: trace::TraceExporter) -> bool {
+    fn finish(exporter: trace::TraceExporter, client: &otel_export::HttpClient) -> bool {
         // Get the handle ID from the exporter
         let handle = exporter.handle();
 
         // Retrieve the exporter data from the registry and remove it
         if let Some(exporter_data) = crate::remove_exporter(handle) {
-            let inner = exporter_data.lock().unwrap();
+            // Export any remaining spans before cleanup
+            let exporter_impl = TraceExporterImpl { inner: exporter_data };
+            let flush_result = exporter_impl.force_flush(client);
 
-            // In a production implementation, we would:
-            // 1. Export any remaining spans
-            // 2. Flush the HTTP client
-            // 3. Clean up resources
+            // Clean up resources
+            drop(exporter_impl);
 
-            // For now, we successfully cleaned up the exporter
-            drop(inner);
-            true
+            flush_result
         } else {
             // Exporter not found in registry, still return success
             // as the resource has been consumed

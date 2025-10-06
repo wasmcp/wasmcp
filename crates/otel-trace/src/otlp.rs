@@ -183,6 +183,20 @@ fn convert_attributes(attributes: &[foundation::Attribute]) -> Vec<OtlpKeyValue>
         .collect()
 }
 
+/// Convert simple value to OTLP format
+fn convert_simple_value(value: &foundation::SimpleValue) -> OtlpAnyValue {
+    match value {
+        foundation::SimpleValue::String(s) => OtlpAnyValue::StringValue(s.clone()),
+        foundation::SimpleValue::Bool(b) => OtlpAnyValue::BoolValue(*b),
+        foundation::SimpleValue::Int64(i) => OtlpAnyValue::IntValue(*i),
+        foundation::SimpleValue::Float64(d) => OtlpAnyValue::DoubleValue(*d),
+        foundation::SimpleValue::Bytes(bytes) => {
+            // Convert bytes to base64 string
+            OtlpAnyValue::StringValue(general_purpose::STANDARD.encode(bytes))
+        }
+    }
+}
+
 /// Convert attribute value to OTLP format
 fn convert_attribute_value(value: &foundation::AttributeValue) -> OtlpAnyValue {
     match value {
@@ -215,15 +229,14 @@ fn convert_attribute_value(value: &foundation::AttributeValue) -> OtlpAnyValue {
             })
         }
         foundation::AttributeValue::Kvlist(kvs) => {
-            // Convert kvlist to a JSON object for now
-            // In a real implementation, this would create a nested structure
-            let mut map = serde_json::Map::new();
-            for kv in kvs {
-                // Recursively convert the value (Note: KeyValue might not be the right type)
-                // For now, just convert to string representation
-                map.insert(kv.key.clone(), serde_json::Value::String(format!("{:?}", kv.value)));
-            }
-            OtlpAnyValue::StringValue(serde_json::to_string(&map).unwrap_or_default())
+            // Convert each KeyValue to OtlpKeyValue
+            // Note: kvlist values are SimpleValue, not AttributeValue (no nesting)
+            OtlpAnyValue::KvlistValue(OtlpKeyValueList {
+                values: kvs.iter().map(|kv| OtlpKeyValue {
+                    key: kv.key.clone(),
+                    value: convert_simple_value(&kv.value),
+                }).collect(),
+            })
         }
     }
 }
@@ -490,7 +503,42 @@ fn encode_status_proto(status: &trace::SpanStatus) -> Vec<u8> {
     buffer
 }
 
-/// Encode key-value pair to protobuf
+/// Encode simple value to protobuf (for kvlist)
+fn encode_simple_value_proto(value: &foundation::SimpleValue) -> Vec<u8> {
+    let mut buffer = Vec::new();
+
+    match value {
+        foundation::SimpleValue::String(s) => {
+            // Field 1: string_value (string)
+            write_protobuf_tag(&mut buffer, 1, 2);
+            write_protobuf_string(&mut buffer, s);
+        }
+        foundation::SimpleValue::Bool(b) => {
+            // Field 2: bool_value (bool)
+            write_protobuf_tag(&mut buffer, 2, 0);
+            write_protobuf_varint(&mut buffer, if *b { 1 } else { 0 });
+        }
+        foundation::SimpleValue::Int64(i) => {
+            // Field 3: int_value (int64)
+            write_protobuf_tag(&mut buffer, 3, 0);
+            write_protobuf_varint(&mut buffer, *i as u64);
+        }
+        foundation::SimpleValue::Float64(d) => {
+            // Field 4: double_value (double)
+            write_protobuf_tag(&mut buffer, 4, 1);
+            write_protobuf_double(&mut buffer, *d);
+        }
+        foundation::SimpleValue::Bytes(bytes) => {
+            // Field 7: bytes_value (bytes)
+            write_protobuf_tag(&mut buffer, 7, 2);
+            write_protobuf_bytes(&mut buffer, bytes);
+        }
+    }
+
+    buffer
+}
+
+/// Encode key-value pair to protobuf (for attributes - AttributeValue)
 fn encode_key_value_proto(key: &str, value: &foundation::AttributeValue) -> Vec<u8> {
     let mut buffer = Vec::new();
 
@@ -501,6 +549,22 @@ fn encode_key_value_proto(key: &str, value: &foundation::AttributeValue) -> Vec<
     // Field 2: value (AnyValue message)
     write_protobuf_tag(&mut buffer, 2, 2);
     let value_proto = encode_any_value_proto(value);
+    write_protobuf_length_delimited(&mut buffer, &value_proto);
+
+    buffer
+}
+
+/// Encode key-value pair to protobuf (for kvlist - SimpleValue)
+fn encode_key_simple_value_proto(key: &str, value: &foundation::SimpleValue) -> Vec<u8> {
+    let mut buffer = Vec::new();
+
+    // Field 1: key (string)
+    write_protobuf_tag(&mut buffer, 1, 2);
+    write_protobuf_string(&mut buffer, key);
+
+    // Field 2: value (AnyValue message with SimpleValue)
+    write_protobuf_tag(&mut buffer, 2, 2);
+    let value_proto = encode_simple_value_proto(value);
     write_protobuf_length_delimited(&mut buffer, &value_proto);
 
     buffer
@@ -562,14 +626,9 @@ fn encode_any_value_proto(value: &foundation::AttributeValue) -> Vec<u8> {
         }
         foundation::AttributeValue::Kvlist(kvs) => {
             // Field 6: kvlist_value (KeyValueList message)
-            // For now, encode as a string value with JSON representation
-            write_protobuf_tag(&mut buffer, 1, 2);
-            let mut map = serde_json::Map::new();
-            for kv in kvs {
-                map.insert(kv.key.clone(), serde_json::Value::String(format!("{:?}", kv.value)));
-            }
-            let json_str = serde_json::to_string(&map).unwrap_or_default();
-            write_protobuf_string(&mut buffer, &json_str);
+            write_protobuf_tag(&mut buffer, 6, 2);
+            let kvlist_proto = encode_kvlist_value_proto(kvs);
+            write_protobuf_length_delimited(&mut buffer, &kvlist_proto);
         }
     }
 
@@ -627,6 +686,20 @@ fn encode_array_value_proto_doubles(values: &[f64]) -> Vec<u8> {
         write_protobuf_tag(&mut buffer, 1, 2);
         let value_proto = encode_any_value_proto(&foundation::AttributeValue::Float64(*value));
         write_protobuf_length_delimited(&mut buffer, &value_proto);
+    }
+
+    buffer
+}
+
+/// Encode key-value list to protobuf
+fn encode_kvlist_value_proto(kvs: &[foundation::KeyValue]) -> Vec<u8> {
+    let mut buffer = Vec::new();
+
+    // Field 1: values (repeated KeyValue with SimpleValue)
+    for kv in kvs {
+        write_protobuf_tag(&mut buffer, 1, 2);
+        let kv_proto = encode_key_simple_value_proto(&kv.key, &kv.value);
+        write_protobuf_length_delimited(&mut buffer, &kv_proto);
     }
 
     buffer
@@ -788,10 +861,17 @@ enum OtlpAnyValue {
     IntValue(i64),
     DoubleValue(f64),
     ArrayValue(OtlpArrayValue),
+    KvlistValue(OtlpKeyValueList),
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct OtlpArrayValue {
     values: Vec<OtlpAnyValue>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OtlpKeyValueList {
+    values: Vec<OtlpKeyValue>,
 }

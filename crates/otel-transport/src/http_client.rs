@@ -3,7 +3,7 @@
 use crate::auth;
 use crate::bindings::wasi::http::outgoing_handler;
 use crate::bindings::wasi::http::types::{
-    Fields, Method, OutgoingBody, OutgoingRequest, Scheme,
+    Fields, Method, OutgoingBody, OutgoingRequest, RequestOptions, Scheme,
 };
 use crate::bindings::exports::wasi::otel_sdk::otel_export::{
     CompressionType, ExportConfig, ExportResult, RetryConfig,
@@ -158,10 +158,25 @@ fn send_single_request(
         return ExportResult::Failure("Failed to finish request body".to_string());
     }
 
-    // Send the request
-    let incoming_response = match outgoing_handler::handle(request, None) {
+    // Create request options with timeout
+    // Convert timeout from milliseconds to nanoseconds (WASI HTTP uses nanoseconds)
+    let request_opts = RequestOptions::new();
+    let timeout_nanos = (config.timeout_ms as u64) * 1_000_000;
+
+    // Set connect timeout (how long to wait for connection establishment)
+    if let Err(_) = request_opts.set_connect_timeout(Some(timeout_nanos)) {
+        return ExportResult::Failure("Failed to set connect timeout".to_string());
+    }
+
+    // Set first-byte timeout (how long to wait for first response byte)
+    if let Err(_) = request_opts.set_first_byte_timeout(Some(timeout_nanos)) {
+        return ExportResult::Failure("Failed to set first-byte timeout".to_string());
+    }
+
+    // Send the request with timeout options
+    let incoming_response = match outgoing_handler::handle(request, Some(request_opts)) {
         Ok(resp) => resp,
-        Err(_) => return ExportResult::Failure("Failed to send request".to_string()),
+        Err(_) => return ExportResult::Failure("Request failed or timed out".to_string()),
     };
 
     // Wait for and process the response

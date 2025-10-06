@@ -41,6 +41,11 @@ impl GuestHttpClient for HttpClientImpl {
         }
     }
 
+    /// Get the configured export protocol
+    fn get_protocol(&self) -> bindings::exports::wasi::otel_sdk::otel_export::ExportProtocol {
+        self.config.borrow().protocol.clone()
+    }
+
     /// Send OTLP request to specific signal endpoint
     fn send_otlp(&self, signal_path: String, otlp_payload: Vec<u8>, content_type: String) -> ExportResult {
         http_client::send_otlp_request(

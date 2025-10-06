@@ -103,6 +103,13 @@ impl trace::GuestSpan for SpanImpl {
 
         let event_timestamp = timestamp.unwrap_or_else(|| current_timestamp_nanos());
 
+        // Enforce max_events_per_span limit (OpenTelemetry default: 128)
+        const MAX_EVENTS: usize = 128;
+        if inner.events.len() >= MAX_EVENTS {
+            // Drop oldest event when limit reached
+            inner.events.remove(0);
+        }
+
         inner.events.push(trace::SpanEvent {
             name,
             timestamp: event_timestamp,
@@ -201,6 +208,13 @@ impl trace::GuestSpan for SpanImpl {
             }
         } else {
             // Fallback if span not found in registry
+            // This should not happen in normal operation - indicates a bug
+            eprintln!(
+                "[otel-trace] ERROR: Span handle {} not found in registry. \
+                 This indicates a bug in span lifecycle management.",
+                handle
+            );
+
             trace::SpanData {
                 name: String::from("unknown"),
                 context: context::SpanContext {
