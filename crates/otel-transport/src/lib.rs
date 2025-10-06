@@ -9,7 +9,7 @@ mod bindings {
 }
 
 use bindings::exports::wasi::otel_sdk::otel_export::{
-    ExportConfig, ExportResult, Guest, GuestHttpClient, HttpClient,
+    ClientError, ExportConfig, ExportResult, Guest, GuestHttpClient, HttpClient,
 };
 
 use std::cell::RefCell;
@@ -29,16 +29,30 @@ pub struct HttpClientImpl {
 }
 
 impl GuestHttpClient for HttpClientImpl {
-    /// Create HTTP client from export configuration
-    fn new(config: ExportConfig) -> Self {
-        // Validate configuration
+    /// Create HTTP client from export configuration with validation
+    /// Validates configuration and returns error if invalid
+    fn new(config: ExportConfig) -> Result<HttpClient, ClientError> {
+        // Validate endpoint is not empty
         if config.endpoint.is_empty() {
-            panic!("Export endpoint cannot be empty");
+            return Err(ClientError::EmptyEndpoint);
         }
 
-        HttpClientImpl {
-            config: RefCell::new(config),
+        // Validate endpoint URL format
+        if !config.endpoint.starts_with("http://") && !config.endpoint.starts_with("https://") {
+            return Err(ClientError::InvalidEndpoint);
         }
+
+        // Validate timeout is non-zero
+        if config.timeout_ms == 0 {
+            return Err(ClientError::InvalidTimeout);
+        }
+
+        // All validation passed - create the implementation and wrap it in the WIT resource
+        let impl_instance = HttpClientImpl {
+            config: RefCell::new(config),
+        };
+
+        Ok(HttpClient::new(impl_instance))
     }
 
     /// Get the configured export protocol

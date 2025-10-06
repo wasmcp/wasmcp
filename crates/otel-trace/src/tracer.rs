@@ -230,6 +230,12 @@ impl trace::GuestTracerProvider for TracerProviderImpl {
             attributes: tracer_info.attributes.clone(),
         };
 
+        // Get limits from provider
+        let limits = {
+            let inner = self.inner.lock().unwrap();
+            inner.limits.clone()
+        };
+
         // Create the span implementation
         let span_impl = SpanImpl::new(
             name,
@@ -240,6 +246,9 @@ impl trace::GuestTracerProvider for TracerProviderImpl {
             limited_attributes,
             limited_links,
             scope,
+            limits.max_attributes_per_span,
+            limits.max_events_per_span,
+            limits.max_links_per_span,
         );
 
         // Clone the inner Arc before creating the WIT resource

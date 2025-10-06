@@ -210,16 +210,12 @@ pub fn validate_traceparent(traceparent: String) -> bool {
 
 /// Generate a random trace ID (16 bytes)
 pub fn generate_trace_id() -> Vec<u8> {
-    use uuid::Uuid;
-    let uuid = Uuid::new_v4();
-    uuid.as_bytes().to_vec()
+    crate::bindings::wasi::random::random::get_random_bytes(16)
 }
 
 /// Generate a random span ID (8 bytes)
 pub fn generate_span_id() -> Vec<u8> {
-    use uuid::Uuid;
-    let uuid = Uuid::new_v4();
-    uuid.as_bytes()[0..8].to_vec()
+    crate::bindings::wasi::random::random::get_random_bytes(8)
 }
 
 /// Create a root span context
@@ -279,7 +275,9 @@ pub fn set_sampled(context: &SpanContext, sampled: bool) -> SpanContext {
 mod tests {
     use super::*;
 
+    // Random generation tests only work in WASM environment where wasi:random is available
     #[test]
+    #[cfg(target_arch = "wasm32")]
     fn test_generate_trace_id() {
         let trace_id = generate_trace_id();
         assert_eq!(trace_id.len(), 16, "trace_id should be 16 bytes");
@@ -287,6 +285,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_arch = "wasm32")]
     fn test_generate_span_id() {
         let span_id = generate_span_id();
         assert_eq!(span_id.len(), 8, "span_id should be 8 bytes");

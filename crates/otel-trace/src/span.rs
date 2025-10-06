@@ -23,6 +23,14 @@ pub struct SpanInner {
     status: trace::SpanStatus,
     instrumentation_scope: foundation::InstrumentationScope,
     is_recording: bool,
+    // Limits configuration
+    max_attributes: u32,
+    max_events: u32,
+    max_links: u32,
+    // Dropped counts for OTLP export
+    dropped_attributes_count: u32,
+    dropped_events_count: u32,
+    dropped_links_count: u32,
 }
 
 impl SpanImpl {
@@ -36,6 +44,9 @@ impl SpanImpl {
         attributes: Vec<foundation::Attribute>,
         links: Vec<trace::SpanLink>,
         instrumentation_scope: foundation::InstrumentationScope,
+        max_attributes: u32,
+        max_events: u32,
+        max_links: u32,
     ) -> Self {
         let start = start_time.unwrap_or_else(|| current_timestamp_nanos());
 
@@ -53,6 +64,12 @@ impl SpanImpl {
             status: trace::SpanStatus::Unset,
             instrumentation_scope,
             is_recording: true,
+            max_attributes,
+            max_events,
+            max_links,
+            dropped_attributes_count: 0,
+            dropped_events_count: 0,
+            dropped_links_count: 0,
         }));
 
         Self {
@@ -63,6 +80,16 @@ impl SpanImpl {
     /// Get a clone of the inner Arc for registry storage
     pub fn inner_arc(&self) -> Arc<Mutex<SpanInner>> {
         self.inner.clone()
+    }
+
+    /// Get dropped counts for OTLP export
+    pub fn get_dropped_counts(&self) -> (u32, u32, u32) {
+        let inner = self.inner.lock().unwrap();
+        (
+            inner.dropped_attributes_count,
+            inner.dropped_events_count,
+            inner.dropped_links_count,
+        )
     }
 }
 
@@ -91,6 +118,12 @@ impl trace::GuestSpan for SpanImpl {
             }
         }
 
+        // Check if we've reached the limit
+        if inner.attributes.len() >= inner.max_attributes as usize {
+            inner.dropped_attributes_count += 1;
+            return;
+        }
+
         // Add new attribute
         inner.attributes.push(foundation::Attribute { key, value });
     }
@@ -101,14 +134,13 @@ impl trace::GuestSpan for SpanImpl {
             return;
         }
 
-        let event_timestamp = timestamp.unwrap_or_else(|| current_timestamp_nanos());
-
-        // Enforce max_events_per_span limit (OpenTelemetry default: 128)
-        const MAX_EVENTS: usize = 128;
-        if inner.events.len() >= MAX_EVENTS {
-            // Drop oldest event when limit reached
-            inner.events.remove(0);
+        // Check if we've reached the limit
+        if inner.events.len() >= inner.max_events as usize {
+            inner.dropped_events_count += 1;
+            return;
         }
+
+        let event_timestamp = timestamp.unwrap_or_else(|| current_timestamp_nanos());
 
         inner.events.push(trace::SpanEvent {
             name,
@@ -120,6 +152,12 @@ impl trace::GuestSpan for SpanImpl {
     fn add_link(&self, link: trace::SpanLink) {
         let mut inner = self.inner.lock().unwrap();
         if !inner.is_recording {
+            return;
+        }
+
+        // Check if we've reached the limit
+        if inner.links.len() >= inner.max_links as usize {
+            inner.dropped_links_count += 1;
             return;
         }
 
@@ -193,9 +231,28 @@ impl trace::GuestSpan for SpanImpl {
             inner.end_time = Some(end_time.unwrap_or_else(|| current_timestamp_nanos()));
 
             // Build and return span data
+            // Note: WIT SpanData doesn't include dropped counts, so we store them
+            // in the span context's trace_state as a temporary workaround for OTLP export
+            // Format: "dropped=attrs:N,events:M,links:K"
+            let mut context_with_dropped = inner.context.clone();
+            if inner.dropped_attributes_count > 0 || inner.dropped_events_count > 0 || inner.dropped_links_count > 0 {
+                let dropped_info = format!(
+                    "dropped={}:{}:{}",
+                    inner.dropped_attributes_count,
+                    inner.dropped_events_count,
+                    inner.dropped_links_count
+                );
+                // Prepend to trace_state (will be parsed out in OTLP serialization)
+                if context_with_dropped.trace_state.is_empty() {
+                    context_with_dropped.trace_state = dropped_info;
+                } else {
+                    context_with_dropped.trace_state = format!("{},{}", dropped_info, context_with_dropped.trace_state);
+                }
+            }
+
             trace::SpanData {
                 name: inner.name.clone(),
-                context: inner.context.clone(),
+                context: context_with_dropped,
                 parent_span_id: inner.parent_span_id.clone(),
                 kind: inner.kind.clone(),
                 start_time: inner.start_time,
@@ -282,6 +339,9 @@ mod tests {
             vec![],
             vec![],
             scope.clone(),
+            128, // max_attributes
+            128, // max_events
+            128, // max_links
         );
 
         let inner = span.inner.lock().unwrap();
@@ -318,6 +378,9 @@ mod tests {
             vec![],
             vec![],
             scope,
+            128, // max_attributes
+            128, // max_events
+            128, // max_links
         );
 
         let retrieved_context = span.get_context();
@@ -351,6 +414,9 @@ mod tests {
             vec![],
             vec![],
             scope,
+            128, // max_attributes
+            128, // max_events
+            128, // max_links
         );
 
         assert!(span.is_recording());
@@ -382,6 +448,9 @@ mod tests {
             vec![],
             vec![],
             scope,
+            128, // max_attributes
+            128, // max_events
+            128, // max_links
         );
 
         span.set_attribute(
@@ -420,6 +489,9 @@ mod tests {
             vec![],
             vec![],
             scope,
+            128, // max_attributes
+            128, // max_events
+            128, // max_links
         );
 
         span.set_attribute(
@@ -466,6 +538,9 @@ mod tests {
             vec![],
             vec![],
             scope,
+            128, // max_attributes
+            128, // max_events
+            128, // max_links
         );
 
         span.add_event(
@@ -510,6 +585,9 @@ mod tests {
             vec![],
             vec![],
             scope,
+            128, // max_attributes
+            128, // max_events
+            128, // max_links
         );
 
         span.set_status(trace::SpanStatus::Ok);
@@ -555,6 +633,9 @@ mod tests {
             vec![],
             vec![],
             scope,
+            128, // max_attributes
+            128, // max_events
+            128, // max_links
         );
 
         span.update_name("updated-name".to_string());
@@ -589,6 +670,9 @@ mod tests {
             vec![],
             vec![],
             scope,
+            128, // max_attributes
+            128, // max_events
+            128, // max_links
         );
 
         span.record_exception(

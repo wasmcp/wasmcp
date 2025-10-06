@@ -8,9 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wit-bindgen = { version = "0.36", features = ["default"] }
-uuid = { version = "1.0", features = ["v4", "fast-rng"] }
 hex = "0.4"
-rand = "0.8"
 
 [profile.release]
 opt-level = "z"
