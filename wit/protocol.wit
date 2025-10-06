@@ -1,0 +1,100 @@
+interface protocol {
+    type json = string;
+    type uri = string;
+    type cursor = option<string>;
+    type meta = option<list<tuple<string, string>>>;
+
+    /// Standard JSON-RPC error codes.
+    ///
+    /// Maps to the error codes in JSONRPCError as defined in the MCP spec.
+    /// Standard codes per JSON-RPC 2.0:
+    /// - Parse error: -32700
+    /// - Invalid request: -32600
+    /// - Method not found: -32601
+    /// - Invalid params: -32602
+    /// - Internal error: -32603
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#jsonrpcerror>
+    @since(version = 0.3.0)
+    enum error-code {
+        /// Parse error (-32700)
+        parse-error,
+        /// Invalid request (-32600)
+        invalid-request,
+        /// Method not found (-32601)
+        method-not-found,
+        /// Invalid parameters (-32602)
+        invalid-params,
+        /// Internal error (-32603)
+        internal-error,
+    }
+
+    /// Standard MCP error structure.
+    ///
+    /// Maps to JSONRPCError.error in the MCP spec:
+    /// - code: number - "The error type that occurred"
+    /// - message: string - "A short description of the error"
+    /// - data?: unknown - "Additional information about the error"
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#jsonrpcerror>
+    @since(version = 0.3.0)
+    record error {
+        code: error-code,
+        message: string,
+        data: option<string>,
+    }
+
+    /// JSON-RPC request ID (string or number).
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#requestid>
+    @since(version = 0.3.0)
+    variant id {
+        number(s64),
+        %string(string),
+    }
+
+    /// MCP protocol versions.
+    @since(version = 0.3.0)
+    enum protocol-version {
+        /// Version 2025-06-18
+        v20250618,
+        /// Version 2025-03-26
+        v20250326,
+        /// Version 2024-11-05
+        v20241105,
+    }
+
+    /// Capabilities that a server supports.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#servercapabilities>
+    @since(version = 0.3.0)
+    flags server-capabilities {
+        /// Argument autocompletion
+        completions,
+        /// Prompts
+        prompts,
+        /// Resources
+        resources,
+        /// Tools
+        tools,
+        /// Experimental features
+        experimental,
+    }
+
+    /// Client capabilities (extensible).
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#clientcapabilities>
+    @since(version = 0.3.0)
+    flags client-capabilities {
+        elicitation,
+        roots,
+        sampling,
+        experimental,
+    }
+
+    /// MCP implementation metadata.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#implementation>
+    @since(version = 0.3.0)
+    record implementation {
+        name: string,
+        title: option<string>,
+        version: string,
+    }
+}

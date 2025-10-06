@@ -4,7 +4,7 @@
 @since(version = 0.3.1-alpha.1)
 interface session {
     use wasi:io/streams@0.2.3.{output-stream, stream-error};
-    use request.{request};
+    use request.{request, elicit-result};
 
     @since(version = 0.3.1-alpha.1)
     enum string-schema-format {
@@ -76,28 +76,6 @@ interface session {
     record elicit-request {
         message: string,
         requested-schema: requested-schema,
-    }
-
-    @since(version = 0.3.1-alpha.1)
-    enum elicit-result-action {
-        accept,
-        decline,
-        cancel,
-    }
-
-    @since(version = 0.3.1-alpha.1)
-    variant elicit-result-content {
-        %string(string),
-        number(f64),
-        boolean(bool),
-    }
-
-    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitresult
-    @since(version = 0.3.1-alpha.1)
-    record elicit-result {
-        meta: option<list<tuple<string, string>>>,
-        action: elicit-result-action,
-        content: option<list<tuple<string, elicit-result-content>>>,
     }
 
     /// Errors that can occur during session operations.

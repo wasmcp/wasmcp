@@ -13,13 +13,3 @@ interface incoming-handler {
     @since(version = 0.3.0)
     handle: func(req: request, output: output-stream);
 }
-
-/// Middleware world for request interception.
-///
-/// Both imports and exports the handler interface, enabling components
-/// to intercept requests before forwarding to the next handler.
-@since(version = 0.3.0)
-world middleware {
-    import incoming-handler;
-    export incoming-handler;
-}
