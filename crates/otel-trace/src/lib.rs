@@ -1,3 +1,99 @@
+//! OpenTelemetry Trace SDK for WebAssembly Components.
+//!
+//! This crate provides a complete implementation of the OpenTelemetry tracing specification
+//! as a WebAssembly component, designed to run in WAS I-compliant runtimes.
+//!
+//! # Overview
+//!
+//! The otel-trace component implements distributed tracing following OpenTelemetry standards:
+//! - **W3C TraceContext**: Standard trace propagation via HTTP headers
+//! - **OTLP Export**: Support for JSON and Protobuf serialization
+//! - **Span Management**: Complete span lifecycle with events, attributes, and links
+//! - **Sampling**: Configurable sampling strategies (AlwaysOn, AlwaysOff, TraceIdRatio, ParentBased)
+//! - **Resource Limits**: Configurable limits to prevent resource exhaustion
+//!
+//! # Architecture
+//!
+//! ```text
+//! ┌────────────────────────────────────────────────┐
+//! │          WASM Component Boundary               │
+//! ├────────────────────────────────────────────────┤
+//! │  TracerProvider                                │
+//! │    ├─→ Tracer (instrumentation scope)          │
+//! │    └─→ Span (active tracing operations)        │
+//! │                                                 │
+//! │  TraceExporter                                 │
+//! │    ├─→ OTLP Serialization (JSON/Protobuf)      │
+//! │    └─→ HTTP Client (via otel-transport)        │
+//! └────────────────────────────────────────────────┘
+//! ```
+//!
+//! # Key Features
+//!
+//! ## Distributed Tracing
+//! - Create and manage spans across service boundaries
+//! - Parent-child span relationships
+//! - Span links for non-hierarchical relationships
+//! - Automatic trace ID and span ID generation
+//!
+//! ## OTLP Compliance
+//! - Full OTLP/JSON and OTLP/Protobuf support
+//! - Compatible with Jaeger, Grafana Cloud, Datadog, etc.
+//! - Correct encoding of all OTLP fields including dropped counts
+//!
+//! ## Resource Management
+//! - Configurable limits per span (attributes, events, links)
+//! - Dropped count tracking when limits exceeded
+//! - Efficient batch export of spans
+//!
+//! ## WASM-Specific Optimizations
+//! - Uses WASI random for cryptographically secure ID generation
+//! - Handle-based resource management (WIT resource pattern)
+//! - Minimal memory footprint via ResourceRegistry pattern
+//!
+//! # WIT Interface
+//!
+//! This component exports the `wasi:otel-sdk/trace` interface defined in `trace.wit`.
+//! It implements the OpenTelemetry tracing API as WIT resources and functions.
+//!
+//! # Examples
+//!
+//! **Note**: This is a `cdylib` crate compiled to WASM. Usage examples show the
+//! conceptual API - actual usage is via WIT component composition.
+//!
+//! ```wit
+//! // In your component's world definition:
+//! world my-app {
+//!     import wasi:otel-sdk/trace;
+//!
+//!     // Your component exports...
+//! }
+//! ```
+//!
+//! # Implementation Notes
+//!
+//! ## Issue Resolutions
+//!
+//! This implementation includes fixes for several critical issues:
+//! - **Issue #3**: Limits are enforced consistently across all span operations
+//! - **Issue #4**: Dropped counts are tracked and exported via trace_state encoding
+//! - **Issue #5**: Static factory method pattern for fallible resource construction
+//! - **Issue #6**: Flags field included in JSON serialization
+//! - **Issue #7**: Consolidated ResourceRegistry for handle management
+//! - **Issue #10**: Structured error types replacing String errors
+//!
+//! ## Component Model Patterns
+//!
+//! - **Resource Lifecycle**: Spans use consuming `finish` static method
+//! - **Handle Management**: ResourceRegistry provides guest-side resource table
+//! - **Error Handling**: WIT error variants with automatic conversions
+//!
+//! # Related Components
+//!
+//! - `context-provider`: W3C TraceContext utilities and ID generation
+//! - `otel-transport`: HTTP client for OTLP export
+//! - `wit-resource-registry`: Generic resource handle management
+
 mod bindings {
     wit_bindgen::generate!({
         world: "trace-sdk",
@@ -5,6 +101,7 @@ mod bindings {
     });
 }
 
+mod error;
 mod span;
 mod tracer;
 mod export;
@@ -17,57 +114,10 @@ use bindings::wasi::otel_sdk::context;
 
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use wit_resource_registry::ResourceRegistry;
 
 /// Main component struct implementing the trace interface
 pub struct Component;
-
-/// Generic resource registry for managing WIT resource lifecycles
-///
-/// This is NOT part of the WIT specification - it's our solution to handle
-/// resource consumption in static methods where we need to retrieve the
-/// underlying implementation data.
-///
-/// ## The Problem:
-/// WIT resources with static methods like `finish: static func(this: T) -> R`
-/// consume the resource handle, and wit-bindgen doesn't provide a way to
-/// access the underlying implementation once consumed.
-///
-/// ## Our Solution:
-/// 1. Store resource data in Arc<Mutex<T>> for shared access
-/// 2. Register the Arc<Mutex<T>> in a global registry when creating resources
-/// 3. Use the handle ID as the registry key
-/// 4. In static methods, retrieve data from registry using the handle ID
-///
-/// This pattern is reusable for all OpenTelemetry signals (traces, logs, metrics)
-/// and any other WIT resources that need similar lifecycle management.
-struct ResourceRegistry<T> {
-    resources: HashMap<u32, Arc<Mutex<T>>>,
-    next_id: u32,
-}
-
-impl<T> ResourceRegistry<T> {
-    fn new() -> Self {
-        Self {
-            resources: HashMap::new(),
-            next_id: 1,
-        }
-    }
-
-    fn register(&mut self, resource: Arc<Mutex<T>>) -> u32 {
-        let id = self.next_id;
-        self.next_id += 1;
-        self.resources.insert(id, resource);
-        id
-    }
-
-    fn get(&self, id: u32) -> Option<Arc<Mutex<T>>> {
-        self.resources.get(&id).cloned()
-    }
-
-    fn remove(&mut self, id: u32) -> Option<Arc<Mutex<T>>> {
-        self.resources.remove(&id)
-    }
-}
 
 /// Global registry for managing tracer instances
 static TRACER_REGISTRY: Mutex<Option<TracerRegistry>> = Mutex::new(None);
@@ -152,7 +202,7 @@ pub fn register_span_with_handle(handle: u32, span_data: Arc<Mutex<span::SpanInn
     ensure_span_registry();
     let mut registry = SPAN_REGISTRY.lock().unwrap();
     let reg = registry.as_mut().unwrap();
-    reg.resources.insert(handle, span_data);
+    reg.insert(handle, span_data);
 }
 
 /// Get a span from the registry
@@ -180,7 +230,7 @@ pub fn register_exporter_with_handle(handle: u32, exporter_data: Arc<Mutex<expor
     ensure_trace_exporter_registry();
     let mut registry = TRACE_EXPORTER_REGISTRY.lock().unwrap();
     let reg = registry.as_mut().unwrap();
-    reg.resources.insert(handle, exporter_data);
+    reg.insert(handle, exporter_data);
 }
 
 /// Get a trace exporter from the registry
@@ -205,8 +255,9 @@ impl bindings::exports::wasi::otel_sdk::trace::Guest for Component {
         spans: Vec<trace::SpanData>,
         service_resource: foundation::OtelResource,
         protocol: otel_export::ExportProtocol,
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<Vec<u8>, trace::SerializationError> {
         otlp::serialize_spans_to_otlp(spans, service_resource, protocol)
+            .map_err(|e| e.into())
     }
 }
 

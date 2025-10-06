@@ -182,20 +182,141 @@ pub fn format_traceparent(context: &SpanContext) -> String {
     format_traceparent_internal(context)
 }
 
-/// Parse tracestate header (pass-through validation)
+/// Parse tracestate header with comprehensive W3C TraceContext validation
+///
+/// Validates according to W3C TraceContext specification:
+/// - Max 32 list members
+/// - Max 512 characters per member
+/// - Max 4096 characters total
+/// - Keys: lowercase letters, digits, underscore, hyphen, asterisk, forward slash, or tenant@system format
+/// - Values: opaque strings excluding certain control characters
 pub fn parse_tracestate(tracestate: String) -> Result<String, String> {
-    // Basic validation: tracestate should be a list of key=value pairs separated by commas
-    // We don't need to parse it, just validate format
     if tracestate.is_empty() {
         return Ok(tracestate);
     }
 
-    // Basic check: should contain key=value pairs
-    if !tracestate.contains('=') {
-        return Err("Invalid tracestate format: must contain key=value pairs".to_string());
+    // W3C spec: max 4096 characters total
+    if tracestate.len() > 4096 {
+        return Err(format!(
+            "TraceState exceeds maximum length: {} > 4096 characters",
+            tracestate.len()
+        ));
+    }
+
+    // Split by comma and validate each list member
+    let members: Vec<&str> = tracestate.split(',').map(|s| s.trim()).collect();
+
+    // W3C spec: max 32 list members
+    if members.len() > 32 {
+        return Err(format!(
+            "TraceState exceeds maximum list members: {} > 32",
+            members.len()
+        ));
+    }
+
+    for (idx, member) in members.iter().enumerate() {
+        // W3C spec: max 512 characters per member
+        if member.len() > 512 {
+            return Err(format!(
+                "TraceState member {} exceeds maximum length: {} > 512 characters",
+                idx,
+                member.len()
+            ));
+        }
+
+        // Each member must be key=value
+        let parts: Vec<&str> = member.splitn(2, '=').collect();
+        if parts.len() != 2 {
+            return Err(format!(
+                "TraceState member {} is not a valid key=value pair: '{}'",
+                idx, member
+            ));
+        }
+
+        let (key, value) = (parts[0], parts[1]);
+
+        // Validate key format
+        if key.is_empty() {
+            return Err(format!("TraceState member {} has empty key", idx));
+        }
+
+        // Key validation: simple-key or multi-tenant-key (tenant@system)
+        if key.contains('@') {
+            // Multi-tenant key: tenant@system
+            let tenant_parts: Vec<&str> = key.splitn(2, '@').collect();
+            if tenant_parts.len() != 2 {
+                return Err(format!(
+                    "TraceState member {} has invalid multi-tenant key format: '{}'",
+                    idx, key
+                ));
+            }
+            validate_tracestate_key_component(tenant_parts[0], "tenant", idx)?;
+            validate_tracestate_key_component(tenant_parts[1], "system", idx)?;
+        } else {
+            // Simple key
+            validate_tracestate_key_component(key, "key", idx)?;
+        }
+
+        // Validate value: opaque string, but reject control characters and certain special chars
+        if value.is_empty() {
+            return Err(format!("TraceState member {} has empty value", idx));
+        }
+
+        for ch in value.chars() {
+            // Reject control characters (0x00-0x1F, 0x7F) and some special chars per W3C spec
+            if ch.is_control() || ch == ',' || ch == '=' {
+                return Err(format!(
+                    "TraceState member {} value contains invalid character: {:?}",
+                    idx, ch
+                ));
+            }
+        }
     }
 
     Ok(tracestate)
+}
+
+/// Validate a tracestate key component (simple key, tenant, or system)
+/// Per W3C spec: lowercase letters, digits, underscore, hyphen, asterisk, forward slash
+/// Max 256 characters
+fn validate_tracestate_key_component(
+    component: &str,
+    component_type: &str,
+    member_idx: usize,
+) -> Result<(), String> {
+    if component.is_empty() {
+        return Err(format!(
+            "TraceState member {} has empty {}",
+            member_idx, component_type
+        ));
+    }
+
+    if component.len() > 256 {
+        return Err(format!(
+            "TraceState member {} {} exceeds maximum length: {} > 256 characters",
+            member_idx,
+            component_type,
+            component.len()
+        ));
+    }
+
+    // W3C spec: lowercase letters, digits, underscore, hyphen, asterisk, forward slash
+    for ch in component.chars() {
+        if !(ch.is_ascii_lowercase()
+            || ch.is_ascii_digit()
+            || ch == '_'
+            || ch == '-'
+            || ch == '*'
+            || ch == '/')
+        {
+            return Err(format!(
+                "TraceState member {} {} contains invalid character: '{}' (must be lowercase letters, digits, _, -, *, or /)",
+                member_idx, component_type, ch
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 /// Format tracestate (pass-through)
@@ -435,10 +556,29 @@ mod tests {
 
     #[test]
     fn test_parse_tracestate() {
+        // Valid cases
         assert!(parse_tracestate("".to_string()).is_ok());
         assert!(parse_tracestate("vendor1=value1".to_string()).is_ok());
         assert!(parse_tracestate("vendor1=value1,vendor2=value2".to_string()).is_ok());
-        assert!(parse_tracestate("invalid".to_string()).is_err());
+        assert!(parse_tracestate("tenant@system=value".to_string()).is_ok());
+        assert!(parse_tracestate("key_with-chars*/=value123".to_string()).is_ok());
+
+        // Invalid cases
+        assert!(parse_tracestate("invalid".to_string()).is_err()); // No '='
+        assert!(parse_tracestate("key=".to_string()).is_err()); // Empty value
+        assert!(parse_tracestate("=value".to_string()).is_err()); // Empty key
+        assert!(parse_tracestate("KEY=value".to_string()).is_err()); // Uppercase in key
+        assert!(parse_tracestate("key=val,ue".to_string()).is_err()); // Comma in value
+
+        // Length limits
+        let long_value = "a".repeat(513);
+        assert!(parse_tracestate(format!("key={}", long_value)).is_err()); // Member too long
+
+        let many_members = (0..33).map(|i| format!("key{}=val{}", i, i)).collect::<Vec<_>>().join(",");
+        assert!(parse_tracestate(many_members).is_err()); // Too many members
+
+        let total_too_long = "a".repeat(4097);
+        assert!(parse_tracestate(total_too_long).is_err()); // Total length exceeds limit
     }
 
     #[test]

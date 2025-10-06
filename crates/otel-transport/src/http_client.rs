@@ -3,7 +3,7 @@
 use crate::auth;
 use crate::bindings::wasi::http::outgoing_handler;
 use crate::bindings::wasi::http::types::{
-    Fields, Method, OutgoingBody, OutgoingRequest, RequestOptions, Scheme,
+    Fields, IncomingResponse, Method, OutgoingBody, OutgoingRequest, RequestOptions, Scheme,
 };
 use crate::bindings::exports::wasi::otel_sdk::otel_export::{
     CompressionType, ExportConfig, ExportResult, RetryConfig,
@@ -192,16 +192,130 @@ fn send_single_request(
     let response = response.expect("HTTP response unwrap");
     let status = response.status();
     match status {
-        200..=299 => ExportResult::Success,
+        200..=299 => {
+            // Success status - check for partial failure in response body
+            let body = read_response_body(&response);
+            check_partial_failure(&body)
+        }
         400..=499 => {
             // Client error - don't retry
-            ExportResult::Failure(format!("Client error: HTTP {}", status))
+            // Read response body for better error diagnostics
+            let body = read_response_body(&response);
+            ExportResult::Failure(format!("Client error: HTTP {}: {}", status, body))
         }
         500..=599 => {
             // Server error - retry
-            ExportResult::Failure(format!("Server error: HTTP {}", status))
+            // Read response body for better error diagnostics
+            let body = read_response_body(&response);
+            ExportResult::Failure(format!("Server error: HTTP {}: {}", status, body))
         }
-        _ => ExportResult::Failure(format!("Unexpected status: HTTP {}", status)),
+        _ => {
+            let body = read_response_body(&response);
+            ExportResult::Failure(format!("Unexpected status: HTTP {}: {}", status, body))
+        }
+    }
+}
+
+/// Check for OTLP partial failure in response body
+/// OTLP protocol returns 200 OK even with partial failures
+fn check_partial_failure(body: &str) -> ExportResult {
+    use crate::bindings::exports::wasi::otel_sdk::otel_export::ExportError;
+
+    // Empty body means complete success
+    if body.trim().is_empty() {
+        return ExportResult::Success;
+    }
+
+    // Try to parse as JSON to check for partialSuccess field
+    // OTLP response format:
+    // {
+    //   "partialSuccess": {
+    //     "rejectedSpans": 5,     // or rejectedMetrics/rejectedLogs
+    //     "errorMessage": "Some spans had invalid trace_id"
+    //   }
+    // }
+
+    // Simple JSON parsing for partialSuccess field
+    // We're looking for "rejectedSpans", "rejectedMetrics", or "rejectedLogs" with count > 0
+    let has_rejected_spans = body.contains("\"rejectedSpans\"")
+        && body.contains(":")
+        && !body.contains("\"rejectedSpans\":0")
+        && !body.contains("\"rejectedSpans\": 0");
+
+    let has_rejected_metrics = body.contains("\"rejectedDataPoints\"")
+        && body.contains(":")
+        && !body.contains("\"rejectedDataPoints\":0")
+        && !body.contains("\"rejectedDataPoints\": 0");
+
+    let has_rejected_logs = body.contains("\"rejectedLogRecords\"")
+        && body.contains(":")
+        && !body.contains("\"rejectedLogRecords\":0")
+        && !body.contains("\"rejectedLogRecords\": 0");
+
+    if has_rejected_spans || has_rejected_metrics || has_rejected_logs {
+        // Extract error message if present
+        let error_msg = if let Some(start) = body.find("\"errorMessage\"") {
+            if let Some(colon) = body[start..].find(':') {
+                let msg_start = start + colon + 1;
+                if let Some(quote_start) = body[msg_start..].find('"') {
+                    let msg_offset = msg_start + quote_start + 1;
+                    if let Some(quote_end) = body[msg_offset..].find('"') {
+                        body[msg_offset..msg_offset + quote_end].to_string()
+                    } else {
+                        "Partial failure (details in response)".to_string()
+                    }
+                } else {
+                    "Partial failure (details in response)".to_string()
+                }
+            } else {
+                "Partial failure (details in response)".to_string()
+            }
+        } else {
+            "Partial failure (some data rejected)".to_string()
+        };
+
+        ExportResult::PartialFailure(ExportError {
+            failed_count: 0, // We don't parse exact count for simplicity
+            error_message: error_msg,
+        })
+    } else {
+        ExportResult::Success
+    }
+}
+
+/// Read response body for error diagnostics
+/// Limits read to 10KB to prevent memory exhaustion
+fn read_response_body(response: &IncomingResponse) -> String {
+    const MAX_BODY_SIZE: usize = 10 * 1024; // 10KB limit
+
+    match response.consume() {
+        Ok(body) => {
+            // Read body stream with size limit
+            let mut buffer = Vec::new();
+            let stream = body.stream().expect("Failed to get body stream");
+
+            loop {
+                match stream.blocking_read(MAX_BODY_SIZE as u64) {
+                    Ok(chunk) => {
+                        if chunk.is_empty() {
+                            break;
+                        }
+                        buffer.extend_from_slice(&chunk);
+
+                        // Enforce size limit
+                        if buffer.len() >= MAX_BODY_SIZE {
+                            buffer.truncate(MAX_BODY_SIZE);
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+
+            // Convert to string, replacing invalid UTF-8 with replacement chars
+            String::from_utf8_lossy(&buffer).to_string()
+        }
+        Err(_) => "(failed to read response body)".to_string(),
     }
 }
 

@@ -230,29 +230,10 @@ impl trace::GuestSpan for SpanImpl {
             // Set end time
             inner.end_time = Some(end_time.unwrap_or_else(|| current_timestamp_nanos()));
 
-            // Build and return span data
-            // Note: WIT SpanData doesn't include dropped counts, so we store them
-            // in the span context's trace_state as a temporary workaround for OTLP export
-            // Format: "dropped=attrs:N,events:M,links:K"
-            let mut context_with_dropped = inner.context.clone();
-            if inner.dropped_attributes_count > 0 || inner.dropped_events_count > 0 || inner.dropped_links_count > 0 {
-                let dropped_info = format!(
-                    "dropped={}:{}:{}",
-                    inner.dropped_attributes_count,
-                    inner.dropped_events_count,
-                    inner.dropped_links_count
-                );
-                // Prepend to trace_state (will be parsed out in OTLP serialization)
-                if context_with_dropped.trace_state.is_empty() {
-                    context_with_dropped.trace_state = dropped_info;
-                } else {
-                    context_with_dropped.trace_state = format!("{},{}", dropped_info, context_with_dropped.trace_state);
-                }
-            }
-
+            // Build and return span data with dropped counts
             trace::SpanData {
                 name: inner.name.clone(),
-                context: context_with_dropped,
+                context: inner.context.clone(),
                 parent_span_id: inner.parent_span_id.clone(),
                 kind: inner.kind.clone(),
                 start_time: inner.start_time,
@@ -262,6 +243,9 @@ impl trace::GuestSpan for SpanImpl {
                 links: inner.links.clone(),
                 status: inner.status.clone(),
                 instrumentation_scope: inner.instrumentation_scope.clone(),
+                dropped_attributes_count: inner.dropped_attributes_count,
+                dropped_events_count: inner.dropped_events_count,
+                dropped_links_count: inner.dropped_links_count,
             }
         } else {
             // Fallback if span not found in registry
@@ -295,6 +279,9 @@ impl trace::GuestSpan for SpanImpl {
                     schema_url: None,
                     attributes: Vec::new(),
                 },
+                dropped_attributes_count: 0,
+                dropped_events_count: 0,
+                dropped_links_count: 0,
             }
         }
     }

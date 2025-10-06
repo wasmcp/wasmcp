@@ -13,11 +13,14 @@ pub struct TraceExporterImpl {
 pub struct TraceExporterInner {
     spans: Vec<trace::SpanData>,
     resource: Option<foundation::OtelResource>,
+    max_batch_size: usize,
 }
 
 impl TraceExporterImpl {
-    /// Maximum batch size for span export
-    const MAX_BATCH_SIZE: usize = 512;
+    /// Default batch size for span export
+    const DEFAULT_BATCH_SIZE: usize = 512;
+    /// Maximum allowed batch size (safety limit)
+    const MAX_ALLOWED_BATCH_SIZE: usize = 10_000;
 
     /// Get the appropriate OTLP endpoint path based on protocol
     fn get_otlp_path(protocol: &otel_export::ExportProtocol) -> &'static str {
@@ -39,7 +42,8 @@ impl TraceExporterImpl {
         let protocol = http_client.get_protocol();
 
         // Serialize spans to OTLP format
-        let body = otlp::serialize_spans_to_otlp(spans, resource.clone(), protocol.clone())?;
+        let body = otlp::serialize_spans_to_otlp(spans, resource.clone(), protocol.clone())
+            .map_err(|e| e.to_string())?;
 
         // Get the appropriate content type
         let content_type = match protocol {
@@ -76,10 +80,16 @@ impl TraceExporterImpl {
 }
 
 impl trace::GuestTraceExporter for TraceExporterImpl {
-    fn new() -> Self {
+    fn new(batch_size: Option<u32>) -> Self {
+        // Use provided batch size, default to 512, cap at 10,000
+        let max_batch_size = batch_size
+            .map(|size| (size as usize).min(Self::MAX_ALLOWED_BATCH_SIZE))
+            .unwrap_or(Self::DEFAULT_BATCH_SIZE);
+
         let inner = Arc::new(Mutex::new(TraceExporterInner {
             spans: Vec::new(),
             resource: None,
+            max_batch_size,
         }));
 
         Self {
@@ -120,8 +130,8 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
             }
         });
 
-        // Take up to MAX_BATCH_SIZE spans
-        let batch_size = inner.spans.len().min(Self::MAX_BATCH_SIZE);
+        // Take up to max_batch_size spans
+        let batch_size = inner.spans.len().min(inner.max_batch_size);
         let batch: Vec<trace::SpanData> = inner.spans.drain(..batch_size).collect();
 
         // Release the lock before doing the export

@@ -1,0 +1,14 @@
+[package]
+name = "wit-resource-registry"
+version = "0.1.0"
+edition = "2021"
+description = "Generic resource registry for managing WIT resource lifecycles in WebAssembly components"
+license = "MIT OR Apache-2.0"
+
+# This is a library crate, NOT a WASM component
+# No cdylib - this is consumed by WASM components, not compiled to WASM itself
+[lib]
+crate-type = ["lib"]
+
+[dependencies]
+# No WIT or WASM dependencies - pure Rust library

@@ -1,4 +1,69 @@
-//! Context provider for OpenTelemetry SDK.
+//! W3C TraceContext provider for OpenTelemetry SDK.
+//!
+//! This component implements W3C TraceContext propagation and distributed trace ID generation
+//! for WebAssembly components, following the W3C Trace Context specification.
+//!
+//! # Overview
+//!
+//! The context-provider component provides:
+//! - **W3C TraceContext**: Parsing and formatting of traceparent/tracestate headers
+//! - **ID Generation**: Cryptographically secure trace and span ID generation via WASI random
+//! - **Context Management**: Thread-local active context storage
+//! - **Validation**: TraceContext format validation and compliance checking
+//!
+//! # W3C TraceContext Specification
+//!
+//! This implementation follows the [W3C Trace Context](https://www.w3.org/TR/trace-context/)
+//! specification for distributed trace propagation via HTTP headers:
+//!
+//! ```text
+//! traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
+//!              ││  │                                  │                  ││
+//!              ││  └─ trace-id (16 bytes / 32 hex)   │                  ││
+//!              ││                                     │                  ││
+//!              │└─ version (1 byte / 2 hex)          │                  ││
+//!              │                                      │                  │└─ flags (sampled)
+//!              │                                      └─ span-id (8 bytes / 16 hex)
+//!              └─ version prefix
+//! ```
+//!
+//! # Key Features
+//!
+//! ## Secure ID Generation (Issue #2 Fix)
+//! Uses WASI's cryptographically secure random number generator instead of UUID crate:
+//! - `wasi:random/random` for trace IDs (16 bytes)
+//! - `wasi:random/random` for span IDs (8 bytes)
+//! - No dependencies on non-WASI RNG implementations
+//!
+//! ## Context Propagation
+//! - Extract context from HTTP headers (incoming requests)
+//! - Inject context into HTTP headers (outgoing requests)
+//! - Maintain active context in thread-local storage
+//! - Create parent-child context relationships
+//!
+//! ## Validation
+//! - Validates traceparent format (version-00 only)
+//! - Rejects invalid trace IDs (all zeros)
+//! - Rejects invalid span IDs (all zeros)
+//! - Validates tracestate format
+//!
+//! # WIT Interface
+//!
+//! This component exports the `wasi:otel-sdk/context` interface defined in `context.wit`.
+//!
+//! # Examples
+//!
+//! **Note**: This is a `cdylib` crate compiled to WASM. Usage examples show the
+//! conceptual API - actual usage is via WIT component composition.
+//!
+//! ```wit
+//! // In your component's world definition:
+//! world my-app {
+//!     import wasi:otel-sdk/context;
+//!
+//!     // Your component exports...
+//! }
+//! ```
 
 #[allow(warnings)]
 mod bindings {
@@ -38,13 +103,16 @@ impl Guest for Component {
     }
 
     /// Inject span context into context carriers
-    fn inject_context(context: SpanContext, _carriers: Vec<ContextCarrier>) -> Vec<ContextCarrier> {
-        context::inject_context(&context)
+    fn inject_context(context: SpanContext, mut carriers: Vec<ContextCarrier>) -> Vec<ContextCarrier> {
+        let mut new_carriers = context::inject_context(&context);
+        carriers.append(&mut new_carriers);
+        carriers
     }
 
     /// Create context carriers from span context
+    /// Delegates to inject_context with empty carrier list
     fn create_carriers(context: SpanContext) -> Vec<ContextCarrier> {
-        context::inject_context(&context)
+        Self::inject_context(context, Vec::new())
     }
 
     /// Parse W3C TraceContext traceparent header format

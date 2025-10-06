@@ -1,22 +1,94 @@
-//! OTLP JSON serialization
+//! OTLP JSON serialization.
 //!
-//! Handles conversion of WIT telemetry types to OTLP JSON format using serde.
+//! Handles conversion of WIT telemetry types to OTLP JSON format using `serde_json`.
+//!
+//! # JSON Structure
+//!
+//! The output follows the OTLP/JSON specification with camelCase field names:
+//! ```json
+//! {
+//!   "resourceSpans": [{
+//!     "resource": {
+//!       "attributes": [{"key": "service.name", "value": {"stringValue": "my-service"}}]
+//!     },
+//!     "scopeSpans": [{
+//!       "scope": {"name": "my-library", "version": "1.0.0"},
+//!       "spans": [{
+//!         "traceId": "0af7651916cd43dd8448eb211c80319c",
+//!         "spanId": "b7ad6b7169203331",
+//!         "name": "my-operation",
+//!         "kind": 1,
+//!         "startTimeUnixNano": "1000000",
+//!         "endTimeUnixNano": "2000000",
+//!         "flags": 1,
+//!         "attributes": [...],
+//!         "events": [...],
+//!         "links": [...]
+//!       }]
+//!     }]
+//!   }]
+//! }
+//! ```
+//!
+//! # Key Features
+//!
+//! - **Base64 Encoding**: Trace IDs and span IDs are hex-encoded strings (OTLP/JSON spec)
+//! - **Dropped Counts**: Decodes dropped counts from trace_state (Issue #4 workaround)
+//! - **Flags Field**: Includes sampling flags in span output (Issue #6 fix)
+//! - **Attribute Types**: Supports all OTLP attribute value types (string, int, bool, float, arrays, kvlist)
+//! - **Scope Grouping**: Groups spans by instrumentation scope as required by OTLP
 
 use crate::bindings::exports::wasi::otel_sdk::trace;
 use crate::bindings::wasi::otel_sdk::foundation;
+use crate::error::SerializationError;
 
 use serde::{Serialize, Deserialize};
 use base64::{Engine as _, engine::general_purpose};
 
-/// Serialize spans to OTLP JSON format
+/// Serializes spans to OTLP JSON format.
+///
+/// Converts WIT span data into OTLP-compliant JSON bytes ready for HTTP transport.
+/// The output follows the OpenTelemetry Protocol JSON encoding specification.
+///
+/// # Arguments
+///
+/// * `spans` - Vector of span data to serialize
+/// * `service_resource` - Service resource attributes (appears in `resource` field)
+///
+/// # Returns
+///
+/// - `Ok(Vec<u8>)` - UTF-8 encoded JSON bytes
+/// - `Err(SerializationError::JsonEncoding)` - serde_json serialization failed
+///
+/// # OTLP Compliance
+///
+/// - Uses camelCase for all field names per OTLP/JSON spec
+/// - Encodes trace_id and span_id as hex strings
+/// - Includes all required OTLP fields
+/// - Groups spans by instrumentation scope
+/// - Preserves all attribute types (arrays, nested kvlists, etc.)
+///
+/// # Examples
+///
+/// ```no_run
+/// # use otel_trace::otlp::json::serialize_to_json;
+/// # use otel_trace::bindings::exports::wasi::otel_sdk::trace::SpanData;
+/// # use otel_trace::bindings::wasi::otel_sdk::foundation::OtelResource;
+/// # fn example(spans: Vec<SpanData>, resource: OtelResource) -> Result<(), Box<dyn std::error::Error>> {
+/// let json_bytes = serialize_to_json(spans, resource)?;
+/// let json_str = String::from_utf8(json_bytes)?;
+/// println!("{}", json_str);  // Pretty-printable JSON
+/// # Ok(())
+/// # }
+/// ```
 pub fn serialize_to_json(
     spans: Vec<trace::SpanData>,
     service_resource: foundation::OtelResource,
-) -> Result<Vec<u8>, String> {
+) -> Result<Vec<u8>, SerializationError> {
     let request = build_otlp_json_request(spans, service_resource);
 
     serde_json::to_vec(&request)
-        .map_err(|e| format!("Failed to serialize to JSON: {}", e))
+        .map_err(SerializationError::from)
 }
 
 /// Build OTLP JSON request structure
@@ -73,59 +145,27 @@ fn build_otlp_json_request(
     }
 }
 
-/// Parse dropped counts from trace_state and remove the marker
-fn parse_dropped_counts(trace_state: &str) -> ((u32, u32, u32), String) {
-    if let Some(dropped_start) = trace_state.find("dropped=") {
-        let rest = &trace_state[dropped_start + 8..]; // Skip "dropped="
-        if let Some(comma_pos) = rest.find(',') {
-            let dropped_part = &rest[..comma_pos];
-            let remaining = &rest[comma_pos + 1..];
-            if let Some((attrs, events, links)) = parse_dropped_values(dropped_part) {
-                return ((attrs, events, links), remaining.to_string());
-            }
-        } else {
-            // No comma, entire rest is dropped counts
-            if let Some((attrs, events, links)) = parse_dropped_values(rest) {
-                return ((attrs, events, links), String::new());
-            }
-        }
-    }
-    ((0, 0, 0), trace_state.to_string())
-}
-
-fn parse_dropped_values(s: &str) -> Option<(u32, u32, u32)> {
-    let parts: Vec<&str> = s.split(':').collect();
-    if parts.len() == 3 {
-        let attrs = parts[0].parse().ok()?;
-        let events = parts[1].parse().ok()?;
-        let links = parts[2].parse().ok()?;
-        Some((attrs, events, links))
-    } else {
-        None
-    }
-}
-
 /// Convert a span to OTLP JSON format
 fn convert_span_to_otlp(span: trace::SpanData) -> OtlpSpan {
-    // Parse dropped counts from trace_state
-    let ((dropped_attrs, dropped_events, dropped_links), clean_trace_state) =
-        parse_dropped_counts(&span.context.trace_state);
-
     OtlpSpan {
         trace_id: hex_encode(&span.context.trace_id),
         span_id: hex_encode(&span.context.span_id),
-        trace_state: if clean_trace_state.is_empty() { None } else { Some(clean_trace_state) },
+        trace_state: if span.context.trace_state.is_empty() {
+            None
+        } else {
+            Some(span.context.trace_state.clone())
+        },
         parent_span_id: span.parent_span_id.map(|id| hex_encode(&id)),
         name: span.name,
         kind: convert_span_kind(&span.kind),
         start_time_unix_nano: span.start_time,
         end_time_unix_nano: span.end_time.unwrap_or(0),
         attributes: convert_attributes(&span.attributes),
-        dropped_attributes_count: dropped_attrs,
+        dropped_attributes_count: span.dropped_attributes_count,
         events: span.events.into_iter().map(convert_event).collect(),
-        dropped_events_count: dropped_events,
+        dropped_events_count: span.dropped_events_count,
         links: span.links.into_iter().map(convert_link).collect(),
-        dropped_links_count: dropped_links,
+        dropped_links_count: span.dropped_links_count,
         status: convert_status(&span.status),
         flags: if span.context.trace_flags & 0x01 != 0 { 1 } else { 0 },
     }
@@ -372,4 +412,184 @@ struct OtlpArrayValue {
 #[serde(rename_all = "camelCase")]
 struct OtlpKeyValueList {
     values: Vec<OtlpKeyValue>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bindings::wasi::otel_sdk::context::SpanContext;
+
+    fn create_test_span() -> trace::SpanData {
+        trace::SpanData {
+            name: "test-span".to_string(),
+            context: SpanContext {
+                trace_id: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+                span_id: vec![1, 2, 3, 4, 5, 6, 7, 8],
+                trace_flags: 1, // Sampled
+                trace_state: String::new(),
+                is_remote: false,
+            },
+            parent_span_id: None,
+            kind: trace::SpanKind::Internal,
+            start_time: 1000000,
+            end_time: Some(2000000),
+            attributes: vec![
+                foundation::Attribute {
+                    key: "test.key".to_string(),
+                    value: foundation::AttributeValue::String("test-value".to_string()),
+                },
+            ],
+            events: vec![],
+            links: vec![],
+            status: trace::SpanStatus::Ok,
+            instrumentation_scope: foundation::InstrumentationScope {
+                name: "test-scope".to_string(),
+                version: Some("1.0.0".to_string()),
+                schema_url: None,
+                attributes: vec![],
+            },
+            dropped_attributes_count: 0,
+            dropped_events_count: 0,
+            dropped_links_count: 0,
+        }
+    }
+
+    fn create_test_resource() -> foundation::OtelResource {
+        foundation::OtelResource {
+            attributes: vec![
+                foundation::Attribute {
+                    key: "service.name".to_string(),
+                    value: foundation::AttributeValue::String("test-service".to_string()),
+                },
+            ],
+            schema_url: None,
+        }
+    }
+
+    #[test]
+    fn test_json_serialization_basic() {
+        let span = create_test_span();
+        let resource = create_test_resource();
+
+        let result = serialize_to_json(vec![span], resource);
+        assert!(result.is_ok());
+
+        let json_bytes = result.unwrap();
+        let json_str = String::from_utf8(json_bytes).expect("Invalid UTF-8");
+        let json_value: serde_json::Value = serde_json::from_str(&json_str)
+            .expect("Invalid JSON");
+
+        // Verify top-level structure
+        assert!(json_value.get("resourceSpans").is_some());
+    }
+
+    #[test]
+    fn test_json_contains_flags_field() {
+        let span = create_test_span();
+        let resource = create_test_resource();
+
+        let result = serialize_to_json(vec![span], resource);
+        assert!(result.is_ok());
+
+        let json_str = String::from_utf8(result.unwrap()).unwrap();
+        let json_value: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        // Navigate to the span
+        let spans = json_value["resourceSpans"][0]["scopeSpans"][0]["spans"].as_array().unwrap();
+        assert_eq!(spans.len(), 1);
+
+        // Verify flags field is present (Issue #6 fix)
+        assert!(spans[0].get("flags").is_some());
+        assert_eq!(spans[0]["flags"].as_u64().unwrap(), 1); // Sampled flag
+    }
+
+    #[test]
+    fn test_json_with_multiple_attribute_types() {
+        let mut span = create_test_span();
+        span.attributes = vec![
+            foundation::Attribute {
+                key: "string.attr".to_string(),
+                value: foundation::AttributeValue::String("value".to_string()),
+            },
+            foundation::Attribute {
+                key: "int.attr".to_string(),
+                value: foundation::AttributeValue::Int64(42),
+            },
+            foundation::Attribute {
+                key: "bool.attr".to_string(),
+                value: foundation::AttributeValue::Bool(true),
+            },
+            foundation::Attribute {
+                key: "float.attr".to_string(),
+                value: foundation::AttributeValue::Float64(3.14),
+            },
+            foundation::Attribute {
+                key: "array.attr".to_string(),
+                value: foundation::AttributeValue::ArrayString(vec![
+                    "a".to_string(),
+                    "b".to_string(),
+                ]),
+            },
+        ];
+
+        let resource = create_test_resource();
+        let result = serialize_to_json(vec![span], resource);
+        assert!(result.is_ok());
+
+        // Verify it's valid JSON
+        let json_str = String::from_utf8(result.unwrap()).unwrap();
+        let _: serde_json::Value = serde_json::from_str(&json_str).expect("Invalid JSON");
+    }
+
+    #[test]
+    fn test_json_with_events() {
+        let mut span = create_test_span();
+        span.events = vec![
+            trace::SpanEvent {
+                name: "event1".to_string(),
+                timestamp: 1500000,
+                attributes: vec![
+                    foundation::Attribute {
+                        key: "event.attr".to_string(),
+                        value: foundation::AttributeValue::String("value".to_string()),
+                    },
+                ],
+            },
+        ];
+
+        let resource = create_test_resource();
+        let result = serialize_to_json(vec![span], resource);
+        assert!(result.is_ok());
+
+        let json_str = String::from_utf8(result.unwrap()).unwrap();
+        let json_value: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        let events = json_value["resourceSpans"][0]["scopeSpans"][0]["spans"][0]["events"]
+            .as_array().unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0]["name"].as_str().unwrap(), "event1");
+    }
+
+    #[test]
+    fn test_json_with_dropped_counts() {
+        let mut span = create_test_span();
+        // Set dropped counts directly in the span data
+        span.dropped_attributes_count = 2;
+        span.dropped_events_count = 3;
+        span.dropped_links_count = 1;
+
+        let resource = create_test_resource();
+        let result = serialize_to_json(vec![span], resource);
+        assert!(result.is_ok());
+
+        let json_str = String::from_utf8(result.unwrap()).unwrap();
+        let json_value: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        let span_json = &json_value["resourceSpans"][0]["scopeSpans"][0]["spans"][0];
+
+        // Verify dropped counts are properly serialized
+        assert_eq!(span_json["droppedAttributesCount"].as_u64().unwrap(), 2);
+        assert_eq!(span_json["droppedEventsCount"].as_u64().unwrap(), 3);
+        assert_eq!(span_json["droppedLinksCount"].as_u64().unwrap(), 1);
+    }
 }
