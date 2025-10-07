@@ -1,3 +1,5 @@
+package wasmcp:mcp@0.3.1-alpha.4;
+
 /// Handler interface for incoming MCP requests.
 ///
 /// This interface defines the contract for handling MCP requests
@@ -16,4 +18,46 @@ interface incoming-handler {
     /// either process the request or forward it to the next handler in the chain.
     @since(version = 0.3.0)
     handle: func(req: request, out: output-stream);
+}
+
+// A WIT framework for composing Model Context Protocol servers as WebAssembly components.
+//
+// <https://modelcontextprotocol.io/specification/2025-06-18/schema>
+
+/// Middleware world for request interception.
+///
+/// Both imports and exports the handler interface, enabling components
+/// to intercept requests before forwarding to the next handler.
+@since(version = 0.3.0)
+world middleware {
+    import incoming-handler;
+    export incoming-handler;
+}
+
+/// Lifecycle handler for MCP servers.
+/// This is the terminal handler in the request processing chain.
+world lifecycle-handler {
+    export incoming-handler;
+    include lifecycle-response;
+}
+
+/// Handles MCP tools/ requests.
+world tools-handler {
+    include middleware;
+    include tools-response;
+}
+
+world resources-handler {
+    include middleware;
+    include resources-response;
+}
+
+world prompts-handler {
+    include middleware;
+    include prompts-response;
+}
+
+world completions-handler {
+    include middleware;
+    include completions-response;
 }

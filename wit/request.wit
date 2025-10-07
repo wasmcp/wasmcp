@@ -1,8 +1,7 @@
 /// MCP request context
 @since(version = 0.3.1-alpha.1)
 interface request {
-    use wasi:io/streams@0.2.3.{input-stream, stream-error};
-    use protocol.{id, uri, client-capabilities, implementation, cursor, meta, protocol-version};
+    use protocol.{id, uri, client-capabilities, server-capabilities, implementation, cursor, meta, protocol-version, progress-token, json};
 
     /// Initialize request parameters.
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
@@ -58,7 +57,7 @@ interface request {
     @since(version = 0.3.1-alpha.1)
     record arg-params {
         name: string,
-        arguments: option<string>,
+        arguments: option<json>,
     }
 
     @since(version = 0.3.1-alpha.1)
@@ -83,6 +82,18 @@ interface request {
         content: option<list<tuple<string, elicit-result-content>>>,
     }
 
+    /// Cancellation notification.
+    ///
+    /// https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation
+    @since(version = 0.3.1-alpha.3)
+    record cancellation {
+        request-id: id,
+        reason: option<string>,
+    }
+
+    type tools-call-params = arg-params;
+    type prompts-get-params = arg-params;
+
     @since(version = 0.3.1-alpha.1)
     enum method {
         initialize,
@@ -95,6 +106,7 @@ interface request {
         prompts-get,
         completion-complete,
         notifications-initialized,
+        notifications-cancelled,
         ping,
         elicit-result,
     }
@@ -111,7 +123,7 @@ interface request {
 
         /// tools/call
         /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
-        tools-call(arg-params),
+        tools-call(tools-call-params),
 
         /// resources/list
         resources-list(cursor),
@@ -127,7 +139,7 @@ interface request {
 
         /// prompts/get
         /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest>
-        prompts-get(arg-params),
+        prompts-get(prompts-get-params),
 
         /// completion/complete
         completion-complete(complete-params),
@@ -135,14 +147,29 @@ interface request {
         /// Client response to elicitations/create
         /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation#creating-elicitation-requests>
         elicit-result(elicit-result),
+
+        /// Cancellation notification
+        ///
+        /// https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation
+        cancellation(cancellation),
+
+        /// Notifications etc.
+        none,
     }
 
     /// MCP request context
     @since(version = 0.3.0)
     resource request {
+        /// Parse a JSON-RPC 2.0 request from bytes.
+        @since(version = 0.3.1-alpha.2)
+        from-bytes: static func(bytes: list<u8>) -> result<request>;
+
         /// Get the request ID.
+        /// Requests without IDs are notifications.
+        /// 
+        /// https://www.jsonrpc.org/specification#notification
         @since(version = 0.3.0)
-        id: func() -> id;
+        id: func() -> option<id>;
 
         /// Get the method name of this request.
         @since(version = 0.3.1-alpha.1)
@@ -150,7 +177,11 @@ interface request {
 
         /// Get the request parameters.
         @since(version = 0.3.0)
-        params: func() -> option<params>;
+        params: func() -> params;
+
+        /// Get a progress token for this request, if any.
+        @since(version = 0.3.1-alpha.3)
+        progress-token: func() -> option<progress-token>;
 
         /// Get a request-scoped context value by key.
         @since(version = 0.3.0)
@@ -160,28 +191,4 @@ interface request {
         @since(version = 0.3.0)
         set: func(key: string, value: string);
     }
-
-    // The variant below could be expanded in the future with more framings for new transport types.
-    //   variant message-frame {
-    //       content-length(u64),
-    //       delimiter(list<u8>),
-    //       chunked-encoding,              // Future: HTTP chunked
-    //       websocket-frame(frame-type),   // Future: WebSocket
-    //       grpc-frame(u32),               // Future: gRPC
-    //   }
-
-    /// Message terminator for reading from an input stream.
-    /// For HTTP 
-    @since(version = 0.3.1-alpha.1)
-    variant message-frame {
-        content-length(u64),
-        delimiter(list<u8>),
-    }
-
-    /// Parse a JSON-RPC 2.0 request from an HTTP input stream.
-    ///
-    /// https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio
-    /// https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#streamable-http
-    @since(version = 0.3.1-alpha.1)
-    parse: func(input: borrow<input-stream>, frame: message-frame) -> result<request, stream-error>;
 }
