@@ -28,13 +28,18 @@ impl list_resources_writer::Guest for ListResourcesWriter {
         out: OutputStream,
         resources: Vec<list_resources_writer::Resource>,
     ) -> Result<(), StreamError> {
+        // One-shot: Build complete response and send
         let resources_json = build_resources_array(&resources);
 
         let mut result = JsonObjectBuilder::new();
         result.add_field("resources", &resources_json);
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)
+        write_sse_message(&out, &response)?;
+
+        // Flush to ensure delivery
+        out.flush()?;
+        Ok(())
     }
 
     type Writer = ListResourcesWriterResource;
@@ -43,11 +48,20 @@ impl list_resources_writer::Guest for ListResourcesWriter {
         id: Id,
         out: OutputStream,
     ) -> Result<list_resources_writer::Writer, StreamError> {
+        // Start the JSON-RPC response and resources array
+        let id_str = crate::utils::format_id(&id);
+        let header = format!(
+            r#"{{"jsonrpc":"2.0","id":{id_str},"result":{{"resources":["#
+        );
+
+        // Write the opening of the response
+        write_sse_message(&out, &header)?;
+
         Ok(list_resources_writer::Writer::new(ListResourcesWriterResource {
             state: RefCell::new(ResourcesWriterState {
-                id,
                 out,
-                resources: Vec::new(),
+                first_item: true,
+                closed: false,
             }),
         }))
     }
@@ -58,38 +72,72 @@ pub struct ListResourcesWriterResource {
 }
 
 struct ResourcesWriterState {
-    id: Id,
     out: OutputStream,
-    resources: Vec<list_resources_writer::Resource>,
+    first_item: bool,
+    closed: bool,
 }
 
 impl list_resources_writer::GuestWriter for ListResourcesWriterResource {
     fn write(&self, resource: list_resources_writer::Resource) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
-        state.resources.push(resource);
+
+        if state.closed {
+            return Err(StreamError::Closed);
+        }
+
+        // Add comma separator if not first item
+        let mut output = String::new();
+        if !state.first_item {
+            output.push(',');
+        } else {
+            state.first_item = false;
+        }
+
+        // Build and append this single resource
+        let resource_json = build_single_resource(&resource);
+        output.push_str(&resource_json);
+
+        // Write immediately - true streaming!
+        write_sse_message(&state.out, &output)?;
+
         Ok(())
     }
 
     fn close(&self, options: Option<list_resources_writer::Options>) -> Result<(), StreamError> {
-        let state = self.state.borrow();
-        let resources_json = build_resources_array(&state.resources);
+        let mut state = self.state.borrow_mut();
 
-        let mut result = JsonObjectBuilder::new();
-        result.add_field("resources", &resources_json);
+        if state.closed {
+            return Err(StreamError::Closed);
+        }
+
+        // Close the resources array and add optional fields
+        let mut closing = String::from("]");
 
         if let Some(opts) = options {
             if let Some(meta) = opts.meta {
                 if !meta.is_empty() {
-                    result.add_field("_meta", &build_meta_object(&meta));
+                    closing.push_str(r#","_meta":"#);
+                    closing.push_str(&build_meta_object(&meta));
                 }
             }
-            if let Some(Some(cursor)) = opts.next_cursor.as_ref() {
-                result.add_string("nextCursor", cursor);
+            if let Some(cursor) = opts.next_cursor.as_ref() {
+                closing.push_str(r#","nextCursor":""#);
+                closing.push_str(&crate::utils::escape_json_string(cursor));
+                closing.push('"');
             }
         }
 
-        let response = build_jsonrpc_response(&state.id, &result.build());
-        write_sse_message(&state.out, &response)
+        // Close the result object and JSON-RPC response
+        closing.push_str("}}");
+
+        // Write the closing
+        write_sse_message(&state.out, &closing)?;
+
+        // Final flush to ensure all data is sent
+        state.out.flush()?;
+        state.closed = true;
+
+        Ok(())
     }
 }
 
@@ -220,13 +268,18 @@ impl list_resource_templates_writer::Guest for ListResourceTemplatesWriter {
         out: OutputStream,
         templates: Vec<list_resource_templates_writer::ResourceTemplate>,
     ) -> Result<(), StreamError> {
+        // One-shot: Build complete response and send
         let templates_json = build_templates_array(&templates);
 
         let mut result = JsonObjectBuilder::new();
         result.add_field("resourceTemplates", &templates_json);
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)
+        write_sse_message(&out, &response)?;
+
+        // Flush to ensure delivery
+        out.flush()?;
+        Ok(())
     }
 
     type Writer = ListResourceTemplatesWriterResource;
@@ -235,11 +288,20 @@ impl list_resource_templates_writer::Guest for ListResourceTemplatesWriter {
         id: Id,
         out: OutputStream,
     ) -> Result<list_resource_templates_writer::Writer, StreamError> {
+        // Start the JSON-RPC response and resourceTemplates array
+        let id_str = crate::utils::format_id(&id);
+        let header = format!(
+            r#"{{"jsonrpc":"2.0","id":{id_str},"result":{{"resourceTemplates":["#
+        );
+
+        // Write the opening of the response
+        write_sse_message(&out, &header)?;
+
         Ok(list_resource_templates_writer::Writer::new(ListResourceTemplatesWriterResource {
             state: RefCell::new(TemplatesWriterState {
-                id,
                 out,
-                templates: Vec::new(),
+                first_item: true,
+                closed: false,
             }),
         }))
     }
@@ -250,104 +312,148 @@ pub struct ListResourceTemplatesWriterResource {
 }
 
 struct TemplatesWriterState {
-    id: Id,
     out: OutputStream,
-    templates: Vec<list_resource_templates_writer::ResourceTemplate>,
+    first_item: bool,
+    closed: bool,
 }
 
 impl list_resource_templates_writer::GuestWriter for ListResourceTemplatesWriterResource {
     fn write(&self, template: list_resource_templates_writer::ResourceTemplate) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
-        state.templates.push(template);
+
+        if state.closed {
+            return Err(StreamError::Closed);
+        }
+
+        // Add comma separator if not first item
+        let mut output = String::new();
+        if !state.first_item {
+            output.push(',');
+        } else {
+            state.first_item = false;
+        }
+
+        // Build and append this single template
+        let template_json = build_single_template(&template);
+        output.push_str(&template_json);
+
+        // Write immediately - true streaming!
+        write_sse_message(&state.out, &output)?;
+
         Ok(())
     }
 
     fn close(&self, options: Option<list_resource_templates_writer::Options>) -> Result<(), StreamError> {
-        let state = self.state.borrow();
-        let templates_json = build_templates_array(&state.templates);
+        let mut state = self.state.borrow_mut();
 
-        let mut result = JsonObjectBuilder::new();
-        result.add_field("resourceTemplates", &templates_json);
+        if state.closed {
+            return Err(StreamError::Closed);
+        }
+
+        // Close the resourceTemplates array and add optional fields
+        let mut closing = String::from("]");
 
         if let Some(opts) = options {
             if let Some(meta) = opts.meta {
                 if !meta.is_empty() {
-                    result.add_field("_meta", &build_meta_object(&meta));
+                    closing.push_str(r#","_meta":"#);
+                    closing.push_str(&build_meta_object(&meta));
                 }
             }
-            if let Some(Some(cursor)) = opts.next_cursor.as_ref() {
-                result.add_string("nextCursor", cursor);
+            if let Some(cursor) = opts.next_cursor.as_ref() {
+                closing.push_str(r#","nextCursor":""#);
+                closing.push_str(&crate::utils::escape_json_string(cursor));
+                closing.push('"');
             }
         }
 
-        let response = build_jsonrpc_response(&state.id, &result.build());
-        write_sse_message(&state.out, &response)
+        // Close the result object and JSON-RPC response
+        closing.push_str("}}");
+
+        // Write the closing
+        write_sse_message(&state.out, &closing)?;
+
+        // Final flush to ensure all data is sent
+        state.out.flush()?;
+        state.closed = true;
+
+        Ok(())
     }
 }
 
 // ===== Helper Functions =====
 
-/// Build a JSON array of resources.
+/// Build a JSON array of resources (for one-shot send).
 fn build_resources_array(resources: &[list_resources_writer::Resource]) -> String {
     if resources.is_empty() {
         return "[]".to_string();
     }
 
-    let resource_objects: Vec<String> = resources.iter().map(|resource| {
-        let mut obj = JsonObjectBuilder::new();
-        obj.add_string("uri", &resource.uri);
-        obj.add_string("name", &resource.name);
-
-        if let Some(opts) = &resource.options {
-            obj.add_optional_number("size", opts.size);
-            obj.add_optional_string("title", opts.title.as_deref());
-            obj.add_optional_string("description", opts.description.as_deref());
-            obj.add_optional_string("mimeType", opts.mime_type.as_deref());
-
-            if let Some(ann) = &opts.annotations {
-                obj.add_field("annotations", &build_annotations_json(ann));
-            }
-            if let Some(meta) = &opts.meta {
-                if !meta.is_empty() {
-                    obj.add_field("_meta", &build_meta_object(meta));
-                }
-            }
-        }
-
-        obj.build()
-    }).collect();
+    let resource_objects: Vec<String> = resources.iter()
+        .map(build_single_resource)
+        .collect();
 
     format!("[{}]", resource_objects.join(","))
 }
 
-/// Build a JSON array of resource templates.
+/// Build JSON for a single resource.
+fn build_single_resource(resource: &list_resources_writer::Resource) -> String {
+    let mut obj = JsonObjectBuilder::new();
+    obj.add_string("uri", &resource.uri);
+    obj.add_string("name", &resource.name);
+
+    if let Some(opts) = &resource.options {
+        obj.add_optional_number("size", opts.size);
+        obj.add_optional_string("title", opts.title.as_deref());
+        obj.add_optional_string("description", opts.description.as_deref());
+        obj.add_optional_string("mimeType", opts.mime_type.as_deref());
+
+        if let Some(ann) = &opts.annotations {
+            obj.add_field("annotations", &build_annotations_json(ann));
+        }
+        if let Some(meta) = &opts.meta {
+            if !meta.is_empty() {
+                obj.add_field("_meta", &build_meta_object(meta));
+            }
+        }
+    }
+
+    obj.build()
+}
+
+/// Build a JSON array of resource templates (for one-shot send).
 fn build_templates_array(templates: &[list_resource_templates_writer::ResourceTemplate]) -> String {
     if templates.is_empty() {
         return "[]".to_string();
     }
 
-    let template_objects: Vec<String> = templates.iter().map(|template| {
-        let mut obj = JsonObjectBuilder::new();
-        obj.add_string("uriTemplate", &template.uri_template);
-        obj.add_string("name", &template.name);
-
-        if let Some(opts) = &template.options {
-            obj.add_optional_string("description", opts.description.as_deref());
-            obj.add_optional_string("title", opts.title.as_deref());
-            obj.add_optional_string("mimeType", opts.mime_type.as_deref());
-
-            if let Some(ann) = &opts.annotations {
-                obj.add_field("annotations", &build_annotations_json(ann));
-            }
-            if let Some(meta) = &opts.meta {
-                if !meta.is_empty() {
-                    obj.add_field("_meta", &build_meta_object(meta));
-                }
-            }
-        }
-
-        obj.build()
-    }).collect();
+    let template_objects: Vec<String> = templates.iter()
+        .map(build_single_template)
+        .collect();
 
     format!("[{}]", template_objects.join(","))
+}
+
+/// Build JSON for a single resource template.
+fn build_single_template(template: &list_resource_templates_writer::ResourceTemplate) -> String {
+    let mut obj = JsonObjectBuilder::new();
+    obj.add_string("uriTemplate", &template.uri_template);
+    obj.add_string("name", &template.name);
+
+    if let Some(opts) = &template.options {
+        obj.add_optional_string("description", opts.description.as_deref());
+        obj.add_optional_string("title", opts.title.as_deref());
+        obj.add_optional_string("mimeType", opts.mime_type.as_deref());
+
+        if let Some(ann) = &opts.annotations {
+            obj.add_field("annotations", &build_annotations_json(ann));
+        }
+        if let Some(meta) = &opts.meta {
+            if !meta.is_empty() {
+                obj.add_field("_meta", &build_meta_object(meta));
+            }
+        }
+    }
+
+    obj.build()
 }

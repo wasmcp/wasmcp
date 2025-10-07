@@ -3,7 +3,7 @@
 //! Handles serialization of tool-related responses including:
 //! - Tool listings with schemas and metadata
 //! - Tool execution results (both structured and unstructured)
-//! - Streaming tool output
+//! - TRUE STREAMING output with proper WASI I/O compliance
 
 use crate::bindings::exports::wasmcp::mcp::{
     list_tools_writer, content_tool_writer, structured_tool_writer,
@@ -11,7 +11,7 @@ use crate::bindings::exports::wasmcp::mcp::{
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
 use crate::bindings::wasmcp::mcp::protocol::{ContentBlock, Id};
 use crate::utils::{
-    build_content_block_json, build_jsonrpc_response,
+    build_content_block_json, build_jsonrpc_response, format_id,
     build_meta_object, write_sse_message, JsonObjectBuilder,
 };
 use std::cell::RefCell;
@@ -28,13 +28,18 @@ impl list_tools_writer::Guest for ListToolsWriter {
         out: OutputStream,
         tools: Vec<list_tools_writer::Tool>,
     ) -> Result<(), StreamError> {
+        // One-shot: Build complete response and send
         let tools_json = build_tools_array(&tools);
 
         let mut result = JsonObjectBuilder::new();
         result.add_field("tools", &tools_json);
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)
+        write_sse_message(&out, &response)?;
+
+        // Flush to ensure delivery
+        out.flush()?;
+        Ok(())
     }
 
     type Writer = ListToolsWriterResource;
@@ -43,53 +48,96 @@ impl list_tools_writer::Guest for ListToolsWriter {
         id: Id,
         out: OutputStream,
     ) -> Result<list_tools_writer::Writer, StreamError> {
+        // Start the JSON-RPC response and tools array
+        let id_str = format_id(&id);
+        let header = format!(
+            r#"{{"jsonrpc":"2.0","id":{id_str},"result":{{"tools":["#
+        );
+
+        // Write the opening of the response
+        write_sse_message(&out, &header)?;
+
         Ok(list_tools_writer::Writer::new(ListToolsWriterResource {
-            state: RefCell::new(WriterState {
-                id,
+            state: RefCell::new(StreamingWriterState {
                 out,
-                tools: Vec::new(),
+                first_item: true,
+                closed: false,
             }),
         }))
     }
 }
 
 pub struct ListToolsWriterResource {
-    state: RefCell<WriterState<list_tools_writer::Tool>>,
+    state: RefCell<StreamingWriterState>,
 }
 
-struct WriterState<T> {
-    id: Id,
+struct StreamingWriterState {
     out: OutputStream,
-    tools: Vec<T>,
+    first_item: bool,
+    closed: bool,
 }
 
 impl list_tools_writer::GuestWriter for ListToolsWriterResource {
     fn write(&self, tool: list_tools_writer::Tool) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
-        state.tools.push(tool);
+
+        if state.closed {
+            return Err(StreamError::Closed);
+        }
+
+        // Add comma separator if not first item
+        let mut output = String::new();
+        if !state.first_item {
+            output.push(',');
+        } else {
+            state.first_item = false;
+        }
+
+        // Build and append this single tool
+        let tool_json = build_single_tool(&tool);
+        output.push_str(&tool_json);
+
+        // Write immediately - true streaming!
+        write_sse_message(&state.out, &output)?;
+
         Ok(())
     }
 
     fn close(&self, options: Option<list_tools_writer::Options>) -> Result<(), StreamError> {
-        let state = self.state.borrow();
-        let tools_json = build_tools_array(&state.tools);
+        let mut state = self.state.borrow_mut();
 
-        let mut result = JsonObjectBuilder::new();
-        result.add_field("tools", &tools_json);
+        if state.closed {
+            return Err(StreamError::Closed);
+        }
+
+        // Close the tools array and add optional fields
+        let mut closing = String::from("]");
 
         if let Some(opts) = options {
             if let Some(meta) = opts.meta {
                 if !meta.is_empty() {
-                    result.add_field("_meta", &build_meta_object(&meta));
+                    closing.push_str(r#","_meta":"#);
+                    closing.push_str(&build_meta_object(&meta));
                 }
             }
-            if let Some(Some(cursor)) = opts.next_cursor.as_ref() {
-                result.add_string("nextCursor", cursor);
+            if let Some(cursor) = opts.next_cursor.as_ref() {
+                closing.push_str(r#","nextCursor":""#);
+                closing.push_str(&escape_json(cursor));
+                closing.push('"');
             }
         }
 
-        let response = build_jsonrpc_response(&state.id, &result.build());
-        write_sse_message(&state.out, &response)
+        // Close the result object and JSON-RPC response
+        closing.push_str("}}");
+
+        // Write the closing
+        write_sse_message(&state.out, &closing)?;
+
+        // Final flush to ensure all data is sent
+        state.out.flush()?;
+        state.closed = true;
+
+        Ok(())
     }
 }
 
@@ -109,7 +157,9 @@ impl content_tool_writer::Guest for ContentToolWriter {
         result.add_field("content", &format!("[{}]", content.build()));
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)
+        write_sse_message(&out, &response)?;
+        out.flush()?;
+        Ok(())
     }
 
     fn send_error(
@@ -126,7 +176,9 @@ impl content_tool_writer::Guest for ContentToolWriter {
         result.add_bool("isError", true);
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)
+        write_sse_message(&out, &response)?;
+        out.flush()?;
+        Ok(())
     }
 
     fn send_contents(
@@ -140,7 +192,9 @@ impl content_tool_writer::Guest for ContentToolWriter {
         result.add_field("content", &content_json);
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)
+        write_sse_message(&out, &response)?;
+        out.flush()?;
+        Ok(())
     }
 
     type Writer = ContentToolWriterResource;
@@ -150,98 +204,97 @@ impl content_tool_writer::Guest for ContentToolWriter {
         out: OutputStream,
         initial: ContentBlock,
     ) -> Result<content_tool_writer::Writer, StreamError> {
+        // Start the response with the first content block
+        let id_str = format_id(&id);
+        let header = format!(
+            r#"{{"jsonrpc":"2.0","id":{id_str},"result":{{"content":["#
+        );
+        write_sse_message(&out, &header)?;
+
+        // Write the initial block
+        let initial_json = build_content_block_json(&initial);
+        write_sse_message(&out, &initial_json)?;
+
         Ok(content_tool_writer::Writer::new(ContentToolWriterResource {
-            state: RefCell::new(ContentWriterState {
-                id,
+            state: RefCell::new(ContentStreamingState {
                 out,
-                blocks: vec![initial],
-                current_text: None,
+                closed: false,
             }),
         }))
     }
 }
 
 pub struct ContentToolWriterResource {
-    state: RefCell<ContentWriterState>,
+    state: RefCell<ContentStreamingState>,
 }
 
-struct ContentWriterState {
-    id: Id,
+struct ContentStreamingState {
     out: OutputStream,
-    blocks: Vec<ContentBlock>,
-    current_text: Option<String>,
+    closed: bool,
 }
 
 impl content_tool_writer::GuestWriter for ContentToolWriterResource {
     fn write(&self, contents: Vec<u8>) -> Result<(), StreamError> {
-        let mut state = self.state.borrow_mut();
+        let state = self.state.borrow_mut();
 
-        // Convert bytes to string and append to current text
-        // If not valid UTF-8, we'll need to handle it as a binary block later
-        match String::from_utf8(contents) {
-            Ok(text) => {
-                match &mut state.current_text {
-                    Some(current) => current.push_str(&text),
-                    None => state.current_text = Some(text),
-                }
-                Ok(())
-            }
-            Err(_) => {
-                // Invalid UTF-8 indicates binary data
-                // This should be handled differently in production
-                Err(StreamError::Closed)
-            }
+        if state.closed {
+            return Err(StreamError::Closed);
         }
+
+        // For raw bytes, we stream them as base64-encoded chunks
+        // This enables true streaming of large binary content
+        if !contents.is_empty() {
+            let encoded = crate::utils::base64_encode(&contents);
+            write_sse_message(&state.out, &encoded)?;
+        }
+
+        Ok(())
     }
 
     fn next(&self, content: ContentBlock) -> Result<(), StreamError> {
-        let mut state = self.state.borrow_mut();
+        let state = self.state.borrow_mut();
 
-        // If we have accumulated text, create a text block
-        if let Some(text) = state.current_text.take() {
-            state.blocks.push(ContentBlock::Text(
-                crate::bindings::wasmcp::mcp::protocol::TextContent {
-                    text,
-                    options: None,
-                }
-            ));
+        if state.closed {
+            return Err(StreamError::Closed);
         }
 
-        state.blocks.push(content);
+        // Add a new content block to the stream
+        let block_json = build_content_block_json(&content);
+        let output = format!(",{}", block_json);
+        write_sse_message(&state.out, &output)?;
+
         Ok(())
     }
 
     fn close(&self, options: Option<content_tool_writer::Options>) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
 
-        // If we have accumulated text, create a final text block
-        if let Some(text) = state.current_text.take() {
-            state.blocks.push(ContentBlock::Text(
-                crate::bindings::wasmcp::mcp::protocol::TextContent {
-                    text,
-                    options: None,
-                }
-            ));
+        if state.closed {
+            return Err(StreamError::Closed);
         }
 
-        let content_json = build_content_blocks_array(&state.blocks);
-
-        let mut result = JsonObjectBuilder::new();
-        result.add_field("content", &content_json);
+        // Close the content array and add options
+        let mut closing = String::from("]");
 
         if let Some(opts) = options {
             if opts.is_error {
-                result.add_bool("isError", true);
+                closing.push_str(r#","isError":true"#);
             }
             if let Some(meta) = opts.meta {
                 if !meta.is_empty() {
-                    result.add_field("_meta", &build_meta_object(&meta));
+                    closing.push_str(r#","_meta":"#);
+                    closing.push_str(&build_meta_object(&meta));
                 }
             }
         }
 
-        let response = build_jsonrpc_response(&state.id, &result.build());
-        write_sse_message(&state.out, &response)
+        closing.push_str("}}");
+        write_sse_message(&state.out, &closing)?;
+
+        state.out.flush()?;
+        state.closed = true;
+
+        Ok(())
     }
 }
 
@@ -254,8 +307,6 @@ impl structured_tool_writer::Guest for StructuredToolWriter {
         structured: structured_tool_writer::StructuredResult,
     ) -> Result<(), StreamError> {
         let mut result = JsonObjectBuilder::new();
-
-        // The structured field is already a JSON string
         result.add_field("structured", &structured.structured);
 
         if let Some(opts) = structured.options {
@@ -270,49 +321,56 @@ impl structured_tool_writer::Guest for StructuredToolWriter {
         }
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)
+        write_sse_message(&out, &response)?;
+        out.flush()?;
+        Ok(())
     }
 }
 
 // ===== Helper Functions =====
 
-/// Build a JSON array of tools.
+/// Build a JSON array of tools (for one-shot send).
 fn build_tools_array(tools: &[list_tools_writer::Tool]) -> String {
     if tools.is_empty() {
         return "[]".to_string();
     }
 
-    let tool_objects: Vec<String> = tools.iter().map(|tool| {
-        let mut obj = JsonObjectBuilder::new();
-        obj.add_string("name", &tool.name);
-        obj.add_field("inputSchema", &tool.input_schema);
+    let tool_objects: Vec<String> = tools.iter()
+        .map(build_single_tool)
+        .collect();
 
-        if let Some(opts) = &tool.options {
-            obj.add_optional_string("description", opts.description.as_deref());
-            obj.add_optional_string("title", opts.title.as_deref());
+    format!("[{}]", tool_objects.join(","))
+}
 
-            if let Some(schema) = &opts.output_schema {
-                obj.add_field("outputSchema", schema);
-            }
+/// Build JSON for a single tool.
+fn build_single_tool(tool: &list_tools_writer::Tool) -> String {
+    let mut obj = JsonObjectBuilder::new();
+    obj.add_string("name", &tool.name);
+    obj.add_field("inputSchema", &tool.input_schema);
 
-            if let Some(meta) = &opts.meta {
-                if !meta.is_empty() {
-                    obj.add_field("_meta", &build_meta_object(meta));
-                }
-            }
+    if let Some(opts) = &tool.options {
+        obj.add_optional_string("description", opts.description.as_deref());
+        obj.add_optional_string("title", opts.title.as_deref());
 
-            if let Some(annotations) = &opts.annotations {
-                let ann_json = build_tool_annotations(annotations);
-                if ann_json != "{}" {
-                    obj.add_field("annotations", &ann_json);
-                }
+        if let Some(schema) = &opts.output_schema {
+            obj.add_field("outputSchema", schema);
+        }
+
+        if let Some(meta) = &opts.meta {
+            if !meta.is_empty() {
+                obj.add_field("_meta", &build_meta_object(meta));
             }
         }
 
-        obj.build()
-    }).collect();
+        if let Some(annotations) = &opts.annotations {
+            let ann_json = build_tool_annotations(annotations);
+            if ann_json != "{}" {
+                obj.add_field("annotations", &ann_json);
+            }
+        }
+    }
 
-    format!("[{}]", tool_objects.join(","))
+    obj.build()
 }
 
 /// Build JSON for tool annotations.
@@ -358,4 +416,9 @@ fn build_content_blocks_array(blocks: &[ContentBlock]) -> String {
         .collect();
 
     format!("[{}]", block_objects.join(","))
+}
+
+/// Simple JSON string escaping
+fn escape_json(s: &str) -> String {
+    crate::utils::escape_json_string(s)
 }
