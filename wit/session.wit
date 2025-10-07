@@ -4,79 +4,8 @@
 @since(version = 0.3.1-alpha.1)
 interface session {
     use wasi:io/streams@0.2.3.{output-stream, stream-error};
-    use request.{request, elicit-result};
-
-    @since(version = 0.3.1-alpha.1)
-    enum string-schema-format {
-        uri,
-        email,
-        date,
-        date-time,
-    }
-
-    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#stringschema
-    @since(version = 0.3.1-alpha.1)
-    record string-schema {
-        description: option<string>,
-        format: option<string-schema-format>,
-        max-length: option<u32>,
-        min-length: option<u32>,
-        title: option<string>,
-    }
-
-    @since(version = 0.3.1-alpha.1)
-    enum number-schema-type {
-        number,
-        integer,
-    }
-
-    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#numberschema
-    @since(version = 0.3.1-alpha.1)
-    record number-schema {
-        description: option<string>,
-        maximum: option<f64>,
-        minimum: option<f64>,
-        title: option<string>,
-        %type: number-schema-type,
-    }
-
-    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#booleanschema
-    @since(version = 0.3.1-alpha.1)
-    record boolean-schema {
-        default: option<bool>,
-        description: option<string>,
-        title: option<string>,
-    }
-
-    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#enumschema
-    @since(version = 0.3.1-alpha.1)
-    record enum-schema {
-        description: option<string>,
-        %enum: list<string>,
-        enum-names: option<list<string>>,
-        title: option<string>,
-    }
-
-    @since(version = 0.3.1-alpha.1)
-    variant primitive-schema-definition {
-        string-schema(string-schema),
-        number-schema(number-schema),
-        boolean-schema(boolean-schema),
-        enum-schema(enum-schema),
-    }
-
-    @since(version = 0.3.1-alpha.1)
-    record requested-schema {
-        properties: list<tuple<string, primitive-schema-definition>>,
-        required: option<list<string>>,
-    }
-
-    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitrequest
-    @since(version = 0.3.1-alpha.1)
-    record elicit-request {
-        message: string,
-        requested-schema: requested-schema,
-    }
+    use protocol.{elicit-request, elicit-result};
+    use context.{context};
 
     /// Errors that can occur during session operations.
     @since(version = 0.3.1-alpha.1)
@@ -138,9 +67,9 @@ interface session {
     /// Attach a session to an MCP request context.
     /// This allows downstream handlers to retrieve the session.
     @since(version = 0.3.1-alpha.1)
-    attach: func(req: borrow<request>, session: borrow<session>);
+    attach: func(req: borrow<context>, session: borrow<session>);
 
     /// Get an existing session from an MCP request context, if one is attached.
     @since(version = 0.3.1-alpha.1)
-    get: func(req: borrow<request>) -> result<option<session>, session-error>;
+    get: func(req: borrow<context>) -> result<option<session>, session-error>;
 }

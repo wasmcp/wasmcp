@@ -1,7 +1,7 @@
 use wasi:io/streams@0.2.3;
 
-interface notifications {
-    use wasi:io/streams@0.2.3.{output-stream, stream-error};
+interface notifications-writer {
+    use streams.{output-stream, stream-error};
     use protocol.{progress-token};
 
     /// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/logging#log-levels
@@ -82,7 +82,7 @@ interface notifications {
 ///
 /// See: <https://spec.json-rpc.org/specification>
 @since(version = 0.3.0)
-interface error-result {
+interface error-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, error as mcp-error};
 
@@ -98,7 +98,7 @@ interface error-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/ping#behavior-requirements>
 @since(version = 0.3.1-alpha.2)
-interface empty-result {
+interface empty-writer {
     use protocol.{id};
     use streams.{output-stream, stream-error};
 
@@ -109,7 +109,7 @@ interface empty-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initialize>
 @since(version = 0.3.0)
-interface initialize-result {
+interface initialize-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, implementation, meta, protocol-version, server-capabilities};
 
@@ -138,7 +138,7 @@ interface initialize-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-list>
 @since(version = 0.3.0)
-interface list-tools-result {
+interface list-tools-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, cursor, meta, json};
 
@@ -207,7 +207,7 @@ interface list-tools-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-call>
 @since(version = 0.3.0)
-interface content-tool-result {
+interface content-tool-writer {
     use streams.{output-stream, stream-error};
     use protocol.{content-block, id, meta};
 
@@ -253,7 +253,7 @@ interface content-tool-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-call>
 @since(version = 0.3.0)
-interface structured-tool-result {
+interface structured-tool-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, meta, json};
 
@@ -279,7 +279,7 @@ interface structured-tool-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-list>
 @since(version = 0.3.0)
-interface list-resources-result {
+interface list-resources-writer {
     use streams.{output-stream, stream-error};
     use protocol.{annotations, id, cursor, meta, uri};
 
@@ -329,7 +329,7 @@ interface list-resources-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-read>
 @since(version = 0.3.0)
-interface read-resource-result {
+interface read-resource-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, meta, uri};
 
@@ -374,7 +374,7 @@ interface read-resource-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-templates-list>
 @since(version = 0.3.0)
-interface list-resource-templates-result {
+interface list-resource-templates-writer {
     use streams.{output-stream, stream-error};
     use protocol.{annotations, id, cursor, meta};
 
@@ -423,7 +423,7 @@ interface list-resource-templates-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts-list>
 @since(version = 0.3.0)
-interface list-prompts-result {
+interface list-prompts-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, meta};
 
@@ -479,7 +479,7 @@ interface list-prompts-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts%2Fget>
 @since(version = 0.3.0)
-interface get-prompt-result {
+interface get-prompt-writer {
     use streams.{output-stream, stream-error};
     use protocol.{content-block, role, id, meta};
 
@@ -518,7 +518,7 @@ interface get-prompt-result {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#completion-complete>
 @since(version = 0.3.0)
-interface complete-result {
+interface complete-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id};
 
@@ -545,38 +545,38 @@ interface complete-result {
     ) -> result<writer, stream-error>;
 }
 
-world response {
-    import notifications;
-    import error-result;
+world writer {
+    import notifications-writer;
+    import error-writer;
 }
 
-world tools-response {
-    include response;
-    import list-tools-result;
-    import content-tool-result;
-    import structured-tool-result;
+world tools-writer {
+    include writer;
+    import list-tools-writer;
+    import content-tool-writer;
+    import structured-tool-writer;
 }
 
-world resources-response {
-    include response;
-    import list-resources-result;
-    import read-resource-result;
-    import list-resource-templates-result;
+world resources-writer{
+    include writer;
+    import list-resources-writer;
+    import read-resource-writer;
+    import list-resource-templates-writer;
 }
     
-world prompts-response {
-    include response;
-    import list-prompts-result;
-    import get-prompt-result;
+world prompts-writer {
+    include writer;
+    import list-prompts-writer;
+    import get-prompt-writer;
 }
 
-world completions-response {
-    include response;
-    import complete-result;
+world completions-writer {
+    include writer;
+    import complete-writer;
 }
 
-world lifecycle-response {
-    include response;
-    import initialize-result;
-    import empty-result;
+world lifecycle-writer {
+    include writer;
+    import initialize-writer;
+    import empty-writer;
 }

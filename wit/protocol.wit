@@ -1,26 +1,12 @@
+package wasmcp:mcp@0.3.1-alpha.5;
+
 interface protocol {
     type json = string;
     type uri = string;
     type cursor = option<string>;
     type meta = option<list<tuple<string, string>>>;
 
-    /// <https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/progress#progress-flow>
-    variant progress-token {
-        %string(string),
-        integer(s64),
-    }
-
     /// Standard JSON-RPC error codes.
-    ///
-    /// Maps to the error codes in JSONRPCError as defined in the MCP spec.
-    /// Standard codes per JSON-RPC 2.0:
-    /// - Parse error: -32700
-    /// - Invalid request: -32600
-    /// - Method not found: -32601
-    /// - Invalid params: -32602
-    /// - Internal error: -32603
-    ///
-    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#jsonrpcerror>
     @since(version = 0.3.0)
     enum error-code {
         /// Parse error (-32700)
@@ -35,19 +21,10 @@ interface protocol {
         internal-error,
     }
 
-    /// Standard MCP error structure.
-    ///
-    /// Maps to JSONRPCError.error in the MCP spec:
-    /// - code: number - "The error type that occurred"
-    /// - message: string - "A short description of the error"
-    /// - data?: unknown - "Additional information about the error"
-    ///
-    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#jsonrpcerror>
-    @since(version = 0.3.0)
-    record error {
-        code: error-code,
-        message: string,
-        data: option<string>,
+    /// <https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/progress#progress-flow>
+    variant progress-token {
+        %string(string),
+        integer(s64),
     }
 
     /// JSON-RPC request ID (string or number).
@@ -265,5 +242,256 @@ interface protocol {
         audio(audio-content),
         resource-link(resource-link-content),
         embedded-resource(embedded-resource-content),
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    enum string-schema-format {
+        uri,
+        email,
+        date,
+        date-time,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#stringschema
+    @since(version = 0.3.1-alpha.1)
+    record string-schema {
+        description: option<string>,
+        format: option<string-schema-format>,
+        max-length: option<u32>,
+        min-length: option<u32>,
+        title: option<string>,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    enum number-schema-type {
+        number,
+        integer,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#numberschema
+    @since(version = 0.3.1-alpha.1)
+    record number-schema {
+        description: option<string>,
+        maximum: option<f64>,
+        minimum: option<f64>,
+        title: option<string>,
+        %type: number-schema-type,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#booleanschema
+    @since(version = 0.3.1-alpha.1)
+    record boolean-schema {
+        default: option<bool>,
+        description: option<string>,
+        title: option<string>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#enumschema
+    @since(version = 0.3.1-alpha.1)
+    record enum-schema {
+        description: option<string>,
+        %enum: list<string>,
+        enum-names: option<list<string>>,
+        title: option<string>,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    variant primitive-schema-definition {
+        string-schema(string-schema),
+        number-schema(number-schema),
+        boolean-schema(boolean-schema),
+        enum-schema(enum-schema),
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    record requested-schema {
+        properties: list<tuple<string, primitive-schema-definition>>,
+        required: option<list<string>>,
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitrequest
+    @since(version = 0.3.1-alpha.1)
+    record elicit-request {
+        message: string,
+        requested-schema: requested-schema,
+    }
+
+    /// Initialize request parameters.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
+    @since(version = 0.3.0)
+    record initialize-params {
+        capabilities: client-capabilities,
+        client-info: implementation,
+        protocol-version: protocol-version,
+    }
+
+    /// Argument for completion requests.
+    @since(version = 0.3.0)
+    record completion-argument {
+        name: string,
+        value: string,
+    }
+
+    /// Context for completion requests.
+    @since(version = 0.3.0)
+    record completion-context {
+        arguments: option<string>
+    }
+
+    /// Reference to a prompt for completion.
+    @since(version = 0.3.0)
+    record completion-prompt-reference {
+        name: string,
+        title: option<string>,
+    }
+
+    /// Reference types for completions.
+    @since(version = 0.3.0)
+    variant completion-ref {
+        /// Prompt reference.
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptreference>
+        prompt(completion-prompt-reference),
+
+        /// Resource template reference.
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplatereference>
+        resource-template(string),
+    }
+
+    /// Parameters for completion requests.
+    @since(version = 0.3.0)
+    record complete-params {
+        argument: completion-argument,
+        ref: completion-ref,
+        context: option<completion-context>,
+    }
+
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest
+    @since(version = 0.3.1-alpha.1)
+    record arg-params {
+        name: string,
+        arguments: option<json>,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    enum elicit-result-action {
+        accept,
+        decline,
+        cancel,
+    }
+
+    @since(version = 0.3.1-alpha.1)
+    variant elicit-result-content {
+        %string(string),
+        number(f64),
+        boolean(bool),
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitresult
+    @since(version = 0.3.1-alpha.1)
+    record elicit-result {
+        meta: meta,
+        action: elicit-result-action,
+        content: option<list<tuple<string, elicit-result-content>>>,
+    }
+
+    /// Cancellation notification.
+    ///
+    /// https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation
+    @since(version = 0.3.1-alpha.3)
+    record cancellation {
+        request-id: id,
+        reason: option<string>,
+    }
+
+    type tools-list-params = cursor;
+    type tools-call-params = arg-params;
+
+    type resources-list-params = cursor;
+    type resources-read-params = uri;
+    type resources-templates-list-params = cursor;
+
+    type prompts-list-params = cursor;
+    type prompts-get-params = arg-params;
+
+    /// Parameters for different MCP methods.
+    @since(version = 0.3.0)
+    variant request-method {
+        /// initialize
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
+        initialize(initialize-params),
+
+        /// tools/list
+        tools-list(tools-list-params),
+
+        /// tools/call
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
+        tools-call(tools-call-params),
+
+        /// resources/list
+        resources-list(resources-list-params),
+
+        /// resources/read
+        resources-read(resources-read-params),
+
+        /// resources/templates/list
+        resources-templates-list(resources-templates-list-params),
+
+        /// prompts/list
+        prompts-list(prompts-list-params),
+
+        /// prompts/get
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest>
+        prompts-get(prompts-get-params),
+
+        /// completion/complete
+        completion-complete(complete-params),
+
+        ping,
+    }
+
+    variant notification-method {
+        /// Cancellation notification
+        ///
+        /// https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation
+        cancellation(cancellation),
+        progress(progress-token),
+        initialized,
+        roots-list-changed,
+    }
+
+    variant response-result {
+        /// Client response to elicitations/create
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation#creating-elicitation-requests>
+        elicit-result(elicit-result),
+    }
+
+    record request {
+        id: id,
+        method: request-method,
+        progress-token: option<progress-token>,
+    }
+
+    record notification {
+        method: notification-method,
+    }
+
+    record %result {
+        id: id,
+        %result: response-result,
+    }
+
+    record error {
+        id: option<id>,
+        code: error-code,
+        message: string,
+        data: option<json>,
+    }
+
+    variant jsonrpc-object {
+        request(request),
+        notification(notification),
+        %result(%result),
+        error(error),
     }
 }
