@@ -16,10 +16,3 @@ integration-tests = []
 
 [lib]
 crate-type = ["cdylib"]
-
-[package.metadata.component]
-package = "wasmcp:http-transport"
-target = "wasmcp:mcp/http-transport@0.3.0"
-
-[package.metadata.component.dependencies]
-
