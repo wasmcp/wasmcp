@@ -1,4 +1,4 @@
-package wasmcp:mcp@0.3.1-alpha.5;
+package wasmcp:mcp@0.3.1-alpha.6;
 
 interface protocol {
     type json = string;
