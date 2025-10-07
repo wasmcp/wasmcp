@@ -7,6 +7,15 @@ name = "wasi:otel-sdk"
 registry = "ghcr.io"
 
 [[packages.versions]]
-requirement = "=0.1.0-alpha.2"
-version = "0.1.0-alpha.2"
-digest = "sha256:f4ffd78a5afa4a143d675c306f8117e2772fcd5044e8c9f7b038a9024f062c8d"
+requirement = "=0.1.0-alpha.3"
+version = "0.1.0-alpha.3"
+digest = "sha256:5fc220da3373aacaa1ff456a625d06f7ed5078ee91b88f41edd419e26bea4781"
+
+[[packages]]
+name = "wasi:random"
+registry = "wasi.dev"
+
+[[packages.versions]]
+requirement = "=0.2.0"
+version = "0.2.0"
+digest = "sha256:5d535edc544d06719cf337861b7917c3d565360295e5dc424046dceddb0a0e42"

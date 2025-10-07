@@ -1,5 +1,5 @@
 use crate::bindings::exports::wasi::otel_sdk::trace;
-use crate::bindings::wasi::otel_sdk::foundation;
+use crate::bindings::wasi::otel_sdk::common;
 use crate::bindings::wasi::otel_sdk::context;
 use crate::span::SpanImpl;
 use crate::{ensure_registry, TRACER_REGISTRY};
@@ -30,7 +30,7 @@ pub struct TracerProviderImpl {
 }
 
 struct TracerProviderInner {
-    resource: Option<foundation::OtelResource>,
+    resource: Option<common::OtelResource>,
     sampler_config: SamplerConfig,
     limits: TraceLimitsConfig,
     enabled: bool,
@@ -41,7 +41,7 @@ impl TracerProviderImpl {
     fn with_config(
         sampler: Option<trace::SamplerConfig>,
         limits: Option<trace::TraceLimitsConfig>,
-        service_resource: Option<foundation::OtelResource>,
+        service_resource: Option<common::OtelResource>,
     ) -> Self {
         ensure_registry();
 
@@ -116,7 +116,7 @@ impl TracerProviderImpl {
     }
 
     /// Apply limits to attributes
-    fn apply_attribute_limits(&self, mut attributes: Vec<foundation::Attribute>) -> Vec<foundation::Attribute> {
+    fn apply_attribute_limits(&self, mut attributes: Vec<common::Attribute>) -> Vec<common::Attribute> {
         let inner = self.inner.lock().unwrap();
         let limits = &inner.limits;
 
@@ -125,7 +125,7 @@ impl TracerProviderImpl {
 
         // Truncate string values
         for attr in &mut attributes {
-            if let foundation::AttributeValue::String(s) = &mut attr.value {
+            if let common::AttributeValue::String(s) = &mut attr.value {
                 if s.len() > limits.attribute_value_length_limit as usize {
                     s.truncate(limits.attribute_value_length_limit as usize);
                 }
@@ -147,7 +147,7 @@ impl trace::GuestTracerProvider for TracerProviderImpl {
     fn new(
         sampler: Option<trace::SamplerConfig>,
         limits: Option<trace::TraceLimitsConfig>,
-        service_resource: Option<foundation::OtelResource>,
+        service_resource: Option<common::OtelResource>,
     ) -> Self {
         Self::with_config(sampler, limits, service_resource)
     }
@@ -157,7 +157,7 @@ impl trace::GuestTracerProvider for TracerProviderImpl {
         name: String,
         version: Option<String>,
         schema_url: Option<String>,
-        attributes: Vec<foundation::Attribute>,
+        attributes: Vec<common::Attribute>,
     ) -> trace::Tracer {
         let mut registry = TRACER_REGISTRY.lock().unwrap();
         let registry = registry.as_mut().unwrap();
@@ -170,7 +170,7 @@ impl trace::GuestTracerProvider for TracerProviderImpl {
         tracer: trace::Tracer,
         name: String,
         kind: trace::SpanKind,
-        attributes: Vec<foundation::Attribute>,
+        attributes: Vec<common::Attribute>,
         links: Vec<trace::SpanLink>,
         start_time: Option<u64>,
     ) -> trace::Span {
@@ -223,7 +223,7 @@ impl trace::GuestTracerProvider for TracerProviderImpl {
         };
 
         // Create instrumentation scope
-        let scope = foundation::InstrumentationScope {
+        let scope = common::InstrumentationScope {
             name: tracer_info.name.clone(),
             version: tracer_info.version.clone(),
             schema_url: tracer_info.schema_url.clone(),
@@ -270,5 +270,17 @@ impl trace::GuestTracerProvider for TracerProviderImpl {
     fn tracer_enabled(&self, _tracer: trace::Tracer) -> bool {
         let inner = self.inner.lock().unwrap();
         inner.enabled
+    }
+
+    fn force_flush(&self) -> bool {
+        // For tracer provider, force_flush is a no-op as spans are exported by the exporter
+        // Return true to indicate success
+        true
+    }
+
+    fn shutdown(_provider: trace::TracerProvider) -> bool {
+        // Consume the provider and mark shutdown complete
+        // The provider resource will be dropped automatically
+        true
     }
 }

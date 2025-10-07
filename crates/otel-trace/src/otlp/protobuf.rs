@@ -27,7 +27,7 @@
 //! - **Status Codes**: Maps WIT SpanStatus to OTLP status codes (0=UNSET, 1=OK, 2=ERROR)
 
 use crate::bindings::exports::wasi::otel_sdk::trace;
-use crate::bindings::wasi::otel_sdk::foundation;
+use crate::bindings::wasi::otel_sdk::common;
 use crate::error::SerializationError;
 use crate::otlp::proto;
 
@@ -65,7 +65,7 @@ use prost::Message;
 /// ```no_run
 /// # use otel_trace::otlp::protobuf::serialize_to_protobuf;
 /// # use otel_trace::bindings::exports::wasi::otel_sdk::trace::SpanData;
-/// # use otel_trace::bindings::wasi::otel_sdk::foundation::OtelResource;
+/// # use otel_trace::bindings::wasi::otel_sdk::common::OtelResource;
 /// # fn example(spans: Vec<SpanData>, resource: OtelResource) -> Result<(), Box<dyn std::error::Error>> {
 /// let proto_bytes = serialize_to_protobuf(spans, resource)?;
 ///
@@ -78,7 +78,7 @@ use prost::Message;
 /// ```
 pub fn serialize_to_protobuf(
     spans: Vec<trace::SpanData>,
-    service_resource: foundation::OtelResource,
+    service_resource: common::OtelResource,
 ) -> Result<Vec<u8>, SerializationError> {
     // Convert WIT types to prost-generated types
     let request = convert_to_export_request(spans, service_resource)?;
@@ -94,7 +94,7 @@ pub fn serialize_to_protobuf(
 /// Convert WIT spans to OTLP ExportTraceServiceRequest
 fn convert_to_export_request(
     spans: Vec<trace::SpanData>,
-    service_resource: foundation::OtelResource,
+    service_resource: common::OtelResource,
 ) -> Result<proto::collector::trace::v1::ExportTraceServiceRequest, SerializationError> {
     // Group spans by instrumentation scope
     let scope_spans = group_and_convert_spans(spans);
@@ -112,7 +112,7 @@ fn convert_to_export_request(
 
 /// Group spans by scope and convert to prost types
 fn group_and_convert_spans(spans: Vec<trace::SpanData>) -> Vec<proto::trace::v1::ScopeSpans> {
-    let mut scope_map: std::collections::HashMap<String, (foundation::InstrumentationScope, Vec<trace::SpanData>)>
+    let mut scope_map: std::collections::HashMap<String, (common::InstrumentationScope, Vec<trace::SpanData>)>
         = std::collections::HashMap::new();
 
     // Group spans by instrumentation scope
@@ -145,7 +145,7 @@ fn group_and_convert_spans(spans: Vec<trace::SpanData>) -> Vec<proto::trace::v1:
 }
 
 /// Convert WIT Resource to prost Resource
-fn convert_resource(resource: &foundation::OtelResource) -> proto::resource::v1::Resource {
+fn convert_resource(resource: &common::OtelResource) -> proto::resource::v1::Resource {
     proto::resource::v1::Resource {
         attributes: convert_attributes(&resource.attributes),
         dropped_attributes_count: 0,
@@ -154,7 +154,7 @@ fn convert_resource(resource: &foundation::OtelResource) -> proto::resource::v1:
 }
 
 /// Convert WIT InstrumentationScope to prost InstrumentationScope
-fn convert_instrumentation_scope(scope: &foundation::InstrumentationScope) -> proto::common::v1::InstrumentationScope {
+fn convert_instrumentation_scope(scope: &common::InstrumentationScope) -> proto::common::v1::InstrumentationScope {
     proto::common::v1::InstrumentationScope {
         name: scope.name.clone(),
         version: scope.version.clone().unwrap_or_default(),
@@ -237,7 +237,7 @@ fn convert_link(link: trace::SpanLink) -> proto::trace::v1::span::Link {
 }
 
 /// Convert WIT Attributes to prost KeyValue list
-fn convert_attributes(attributes: &[foundation::Attribute]) -> Vec<proto::common::v1::KeyValue> {
+fn convert_attributes(attributes: &[common::Attribute]) -> Vec<proto::common::v1::KeyValue> {
     attributes
         .iter()
         .map(|attr| proto::common::v1::KeyValue {
@@ -248,16 +248,16 @@ fn convert_attributes(attributes: &[foundation::Attribute]) -> Vec<proto::common
 }
 
 /// Convert WIT AttributeValue to prost AnyValue
-fn convert_attribute_value(value: &foundation::AttributeValue) -> proto::common::v1::AnyValue {
+fn convert_attribute_value(value: &common::AttributeValue) -> proto::common::v1::AnyValue {
     use proto::common::v1::any_value::Value;
 
     let value_variant = match value {
-        foundation::AttributeValue::String(s) => Value::StringValue(s.clone()),
-        foundation::AttributeValue::Bool(b) => Value::BoolValue(*b),
-        foundation::AttributeValue::Int64(i) => Value::IntValue(*i),
-        foundation::AttributeValue::Float64(f) => Value::DoubleValue(*f),
-        foundation::AttributeValue::Bytes(bytes) => Value::BytesValue(bytes.clone()),
-        foundation::AttributeValue::ArrayString(arr) => {
+        common::AttributeValue::String(s) => Value::StringValue(s.clone()),
+        common::AttributeValue::Bool(b) => Value::BoolValue(*b),
+        common::AttributeValue::Int64(i) => Value::IntValue(*i),
+        common::AttributeValue::Float64(f) => Value::DoubleValue(*f),
+        common::AttributeValue::Bytes(bytes) => Value::BytesValue(bytes.clone()),
+        common::AttributeValue::ArrayString(arr) => {
             Value::ArrayValue(proto::common::v1::ArrayValue {
                 values: arr
                     .iter()
@@ -267,7 +267,7 @@ fn convert_attribute_value(value: &foundation::AttributeValue) -> proto::common:
                     .collect(),
             })
         }
-        foundation::AttributeValue::ArrayBool(arr) => {
+        common::AttributeValue::ArrayBool(arr) => {
             Value::ArrayValue(proto::common::v1::ArrayValue {
                 values: arr
                     .iter()
@@ -277,7 +277,7 @@ fn convert_attribute_value(value: &foundation::AttributeValue) -> proto::common:
                     .collect(),
             })
         }
-        foundation::AttributeValue::ArrayInt64(arr) => {
+        common::AttributeValue::ArrayInt64(arr) => {
             Value::ArrayValue(proto::common::v1::ArrayValue {
                 values: arr
                     .iter()
@@ -287,7 +287,7 @@ fn convert_attribute_value(value: &foundation::AttributeValue) -> proto::common:
                     .collect(),
             })
         }
-        foundation::AttributeValue::ArrayFloat64(arr) => {
+        common::AttributeValue::ArrayFloat64(arr) => {
             Value::ArrayValue(proto::common::v1::ArrayValue {
                 values: arr
                     .iter()
@@ -297,7 +297,7 @@ fn convert_attribute_value(value: &foundation::AttributeValue) -> proto::common:
                     .collect(),
             })
         }
-        foundation::AttributeValue::Kvlist(kvs) => {
+        common::AttributeValue::Kvlist(kvs) => {
             Value::KvlistValue(proto::common::v1::KeyValueList {
                 values: kvs
                     .iter()
@@ -316,15 +316,15 @@ fn convert_attribute_value(value: &foundation::AttributeValue) -> proto::common:
 }
 
 /// Convert WIT SimpleValue to prost AnyValue
-fn convert_simple_value(value: &foundation::SimpleValue) -> proto::common::v1::AnyValue {
+fn convert_simple_value(value: &common::SimpleValue) -> proto::common::v1::AnyValue {
     use proto::common::v1::any_value::Value;
 
     let value_variant = match value {
-        foundation::SimpleValue::String(s) => Value::StringValue(s.clone()),
-        foundation::SimpleValue::Bool(b) => Value::BoolValue(*b),
-        foundation::SimpleValue::Int64(i) => Value::IntValue(*i),
-        foundation::SimpleValue::Float64(f) => Value::DoubleValue(*f),
-        foundation::SimpleValue::Bytes(bytes) => Value::BytesValue(bytes.clone()),
+        common::SimpleValue::String(s) => Value::StringValue(s.clone()),
+        common::SimpleValue::Bool(b) => Value::BoolValue(*b),
+        common::SimpleValue::Int64(i) => Value::IntValue(*i),
+        common::SimpleValue::Float64(f) => Value::DoubleValue(*f),
+        common::SimpleValue::Bytes(bytes) => Value::BytesValue(bytes.clone()),
     };
 
     proto::common::v1::AnyValue {
@@ -352,15 +352,15 @@ mod tests {
             start_time: 1000000,
             end_time: Some(2000000),
             attributes: vec![
-                foundation::Attribute {
+                common::Attribute {
                     key: "test.key".to_string(),
-                    value: foundation::AttributeValue::String("test-value".to_string()),
+                    value: common::AttributeValue::String("test-value".to_string()),
                 },
             ],
             events: vec![],
             links: vec![],
             status: trace::SpanStatus::Ok,
-            instrumentation_scope: foundation::InstrumentationScope {
+            instrumentation_scope: common::InstrumentationScope {
                 name: "test-scope".to_string(),
                 version: Some("1.0.0".to_string()),
                 schema_url: None,
@@ -372,12 +372,12 @@ mod tests {
         }
     }
 
-    fn create_test_resource() -> foundation::OtelResource {
-        foundation::OtelResource {
+    fn create_test_resource() -> common::OtelResource {
+        common::OtelResource {
             attributes: vec![
-                foundation::Attribute {
+                common::Attribute {
                     key: "service.name".to_string(),
-                    value: foundation::AttributeValue::String("test-service".to_string()),
+                    value: common::AttributeValue::String("test-service".to_string()),
                 },
             ],
             schema_url: None,
@@ -432,9 +432,9 @@ mod tests {
                 name: "event1".to_string(),
                 timestamp: 1500000,
                 attributes: vec![
-                    foundation::Attribute {
+                    common::Attribute {
                         key: "event.attr".to_string(),
-                        value: foundation::AttributeValue::String("value".to_string()),
+                        value: common::AttributeValue::String("value".to_string()),
                     },
                 ],
             },

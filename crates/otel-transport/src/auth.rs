@@ -22,7 +22,7 @@
 //! - Host systems should manage credentials securely before passing to components
 
 use crate::bindings::wasi::http::types::Fields;
-use crate::bindings::exports::wasi::otel_sdk::otel_export::{
+use crate::bindings::exports::wasi::otel_sdk::http_transport::{
     AuthConfig, BasicAuthConfig, BearerTokenConfig, HeaderPair,
 };
 

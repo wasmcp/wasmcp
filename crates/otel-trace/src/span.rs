@@ -1,5 +1,5 @@
 use crate::bindings::exports::wasi::otel_sdk::trace;
-use crate::bindings::wasi::otel_sdk::foundation;
+use crate::bindings::wasi::otel_sdk::common;
 use crate::bindings::wasi::otel_sdk::context;
 
 use std::sync::{Arc, Mutex};
@@ -17,11 +17,11 @@ pub struct SpanInner {
     kind: trace::SpanKind,
     start_time: u64,
     end_time: Option<u64>,
-    attributes: Vec<foundation::Attribute>,
+    attributes: Vec<common::Attribute>,
     events: Vec<trace::SpanEvent>,
     links: Vec<trace::SpanLink>,
     status: trace::SpanStatus,
-    instrumentation_scope: foundation::InstrumentationScope,
+    instrumentation_scope: common::InstrumentationScope,
     is_recording: bool,
     // Limits configuration
     max_attributes: u32,
@@ -41,9 +41,9 @@ impl SpanImpl {
         parent_span_id: Option<Vec<u8>>,
         kind: trace::SpanKind,
         start_time: Option<u64>,
-        attributes: Vec<foundation::Attribute>,
+        attributes: Vec<common::Attribute>,
         links: Vec<trace::SpanLink>,
-        instrumentation_scope: foundation::InstrumentationScope,
+        instrumentation_scope: common::InstrumentationScope,
         max_attributes: u32,
         max_events: u32,
         max_links: u32,
@@ -104,7 +104,7 @@ impl trace::GuestSpan for SpanImpl {
         inner.is_recording
     }
 
-    fn set_attribute(&self, key: String, value: foundation::AttributeValue) {
+    fn set_attribute(&self, key: String, value: common::AttributeValue) {
         let mut inner = self.inner.lock().unwrap();
         if !inner.is_recording {
             return;
@@ -125,10 +125,10 @@ impl trace::GuestSpan for SpanImpl {
         }
 
         // Add new attribute
-        inner.attributes.push(foundation::Attribute { key, value });
+        inner.attributes.push(common::Attribute { key, value });
     }
 
-    fn add_event(&self, name: String, attributes: Vec<foundation::Attribute>, timestamp: Option<u64>) {
+    fn add_event(&self, name: String, attributes: Vec<common::Attribute>, timestamp: Option<u64>) {
         let mut inner = self.inner.lock().unwrap();
         if !inner.is_recording {
             return;
@@ -189,20 +189,20 @@ impl trace::GuestSpan for SpanImpl {
 
     fn record_exception(&self, exception_type: String, message: String, stacktrace: Option<String>) {
         let mut attributes = vec![
-            foundation::Attribute {
+            common::Attribute {
                 key: "exception.type".to_string(),
-                value: foundation::AttributeValue::String(exception_type),
+                value: common::AttributeValue::String(exception_type),
             },
-            foundation::Attribute {
+            common::Attribute {
                 key: "exception.message".to_string(),
-                value: foundation::AttributeValue::String(message),
+                value: common::AttributeValue::String(message),
             },
         ];
 
         if let Some(stack) = stacktrace {
-            attributes.push(foundation::Attribute {
+            attributes.push(common::Attribute {
                 key: "exception.stacktrace".to_string(),
-                value: foundation::AttributeValue::String(stack),
+                value: common::AttributeValue::String(stack),
             });
         }
 
@@ -216,7 +216,7 @@ impl trace::GuestSpan for SpanImpl {
         }
     }
 
-    fn finish(span: trace::Span, end_time: Option<u64>) -> trace::SpanData {
+    fn end(span: trace::Span, end_time: Option<u64>) -> trace::SpanData {
         // Get the handle from the span wrapper
         let handle = span.handle();
 
@@ -273,7 +273,7 @@ impl trace::GuestSpan for SpanImpl {
                 events: Vec::new(),
                 links: Vec::new(),
                 status: trace::SpanStatus::Unset,
-                instrumentation_scope: foundation::InstrumentationScope {
+                instrumentation_scope: common::InstrumentationScope {
                     name: String::from("unknown"),
                     version: None,
                     schema_url: None,
@@ -310,7 +310,7 @@ mod tests {
             is_remote: false,
         };
 
-        let scope = foundation::InstrumentationScope {
+        let scope = common::InstrumentationScope {
             name: "test-library".to_string(),
             version: Some("1.0.0".to_string()),
             schema_url: None,
@@ -349,7 +349,7 @@ mod tests {
             is_remote: false,
         };
 
-        let scope = foundation::InstrumentationScope {
+        let scope = common::InstrumentationScope {
             name: "test-library".to_string(),
             version: None,
             schema_url: None,
@@ -385,7 +385,7 @@ mod tests {
             is_remote: false,
         };
 
-        let scope = foundation::InstrumentationScope {
+        let scope = common::InstrumentationScope {
             name: "test-library".to_string(),
             version: None,
             schema_url: None,
@@ -419,7 +419,7 @@ mod tests {
             is_remote: false,
         };
 
-        let scope = foundation::InstrumentationScope {
+        let scope = common::InstrumentationScope {
             name: "test-library".to_string(),
             version: None,
             schema_url: None,
@@ -442,7 +442,7 @@ mod tests {
 
         span.set_attribute(
             "key1".to_string(),
-            foundation::AttributeValue::String("value1".to_string()),
+            common::AttributeValue::String("value1".to_string()),
         );
 
         let inner = span.inner.lock().unwrap();
@@ -460,7 +460,7 @@ mod tests {
             is_remote: false,
         };
 
-        let scope = foundation::InstrumentationScope {
+        let scope = common::InstrumentationScope {
             name: "test-library".to_string(),
             version: None,
             schema_url: None,
@@ -483,18 +483,18 @@ mod tests {
 
         span.set_attribute(
             "key1".to_string(),
-            foundation::AttributeValue::String("value1".to_string()),
+            common::AttributeValue::String("value1".to_string()),
         );
         span.set_attribute(
             "key1".to_string(),
-            foundation::AttributeValue::String("value2".to_string()),
+            common::AttributeValue::String("value2".to_string()),
         );
 
         let inner = span.inner.lock().unwrap();
         assert_eq!(inner.attributes.len(), 1);
         assert_eq!(inner.attributes[0].key, "key1");
         match &inner.attributes[0].value {
-            foundation::AttributeValue::String(s) => assert_eq!(s, "value2"),
+            common::AttributeValue::String(s) => assert_eq!(s, "value2"),
             _ => panic!("Expected String value"),
         }
     }
@@ -509,7 +509,7 @@ mod tests {
             is_remote: false,
         };
 
-        let scope = foundation::InstrumentationScope {
+        let scope = common::InstrumentationScope {
             name: "test-library".to_string(),
             version: None,
             schema_url: None,
@@ -532,9 +532,9 @@ mod tests {
 
         span.add_event(
             "test-event".to_string(),
-            vec![foundation::Attribute {
+            vec![common::Attribute {
                 key: "event-key".to_string(),
-                value: foundation::AttributeValue::String("event-value".to_string()),
+                value: common::AttributeValue::String("event-value".to_string()),
             }],
             Some(987654321),
         );
@@ -556,7 +556,7 @@ mod tests {
             is_remote: false,
         };
 
-        let scope = foundation::InstrumentationScope {
+        let scope = common::InstrumentationScope {
             name: "test-library".to_string(),
             version: None,
             schema_url: None,
@@ -604,7 +604,7 @@ mod tests {
             is_remote: false,
         };
 
-        let scope = foundation::InstrumentationScope {
+        let scope = common::InstrumentationScope {
             name: "test-library".to_string(),
             version: None,
             schema_url: None,
@@ -641,7 +641,7 @@ mod tests {
             is_remote: false,
         };
 
-        let scope = foundation::InstrumentationScope {
+        let scope = common::InstrumentationScope {
             name: "test-library".to_string(),
             version: None,
             schema_url: None,

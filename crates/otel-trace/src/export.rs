@@ -1,6 +1,6 @@
 use crate::bindings::exports::wasi::otel_sdk::trace;
-use crate::bindings::wasi::otel_sdk::foundation;
-use crate::bindings::wasi::otel_sdk::otel_export;
+use crate::bindings::wasi::otel_sdk::common;
+use crate::bindings::wasi::otel_sdk::transport;
 use crate::otlp;
 
 use std::sync::{Arc, Mutex};
@@ -12,7 +12,7 @@ pub struct TraceExporterImpl {
 
 pub struct TraceExporterInner {
     spans: Vec<trace::SpanData>,
-    resource: Option<foundation::OtelResource>,
+    resource: Option<common::OtelResource>,
     max_batch_size: usize,
 }
 
@@ -22,52 +22,30 @@ impl TraceExporterImpl {
     /// Maximum allowed batch size (safety limit)
     const MAX_ALLOWED_BATCH_SIZE: usize = 10_000;
 
-    /// Get the appropriate OTLP endpoint path based on protocol
-    fn get_otlp_path(protocol: &otel_export::ExportProtocol) -> &'static str {
-        match protocol {
-            otel_export::ExportProtocol::Grpc => "/opentelemetry.proto.collector.trace.v1.TraceService/Export",
-            otel_export::ExportProtocol::HttpProtobuf => "/v1/traces",
-            otel_export::ExportProtocol::HttpJson => "/v1/traces",
-        }
-    }
-
-    /// Export a batch of spans via HTTP
+    /// Export a batch of spans via abstract transport
     fn export_batch_internal(
         &self,
         spans: Vec<trace::SpanData>,
-        resource: &foundation::OtelResource,
-        http_client: &otel_export::HttpClient,
+        resource: &common::OtelResource,
+        exporter_transport: &transport::ExporterTransport,
     ) -> Result<(), String> {
-        // Get the export protocol from the HTTP client
-        let protocol = http_client.get_protocol();
-
-        // Serialize spans to OTLP format
-        let body = otlp::serialize_spans_to_otlp(spans, resource.clone(), protocol.clone())
+        // Serialize spans to OTLP format based on content type
+        let body = otlp::serialize_spans_to_otlp(spans, resource.clone())
             .map_err(|e| e.to_string())?;
 
-        // Get the appropriate content type
-        let content_type = match protocol {
-            otel_export::ExportProtocol::Grpc => "application/grpc",
-            otel_export::ExportProtocol::HttpProtobuf => "application/x-protobuf",
-            otel_export::ExportProtocol::HttpJson => "application/json",
-        };
-
-        // Create request with appropriate headers
-        let path = Self::get_otlp_path(&protocol);
-
-        // Send the request using the HTTP client
-        let response = http_client.send_otlp(
-            path,
+        // Send via transport using the new API
+        let response = exporter_transport.send(
+            transport::SignalType::Traces,
             &body,
-            content_type,
+            transport::ContentType::Protobuf,
         );
 
         match response {
-            otel_export::ExportResult::Success => Ok(()),
-            otel_export::ExportResult::Failure(msg) => {
+            transport::ExportResult::Success => Ok(()),
+            transport::ExportResult::Failure(msg) => {
                 Err(format!("Export failed: {}", msg))
             }
-            otel_export::ExportResult::PartialFailure(error) => {
+            transport::ExportResult::PartialFailure(error) => {
                 Err(format!("Export partially failed: {:?}", error))
             }
         }
@@ -104,26 +82,26 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
         inner.spans.extend(spans);
     }
 
-    fn set_resource(&self, service_resource: foundation::OtelResource) {
+    fn set_resource(&self, service_resource: common::OtelResource) {
         let mut inner = self.inner.lock().unwrap();
         inner.resource = Some(service_resource);
     }
 
-    fn export_batch(&self, client: &otel_export::HttpClient) -> otel_export::ExportResult {
+    fn export_batch(&self, exporter_transport: &transport::ExporterTransport) -> transport::ExportResult {
         let mut inner = self.inner.lock().unwrap();
 
         // If no spans, nothing to export
         if inner.spans.is_empty() {
-            return otel_export::ExportResult::Success;
+            return transport::ExportResult::Success;
         }
 
         // Get the resource (use default if not set)
         let resource = inner.resource.clone().unwrap_or_else(|| {
-            foundation::OtelResource {
+            common::OtelResource {
                 attributes: vec![
-                    foundation::Attribute {
+                    common::Attribute {
                         key: "service.name".to_string(),
-                        value: foundation::AttributeValue::String("unknown_service".to_string()),
+                        value: common::AttributeValue::String("unknown_service".to_string()),
                     },
                 ],
                 schema_url: None,
@@ -138,13 +116,13 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
         drop(inner);
 
         // Export the batch using the internal implementation
-        match self.export_batch_internal(batch, &resource, client) {
-            Ok(()) => otel_export::ExportResult::Success,
-            Err(msg) => otel_export::ExportResult::Failure(msg),
+        match self.export_batch_internal(batch, &resource, exporter_transport) {
+            Ok(()) => transport::ExportResult::Success,
+            Err(msg) => transport::ExportResult::Failure(msg),
         }
     }
 
-    fn force_flush(&self, client: &otel_export::HttpClient) -> bool {
+    fn force_flush(&self, exporter_transport: &transport::ExporterTransport) -> bool {
         // Export all pending spans by repeatedly calling export_batch
         loop {
             let has_spans = {
@@ -157,9 +135,9 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
             }
 
             // Export a batch
-            match self.export_batch(client) {
-                otel_export::ExportResult::Success => continue,
-                otel_export::ExportResult::Failure(_) | otel_export::ExportResult::PartialFailure(_) => {
+            match self.export_batch(exporter_transport) {
+                transport::ExportResult::Success => continue,
+                transport::ExportResult::Failure(_) | transport::ExportResult::PartialFailure(_) => {
                     return false; // Export failed
                 }
             }
@@ -168,7 +146,7 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
         true // All spans successfully exported
     }
 
-    fn finish(exporter: trace::TraceExporter, client: &otel_export::HttpClient) -> bool {
+    fn shutdown(exporter: trace::TraceExporter, exporter_transport: &transport::ExporterTransport) -> bool {
         // Get the handle ID from the exporter
         let handle = exporter.handle();
 
@@ -176,7 +154,7 @@ impl trace::GuestTraceExporter for TraceExporterImpl {
         if let Some(exporter_data) = crate::remove_exporter(handle) {
             // Export any remaining spans before cleanup
             let exporter_impl = TraceExporterImpl { inner: exporter_data };
-            let flush_result = exporter_impl.force_flush(client);
+            let flush_result = exporter_impl.force_flush(exporter_transport);
 
             // Clean up resources
             drop(exporter_impl);

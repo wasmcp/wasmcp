@@ -39,7 +39,7 @@
 //! - **Scope Grouping**: Groups spans by instrumentation scope as required by OTLP
 
 use crate::bindings::exports::wasi::otel_sdk::trace;
-use crate::bindings::wasi::otel_sdk::foundation;
+use crate::bindings::wasi::otel_sdk::common;
 use crate::error::SerializationError;
 
 use serde::{Serialize, Deserialize};
@@ -73,7 +73,7 @@ use base64::{Engine as _, engine::general_purpose};
 /// ```no_run
 /// # use otel_trace::otlp::json::serialize_to_json;
 /// # use otel_trace::bindings::exports::wasi::otel_sdk::trace::SpanData;
-/// # use otel_trace::bindings::wasi::otel_sdk::foundation::OtelResource;
+/// # use otel_trace::bindings::wasi::otel_sdk::common::OtelResource;
 /// # fn example(spans: Vec<SpanData>, resource: OtelResource) -> Result<(), Box<dyn std::error::Error>> {
 /// let json_bytes = serialize_to_json(spans, resource)?;
 /// let json_str = String::from_utf8(json_bytes)?;
@@ -83,7 +83,7 @@ use base64::{Engine as _, engine::general_purpose};
 /// ```
 pub fn serialize_to_json(
     spans: Vec<trace::SpanData>,
-    service_resource: foundation::OtelResource,
+    service_resource: common::OtelResource,
 ) -> Result<Vec<u8>, SerializationError> {
     let request = build_otlp_json_request(spans, service_resource);
 
@@ -94,7 +94,7 @@ pub fn serialize_to_json(
 /// Build OTLP JSON request structure
 fn build_otlp_json_request(
     spans: Vec<trace::SpanData>,
-    service_resource: foundation::OtelResource,
+    service_resource: common::OtelResource,
 ) -> OtlpExportTraceServiceRequest {
     // Group spans by instrumentation scope
     let mut scope_spans_map = std::collections::HashMap::new();
@@ -219,7 +219,7 @@ fn convert_link(link: trace::SpanLink) -> OtlpSpanLink {
 }
 
 /// Convert attributes to OTLP format
-fn convert_attributes(attributes: &[foundation::Attribute]) -> Vec<OtlpKeyValue> {
+fn convert_attributes(attributes: &[common::Attribute]) -> Vec<OtlpKeyValue> {
     attributes
         .iter()
         .map(|attr| OtlpKeyValue {
@@ -230,13 +230,13 @@ fn convert_attributes(attributes: &[foundation::Attribute]) -> Vec<OtlpKeyValue>
 }
 
 /// Convert simple value to OTLP format
-fn convert_simple_value(value: &foundation::SimpleValue) -> OtlpAnyValue {
+fn convert_simple_value(value: &common::SimpleValue) -> OtlpAnyValue {
     match value {
-        foundation::SimpleValue::String(s) => OtlpAnyValue::StringValue(s.clone()),
-        foundation::SimpleValue::Bool(b) => OtlpAnyValue::BoolValue(*b),
-        foundation::SimpleValue::Int64(i) => OtlpAnyValue::IntValue(*i),
-        foundation::SimpleValue::Float64(d) => OtlpAnyValue::DoubleValue(*d),
-        foundation::SimpleValue::Bytes(bytes) => {
+        common::SimpleValue::String(s) => OtlpAnyValue::StringValue(s.clone()),
+        common::SimpleValue::Bool(b) => OtlpAnyValue::BoolValue(*b),
+        common::SimpleValue::Int64(i) => OtlpAnyValue::IntValue(*i),
+        common::SimpleValue::Float64(d) => OtlpAnyValue::DoubleValue(*d),
+        common::SimpleValue::Bytes(bytes) => {
             // Convert bytes to base64 string
             OtlpAnyValue::StringValue(general_purpose::STANDARD.encode(bytes))
         }
@@ -244,37 +244,37 @@ fn convert_simple_value(value: &foundation::SimpleValue) -> OtlpAnyValue {
 }
 
 /// Convert attribute value to OTLP format
-fn convert_attribute_value(value: &foundation::AttributeValue) -> OtlpAnyValue {
+fn convert_attribute_value(value: &common::AttributeValue) -> OtlpAnyValue {
     match value {
-        foundation::AttributeValue::String(s) => OtlpAnyValue::StringValue(s.clone()),
-        foundation::AttributeValue::Bool(b) => OtlpAnyValue::BoolValue(*b),
-        foundation::AttributeValue::Int64(i) => OtlpAnyValue::IntValue(*i),
-        foundation::AttributeValue::Float64(d) => OtlpAnyValue::DoubleValue(*d),
-        foundation::AttributeValue::Bytes(bytes) => {
+        common::AttributeValue::String(s) => OtlpAnyValue::StringValue(s.clone()),
+        common::AttributeValue::Bool(b) => OtlpAnyValue::BoolValue(*b),
+        common::AttributeValue::Int64(i) => OtlpAnyValue::IntValue(*i),
+        common::AttributeValue::Float64(d) => OtlpAnyValue::DoubleValue(*d),
+        common::AttributeValue::Bytes(bytes) => {
             // Convert bytes to base64 string
             OtlpAnyValue::StringValue(general_purpose::STANDARD.encode(bytes))
         }
-        foundation::AttributeValue::ArrayString(arr) => {
+        common::AttributeValue::ArrayString(arr) => {
             OtlpAnyValue::ArrayValue(OtlpArrayValue {
                 values: arr.iter().map(|s| OtlpAnyValue::StringValue(s.clone())).collect(),
             })
         }
-        foundation::AttributeValue::ArrayBool(arr) => {
+        common::AttributeValue::ArrayBool(arr) => {
             OtlpAnyValue::ArrayValue(OtlpArrayValue {
                 values: arr.iter().map(|b| OtlpAnyValue::BoolValue(*b)).collect(),
             })
         }
-        foundation::AttributeValue::ArrayInt64(arr) => {
+        common::AttributeValue::ArrayInt64(arr) => {
             OtlpAnyValue::ArrayValue(OtlpArrayValue {
                 values: arr.iter().map(|i| OtlpAnyValue::IntValue(*i as i64)).collect(),
             })
         }
-        foundation::AttributeValue::ArrayFloat64(arr) => {
+        common::AttributeValue::ArrayFloat64(arr) => {
             OtlpAnyValue::ArrayValue(OtlpArrayValue {
                 values: arr.iter().map(|d| OtlpAnyValue::DoubleValue(*d)).collect(),
             })
         }
-        foundation::AttributeValue::Kvlist(kvs) => {
+        common::AttributeValue::Kvlist(kvs) => {
             // Convert each KeyValue to OtlpKeyValue
             // Note: kvlist values are SimpleValue, not AttributeValue (no nesting)
             OtlpAnyValue::KvlistValue(OtlpKeyValueList {
@@ -434,15 +434,15 @@ mod tests {
             start_time: 1000000,
             end_time: Some(2000000),
             attributes: vec![
-                foundation::Attribute {
+                common::Attribute {
                     key: "test.key".to_string(),
-                    value: foundation::AttributeValue::String("test-value".to_string()),
+                    value: common::AttributeValue::String("test-value".to_string()),
                 },
             ],
             events: vec![],
             links: vec![],
             status: trace::SpanStatus::Ok,
-            instrumentation_scope: foundation::InstrumentationScope {
+            instrumentation_scope: common::InstrumentationScope {
                 name: "test-scope".to_string(),
                 version: Some("1.0.0".to_string()),
                 schema_url: None,
@@ -454,12 +454,12 @@ mod tests {
         }
     }
 
-    fn create_test_resource() -> foundation::OtelResource {
-        foundation::OtelResource {
+    fn create_test_resource() -> common::OtelResource {
+        common::OtelResource {
             attributes: vec![
-                foundation::Attribute {
+                common::Attribute {
                     key: "service.name".to_string(),
-                    value: foundation::AttributeValue::String("test-service".to_string()),
+                    value: common::AttributeValue::String("test-service".to_string()),
                 },
             ],
             schema_url: None,
@@ -507,25 +507,25 @@ mod tests {
     fn test_json_with_multiple_attribute_types() {
         let mut span = create_test_span();
         span.attributes = vec![
-            foundation::Attribute {
+            common::Attribute {
                 key: "string.attr".to_string(),
-                value: foundation::AttributeValue::String("value".to_string()),
+                value: common::AttributeValue::String("value".to_string()),
             },
-            foundation::Attribute {
+            common::Attribute {
                 key: "int.attr".to_string(),
-                value: foundation::AttributeValue::Int64(42),
+                value: common::AttributeValue::Int64(42),
             },
-            foundation::Attribute {
+            common::Attribute {
                 key: "bool.attr".to_string(),
-                value: foundation::AttributeValue::Bool(true),
+                value: common::AttributeValue::Bool(true),
             },
-            foundation::Attribute {
+            common::Attribute {
                 key: "float.attr".to_string(),
-                value: foundation::AttributeValue::Float64(3.14),
+                value: common::AttributeValue::Float64(3.14),
             },
-            foundation::Attribute {
+            common::Attribute {
                 key: "array.attr".to_string(),
-                value: foundation::AttributeValue::ArrayString(vec![
+                value: common::AttributeValue::ArrayString(vec![
                     "a".to_string(),
                     "b".to_string(),
                 ]),
@@ -549,9 +549,9 @@ mod tests {
                 name: "event1".to_string(),
                 timestamp: 1500000,
                 attributes: vec![
-                    foundation::Attribute {
+                    common::Attribute {
                         key: "event.attr".to_string(),
-                        value: foundation::AttributeValue::String("value".to_string()),
+                        value: common::AttributeValue::String("value".to_string()),
                     },
                 ],
             },

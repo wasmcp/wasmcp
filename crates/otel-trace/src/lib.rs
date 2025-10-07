@@ -108,9 +108,7 @@ mod export;
 mod otlp;
 
 use bindings::exports::wasi::otel_sdk::trace;
-use bindings::wasi::otel_sdk::foundation;
-use bindings::wasi::otel_sdk::otel_export;
-use bindings::wasi::otel_sdk::context;
+use bindings::wasi::otel_sdk::common;
 
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
@@ -141,7 +139,7 @@ struct TracerInfo {
     name: String,
     version: Option<String>,
     schema_url: Option<String>,
-    attributes: Vec<foundation::Attribute>,
+    attributes: Vec<common::Attribute>,
 }
 
 impl TracerRegistry {
@@ -157,7 +155,7 @@ impl TracerRegistry {
         name: String,
         version: Option<String>,
         schema_url: Option<String>,
-        attributes: Vec<foundation::Attribute>,
+        attributes: Vec<common::Attribute>,
     ) -> u32 {
         let id = self.next_id;
         self.next_id += 1;
@@ -251,12 +249,19 @@ impl bindings::exports::wasi::otel_sdk::trace::Guest for Component {
     type TracerProvider = tracer::TracerProviderImpl;
     type TraceExporter = export::TraceExporterImpl;
 
-    fn serialize_spans(
+    fn serialize_spans_protobuf(
         spans: Vec<trace::SpanData>,
-        service_resource: foundation::OtelResource,
-        protocol: otel_export::ExportProtocol,
+        service_resource: common::OtelResource,
     ) -> Result<Vec<u8>, trace::SerializationError> {
-        otlp::serialize_spans_to_otlp(spans, service_resource, protocol)
+        otlp::serialize_spans_to_otlp(spans, service_resource)
+            .map_err(|e| e.into())
+    }
+
+    fn serialize_spans_json(
+        spans: Vec<trace::SpanData>,
+        service_resource: common::OtelResource,
+    ) -> Result<Vec<u8>, trace::SerializationError> {
+        otlp::json::serialize_to_json(spans, service_resource)
             .map_err(|e| e.into())
     }
 }

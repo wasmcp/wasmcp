@@ -5,8 +5,11 @@ use crate::bindings::wasi::http::outgoing_handler;
 use crate::bindings::wasi::http::types::{
     Fields, IncomingResponse, Method, OutgoingBody, OutgoingRequest, RequestOptions, Scheme,
 };
-use crate::bindings::exports::wasi::otel_sdk::otel_export::{
-    CompressionType, ExportConfig, ExportResult, RetryConfig,
+use crate::bindings::exports::wasi::otel_sdk::http_transport::{
+    CompressionType, HttpConfig, RetryConfig,
+};
+use crate::bindings::exports::wasi::otel_sdk::transport::{
+    ContentType, ExportError, ExportResult, SignalType,
 };
 
 use std::time::Duration;
@@ -16,11 +19,24 @@ use flate2::Compression;
 
 /// Send an OTLP request to the specified endpoint
 pub fn send_otlp_request(
-    config: &ExportConfig,
-    signal_path: &str,
+    config: &HttpConfig,
+    signal_type: SignalType,
     otlp_payload: &[u8],
-    content_type: &str,
+    content_type: ContentType,
 ) -> ExportResult {
+    // Map signal type to OTLP endpoint path
+    let signal_path = match signal_type {
+        SignalType::Traces => "/v1/traces",
+        SignalType::Metrics => "/v1/metrics",
+        SignalType::Logs => "/v1/logs",
+    };
+
+    // Map content type to string
+    let content_type_str = match content_type {
+        ContentType::Protobuf => "application/x-protobuf",
+        ContentType::Json => "application/json",
+    };
+
     // Build full URL
     let full_url = format!("{}{}", config.endpoint, signal_path);
 
@@ -37,7 +53,7 @@ pub fn send_otlp_request(
     loop {
         attempts += 1;
 
-        match send_single_request(config, &full_url, otlp_payload, content_type) {
+        match send_single_request(config, &full_url, otlp_payload, content_type_str) {
             ExportResult::Success => return ExportResult::Success,
             ExportResult::Failure(err) if attempts >= retry_config.max_attempts => {
                 return ExportResult::Failure(format!("Max retries exceeded: {}", err));
@@ -60,7 +76,7 @@ pub fn send_otlp_request(
 
 /// Send a single HTTP request (without retries)
 fn send_single_request(
-    config: &ExportConfig,
+    config: &HttpConfig,
     url: &str,
     payload: &[u8],
     content_type: &str,
@@ -219,7 +235,7 @@ fn send_single_request(
 /// Check for OTLP partial failure in response body
 /// OTLP protocol returns 200 OK even with partial failures
 fn check_partial_failure(body: &str) -> ExportResult {
-    use crate::bindings::exports::wasi::otel_sdk::otel_export::ExportError;
+    use crate::bindings::exports::wasi::otel_sdk::transport::ExportError;
 
     // Empty body means complete success
     if body.trim().is_empty() {

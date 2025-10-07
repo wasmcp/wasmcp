@@ -1,9 +1,21 @@
-package wasi:otel-sdk@0.1.0-alpha.2;
+package wasi:otel-sdk@0.1.0-alpha.3;
 
-/// ============================================================================
-/// FOUNDATIONAL TYPES - Used by all observability signals
-/// ============================================================================
-interface foundation {
+/// Common types used by all observability signals
+///
+/// Provides foundational types for OpenTelemetry telemetry data including
+/// attributes, resources, and instrumentation scopes. These types are shared
+/// across trace, logs, and metrics signals.
+///
+/// Based on the OpenTelemetry specification:
+/// - Attributes: <https://opentelemetry.io/docs/specs/otel/common/attribute-naming/>
+/// - Resources: <https://opentelemetry.io/docs/specs/otel/resource/semantic_conventions/>
+/// - OTLP Common: <https://opentelemetry.io/docs/specs/otlp/#otlpcommon>
+///
+/// WASM-specific design considerations:
+/// - No circular type dependencies (WIT limitation) - simplified value nesting
+/// - Explicit value type variants for cross-language compatibility
+/// - Schema URLs for semantic convention versioning in edge environments
+interface common {
   /// Simple attribute values (no nesting to avoid circular dependency)
   variant simple-value {
     /// String value (UTF-8)
@@ -80,8 +92,23 @@ interface foundation {
 }
 
 /// Distributed tracing context management and W3C TraceContext utilities
+///
+/// Implements W3C TraceContext propagation for distributed tracing across
+/// WebAssembly component boundaries. Provides context creation, parsing,
+/// injection, and extraction for trace correlation.
+///
+/// Based on specifications:
+/// - W3C TraceContext: <https://www.w3.org/TR/trace-context/>
+/// - OpenTelemetry Context: <https://opentelemetry.io/docs/specs/otel/context/>
+/// - OTLP Trace: <https://opentelemetry.io/docs/specs/otlp/#trace-service>
+///
+/// WASM-specific design considerations:
+/// - Component-managed context (not thread-local) for WASM single-threaded model
+/// - Explicit set/get/clear operations for cross-component context propagation
+/// - Binary trace/span IDs (16/8 bytes) for efficient edge computing transmission
+/// - No implicit context - all context management is explicit and deterministic
 interface context {
-  use foundation.{attribute};
+  use common.{attribute};
 
   /// W3C TraceContext compliant span context for trace correlation
   record span-context {
@@ -179,112 +206,52 @@ interface context {
   set-sampled: func(context: span-context, sampled: bool) -> span-context;
 }
 
-/// OTLP export configuration and result types
-interface otel-export {
-  /// OTLP export protocol options
-  variant export-protocol {
-    /// OTLP over gRPC with Protocol Buffers
-    grpc,
-    /// OTLP over HTTP with Protocol Buffers
-    http-protobuf,
-    /// OTLP over HTTP with JSON encoding
-    http-json,
+/// Transport-agnostic export interface for OpenTelemetry signals
+///
+/// Defines the abstract contract that all OTLP transport implementations
+/// must satisfy. Enables dynamic transport swapping
+/// at component composition time without signal code changes.
+///
+/// Based on the OpenTelemetry specification:
+/// - OTLP Protocol: <https://opentelemetry.io/docs/specs/otlp/>
+/// - OTLP/HTTP: <https://opentelemetry.io/docs/specs/otlp/#otlphttp>
+/// - OTLP/gRPC: <https://opentelemetry.io/docs/specs/otlp/#otlpgrpc>
+///
+/// WASM-specific design considerations:
+/// - Transport abstraction via resource pattern
+/// - Borrowed resource handles for zero-copy signal→transport communication
+/// - Pre-serialized payloads reduce component boundary marshaling overhead
+/// - Signal-path routing for edge environments with constrained endpoints
+/// - Explicit flush/shutdown for deterministic resource cleanup in WASM
+///
+/// Edge computing optimizations:
+/// - Minimal memory footprint - signals share single transport instance
+/// - Configurable batch sizes and timeouts for intermittent connectivity
+interface transport {
+  /// OTLP signal type for routing
+  /// Maps to transport-specific paths:
+  /// - HTTP: /v1/traces, /v1/logs, /v1/metrics
+  /// - File: traces.jsonl, logs.jsonl, metrics.jsonl
+  /// - Stdout: trace, log, metric metadata tags
+  variant signal-type {
+    /// Trace telemetry signal
+    traces,
+    /// Log telemetry signal
+    logs,
+    /// Metric telemetry signal
+    metrics,
   }
 
-  /// Compression options for export
-  variant compression-type {
-    /// No compression
-    none,
-    /// Gzip compression
-    gzip,
-  }
-
-  /// HTTP header key-value pair
-  record header-pair {
-    /// Header name
-    key: string,
-    /// Header value
-    value: string,
-  }
-
-  /// Basic authentication configuration
-  record basic-auth-config {
-    /// Username for basic authentication
-    username: string,
-    /// Password for basic authentication
-    password: string,
-  }
-
-  /// Bearer token authentication configuration
-  record bearer-token-config {
-    /// Bearer token value
-    token: string,
-  }
-
-  /// OAuth2 client credentials authentication configuration
-  record oauth2-config {
-    /// OAuth2 client identifier
-    client-id: string,
-    /// OAuth2 client secret
-    client-secret: string,
-    /// Token endpoint URL
-    token-url: string,
-    /// OAuth2 scopes (optional)
-    scopes: list<string>,
-  }
-
-  /// OpenID Connect authentication configuration
-  record oidc-config {
-    /// OIDC issuer URL
-    issuer-url: string,
-    /// OIDC audience
-    audience: string,
-    /// OIDC client ID (optional for some flows)
-    client-id: option<string>,
-    /// OIDC client secret (optional for some flows)
-    client-secret: option<string>,
-  }
-
-  /// Authentication configuration variants for OTLP exporters
-  variant auth-config {
-    /// No authentication
-    none,
-    /// HTTP Basic authentication
-    basic(basic-auth-config),
-    /// Bearer token authentication
-    bearer(bearer-token-config),
-    /// OAuth2 client credentials flow
-    oauth2(oauth2-config),
-    /// OpenID Connect authentication
-    oidc(oidc-config),
-    /// Custom headers for other authentication mechanisms
-    headers(list<header-pair>),
-  }
-
-  /// Retry configuration for export operations
-  record retry-config {
-    /// Maximum retry attempts
-    max-attempts: u32,
-    /// Initial retry delay in milliseconds
-    initial-delay-ms: u32,
-    /// Maximum retry delay in milliseconds (for exponential backoff)
-    max-delay-ms: u32,
-  }
-
-  /// Export configuration for OTLP exporters
-  record export-config {
-    /// OTLP endpoint URL
-    endpoint: string,
-    /// Authentication configuration
-    authentication: auth-config,
-    /// Request timeout in milliseconds
-    timeout-ms: u32,
-    /// Export protocol (gRPC/HTTP+protobuf/HTTP+JSON)
-    protocol: export-protocol,
-    /// Compression type
-    compression: compression-type,
-    /// Retry configuration (optional, for unreliable networks)
-    retry: option<retry-config>,
+  /// OTLP payload encoding format
+  /// Maps to transport-specific content types:
+  /// - HTTP: application/x-protobuf, application/json
+  /// - File: .pb, .json extensions
+  /// - Stdout: format metadata
+  variant content-type {
+    /// Protocol Buffers binary encoding
+    protobuf,
+    /// JSON text encoding
+    json,
   }
 
   /// Export error details
@@ -301,42 +268,73 @@ interface otel-export {
     success,
     /// Export failed completely
     failure(string),
-    /// Export partially succeeded
+    /// Export partially succeeded (some data rejected by backend)
     partial-failure(export-error),
   }
 
-  /// Shared HTTP client for all observability signals
-  /// Handles authentication, compression, retries, and protocol differences
-  /// Signal-agnostic - does not reference spans, logs, or metrics types
-  resource http-client {
-    /// Create HTTP client from export configuration
-    /// Returns error if configuration is invalid
-    constructor(config: export-config);
-    /// Send OTLP request to specific signal endpoint
-    /// Handles: authentication, compression, retries, protocol encoding
-    /// BLOCKING call - waits for HTTP response or retry exhaustion
+  /// Abstract transport for OTLP export
+  ///
+  /// Implementations handle protocol-specific details:
+  /// - HTTP transport: sends to HTTP endpoints with auth/compression
+  /// - gRPC transport: sends via gRPC with metadata/compression
+  /// - File transport: writes to files in OTLP format
+  /// - Stdout transport: writes to stdout for container logging
+  ///
+  /// Signals use only this abstract interface via borrow<exporter-transport>
+  resource exporter-transport {
+    /// Send OTLP data to transport-specific destination
+    ///
+    /// Type-safe signal routing and format specification using variants.
+    /// Transport implementations map variants to protocol-specific values:
+    /// - HTTP transport: signal-type → URL path, content-type → HTTP header
+    /// - File transport: signal-type → filename, content-type → file extension
+    /// - Stdout transport: signal-type + content-type → metadata tags
     ///
     /// Parameters:
-    /// - signal-path: Signal-specific endpoint path (e.g., "/v1/traces", "/v1/logs", "/v1/metrics")
-    /// - otlp-payload: Pre-serialized OTLP data (protobuf or JSON bytes)
-    /// - content-type: Signal and protocol-specific content type
-    send-otlp: func(signal-path: string, otlp-payload: list<u8>, content-type: string) -> export-result;
-    /// Force flush any buffered data (if client implements internal buffering)
-    force-flush: func() -> bool;
-    /// Shutdown HTTP client and release resources
-    /// Consumes the client handle (WASI pattern)
-    shutdown: static func(this: http-client) -> bool;
+    /// - signal: Type-safe signal routing (traces/logs/metrics)
+    /// - payload: Serialized OTLP data (protobuf or JSON bytes)
+    /// - format: Type-safe encoding format (protobuf/json)
+    ///
+    /// Returns: export-result indicating success/failure/partial-failure
+    send: func(signal: signal-type, payload: list<u8>, format: content-type) -> export-result;
+    /// Flush any buffered data
+    /// Forces immediate transmission of any pending data
+    /// Returns true if flush succeeded
+    flush: func() -> bool;
+    /// Shutdown and release transport resources
+    /// Consumes the transport handle (WASI pattern)
+    /// Implementations should flush remaining data before shutdown
+    shutdown: static func(this: exporter-transport) -> bool;
   }
 }
 
 /// Complete OpenTelemetry logging interface
 ///
-/// This interface contains all logging functionality: types, API resources,
-/// configuration, and export. A logging-only component imports just this
-/// interface plus common foundation - no cross-signal dependencies.
+/// Provides structured logging with automatic trace correlation, severity levels,
+/// and OTLP export. Supports both structured (key-value) and unstructured (string)
+/// log formats with optional trace context correlation.
+///
+/// Based on the OpenTelemetry specification:
+/// - Logs API: <https://opentelemetry.io/docs/specs/otel/logs/api/>
+/// - Logs SDK: <https://opentelemetry.io/docs/specs/otel/logs/sdk/>
+/// - OTLP Logs: <https://opentelemetry.io/docs/specs/otlp/#logs>
+/// - Log Data Model: <https://opentelemetry.io/docs/specs/otel/logs/data-model/>
+///
+/// WASM-specific design considerations:
+/// - Component-managed context for automatic trace correlation
+/// - Explicit emit() calls (no implicit batching in WASM single-threaded model)
+/// - Structured log bodies via OTLP AnyValue (string/bytes/kvlist variants)
+/// - Severity number enum (no free-form strings) for efficient serialization
+/// - Observed timestamp captured at emit time for edge latency measurement
+///
+/// Edge computing optimizations:
+/// - Minimal overhead - log records created on-demand, not buffered
+/// - Binary log bodies reduce serialization cost in high-throughput scenarios
+/// - Automatic trace/span correlation for request tracing in edge functions
+/// - Severity-based filtering prevents debug logs overwhelming edge bandwidth
 interface logs {
-  use foundation.{attribute, attribute-value, otel-resource, instrumentation-scope};
-  use otel-export.{http-client, export-result, export-protocol};
+  use common.{attribute, attribute-value, otel-resource, instrumentation-scope};
+  use transport.{exporter-transport, export-result};
 
   /// ============================================================================
   /// LOG TYPES
@@ -436,6 +434,9 @@ interface logs {
   /// Logger provider resource for structured logging
   /// Creates and manages logger instances
   resource logger-provider {
+    /// Create a new logger provider with optional configuration
+    /// If not provided, uses defaults: standard limits (128 attributes)
+    constructor(limits: option<log-limits-config>, service-resource: option<otel-resource>);
     /// Get a logger for the given instrumentation scope
     get-logger: func(name: string, version: option<string>, schema-url: option<string>, attributes: list<attribute>) -> logger;
     /// Emit a log record with correlation to active trace context
@@ -443,49 +444,82 @@ interface logs {
     emit: func(logger: logger, severity-number: option<severity-number>, severity-text: option<string>, body: option<log-body>, attributes: list<attribute>, timestamp: option<u64>) -> log-record;
     /// Check if logging is enabled (optimization)
     logger-enabled: func(logger: logger) -> bool;
+    /// Force flush all pending log records (OTEL: LoggerProvider.forceFlush())
+    /// Returns true if flush succeeded
+    force-flush: func() -> bool;
+    /// Shutdown the provider and flush all pending log records (OTEL: LoggerProvider.shutdown())
+    /// Consumes the provider resource (WASI pattern)
+    shutdown: static func(this: logger-provider) -> bool;
   }
 
   /// ============================================================================
   /// LOG EXPORT - Signal-specific export functionality (OTLP /v1/logs)
   /// ============================================================================
   /// Log exporter resource for OTLP log export
-  /// Handles export to OTLP /v1/logs endpoint
+  /// Handles batching and export - completely transport-agnostic
+  /// Works with any transport implementation (HTTP, gRPC, file, stdout)
   resource log-exporter {
-    /// Create log exporter with borrowed HTTP client
-    /// The http-client is shared across all signals
-    constructor(client: borrow<http-client>);
+    /// Create log exporter
+    constructor();
     /// Add log records to internal batch (does not trigger export)
     add-logs: func(logs: list<log-record>);
     /// Set resource information for OTLP export
     set-resource: func(service-resource: otel-resource);
-    /// Export accumulated log records using the shared HTTP client
-    /// Serializes logs to OTLP format and sends to /v1/logs
+    /// Export accumulated log records using the provided abstract transport
+    /// Serializes logs to OTLP format and sends via transport
     /// Non-consuming - exporter can be reused for multiple batches
-    export-batch: func() -> export-result;
-    /// Force flush any pending log records
-    force-flush: func() -> bool;
-    /// Finalize the exporter and flush remaining data
+    export-batch: func(transport: borrow<exporter-transport>) -> export-result;
+    /// Force flush any pending log records using the provided transport
+    force-flush: func(transport: borrow<exporter-transport>) -> bool;
+    /// Shutdown the exporter and flush remaining data
+    /// Exports any remaining logs before cleanup (OTEL: exporter.shutdown())
     /// Consumes the exporter handle (WASI pattern)
-    finish: static func(this: log-exporter) -> bool;
+    shutdown: static func(this: log-exporter, transport: borrow<exporter-transport>) -> bool;
   }
 
   /// Convert severity level to numeric value for OTLP compliance
   severity-to-number: func(severity: severity-number) -> u8;
 
-  /// Serialize log records to OTLP format for export
-  /// Returns raw bytes ready for HTTP transport
+  /// Serialize log records to OTLP protobuf format
+  /// Returns raw protobuf bytes ready for transport
   /// Used internally by log-exporter.export-batch()
-  serialize-logs: func(logs: list<log-record>, service-resource: otel-resource, protocol: export-protocol) -> result<list<u8>, string>;
+  serialize-logs-protobuf: func(logs: list<log-record>, service-resource: otel-resource) -> result<list<u8>, string>;
+
+  /// Serialize log records to OTLP JSON format
+  /// Returns raw JSON bytes ready for transport
+  /// Used internally by log-exporter.export-batch()
+  serialize-logs-json: func(logs: list<log-record>, service-resource: otel-resource) -> result<list<u8>, string>;
 }
 
 /// Complete OpenTelemetry metrics interface
 ///
-/// This interface contains all metrics functionality: types, API resources,
-/// configuration, and export. A metrics-only component imports just this
-/// interface plus common foundation - no cross-signal dependencies.
+/// Provides metrics collection capabilities including meter providers, instrument
+/// creation (counter, histogram, gauge, up-down-counter), measurement recording,
+/// aggregation, and OTLP export. Enables performance monitoring and resource
+/// utilization tracking in WebAssembly components.
+///
+/// Based on the OpenTelemetry specification:
+/// - Metrics API: <https://opentelemetry.io/docs/specs/otel/metrics/api/>
+/// - Metrics SDK: <https://opentelemetry.io/docs/specs/otel/metrics/sdk/>
+/// - OTLP Metrics: <https://opentelemetry.io/docs/specs/otlp/#metrics>
+/// - Metric Data Model: <https://opentelemetry.io/docs/specs/otel/metrics/data-model/>
+///
+/// WASM-specific design considerations:
+/// - Explicit instrument creation and measurement recording (no callbacks in WASM)
+/// - Push-based aggregation model (no background aggregation threads)
+/// - Configurable exemplar sampling for trace correlation without excessive overhead
+/// - Pre-aggregated data points reduce memory footprint in constrained environments
+/// - Delta vs cumulative temporality configurable per deployment scenario
+///
+/// Edge computing optimizations:
+/// - Minimal memory overhead - configurable attribute/exemplar limits per data point
+/// - Efficient histogram bucketing reduces bandwidth for distribution data
+/// - Exemplar trace correlation enables end-to-end request performance analysis
+/// - Aggregation temporality choice: delta (bandwidth) vs cumulative (reliability)
+/// - Instrument-level enablement checks prevent unnecessary measurement overhead
 interface metrics {
-  use foundation.{attribute, attribute-value, otel-resource, instrumentation-scope};
-  use otel-export.{http-client, export-result, export-protocol};
+  use common.{attribute, attribute-value, otel-resource, instrumentation-scope};
+  use transport.{exporter-transport, export-result};
 
   /// ============================================================================
   /// METRIC TYPES
@@ -613,8 +647,17 @@ interface metrics {
   /// Meter provider resource for metrics collection
   /// Creates and manages meter instances
   resource meter-provider {
+    /// Create a new meter provider with optional configuration
+    /// If not provided, uses defaults: standard limits (128 attributes, 128 exemplars)
+    constructor(limits: option<metric-limits-config>, service-resource: option<otel-resource>);
     /// Get a meter for the given instrumentation scope
     get-meter: func(name: string, version: option<string>, schema-url: option<string>, attributes: list<attribute>) -> meter;
+    /// Force flush all pending metrics (OTEL: MeterProvider.forceFlush())
+    /// Returns true if flush succeeded
+    force-flush: func() -> bool;
+    /// Shutdown the provider and flush all pending metrics (OTEL: MeterProvider.shutdown())
+    /// Consumes the provider resource (WASI pattern)
+    shutdown: static func(this: meter-provider) -> bool;
   }
 
   /// Meter resource for metrics instrumentation
@@ -638,41 +681,64 @@ interface metrics {
   /// METRIC EXPORT - Signal-specific export functionality (OTLP /v1/metrics)
   /// ============================================================================
   /// Metric exporter resource for OTLP metric export
-  /// Handles export to OTLP /v1/metrics endpoint
+  /// Handles batching and export - completely transport-agnostic
+  /// Works with any transport implementation (HTTP, gRPC, file, stdout)
   resource metric-exporter {
-    /// Create metric exporter with borrowed HTTP client
-    /// The http-client is shared across all signals
-    constructor(client: borrow<http-client>);
+    /// Create metric exporter
+    constructor();
     /// Add metrics to internal batch (does not trigger export)
     add-metrics: func(metrics: list<metric-data>);
     /// Set resource information for OTLP export
     set-resource: func(service-resource: otel-resource);
-    /// Export accumulated metrics using the shared HTTP client
-    /// Serializes metrics to OTLP format and sends to /v1/metrics
+    /// Export accumulated metrics using the provided abstract transport
+    /// Serializes metrics to OTLP format and sends via transport
     /// Non-consuming - exporter can be reused for multiple batches
-    export-batch: func() -> export-result;
-    /// Force flush any pending metrics
-    force-flush: func() -> bool;
-    /// Finalize the exporter and flush remaining data
+    export-batch: func(transport: borrow<exporter-transport>) -> export-result;
+    /// Force flush any pending metrics using the provided transport
+    force-flush: func(transport: borrow<exporter-transport>) -> bool;
+    /// Shutdown the exporter and flush remaining data
+    /// Exports any remaining metrics before cleanup (OTEL: exporter.shutdown())
     /// Consumes the exporter handle (WASI pattern)
-    finish: static func(this: metric-exporter) -> bool;
+    shutdown: static func(this: metric-exporter, transport: borrow<exporter-transport>) -> bool;
   }
 
-  /// Serialize metrics to OTLP format for export
-  /// Returns raw bytes ready for HTTP transport
+  /// Serialize metrics to OTLP protobuf format
+  /// Returns raw protobuf bytes ready for transport
   /// Used internally by metric-exporter.export-batch()
-  serialize-metrics: func(metrics: list<metric-data>, service-resource: otel-resource, protocol: export-protocol) -> result<list<u8>, string>;
+  serialize-metrics-protobuf: func(metrics: list<metric-data>, service-resource: otel-resource) -> result<list<u8>, string>;
+
+  /// Serialize metrics to OTLP JSON format
+  /// Returns raw JSON bytes ready for transport
+  /// Used internally by metric-exporter.export-batch()
+  serialize-metrics-json: func(metrics: list<metric-data>, service-resource: otel-resource) -> result<list<u8>, string>;
 }
 
 /// Complete OpenTelemetry tracing interface
 ///
-/// This interface contains all tracing functionality: types, API resources,
-/// configuration, and export. A tracing-only component imports just this
-/// interface plus common foundation - no cross-signal dependencies.
+/// Provides distributed tracing capabilities including tracer providers, span
+/// management, sampling configuration, and OTLP export. Enables request tracing
+/// across WebAssembly component boundaries with W3C TraceContext propagation.
+///
+/// Based on the OpenTelemetry specification:
+/// - Tracing API: <https://opentelemetry.io/docs/specs/otel/trace/api/>
+/// - Tracing SDK: <https://opentelemetry.io/docs/specs/otel/trace/sdk/>
+/// - OTLP Trace: <https://opentelemetry.io/docs/specs/otlp/#traces>
+/// - Span Data Model: <https://opentelemetry.io/docs/specs/otel/trace/api/#span>
+///
+/// WASM-specific design considerations:
+/// - Resource-based span lifecycle (static finish method for consumption)
+/// - Component-managed context (no thread-local storage in WASM)
+/// - Explicit sampling decisions (no dynamic sampling in edge environments)
+/// - Batch export optimizations for constrained memory (configurable batch size)
+/// - Pre-serialization to protobuf/JSON before transport boundary crossing
+///
+/// Edge computing optimizations:
+/// - Minimal memory overhead - configurable attribute/event/link limits
+/// - Efficient binary trace IDs (16 bytes) for low-bandwidth propagation
 interface trace {
-  use foundation.{attribute, attribute-value, otel-resource, instrumentation-scope};
+  use common.{attribute, attribute-value, otel-resource, instrumentation-scope};
   use context.{span-context};
-  use otel-export.{http-client, export-result, export-protocol};
+  use transport.{exporter-transport, export-result};
 
   /// ============================================================================
   /// TRACE TYPES
@@ -743,6 +809,12 @@ interface trace {
     status: span-status,
     /// Instrumentation scope that created this span (OTLP requirement)
     instrumentation-scope: instrumentation-scope,
+    /// Number of attributes dropped due to limits (OTLP requirement)
+    dropped-attributes-count: u32,
+    /// Number of events dropped due to limits (OTLP requirement)
+    dropped-events-count: u32,
+    /// Number of links dropped due to limits (OTLP requirement)
+    dropped-links-count: u32,
   }
 
   /// ============================================================================
@@ -801,15 +873,18 @@ interface trace {
     update-name: func(name: string);
     /// Record an exception as a span event
     record-exception: func(exception-type: string, message: string, stacktrace: option<string>);
-    /// Finalize the span and return complete span data
+    /// End the span and return complete span data
     /// This consumes the span resource (WASI pattern)
-    /// Must be called to complete telemetry collection
-    finish: static func(this: span, end-time: option<u64>) -> span-data;
+    /// Must be called to complete telemetry collection (OTEL: span.end())
+    end: static func(this: span, end-time: option<u64>) -> span-data;
   }
 
   /// Tracer provider resource for distributed tracing
   /// Creates and manages tracer instances
   resource tracer-provider {
+    /// Create a new tracer provider with optional configuration
+    /// If not provided, uses defaults: AlwaysOn sampling, standard limits (128/128/128)
+    constructor(sampler: option<sampler-config>, limits: option<trace-limits-config>, service-resource: option<otel-resource>);
     /// Get a tracer for the given instrumentation scope
     get-tracer: func(name: string, version: option<string>, schema-url: option<string>, attributes: list<attribute>) -> tracer;
     /// Create a new span using active context from common interface
@@ -817,123 +892,316 @@ interface trace {
     start-span: func(tracer: tracer, name: string, kind: span-kind, attributes: list<attribute>, links: list<span-link>, start-time: option<u64>) -> span;
     /// Check if tracing is enabled (optimization)
     tracer-enabled: func(tracer: tracer) -> bool;
+    /// Force flush all pending spans (OTEL: TracerProvider.forceFlush())
+    /// Returns true if flush succeeded
+    force-flush: func() -> bool;
+    /// Shutdown the provider and flush all pending spans (OTEL: TracerProvider.shutdown())
+    /// Consumes the provider resource (WASI pattern)
+    shutdown: static func(this: tracer-provider) -> bool;
   }
 
   /// ============================================================================
   /// TRACE EXPORT - Signal-specific export functionality (OTLP /v1/traces)
   /// ============================================================================
+  /// Serialization error types for OTLP encoding
+  variant serialization-error {
+    /// JSON serialization failed
+    json-encoding(string),
+    /// Protobuf encoding failed
+    protobuf-encoding(string),
+    /// Invalid span data structure
+    invalid-data(string),
+  }
+
   /// Trace exporter resource for OTLP trace export
-  /// Handles batching and export to OTLP /v1/traces endpoint
-  /// Uses shared http-client for actual HTTP transport
+  /// Handles batching and export - completely transport-agnostic
+  /// Works with any transport implementation (HTTP, gRPC, file, stdout)
   resource trace-exporter {
-    /// Create trace exporter with borrowed HTTP client
-    /// The http-client is shared across all signals
-    constructor(client: borrow<http-client>);
+    /// Create trace exporter with optional batch size configuration
+    /// If batch-size is not specified, defaults to 512 spans
+    /// Maximum allowed batch size is 10,000 spans
+    constructor(batch-size: option<u32>);
     /// Add spans to internal batch (does not trigger export)
     add-spans: func(spans: list<span-data>);
     /// Set resource information for OTLP export
     set-resource: func(service-resource: otel-resource);
-    /// Export accumulated spans using the shared HTTP client
-    /// Serializes spans to OTLP format and sends to /v1/traces
+    /// Export accumulated spans using the provided abstract transport
+    /// Serializes spans to OTLP format and sends via transport
     /// Non-consuming - exporter can be reused for multiple batches
-    export-batch: func() -> export-result;
-    /// Force flush any pending spans
-    force-flush: func() -> bool;
-    /// Finalize the exporter and flush remaining data
+    export-batch: func(transport: borrow<exporter-transport>) -> export-result;
+    /// Force flush any pending spans using the provided transport
+    force-flush: func(transport: borrow<exporter-transport>) -> bool;
+    /// Shutdown the exporter and flush remaining data
+    /// Exports any remaining spans before cleanup (OTEL: exporter.shutdown())
     /// Consumes the exporter handle (WASI pattern)
-    finish: static func(this: trace-exporter) -> bool;
+    shutdown: static func(this: trace-exporter, transport: borrow<exporter-transport>) -> bool;
   }
 
-  /// Serialize spans to OTLP format for export
-  /// Returns raw bytes ready for HTTP transport
+  /// Serialize spans to OTLP protobuf format
+  /// Returns raw protobuf bytes ready for transport
   /// Used internally by trace-exporter.export-batch()
-  serialize-spans: func(spans: list<span-data>, service-resource: otel-resource, protocol: export-protocol) -> result<list<u8>, string>;
+  serialize-spans-protobuf: func(spans: list<span-data>, service-resource: otel-resource) -> result<list<u8>, serialization-error>;
+
+  /// Serialize spans to OTLP JSON format
+  /// Returns raw JSON bytes ready for transport
+  /// Used internally by trace-exporter.export-batch()
+  serialize-spans-json: func(spans: list<span-data>, service-resource: otel-resource) -> result<list<u8>, serialization-error>;
+}
+
+/// HTTP-specific transport configuration for OTLP export
+///
+/// Provides HTTP/HTTPS transport factory and configuration for OTLP/HTTP protocol.
+/// Implements the abstract `transport` interface with HTTP-specific features including
+/// authentication, compression, retry logic, and timeout management.
+///
+/// Based on the OpenTelemetry specification:
+/// - OTLP/HTTP: <https://opentelemetry.io/docs/specs/otlp/#otlphttp>
+/// - OTLP HTTP Request: <https://opentelemetry.io/docs/specs/otlp/#otlphttp-request>
+/// - Authentication: <https://opentelemetry.io/docs/specs/otlp/#authentication>
+///
+/// WASM-specific design considerations:
+/// - Factory pattern returns abstract transport
+/// - Configuration validated at transport creation time (fail-fast)
+/// - Uses WASI HTTP for outgoing requests
+/// - Stateless HTTP client - all state in resource handle
+/// - Configurable compression (gzip)
+interface http-transport {
+  use transport.{exporter-transport, export-result, content-type};
+
+  /// ============================================================================
+  /// HTTP PROTOCOL CONFIGURATION
+  /// ============================================================================
+  /// Compression options for HTTP requests
+  variant compression-type {
+    /// No compression - send raw payload
+    none,
+    /// Gzip compression - reduces bandwidth, adds CPU overhead
+    gzip,
+  }
+
+  /// ============================================================================
+  /// HTTP AUTHENTICATION CONFIGURATION
+  /// ============================================================================
+  /// HTTP header key-value pair for custom headers
+  record header-pair {
+    /// Header name (e.g., "Authorization", "X-Custom-Header")
+    key: string,
+    /// Header value
+    value: string,
+  }
+
+  /// HTTP Basic authentication credentials
+  record basic-auth-config {
+    /// Username for HTTP Basic auth
+    username: string,
+    /// Password for HTTP Basic auth (consider using secure storage)
+    password: string,
+  }
+
+  /// Bearer token authentication configuration
+  record bearer-token-config {
+    /// Bearer token value (e.g., API key, JWT)
+    token: string,
+  }
+
+  /// Authentication configuration variants
+  variant auth-config {
+    /// No authentication required
+    none,
+    /// HTTP Basic authentication (RFC 7617)
+    basic(basic-auth-config),
+    /// Bearer token authentication (RFC 6750)
+    bearer(bearer-token-config),
+    /// Custom headers for proprietary auth mechanisms
+    headers(list<header-pair>),
+  }
+
+  /// ============================================================================
+  /// RETRY AND RELIABILITY CONFIGURATION
+  /// ============================================================================
+  /// Retry configuration for transient failures
+  record retry-config {
+    /// Maximum retry attempts before giving up
+    max-attempts: u32,
+    /// Initial delay in milliseconds before first retry
+    initial-delay-ms: u32,
+    /// Maximum delay in milliseconds (for exponential backoff)
+    max-delay-ms: u32,
+  }
+
+  /// ============================================================================
+  /// HTTP TRANSPORT CONFIGURATION
+  /// ============================================================================
+  /// Complete HTTP transport configuration
+  record http-config {
+    /// OTLP endpoint URL (must start with http:// or https://)
+    /// Example: "https://api.honeycomb.io" or "http://localhost:4318"
+    endpoint: string,
+    /// Authentication configuration
+    authentication: auth-config,
+    /// Request timeout in milliseconds
+    /// Applies to connection establishment and response reception
+    timeout-ms: u32,
+    /// OTLP payload encoding format (protobuf or JSON)
+    /// Maps to HTTP Content-Type header
+    protocol: content-type,
+    /// Compression type for request bodies
+    compression: compression-type,
+    /// Optional retry configuration
+    /// If not specified, defaults to: max-attempts=3, initial-delay=1000ms, max-delay=32000ms
+    retry: option<retry-config>,
+  }
+
+  /// ============================================================================
+  /// HTTP TRANSPORT FACTORY
+  /// ============================================================================
+  /// HTTP transport creation errors
+  variant http-transport-error {
+    /// Endpoint URL is empty or missing
+    empty-endpoint,
+    /// Endpoint URL is malformed (must start with http:// or https://)
+    invalid-endpoint,
+    /// Timeout configuration is invalid (must be > 0)
+    invalid-timeout,
+    /// General configuration error with details
+    config-error(string),
+  }
+
+  /// Create HTTP transport from configuration
+  ///
+  /// Validates the HTTP configuration and returns an abstract exporter-transport
+  /// resource that implements the transport interface. The returned transport
+  /// can be shared across all signals (traces, logs, metrics).
+  ///
+  /// # Configuration Validation
+  /// - Endpoint must be non-empty and start with http:// or https://
+  /// - Timeout must be greater than zero
+  /// - Authentication credentials are validated for proper format
+  ///
+  /// # Returns
+  /// - Ok(exporter-transport): Successfully configured HTTP transport
+  /// - Err(http-transport-error): Configuration validation failed
+  ///
+  /// # Example Usage
+  /// ```
+  /// let config = http-config {
+  ///   endpoint: "https://api.honeycomb.io",
+  ///   authentication: auth-config::bearer(bearer-token-config {
+  ///     token: "your-api-key"
+  ///   }),
+  ///   timeout-ms: 10000,
+  ///   protocol: content-type::protobuf,
+  ///   compression: compression-type::gzip,
+  ///   retry: some(retry-config {
+  ///     max-attempts: 3,
+  ///     initial-delay-ms: 1000,
+  ///     max-delay-ms: 32000,
+  ///   })
+  /// };
+  ///
+  /// let transport = create-http-transport(config)?;
+  /// // Use transport with all signals
+  /// trace-exporter.export-batch(&transport);
+  /// log-exporter.export-batch(&transport);
+  /// metric-exporter.export-batch(&transport);
+  /// ```
+  create-http-transport: func(config: http-config) -> result<exporter-transport, http-transport-error>;
 }
 
 /// World definitions for OpenTelemetry observability component composition
 ///
 /// This file defines WebAssembly Component Model worlds for signal-specific
 /// and multi-signal component composition following Component Model best practices.
-/// Uses focused interface imports for minimal dependency surfaces.
+/// Uses transport abstraction for complete protocol independence.
 ///
 /// Architecture:
-/// - otel-transport: HTTP transport component (imports wasi:http, exports otel-export)
-/// - Signal SDKs: Signal components (import otel-export, export signals)
-/// - WAC composition wires transport → signals for complete observability stack
+/// - Transport components: Export abstract `transport` interface
+///   - HTTP transport: Separate component with HTTP-specific config
+///   - gRPC transport: Separate component with gRPC-specific config
+///   - File transport: Separate component for file-based export
+///   - Stdout transport: Separate component for container logging
+/// - Signal SDKs: Import only abstract `transport` interface
+/// - WAC composition: Wires concrete transport → abstract imports
+///
+/// Key benefit: Signals know nothing about HTTP/gRPC/file details,
+/// enabling dynamic transport swapping at composition time
 /// ============================================================================
-/// TRANSPORT COMPONENT WORLD
+/// TRANSPORT COMPONENT WORLDS
 /// ============================================================================
-/// Context provider component world
-/// Implements W3C TraceContext utilities and trace/span ID generation
-/// Exported as standalone component for WAC composition with signal components
-world context-provider {
-  import wasi:random/random@0.2.0;
-  import foundation;
-
-  export context;
-}
-/// OpenTelemetry HTTP transport component world
-/// Implements the http-client resource using WASI HTTP
-/// Exported as standalone component for WAC composition with signal components
-world otel-transport {
+/// HTTP transport component world
+/// Implements OTLP/HTTP transport with authentication, compression, and retry
+/// Exports both abstract transport interface and HTTP-specific configuration
+world otel-http-transport {
   import wasi:io/poll@0.2.0;
   import wasi:clocks/monotonic-clock@0.2.0;
   import wasi:io/error@0.2.0;
   import wasi:io/streams@0.2.0;
   import wasi:http/types@0.2.0;
   import wasi:http/outgoing-handler@0.2.0;
-  import foundation;
 
-  export otel-export;
+  export transport;
+  export http-transport;
+}
+/// ============================================================================
+/// CONTEXT PROVIDER WORLD
+/// ============================================================================
+/// Context provider component world
+/// Implements W3C TraceContext utilities and trace/span ID generation
+/// Exported as standalone component for WAC composition with signal components
+world context-provider {
+  import wasi:random/random@0.2.0;
+  import common;
+
+  export context;
 }
 /// ============================================================================
 /// SINGLE-SIGNAL WORLDS
 /// ============================================================================
 /// Tracing-only SDK component world
 /// Provides tracing providers and span management capabilities
-/// Composed with otel-transport via WAC for HTTP export
+/// Completely transport-agnostic - works with any transport implementation
 world trace-sdk {
-  import foundation;
+  import common;
   import context;
-  import otel-export;
+  import transport;
 
   export trace;
 }
 /// Tracing-instrumented application world
 world trace-app {
-  import foundation;
+  import common;
   import context;
-  import otel-export;
+  import transport;
   import trace;
 }
 /// Logging-only SDK component world
 /// Provides logging providers and structured logging capabilities
-/// Composed with otel-transport via WAC for HTTP export
+/// Completely transport-agnostic - works with any transport implementation
 world logs-sdk {
-  import foundation;
-  import otel-export;
+  import common;
+  import transport;
 
   export logs;
 }
 /// Logging-instrumented application world
 world logs-app {
-  import foundation;
-  import otel-export;
+  import common;
+  import transport;
   import logs;
 }
 /// Metrics-only SDK component world
 /// Provides meter providers and instrumentation capabilities
-/// Composed with otel-transport via WAC for HTTP export
+/// Completely transport-agnostic - works with any transport implementation
 world metrics-sdk {
-  import foundation;
-  import otel-export;
+  import common;
+  import transport;
 
   export metrics;
 }
 /// Metrics-instrumented application world
 world metrics-app {
-  import foundation;
-  import otel-export;
+  import common;
+  import transport;
   import metrics;
 }
 /// ============================================================================
@@ -941,11 +1209,11 @@ world metrics-app {
 /// ============================================================================
 /// Complete OpenTelemetry SDK component world
 /// Provides all observability signals with unified export
-/// Composed with otel-transport via WAC for HTTP export
+/// Completely transport-agnostic - works with any transport implementation
 world otel-sdk {
-  import foundation;
+  import common;
   import context;
-  import otel-export;
+  import transport;
 
   export trace;
   export logs;

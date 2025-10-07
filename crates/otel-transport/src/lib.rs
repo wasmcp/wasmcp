@@ -1,4 +1,4 @@
-//! OTLP transport for OpenTelemetry SDK.
+//! HTTP transport implementation for OpenTelemetry SDK.
 
 #[allow(warnings)]
 mod bindings {
@@ -8,8 +8,12 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasi::otel_sdk::otel_export::{
-    ClientError, ExportConfig, ExportResult, Guest, GuestHttpClient, HttpClient,
+use bindings::exports::wasi::otel_sdk::http_transport::{
+    Guest as HttpTransportGuest, HttpConfig, HttpTransportError,
+};
+use bindings::exports::wasi::otel_sdk::transport::{
+    ContentType, ExporterTransport, ExportResult, Guest as TransportGuest, GuestExporterTransport,
+    SignalType,
 };
 
 use std::cell::RefCell;
@@ -19,65 +23,62 @@ mod http_client;
 
 pub struct Component;
 
-impl Guest for Component {
-    type HttpClient = HttpClientImpl;
+/// Transport interface implementation
+impl TransportGuest for Component {
+    type ExporterTransport = HttpTransportImpl;
 }
 
-/// HTTP client implementation for OTLP export
-pub struct HttpClientImpl {
-    config: RefCell<ExportConfig>,
-}
-
-impl GuestHttpClient for HttpClientImpl {
-    /// Create HTTP client from export configuration with validation
-    /// Validates configuration and returns error if invalid
-    fn new(config: ExportConfig) -> Result<HttpClient, ClientError> {
+/// HTTP transport interface implementation
+impl HttpTransportGuest for Component {
+    fn create_http_transport(config: HttpConfig) -> Result<ExporterTransport, HttpTransportError> {
         // Validate endpoint is not empty
         if config.endpoint.is_empty() {
-            return Err(ClientError::EmptyEndpoint);
+            return Err(HttpTransportError::EmptyEndpoint);
         }
 
         // Validate endpoint URL format
         if !config.endpoint.starts_with("http://") && !config.endpoint.starts_with("https://") {
-            return Err(ClientError::InvalidEndpoint);
+            return Err(HttpTransportError::InvalidEndpoint);
         }
 
         // Validate timeout is non-zero
         if config.timeout_ms == 0 {
-            return Err(ClientError::InvalidTimeout);
+            return Err(HttpTransportError::InvalidTimeout);
         }
 
         // All validation passed - create the implementation and wrap it in the WIT resource
-        let impl_instance = HttpClientImpl {
+        let impl_instance = HttpTransportImpl {
             config: RefCell::new(config),
         };
 
-        Ok(HttpClient::new(impl_instance))
+        Ok(ExporterTransport::new(impl_instance))
     }
+}
 
-    /// Get the configured export protocol
-    fn get_protocol(&self) -> bindings::exports::wasi::otel_sdk::otel_export::ExportProtocol {
-        self.config.borrow().protocol.clone()
-    }
+/// HTTP transport implementation for OTLP export
+pub struct HttpTransportImpl {
+    config: RefCell<HttpConfig>,
+}
 
-    /// Send OTLP request to specific signal endpoint
-    fn send_otlp(&self, signal_path: String, otlp_payload: Vec<u8>, content_type: String) -> ExportResult {
+impl GuestExporterTransport for HttpTransportImpl {
+    /// Send OTLP data via HTTP transport
+    fn send(&self, signal_type: SignalType, otlp_payload: Vec<u8>, content_type: ContentType) -> ExportResult {
         http_client::send_otlp_request(
             &self.config.borrow(),
-            &signal_path,
+            signal_type,
             &otlp_payload,
-            &content_type,
+            content_type,
         )
     }
 
-    /// Force flush any buffered data (if client implements internal buffering)
-    fn force_flush(&self) -> bool {
+    /// Force flush any buffered data
+    fn flush(&self) -> bool {
         // No internal buffering in this implementation
         true
     }
 
-    /// Shutdown HTTP client and release resources
-    fn shutdown(this: HttpClient) -> bool {
+    /// Shutdown transport and release resources
+    fn shutdown(this: ExporterTransport) -> bool {
         // Clean up any resources (currently none)
         drop(this);
         true

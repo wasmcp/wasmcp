@@ -3,10 +3,10 @@ package wasmcp:otel-trace@1.0.0;
 world trace-sdk {
   import wasi:http/outgoing-handler@0.2.0;
   import wasi:http/types@0.2.0;
-  import wasi:otel-sdk/foundation@0.1.0-alpha.2;
-  import wasi:otel-sdk/context@0.1.0-alpha.2;
-  import wasi:otel-sdk/otel-export@0.1.0-alpha.2;
+  import wasi:otel-sdk/common@0.1.0-alpha.3;
+  import wasi:otel-sdk/context@0.1.0-alpha.3;
+  import wasi:otel-sdk/transport@0.1.0-alpha.3;
 
   // Export complete trace interface
-  export wasi:otel-sdk/trace@0.1.0-alpha.2;
+  export wasi:otel-sdk/trace@0.1.0-alpha.3;
 }
