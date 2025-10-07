@@ -191,4 +191,7 @@ interface request {
         @since(version = 0.3.0)
         set: func(key: string, value: string);
     }
+
+    /// Register server capabilities on initialization.
+    register-capabilities: func(request: borrow<request>, capabilities: server-capabilities);
 }
