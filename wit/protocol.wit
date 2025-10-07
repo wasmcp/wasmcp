@@ -1,10 +1,54 @@
-package wasmcp:mcp@0.3.1-alpha.6;
+package wasmcp:mcp@0.3.1-alpha.11;
 
 interface protocol {
     type json = string;
     type uri = string;
     type cursor = option<string>;
     type meta = option<list<tuple<string, string>>>;
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/logging#log-levels
+    @since(version = 0.3.1-alpha.1)
+    enum log-level {
+        /// Detailed debugging information
+        debug,
+        /// General informational messages
+        info,
+        /// Normal but significant events
+        notice,
+        /// Warning conditions
+        warning,
+        /// Error conditions
+        error,
+        /// Critical conditions
+        critical,
+        /// Action must be taken immediately
+        alert,
+        /// System is unusable
+        emergency,
+    }
+
+    enum change-notification-type {
+        tools,
+        resources,
+        prompts,
+    }
+
+    variant update-notification-type {
+        %resource(string),
+    }
+
+    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#loggingmessagenotification
+    @since(version = 0.3.1-alpha.1)
+    record log-message {
+        level: log-level,
+        logger: option<string>,
+        data: list<u8>,
+    }
+
+    record client-notification {
+        method: string,
+        params: option<string>,
+    }
 
     /// Standard JSON-RPC error codes.
     @since(version = 0.3.0)
@@ -46,30 +90,29 @@ interface protocol {
         v20241105,
     }
 
-    /// Capabilities that a server supports.
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#servercapabilities>
-    @since(version = 0.3.0)
-    flags server-capabilities {
-        /// Argument autocompletion
-        completions,
-        /// Prompts
-        prompts,
-        /// Resources
-        resources,
-        /// Tools
-        tools,
-        /// Experimental features
-        experimental,
+    record list-changed-capability-option {
+        list-changed: option<bool>,
     }
 
-    /// Client capabilities (extensible).
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#clientcapabilities>
-    @since(version = 0.3.0)
-    flags client-capabilities {
-        elicitation,
-        roots,
-        sampling,
-        experimental,
+    record resources-list-changed-capability-option {
+        list-changed: option<bool>,
+        subscribe: option<bool>,
+    }
+
+    record server-capabilities {
+        completions: option<json>,
+        experimental: option<list<tuple<string, json>>>,
+        logging: option<json>,
+        prompts: option<list-changed-capability-option>,
+        resources: option<resources-list-changed-capability-option>,
+        tools: option<list-changed-capability-option>,
+    }
+
+    record client-capabilities {
+        elicitation: option<json>,
+        experimental: option<list<tuple<string, json>>>,
+        roots: option<list-changed-capability-option>,
+        sampling: option<json>,
     }
 
     /// MCP implementation metadata.

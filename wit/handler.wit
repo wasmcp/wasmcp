@@ -114,9 +114,15 @@ interface session {
     get: func(req: borrow<context>) -> result<option<session>, session-error>;
 }
 
-// A WIT framework for composing Model Context Protocol servers as WebAssembly components.
-//
-// <https://modelcontextprotocol.io/specification/2025-06-18/schema>
+/// Lifecycle handler for MCP servers.
+/// This is the terminal handler in the request processing chain.
+world lifecycle-handler {
+    import notifications-writer;
+    import error-writer;
+    import initialize-writer;
+    import empty-writer;
+    export incoming-handler;
+}
 
 /// Middleware world for request interception.
 ///
@@ -125,34 +131,34 @@ interface session {
 @since(version = 0.3.0)
 world middleware {
     import incoming-handler;
+    import notifications-writer;
+    import error-writer;
     export incoming-handler;
 }
 
 world tools-handler {
     include middleware;
-    include tools-writer;
+    import list-tools-writer;
+    import content-tool-writer;
+    import structured-tool-writer;
 }
 
 world resources-handler {
     include middleware;
-    include resources-writer;
+    import list-resources-writer;
+    import read-resource-writer;
+    import list-resource-templates-writer;
 }
 
 world prompts-handler {
     include middleware;
-    include prompts-writer;
+    import list-prompts-writer;
+    import get-prompt-writer;
 }
 
 world completions-handler {
     include middleware;
-    include completions-writer;
-}
-
-/// Lifecycle handler for MCP servers.
-/// This is the terminal handler in the request processing chain.
-world lifecycle-handler {
-    include lifecycle-writer;
-    export incoming-handler;
+    import complete-writer;
 }
 
 world session-handler {

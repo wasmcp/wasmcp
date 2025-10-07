@@ -2,52 +2,7 @@ use wasi:io/streams@0.2.3;
 
 interface notifications-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{progress-token};
-
-    /// https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/logging#log-levels
-    @since(version = 0.3.1-alpha.1)
-    enum log-level {
-        /// Detailed debugging information
-        debug,
-        /// General informational messages
-        info,
-        /// Normal but significant events
-        notice,
-        /// Warning conditions
-        warning,
-        /// Error conditions
-        error,
-        /// Critical conditions
-        critical,
-        /// Action must be taken immediately
-        alert,
-        /// System is unusable
-        emergency,
-    }
-
-    enum change {
-        tools,
-        resources,
-        prompts,
-    }
-
-    variant update {
-        %resource(string),
-    }
-
-    /// https://modelcontextprotocol.io/specification/2025-06-18/schema#loggingmessagenotification
-    @since(version = 0.3.1-alpha.1)
-    record log-message {
-        level: log-level,
-        logger: option<string>,
-        data: list<u8>,
-    }
-
-    /// https://www.jsonrpc.org/specification#notification
-    record notification {
-        method: string,
-        params: option<string>,
-    }
+    use protocol.{progress-token, log-level, log-message, client-notification, change-notification-type, update-notification-type};
 
     /// Log a message to the client.
     @since(version = 0.3.1-alpha.1)
@@ -55,13 +10,13 @@ interface notifications-writer {
 
     // Send a JSON-RPC notification to the client.
     @since(version = 0.3.1-alpha.1)
-    send: func(out: borrow<output-stream>, notification: notification) -> result<_, stream-error>;
+    send: func(out: borrow<output-stream>, notification: client-notification) -> result<_, stream-error>;
 
     /// Send a `notifications/*/list_changed` notification to the client.
-    send-list-changed: func(out: borrow<output-stream>, change: change) -> result<_, stream-error>;
+    send-list-changed: func(out: borrow<output-stream>, change: change-notification-type) -> result<_, stream-error>;
 
     /// Send a `notifications/*/updated` notification to the client.
-    send-updated: func(out: borrow<output-stream>, update: update) -> result<_, stream-error>;
+    send-updated: func(out: borrow<output-stream>, update: update-notification-type) -> result<_, stream-error>;
 
     /// Send a `notifications/progress` notification to the client.
     ///
@@ -192,7 +147,6 @@ interface list-tools-writer {
     ) -> result<_, stream-error>;
 
     resource writer {
-        check-write: func() -> result<u32, stream-error>;
         write: func(tool: tool) -> result<_, stream-error>;
         close: func(options: option<options>) -> result<_, stream-error>;
     }
@@ -236,7 +190,6 @@ interface content-tool-writer {
     ) -> result<_, stream-error>;
 
     resource writer {
-        check-write: func() -> result<u64, stream-error>;
         write: func(contents: list<u8>) -> result<_, stream-error>;
         next: func(content: content-block) -> result<_, stream-error>;
         close: func(options: option<options>) -> result<_, stream-error>;
@@ -314,7 +267,6 @@ interface list-resources-writer {
     ) -> result<_, stream-error>;
 
     resource writer {
-        check-write: func() -> result<u32, stream-error>;
         write: func(%resource: %resource) -> result<_, stream-error>;
         close: func(options: option<options>) -> result<_, stream-error>;
     }
@@ -358,7 +310,6 @@ interface read-resource-writer {
     ) -> result<_, stream-error>;
 
     resource writer {
-        check-write: func() -> result<u64, stream-error>;
         write: func(contents: list<u8>) -> result<_, stream-error>;
         close: func(options: option<options>) -> result<_, stream-error>;
     }
@@ -408,7 +359,6 @@ interface list-resource-templates-writer {
     ) -> result<_, stream-error>;
 
     resource writer {
-        check-write: func() -> result<u32, stream-error>;
         write: func(template: resource-template) -> result<_, stream-error>;
         close: func(options: option<options>) -> result<_, stream-error>;
     }
@@ -464,7 +414,6 @@ interface list-prompts-writer {
     ) -> result<_, stream-error>;
 
     resource writer {
-        check-write: func() -> result<u32, stream-error>;
         write: func(prompt: prompt) -> result<_, stream-error>;
         close: func(options: option<options>) -> result<_, stream-error>;
     }
@@ -503,7 +452,6 @@ interface get-prompt-writer {
     ) -> result<_, stream-error>;
 
     resource writer {
-        check-write: func() -> result<u32, stream-error>;
         write: func(message: prompt-message) -> result<_, stream-error>;
         close: func(options: option<options>) -> result<_, stream-error>;
     }
@@ -534,7 +482,6 @@ interface complete-writer {
     ) -> result<_, stream-error>;
 
     resource writer {
-        check-write: func() -> result<u32, stream-error>;
         write: func(value: string) -> result<_, stream-error>;
         close: func(options: option<options>) -> result<_, stream-error>;
     }
@@ -545,38 +492,46 @@ interface complete-writer {
     ) -> result<writer, stream-error>;
 }
 
-world writer {
-    import notifications-writer;
-    import error-writer;
+world protocol-writer {
+    export notifications-writer;
+    export error-writer;
 }
 
 world tools-writer {
-    include writer;
-    import list-tools-writer;
-    import content-tool-writer;
-    import structured-tool-writer;
+    include protocol-writer;
+    export list-tools-writer;
+    export content-tool-writer;
+    export structured-tool-writer;
 }
 
 world resources-writer{
-    include writer;
-    import list-resources-writer;
-    import read-resource-writer;
-    import list-resource-templates-writer;
+    include protocol-writer;
+    export list-resources-writer;
+    export read-resource-writer;
+    export list-resource-templates-writer;
 }
     
 world prompts-writer {
-    include writer;
-    import list-prompts-writer;
-    import get-prompt-writer;
+    include protocol-writer;
+    export list-prompts-writer;
+    export get-prompt-writer;
 }
 
 world completions-writer {
-    include writer;
-    import complete-writer;
+    include protocol-writer;
+    export complete-writer;
 }
 
 world lifecycle-writer {
-    include writer;
-    import initialize-writer;
-    import empty-writer;
+    include protocol-writer;
+    export initialize-writer;
+    export empty-writer;
+}
+
+world writer {
+    include lifecycle-writer;
+    include tools-writer;
+    include resources-writer;
+    include prompts-writer;
+    include completions-writer;
 }
