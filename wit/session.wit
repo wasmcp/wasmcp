@@ -1,0 +1,75 @@
+/// MCP session management and related features
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#session>
+@since(version = 0.3.1-alpha.1)
+interface session {
+    use wasi:io/streams@0.2.3.{output-stream, stream-error};
+    use protocol.{elicit-request, elicit-result};
+    use context.{message-context};
+
+    /// Errors that can occur during session operations.
+    @since(version = 0.3.1-alpha.1)
+    variant session-error {
+        /// Access to the session's store is denied.
+        access-denied,
+        /// Some error occurred.
+        other(string),
+    }
+
+    /// MCP session resource for request-scoped context storage
+    @since(version = 0.3.1-alpha.1)
+    resource session {
+        /// Get the session ID.
+        @since(version = 0.3.1-alpha.1)
+        id: func() -> string;
+
+        /// Check if the session is still active.
+        /// Returns false if the session has been terminated.
+        @since(version = 0.3.1-alpha.1)
+        is-active: func() -> result<bool, session-error>;
+
+        /// Get a persistent session context value by key.
+        @since(version = 0.3.1-alpha.1)
+        get: func(key: string) -> result<option<list<u8>>, session-error>;
+
+        /// Set a persistent session context value by key.
+        @since(version = 0.3.1-alpha.1)
+        set: func(key: string, value: list<u8>) -> result<_, session-error>;
+
+        /// Elicit information from the client.
+        /// Blocks until the elicitation is complete.
+        /// 
+        /// https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
+        @since(version = 0.3.1-alpha.1)
+        elicit: func(out: borrow<output-stream>, elicitation: elicit-request) -> result<elicit-result, stream-error>;
+
+        /// Terminate the session, optionally providing a reason.
+        /// is-active will return false after termination.
+        ///
+        /// Data associated with the terminated session is NOT deleted.
+        /// Use delete() to remove all session data.
+        ///
+        /// Subsequent calls will have no effect.
+        @since(version = 0.3.1-alpha.1)
+        terminate: func(reason: option<string>) -> result<_, session-error>;
+    }
+
+    /// Create a new session with a globally unique and cryptographically secure ID.
+    /// The session is initially empty and can be populated with persistent context values.
+    @since(version = 0.3.1-alpha.1)
+    initialize: func() -> result<session, session-error>;
+
+    /// Deletes all data associated with the session.
+    /// After deleting, the session is invalid and cannot be used.
+    @since(version = 0.3.1-alpha.1)
+    delete: func(session: session) -> result<_, session-error>;
+
+    /// Attach a session to an MCP request context.
+    /// This allows downstream handlers to retrieve the session.
+    @since(version = 0.3.1-alpha.1)
+    attach: func(req: borrow<message-context>, session: borrow<session>);
+
+    /// Get an existing session from an MCP request context, if one is attached.
+    @since(version = 0.3.1-alpha.1)
+    get: func(req: borrow<message-context>) -> result<option<session>, session-error>;
+}

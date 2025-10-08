@@ -8,23 +8,25 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp::incoming_handler::{Guest, OutputStream, Request};
+use bindings::exports::wasmcp::mcp::incoming_handler::{Guest, OutputStream};
+
+use bindings::wasmcp::mcp::protocol::{Tool, ToolOptions, RequestMethod, Id, ToolsCallParams, Error, ErrorCode, JsonrpcObject};
+use bindings::wasmcp::mcp::context::{Context, ServerCapabilities};
+use bindings::wasmcp::mcp::error_writer;
+use bindings::wasmcp::mcp::list_tools_writer;
+use bindings::wasmcp::mcp::content_tool_writer;
 use bindings::wasmcp::mcp::incoming_handler as next_handler;
-use bindings::wasmcp::mcp::tools_list_result;
-use bindings::wasmcp::mcp::tools_call_content;
-use bindings::wasmcp::mcp::error_result;
-use bindings::wasmcp::mcp::request::{Params, ServerCapabilities};
+
 use serde::Deserialize;
 use serde_json::json;
 
 pub struct Component;
 
 impl Component {
-    fn handle_tools_list(request: &Request, output: OutputStream) {
-        let id = request.id();
+    fn handle_tools_list(id: &Id, out: OutputStream) {
 
         let tools = vec![
-            tools_list_result::Tool {
+            Tool {
                 name: "echo".to_string(),
                 input_schema: json!({
                     "type": "object",
@@ -37,7 +39,7 @@ impl Component {
                     "required": ["message"]
                 })
                 .to_string(),
-                options: Some(tools_list_result::ToolOptions {
+                options: Some(ToolOptions {
                     description: Some("Echo a message back".to_string()),
                     title: Some("Echo".to_string()),
                     output_schema: None,
@@ -47,35 +49,41 @@ impl Component {
             },
         ];
 
-        if let Err(e) = tools_list_result::write(&id, output, &tools, None) {
+        if let Err(e) = list_tools_writer::send(id, out, &tools) {
             eprintln!("Failed to write tools list: {:?}", e);
         }
     }
 
-    fn handle_tools_call(request: &Request, output: OutputStream) {
-        let id = request.id();
-
-        if let Ok(Params::ToolsCall(params)) = request.params() {
-            let result = match params.name.as_str() {
-                "echo" => Self::handle_echo(params.arguments.as_deref()),
-                _ => {
-                    let _ = tools_call_content::write_error(&id, output, &format!("Unknown tool: {}", params.name));
+    fn handle_tools_call(id: &Id, params: &ToolsCallParams, out: OutputStream) {
+        let result = match params.name.as_str() {
+            "echo" => Self::handle_echo(params.arguments.as_deref()),
+            _ => {
+                let _ = error_writer::send(&id, out, &Error {
+                    code: ErrorCode::InvalidParams,
+                    message: format!("Unknown tool: {}", params.name),
+                    data: None,
+                    id: Some(id.clone()),
+                });
                     return;
                 }
             };
 
             match result {
                 Ok(response) => {
-                    if let Err(e) = tools_call_content::write_text(&id, output, &response, None) {
+                    if let Err(e) = content_tool_writer::send_text(&id, out, &response) {
                         eprintln!("Failed to write response: {:?}", e);
                     }
                 }
                 Err(e) => {
-                    let _ = tools_call_content::write_error(&id, output, &e.to_string());
+                    let _ = error_writer::send(&id, out, &Error {
+                        code: ErrorCode::InternalError,
+                        message: format!("Tool execution error: {}", e),
+                        data: None,
+                        id: Some(id.clone()),
+                    });
                 }
             }
         }
-    }
 
     fn handle_echo(arguments: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
         #[derive(Deserialize)]
@@ -92,20 +100,23 @@ impl Component {
     }
 }
 
-impl Guest for Component {
-    fn handle(request: Request, output: OutputStream) {
-        if !request.needs(ServerCapabilities::TOOLS) {
-            next_handler::handle(request, output);
-            return;
-        }
 
-        match request.params() {
-            Ok(Params::ToolsList(_)) => Self::handle_tools_list(&request, output),
-            Ok(Params::ToolsCall(_)) => Self::handle_tools_call(&request, output),
-            Ok(_) => unreachable!(),
-            Err(error) => {
-                let _ = error_result::write(&request.id(), output, &error);
-            }
+impl Guest for Component {
+    fn handle(ctx: Context, out: OutputStream) {
+        // ctx.register_capabilities(&ServerCapabilities {
+        //     tools: Some(true),
+        //     com
+        // });
+
+        let JsonrpcObject::Request(request) = ctx.data() else {
+          return next_handler::handle(ctx, out);
+        };
+
+        match request.method {
+            RequestMethod::ToolsList(_) => Self::handle_tools_list(&request.id, out),
+            RequestMethod::ToolsCall(params) => Self::handle_tools_call(&request.id, &params, out),
+            _ => next_handler::handle(ctx, out),
+
         }
     }
 }

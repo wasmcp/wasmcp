@@ -47,7 +47,7 @@ use bindings::wasmcp::mcp::protocol::{
     ElicitResultAction, ElicitResultContent, Error as McpError, ErrorCode, Id, Implementation,
     InitializeParams, JsonrpcObject, ListChangedCapabilityOption, Notification, NotificationMethod,
     ProgressToken, ProtocolVersion, Request, RequestMethod, ResponseResult, Result as McpResult,
-    ServerCapabilities,
+    ServerCapability,
 };
 
 use serde_json::Value;
@@ -125,7 +125,7 @@ impl GuestContext for Context {
     }
 
     /// Get the parsed JSON-RPC object.
-    fn data(&self) -> JsonrpcObject {
+    fn body(&self) -> JsonrpcObject {
         self.jsonrpc.clone()
     }
 
@@ -155,7 +155,7 @@ impl GuestContext for Context {
     /// This provides a type-safe way for middleware components to register
     /// their capabilities. Each non-None capability is serialized to JSON
     /// and stored with the key "wasmcp:capability:{name}".
-    fn register_capabilities(&self, capabilities: ServerCapabilities) {
+    fn register_capability(&self, capability: ServerCapability) {
         const PREFIX: &str = "wasmcp:capability:";
 
         if let Ok(mut ctx) = self.context.write() {

@@ -1,5 +1,5 @@
 package component:rust;
 
 world tools-handler {
-    include wasmcp:mcp/tools-handler@0.3.0;
+    include wasmcp:mcp/tools-handler@0.3.1-alpha.14;
 }

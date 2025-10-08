@@ -10,18 +10,18 @@ interface notifications-writer {
 
     // Send a JSON-RPC notification to the client.
     @since(version = 0.3.1-alpha.1)
-    send: func(out: borrow<output-stream>, notification: client-notification) -> result<_, stream-error>;
+    notify: func(out: borrow<output-stream>, notification: client-notification) -> result<_, stream-error>;
 
     /// Send a `notifications/*/list_changed` notification to the client.
-    send-list-changed: func(out: borrow<output-stream>, change: change-notification-type) -> result<_, stream-error>;
+    notify-list-changed: func(out: borrow<output-stream>, change: change-notification-type) -> result<_, stream-error>;
 
     /// Send a `notifications/*/updated` notification to the client.
-    send-updated: func(out: borrow<output-stream>, update: update-notification-type) -> result<_, stream-error>;
+    notify-updated: func(out: borrow<output-stream>, update: update-notification-type) -> result<_, stream-error>;
 
     /// Send a `notifications/progress` notification to the client.
     ///
     /// <https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/progress>
-    send-progress: func(
+    notify-progress: func(
         out: borrow<output-stream>,
         progress-token: progress-token,
         progress: f64,
@@ -30,7 +30,7 @@ interface notifications-writer {
     ) -> result<_, stream-error>;
 }
 
-/// Writes JSON-RPC error responses to an output stream.
+/// Write a JSON-RPC error response to an output stream.
 ///
 /// This interface provides a standardized way to write error responses
 /// that conform to the JSON-RPC 2.0 specification.
@@ -41,14 +41,13 @@ interface error-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, error};
 
-    send: func(
-        id: id,
+    respond: func(
         out: output-stream,
         error: error,
     ) -> result<_, stream-error>;
 }
 
-/// Writes an empty JSON-RPC response to an output stream.
+/// Writes an empty JSON-RPC result to an output stream.
 /// Useful for ping responses etc.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/ping#behavior-requirements>
@@ -57,7 +56,7 @@ interface empty-writer {
     use protocol.{id};
     use streams.{output-stream, stream-error};
 
-    send: func(id: id, out: output-stream) -> result<_, stream-error>;
+    respond: func(out: output-stream, id: id) -> result<_, stream-error>;
 }
 
 /// Writes initialization results to an output stream.
@@ -69,7 +68,7 @@ interface initialize-writer {
     use protocol.{id, initialize-result};
 
     @since(version = 0.3.0)
-    send: func(id: id, out: output-stream, %result: initialize-result) -> result<_, stream-error>;
+    respond: func(out: output-stream, id: id, %result: initialize-result) -> result<_, stream-error>;
 }
 
 /// Writes tools/list results to an output stream.
@@ -80,9 +79,9 @@ interface list-tools-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, tool, next-cursor-options};
 
-    send: func(
-        id: id,
+    respond: func(
         out: output-stream,
+        id: id,
         tools: list<tool>,
     ) -> result<_, stream-error>;
 
@@ -92,8 +91,8 @@ interface list-tools-writer {
     }
 
     open: func(
-        id: id,
         out: output-stream,
+        id: id,
     ) -> result<writer, stream-error>;
 }
 
@@ -101,25 +100,25 @@ interface list-tools-writer {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-call>
 @since(version = 0.3.0)
-interface content-tool-writer {
+interface tool-call-content-writer {
     use streams.{output-stream, stream-error};
     use protocol.{content-block, id, is-error-options};
 
-    send-text: func(
-        id: id,
+    respond-text: func(
         out: output-stream,
+        id: id,
         text: string,
     ) -> result<_, stream-error>;
 
-    send-error: func(
-        id: id,
+    respond-error: func(
         out: output-stream,
+        id: id,
         reason: string
     ) -> result<_, stream-error>;
 
-    send-contents: func(
-        id: id,
+    respond-contents: func(
         out: output-stream,
+        id: id,
         content: list<content-block>,
     ) -> result<_, stream-error>;
 
@@ -130,8 +129,8 @@ interface content-tool-writer {
     }
 
     open: func(
-        id: id,
         out: output-stream,
+        id: id,
         initial: content-block
     ) -> result<writer, stream-error>;
 }
@@ -140,15 +139,14 @@ interface content-tool-writer {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-call>
 @since(version = 0.3.0)
-interface structured-tool-writer {
+interface tool-call-structured-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, is-error-options, structured-tool-result};
 
-    send: func(
-        id: id,
+    respond: func(
         out: output-stream,
+        id: id,
         structured: structured-tool-result,
-        options: option<is-error-options>,
     ) -> result<_, stream-error>;
 }
 
@@ -160,9 +158,9 @@ interface list-resources-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, %resource, next-cursor-options};
 
-    send: func(
-        id: id,
+    respond: func(
         out: output-stream,
+        id: id,
         resources: list<%resource>,
     ) -> result<_, stream-error>;
 
@@ -172,8 +170,8 @@ interface list-resources-writer {
     }
 
     open: func(
-        id: id,
         out: output-stream,
+        id: id,
     ) -> result<writer, stream-error>;
 }
 
@@ -185,9 +183,9 @@ interface read-resource-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, resource-contents, meta-options};
 
-    send: func(
-        id: id,
+    respond: func(
         out: output-stream,
+        id: id,
         contents: resource-contents,
     ) -> result<_, stream-error>;
 
@@ -197,8 +195,8 @@ interface read-resource-writer {
     }
 
     open: func(
-        id: id,
         out: output-stream,
+        id: id,
         initial: resource-contents,
     ) -> result<writer, stream-error>;
 }
@@ -211,9 +209,9 @@ interface list-resource-templates-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, resource-template, next-cursor-options};
 
-    send: func(
-        id: id,
+    respond: func(
         out: output-stream,
+        id: id,
         templates: list<resource-template>,
     ) -> result<_, stream-error>;
 
@@ -223,8 +221,8 @@ interface list-resource-templates-writer {
     }
 
     open: func(
+        out: output-stream,
         id: id,
-        out: output-stream
     ) -> result<writer, stream-error>;
 }
 
@@ -236,9 +234,9 @@ interface list-prompts-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, prompt, next-cursor-options};
 
-    send: func(
-        id: id,
+    respond: func(
         out: output-stream,
+        id: id,
         prompts: list<prompt>,
     ) -> result<_, stream-error>;
 
@@ -248,8 +246,8 @@ interface list-prompts-writer {
     }
 
     open: func(
-        id: id,
         out: output-stream,
+        id: id,
     ) -> result<writer, stream-error>;
 }
 
@@ -261,9 +259,9 @@ interface get-prompt-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, prompt-message, description-options};
 
-    send: func(
-        id: id,
+    respond: func(
         out: output-stream,
+        id: id,
         messages: list<prompt-message>,
     ) -> result<_, stream-error>;
 
@@ -273,8 +271,8 @@ interface get-prompt-writer {
     }
 
     open: func(
+        out: output-stream,
         id: id,
-        out: output-stream
     ) -> result<writer, stream-error>;
 }
 
@@ -292,11 +290,10 @@ interface complete-writer {
     /// Send a complete list of completion values in one call.
     /// The implementation will output the proper nested MCP structure:
     /// {"completion": {"values": [...], "total": N, "hasMore": bool}}
-    send: func(
-        id: id,
+    respond: func(
         out: output-stream,
+        id: id,
         values: list<string>,
-        options: option<completion-result-options>,
     ) -> result<_, stream-error>;
 
     /// Streaming writer for sending completion values incrementally.
@@ -312,51 +309,7 @@ interface complete-writer {
     /// Open a streaming writer for sending completion values.
     /// The implementation will start the proper nested MCP structure.
     open: func(
+        out: output-stream,
         id: id,
-        out: output-stream
     ) -> result<writer, stream-error>;
-}
-
-world protocol-writer {
-    export notifications-writer;
-    export error-writer;
-}
-
-world tools-writer {
-    include protocol-writer;
-    export list-tools-writer;
-    export content-tool-writer;
-    export structured-tool-writer;
-}
-
-world resources-writer{
-    include protocol-writer;
-    export list-resources-writer;
-    export read-resource-writer;
-    export list-resource-templates-writer;
-}
-    
-world prompts-writer {
-    include protocol-writer;
-    export list-prompts-writer;
-    export get-prompt-writer;
-}
-
-world completions-writer {
-    include protocol-writer;
-    export complete-writer;
-}
-
-world lifecycle-writer {
-    include protocol-writer;
-    export initialize-writer;
-    export empty-writer;
-}
-
-world writer {
-    include lifecycle-writer;
-    include tools-writer;
-    include resources-writer;
-    include prompts-writer;
-    include completions-writer;
 }

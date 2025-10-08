@@ -48,35 +48,27 @@ struct Component;
 
 impl Guest for Component {
     fn handle(ctx: Context, out: OutputStream) {
-        let message = ctx.data();
+        let JsonrpcObject::Request(req) = ctx.body() else {return};
 
-        match message {
-            JsonrpcObject::Request(req) => handle_request(ctx, req, out),
-            JsonrpcObject::Notification(_) => {
-                // Lifecycle handler doesn't process notifications
-                // They should have been handled by middleware or can be ignored
+        match req.method {
+            RequestMethod::Initialize(params) => {
+                handle_initialize(&ctx, req.id, params, out)
             }
-            JsonrpcObject::Result(_) | JsonrpcObject::Error(_) => {
-                // Results and errors shouldn't reach a handler
-                // These are responses, not requests
+            RequestMethod::Ping => {
+                let _ = empty_writer::send(out, &req.id.clone());
             }
-        }
-    }
-}
+            _ => {
+                // All other methods are unknown to the lifecycle handler
+                // This is the terminal handler, so return MethodNotFound
+                let error = Error {
+                    id: Some(req.id.clone()),
+                    code: ErrorCode::MethodNotFound,
+                    message: "Method not found".to_string(),
+                    data: None,
+                };
 
-/// Route requests to the appropriate handler
-fn handle_request(ctx: Context, request: Request, out: OutputStream) {
-    match request.method {
-        RequestMethod::Initialize(params) => {
-            handle_initialize(&ctx, request.id, params, out)
-        }
-        RequestMethod::Ping => {
-            handle_ping(request.id, out)
-        }
-        _ => {
-            // All other methods are unknown to the lifecycle handler
-            // This is the terminal handler, so return MethodNotFound
-            handle_unknown_method(request.id, out)
+                let _ = error_writer::send(out, &error);
+            }
         }
     }
 }
@@ -114,29 +106,7 @@ fn handle_initialize(
     };
 
     // Send the response
-    let _ = initialize_writer::send(&id, out, &result);
-}
-
-/// Handle the ping request
-///
-/// Ping is a simple health check that returns an empty result.
-fn handle_ping(id: Id, out: OutputStream) {
-    let _ = empty_writer::send(&id, out);
-}
-
-/// Handle unknown method requests
-///
-/// Since this is the terminal handler, any method we don't recognize
-/// should return a MethodNotFound error.
-fn handle_unknown_method(id: Id, out: OutputStream) {
-    let error = Error {
-        id: Some(id.clone()),
-        code: ErrorCode::MethodNotFound,
-        message: "Method not found".to_string(),
-        data: None,
-    };
-
-    let _ = error_writer::send(&id, out, &error);
+    let _ = initialize_writer::send(out, &id, &result);
 }
 
 /// Build server capabilities by scanning context for capability registrations
