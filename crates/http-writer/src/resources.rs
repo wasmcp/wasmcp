@@ -9,7 +9,9 @@ use crate::bindings::exports::wasmcp::mcp::{
     list_resources_writer, read_resource_writer, list_resource_templates_writer,
 };
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
-use crate::bindings::wasmcp::mcp::protocol::Id;
+use crate::bindings::wasmcp::mcp::protocol::{
+    Id, NextCursorOptions, MetaOptions, ResourceContentsOptions,
+};
 use crate::utils::{
     base64_encode, build_annotations_json, build_jsonrpc_response,
     build_meta_object, write_sse_message, JsonObjectBuilder,
@@ -103,7 +105,7 @@ impl list_resources_writer::GuestWriter for ListResourcesWriterResource {
         Ok(())
     }
 
-    fn close(&self, options: Option<list_resources_writer::Options>) -> Result<(), StreamError> {
+    fn close(&self, options: Option<NextCursorOptions>) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
 
         if state.closed {
@@ -204,7 +206,7 @@ struct ReadResourceWriterState {
     out: OutputStream,
     uri: String,
     chunks: Vec<Vec<u8>>,
-    options: Option<read_resource_writer::ResourceContentsOptions>,
+    options: Option<ResourceContentsOptions>,
 }
 
 impl read_resource_writer::GuestWriter for ReadResourceWriterResource {
@@ -214,7 +216,7 @@ impl read_resource_writer::GuestWriter for ReadResourceWriterResource {
         Ok(())
     }
 
-    fn close(&self, options: Option<read_resource_writer::Options>) -> Result<(), StreamError> {
+    fn close(&self, options: Option<MetaOptions>) -> Result<(), StreamError> {
         let state = self.state.borrow();
 
         let mut result = JsonObjectBuilder::new();
@@ -343,7 +345,7 @@ impl list_resource_templates_writer::GuestWriter for ListResourceTemplatesWriter
         Ok(())
     }
 
-    fn close(&self, options: Option<list_resource_templates_writer::Options>) -> Result<(), StreamError> {
+    fn close(&self, options: Option<NextCursorOptions>) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
 
         if state.closed {

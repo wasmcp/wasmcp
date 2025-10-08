@@ -9,7 +9,10 @@ use crate::bindings::exports::wasmcp::mcp::{
     list_tools_writer, content_tool_writer, structured_tool_writer,
 };
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
-use crate::bindings::wasmcp::mcp::protocol::{ContentBlock, Id};
+use crate::bindings::wasmcp::mcp::protocol::{
+    ContentBlock, Id, StructuredToolResult, IsErrorOptions, NextCursorOptions,
+    ToolAnnotations,
+};
 use crate::utils::{
     build_content_block_json, build_jsonrpc_response, format_id,
     build_meta_object, write_sse_message, JsonObjectBuilder,
@@ -103,7 +106,7 @@ impl list_tools_writer::GuestWriter for ListToolsWriterResource {
         Ok(())
     }
 
-    fn close(&self, options: Option<list_tools_writer::Options>) -> Result<(), StreamError> {
+    fn close(&self, options: Option<NextCursorOptions>) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
 
         if state.closed {
@@ -266,7 +269,7 @@ impl content_tool_writer::GuestWriter for ContentToolWriterResource {
         Ok(())
     }
 
-    fn close(&self, options: Option<content_tool_writer::Options>) -> Result<(), StreamError> {
+    fn close(&self, options: Option<IsErrorOptions>) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
 
         if state.closed {
@@ -304,12 +307,16 @@ impl structured_tool_writer::Guest for StructuredToolWriter {
     fn send(
         id: Id,
         out: OutputStream,
-        structured: structured_tool_writer::StructuredResult,
+        structured: StructuredToolResult,
+        options: Option<IsErrorOptions>,
     ) -> Result<(), StreamError> {
         let mut result = JsonObjectBuilder::new();
-        result.add_field("structured", &structured.structured);
 
-        if let Some(opts) = structured.options {
+        // Use "structuredContent" as per MCP schema
+        result.add_field("structuredContent", &structured.structured_content);
+
+        // Add optional error flag
+        if let Some(opts) = options {
             if opts.is_error {
                 result.add_bool("isError", true);
             }
@@ -374,32 +381,26 @@ fn build_single_tool(tool: &list_tools_writer::Tool) -> String {
 }
 
 /// Build JSON for tool annotations.
-fn build_tool_annotations(annotations: &list_tools_writer::ToolAnnotations) -> String {
+fn build_tool_annotations(annotations: &ToolAnnotations) -> String {
     let mut obj = JsonObjectBuilder::new();
 
+    // Add title if present
     if let Some(title) = &annotations.title {
         obj.add_string("title", title);
     }
 
-    // Convert hints flags to array of strings
-    if !annotations.hints.is_empty() {
-        let mut hints = Vec::new();
-        if annotations.hints.contains(list_tools_writer::ToolHints::DESTRUCTIVE) {
-            hints.push(r#""destructive""#);
-        }
-        if annotations.hints.contains(list_tools_writer::ToolHints::IDEMPOTENT) {
-            hints.push(r#""idempotent""#);
-        }
-        if annotations.hints.contains(list_tools_writer::ToolHints::OPEN_WORLD) {
-            hints.push(r#""open-world""#);
-        }
-        if annotations.hints.contains(list_tools_writer::ToolHints::READ_ONLY) {
-            hints.push(r#""read-only""#);
-        }
-
-        if !hints.is_empty() {
-            obj.add_field("hints", &format!("[{}]", hints.join(",")));
-        }
+    // Add individual hint boolean fields as per MCP schema
+    if let Some(read_only) = annotations.read_only_hint {
+        obj.add_bool("readOnlyHint", read_only);
+    }
+    if let Some(destructive) = annotations.destructive_hint {
+        obj.add_bool("destructiveHint", destructive);
+    }
+    if let Some(idempotent) = annotations.idempotent_hint {
+        obj.add_bool("idempotentHint", idempotent);
+    }
+    if let Some(open_world) = annotations.open_world_hint {
+        obj.add_bool("openWorldHint", open_world);
     }
 
     obj.build()

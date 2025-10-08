@@ -39,12 +39,12 @@ interface notifications-writer {
 @since(version = 0.3.0)
 interface error-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, error as mcp-error};
+    use protocol.{id, error};
 
     send: func(
         id: id,
         out: output-stream,
-        error: mcp-error
+        error: error,
     ) -> result<_, stream-error>;
 }
 
@@ -66,24 +66,7 @@ interface empty-writer {
 @since(version = 0.3.0)
 interface initialize-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, implementation, meta, protocol-version, server-capabilities};
-
-    /// Options for initialization results.
-    @since(version = 0.3.0)
-    record initialize-result-options {
-        instructions: option<string>,
-        meta: meta,
-    }
-
-    /// Initialization result structure.
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializeresult>
-    @since(version = 0.3.0)
-    record initialize-result {
-        server-info: implementation,
-        capabilities: server-capabilities,
-        protocol-version: protocol-version,
-        options: option<initialize-result-options>,
-    }
+    use protocol.{id, initialize-result};
 
     @since(version = 0.3.0)
     send: func(id: id, out: output-stream, %result: initialize-result) -> result<_, stream-error>;
@@ -95,50 +78,7 @@ interface initialize-writer {
 @since(version = 0.3.0)
 interface list-tools-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, cursor, meta, json};
-
-    /// Hints about tool behavior.
-    @since(version = 0.3.0)
-    flags tool-hints {
-        destructive,
-        idempotent,
-        open-world,
-        read-only,
-    }
-
-    /// Annotations for tool capabilities.
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
-    @since(version = 0.3.0)
-    record tool-annotations {
-        hints: tool-hints,
-        title: option<string>,
-    }
-
-    /// Optional properties for tool definitions.
-    @since(version = 0.3.0)
-    record tool-options {
-        meta: meta,
-        annotations: option<tool-annotations>,
-        description: option<string>,
-        output-schema: option<json>,
-        title: option<string>,
-    }
-
-    /// Tool definition.
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
-    @since(version = 0.3.0)
-    record tool {
-        name: string,
-        input-schema: string,
-        options: option<tool-options>,
-    }
-
-    /// Options for list-tools results.
-    @since(version = 0.3.0)
-    record options {
-        meta: meta,
-        next-cursor: cursor,
-    }
+    use protocol.{id, tool, next-cursor-options};
 
     send: func(
         id: id,
@@ -148,7 +88,7 @@ interface list-tools-writer {
 
     resource writer {
         write: func(tool: tool) -> result<_, stream-error>;
-        close: func(options: option<options>) -> result<_, stream-error>;
+        close: func(options: option<next-cursor-options>) -> result<_, stream-error>;
     }
 
     open: func(
@@ -163,13 +103,7 @@ interface list-tools-writer {
 @since(version = 0.3.0)
 interface content-tool-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{content-block, id, meta};
-
-    @since(version = 0.3.0)
-    record options {
-        is-error: bool,
-        meta: meta,
-    }
+    use protocol.{content-block, id, is-error-options};
 
     send-text: func(
         id: id,
@@ -192,7 +126,7 @@ interface content-tool-writer {
     resource writer {
         write: func(contents: list<u8>) -> result<_, stream-error>;
         next: func(content: content-block) -> result<_, stream-error>;
-        close: func(options: option<options>) -> result<_, stream-error>;
+        close: func(options: option<is-error-options>) -> result<_, stream-error>;
     }
 
     open: func(
@@ -208,23 +142,13 @@ interface content-tool-writer {
 @since(version = 0.3.0)
 interface structured-tool-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, meta, json};
-
-    @since(version = 0.3.0)
-    record options {
-        is-error: bool,
-        meta: meta,
-    }
-
-    record structured-result {
-        structured: json,
-        options: option<options>,
-    }
+    use protocol.{id, is-error-options, structured-tool-result};
 
     send: func(
         id: id,
         out: output-stream,
-        structured: structured-result,
+        structured: structured-tool-result,
+        options: option<is-error-options>,
     ) -> result<_, stream-error>;
 }
 
@@ -234,31 +158,7 @@ interface structured-tool-writer {
 @since(version = 0.3.0)
 interface list-resources-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{annotations, id, cursor, meta, uri};
-
-    @since(version = 0.3.0)
-    record resource-options {
-        size: option<u64>,
-        title: option<string>,
-        description: option<string>,
-        mime-type: option<string>,
-        annotations: option<annotations>,
-        meta: meta,
-    }
-
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resource>
-    @since(version = 0.3.0)
-    record %resource {
-        uri: uri,
-        name: string,
-        options: option<resource-options>,
-    }
-
-    @since(version = 0.3.0)
-    record options {
-        meta: meta,
-        next-cursor: cursor,
-    }
+    use protocol.{id, %resource, next-cursor-options};
 
     send: func(
         id: id,
@@ -268,7 +168,7 @@ interface list-resources-writer {
 
     resource writer {
         write: func(%resource: %resource) -> result<_, stream-error>;
-        close: func(options: option<options>) -> result<_, stream-error>;
+        close: func(options: option<next-cursor-options>) -> result<_, stream-error>;
     }
 
     open: func(
@@ -283,25 +183,7 @@ interface list-resources-writer {
 @since(version = 0.3.0)
 interface read-resource-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, meta, uri};
-
-    @since(version = 0.3.0)
-    record resource-contents-options {
-        mime-type: option<string>,
-        meta: meta,
-    }
-
-    @since(version = 0.3.0)
-    record resource-contents {
-        uri: uri,
-        data: list<u8>,
-        options: option<resource-contents-options>,
-    }
-
-    @since(version = 0.3.0)
-    record options {
-        meta: meta,
-    }
+    use protocol.{id, resource-contents, meta-options};
 
     send: func(
         id: id,
@@ -311,7 +193,7 @@ interface read-resource-writer {
 
     resource writer {
         write: func(contents: list<u8>) -> result<_, stream-error>;
-        close: func(options: option<options>) -> result<_, stream-error>;
+        close: func(options: option<meta-options>) -> result<_, stream-error>;
     }
 
     open: func(
@@ -327,30 +209,7 @@ interface read-resource-writer {
 @since(version = 0.3.0)
 interface list-resource-templates-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{annotations, id, cursor, meta};
-
-    @since(version = 0.3.0)
-    record resource-template-options {
-        description: option<string>,
-        title: option<string>,
-        mime-type: option<string>,
-        annotations: option<annotations>,
-        meta: meta,
-    }
-
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplate>
-    @since(version = 0.3.0)
-    record resource-template {
-        uri-template: string,
-        name: string,
-        options: option<resource-template-options>,
-    }
-
-    @since(version = 0.3.0)
-    record options {
-        meta: meta,
-        next-cursor: cursor,
-    }
+    use protocol.{id, resource-template, next-cursor-options};
 
     send: func(
         id: id,
@@ -360,7 +219,7 @@ interface list-resource-templates-writer {
 
     resource writer {
         write: func(template: resource-template) -> result<_, stream-error>;
-        close: func(options: option<options>) -> result<_, stream-error>;
+        close: func(options: option<next-cursor-options>) -> result<_, stream-error>;
     }
 
     open: func(
@@ -375,39 +234,9 @@ interface list-resource-templates-writer {
 @since(version = 0.3.0)
 interface list-prompts-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, meta};
+    use protocol.{id, prompt, next-cursor-options};
 
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptargument>
-    @since(version = 0.3.0)
-    record prompt-argument {
-        name: string,
-        description: option<string>,
-        required: option<bool>,
-        title: option<string>,
-    }
-
-    @since(version = 0.3.0)
-    record prompt-options {
-        meta: meta,
-        arguments: option<list<prompt-argument>>,
-        description: option<string>,
-        title: option<string>,
-    }
-
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompt>
-    @since(version = 0.3.0)
-    record prompt {
-        name: string,
-        options: option<prompt-options>,
-    }
-
-    @since(version = 0.3.0)
-    record options {
-        meta: meta,
-        next-cursor: option<string>,
-    }
-
-    write: func(
+    send: func(
         id: id,
         out: output-stream,
         prompts: list<prompt>,
@@ -415,7 +244,7 @@ interface list-prompts-writer {
 
     resource writer {
         write: func(prompt: prompt) -> result<_, stream-error>;
-        close: func(options: option<options>) -> result<_, stream-error>;
+        close: func(options: option<next-cursor-options>) -> result<_, stream-error>;
     }
 
     open: func(
@@ -430,22 +259,9 @@ interface list-prompts-writer {
 @since(version = 0.3.0)
 interface get-prompt-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{content-block, role, id, meta};
+    use protocol.{id, prompt-message, description-options};
 
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptmessage>
-    @since(version = 0.3.0)
-    record prompt-message {
-        content: content-block,
-        role: role,
-    }
-
-    @since(version = 0.3.0)
-    record options {
-        meta: meta,
-        description: option<string>,
-    }
-
-    write: func(
+    send: func(
         id: id,
         out: output-stream,
         messages: list<prompt-message>,
@@ -453,7 +269,7 @@ interface get-prompt-writer {
 
     resource writer {
         write: func(message: prompt-message) -> result<_, stream-error>;
-        close: func(options: option<options>) -> result<_, stream-error>;
+        close: func(options: option<description-options>) -> result<_, stream-error>;
     }
 
     open: func(
@@ -464,28 +280,37 @@ interface get-prompt-writer {
 
 /// Writes completion/complete results to an output stream.
 ///
+/// The response structure follows MCP schema with a nested "completion" object
+/// containing "values", "total", and "hasMore" fields.
+///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#completion-complete>
 @since(version = 0.3.0)
 interface complete-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id};
+    use protocol.{id, completion-result-options};
 
-    @since(version = 0.3.0)
-    record options {
-        has-more: option<bool>,
-    }
-
-    write: func(
+    /// Send a complete list of completion values in one call.
+    /// The implementation will output the proper nested MCP structure:
+    /// {"completion": {"values": [...], "total": N, "hasMore": bool}}
+    send: func(
         id: id,
         out: output-stream,
         values: list<string>,
+        options: option<completion-result-options>,
     ) -> result<_, stream-error>;
 
+    /// Streaming writer for sending completion values incrementally.
     resource writer {
+        /// Write a single completion value to the stream.
         write: func(value: string) -> result<_, stream-error>;
-        close: func(options: option<options>) -> result<_, stream-error>;
+
+        /// Close the stream and finalize with optional metadata.
+        /// This will properly close the nested MCP structure.
+        close: func(options: option<completion-result-options>) -> result<_, stream-error>;
     }
 
+    /// Open a streaming writer for sending completion values.
+    /// The implementation will start the proper nested MCP structure.
     open: func(
         id: id,
         out: output-stream

@@ -6,7 +6,9 @@
 
 use crate::bindings::exports::wasmcp::mcp::{list_prompts_writer, get_prompt_writer};
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
-use crate::bindings::wasmcp::mcp::protocol::{Id, Role};
+use crate::bindings::wasmcp::mcp::protocol::{
+    Id, Role, NextCursorOptions, DescriptionOptions, PromptArgument,
+};
 use crate::utils::{
     build_content_block_json, build_jsonrpc_response, build_meta_object,
     write_sse_message, JsonObjectBuilder,
@@ -19,7 +21,7 @@ pub struct GetPromptWriter;
 // ===== List Prompts Writer =====
 
 impl list_prompts_writer::Guest for ListPromptsWriter {
-    fn write(
+    fn send(
         id: Id,
         out: OutputStream,
         prompts: Vec<list_prompts_writer::Prompt>,
@@ -99,7 +101,7 @@ impl list_prompts_writer::GuestWriter for ListPromptsWriterResource {
         Ok(())
     }
 
-    fn close(&self, options: Option<list_prompts_writer::Options>) -> Result<(), StreamError> {
+    fn close(&self, options: Option<NextCursorOptions>) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
 
         if state.closed {
@@ -140,7 +142,7 @@ impl list_prompts_writer::GuestWriter for ListPromptsWriterResource {
 // ===== Get Prompt Writer =====
 
 impl get_prompt_writer::Guest for GetPromptWriter {
-    fn write(
+    fn send(
         id: Id,
         out: OutputStream,
         messages: Vec<get_prompt_writer::PromptMessage>,
@@ -220,7 +222,7 @@ impl get_prompt_writer::GuestWriter for GetPromptWriterResource {
         Ok(())
     }
 
-    fn close(&self, options: Option<get_prompt_writer::Options>) -> Result<(), StreamError> {
+    fn close(&self, options: Option<DescriptionOptions>) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
 
         if state.closed {
@@ -297,7 +299,7 @@ fn build_single_prompt(prompt: &list_prompts_writer::Prompt) -> String {
 }
 
 /// Build a JSON array of prompt arguments.
-fn build_prompt_arguments_array(arguments: &[list_prompts_writer::PromptArgument]) -> String {
+fn build_prompt_arguments_array(arguments: &[PromptArgument]) -> String {
     if arguments.is_empty() {
         return "[]".to_string();
     }

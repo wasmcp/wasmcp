@@ -14,16 +14,31 @@ use std::cell::RefCell;
 pub struct CompleteWriter;
 
 impl complete_writer::Guest for CompleteWriter {
-    fn write(
+    fn send(
         id: Id,
         out: OutputStream,
         values: Vec<String>,
+        options: Option<complete_writer::CompletionResultOptions>,
     ) -> Result<(), StreamError> {
-        // One-shot: Build complete response and send
+        // Build the nested completion structure as per MCP schema
         let values_json = build_completion_values_array(&values);
 
+        let mut completion_obj = JsonObjectBuilder::new();
+        completion_obj.add_field("values", &values_json);
+
+        // Add optional fields if provided
+        if let Some(opts) = options {
+            if let Some(total) = opts.total {
+                completion_obj.add_number("total", total);
+            }
+            if let Some(has_more) = opts.has_more {
+                completion_obj.add_bool("hasMore", has_more);
+            }
+        }
+
+        // Wrap in the result with "completion" (singular) field
         let mut result = JsonObjectBuilder::new();
-        result.add_field("completions", &values_json);
+        result.add_field("completion", &completion_obj.build());
 
         let response = build_jsonrpc_response(&id, &result.build());
         write_sse_message(&out, &response)?;
@@ -39,10 +54,10 @@ impl complete_writer::Guest for CompleteWriter {
         id: Id,
         out: OutputStream,
     ) -> Result<complete_writer::Writer, StreamError> {
-        // Start the JSON-RPC response and completions array
+        // Start the JSON-RPC response with nested completion structure
         let id_str = crate::utils::format_id(&id);
         let header = format!(
-            r#"{{"jsonrpc":"2.0","id":{id_str},"result":{{"completions":["#
+            r#"{{"jsonrpc":"2.0","id":{id_str},"result":{{"completion":{{"values":["#
         );
 
         // Write the opening of the response
@@ -95,26 +110,30 @@ impl complete_writer::GuestWriter for CompleteWriterResource {
         Ok(())
     }
 
-    fn close(&self, options: Option<complete_writer::Options>) -> Result<(), StreamError> {
+    fn close(&self, options: Option<complete_writer::CompletionResultOptions>) -> Result<(), StreamError> {
         let mut state = self.state.borrow_mut();
 
         if state.closed {
             return Err(StreamError::Closed);
         }
 
-        // Close the completions array and add optional fields
+        // Close the values array and add optional fields
         let mut closing = String::from("]");
 
-        // Add optional hasMore field
+        // Add optional fields within the completion object
         if let Some(opts) = options {
+            if let Some(total) = opts.total {
+                closing.push_str(r#","total":"#);
+                closing.push_str(&total.to_string());
+            }
             if let Some(has_more) = opts.has_more {
                 closing.push_str(r#","hasMore":"#);
                 closing.push_str(if has_more { "true" } else { "false" });
             }
         }
 
-        // Close the result object and JSON-RPC response
-        closing.push_str("}}");
+        // Close the completion object, result object, and JSON-RPC response
+        closing.push_str("}}}");
 
         // Write the closing
         write_sse_message(&state.out, &closing)?;

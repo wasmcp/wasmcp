@@ -1,4 +1,4 @@
-package wasmcp:mcp@0.3.1-alpha.12;
+package wasmcp:mcp@0.3.1-alpha.13;
 
 interface protocol {
     type json = string;
@@ -285,6 +285,173 @@ interface protocol {
         audio(audio-content),
         resource-link(resource-link-content),
         embedded-resource(embedded-resource-content),
+    }
+
+    /// Options for initialization results.
+    @since(version = 0.3.0)
+    record initialize-result-options {
+        instructions: option<string>,
+        meta: meta,
+    }
+
+    /// Initialization result structure.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializeresult>
+    @since(version = 0.3.0)
+    record initialize-result {
+        server-info: implementation,
+        capabilities: server-capabilities,
+        protocol-version: protocol-version,
+        options: option<initialize-result-options>,
+    }
+
+    /// Annotations for tool capabilities.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
+    @since(version = 0.3.0)
+    record tool-annotations {
+        title: option<string>,
+        read-only-hint: option<bool>,
+        destructive-hint: option<bool>,
+        idempotent-hint: option<bool>,
+        open-world-hint: option<bool>,
+    }
+
+    /// Optional properties for tool definitions.
+    @since(version = 0.3.0)
+    record tool-options {
+        meta: meta,
+        annotations: option<tool-annotations>,
+        description: option<string>,
+        output-schema: option<json>,
+        title: option<string>,
+    }
+
+    /// Options for list-tools results.
+    @since(version = 0.3.0)
+    record next-cursor-options {
+        meta: meta,
+        next-cursor: cursor,
+    }
+
+    @since(version = 0.3.0)
+    record is-error-options {
+        is-error: bool,
+        meta: meta,
+    }
+
+    /// Tool definition.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
+    @since(version = 0.3.0)
+    record tool {
+        name: string,
+        input-schema: string,
+        options: option<tool-options>,
+    }
+
+    record structured-tool-result {
+        structured-content: json,
+        options: option<is-error-options>,
+    }
+
+    @since(version = 0.3.0)
+    record resource-options {
+        size: option<u64>,
+        title: option<string>,
+        description: option<string>,
+        mime-type: option<string>,
+        annotations: option<annotations>,
+        meta: meta,
+    }
+
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resource>
+    @since(version = 0.3.0)
+    record %resource {
+        uri: uri,
+        name: string,
+        options: option<resource-options>,
+    }
+
+    @since(version = 0.3.0)
+    record resource-contents-options {
+        mime-type: option<string>,
+        meta: meta,
+    }
+
+    @since(version = 0.3.0)
+    record resource-contents {
+        uri: uri,
+        data: list<u8>,
+        options: option<resource-contents-options>,
+    }
+
+    @since(version = 0.3.0)
+    record meta-options {
+        meta: meta,
+    }
+
+    @since(version = 0.3.0)
+    record resource-template-options {
+        description: option<string>,
+        title: option<string>,
+        mime-type: option<string>,
+        annotations: option<annotations>,
+        meta: meta,
+    }
+
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplate>
+    @since(version = 0.3.0)
+    record resource-template {
+        uri-template: string,
+        name: string,
+        options: option<resource-template-options>,
+    }
+
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptargument>
+    @since(version = 0.3.0)
+    record prompt-argument {
+        name: string,
+        description: option<string>,
+        required: option<bool>,
+        title: option<string>,
+    }
+
+    @since(version = 0.3.0)
+    record prompt-options {
+        meta: meta,
+        arguments: option<list<prompt-argument>>,
+        description: option<string>,
+        title: option<string>,
+    }
+
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompt>
+    @since(version = 0.3.0)
+    record prompt {
+        name: string,
+        options: option<prompt-options>,
+    }
+
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptmessage>
+    @since(version = 0.3.0)
+    record prompt-message {
+        content: content-block,
+        role: role,
+    }
+
+    @since(version = 0.3.0)
+    record description-options {
+        meta: meta,
+        description: option<string>,
+    }
+
+    /// Options for completion results, matching MCP schema.
+    /// Used to provide additional metadata about completion results.
+    @since(version = 0.3.0)
+    record completion-result-options {
+        /// The total number of completion options available.
+        /// This can exceed the number of values actually sent in the response.
+        total: option<u64>,
+        /// Indicates whether there are additional completion options beyond
+        /// those provided in the current response.
+        has-more: option<bool>,
     }
 
     @since(version = 0.3.1-alpha.1)

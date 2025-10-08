@@ -108,8 +108,8 @@ impl bindings::exports::wasmcp::mcp::content_tool_writer::Guest for Component {
 }
 
 impl bindings::exports::wasmcp::mcp::structured_tool_writer::Guest for Component {
-    fn send(id: bindings::wasmcp::mcp::protocol::Id, out: bindings::wasi::io::streams::OutputStream, structured: bindings::exports::wasmcp::mcp::structured_tool_writer::StructuredResult) -> Result<(), bindings::wasi::io::streams::StreamError> {
-        tools::StructuredToolWriter::send(id, out, structured)
+    fn send(id: bindings::wasmcp::mcp::protocol::Id, out: bindings::wasi::io::streams::OutputStream, structured: bindings::wasmcp::mcp::protocol::StructuredToolResult, options: Option<bindings::wasmcp::mcp::protocol::IsErrorOptions>) -> Result<(), bindings::wasi::io::streams::StreamError> {
+        tools::StructuredToolWriter::send(id, out, structured, options)
     }
 }
 
@@ -151,8 +151,8 @@ impl bindings::exports::wasmcp::mcp::list_resource_templates_writer::Guest for C
 }
 
 impl bindings::exports::wasmcp::mcp::list_prompts_writer::Guest for Component {
-    fn write(id: bindings::wasmcp::mcp::protocol::Id, out: bindings::wasi::io::streams::OutputStream, prompts: Vec<bindings::exports::wasmcp::mcp::list_prompts_writer::Prompt>) -> Result<(), bindings::wasi::io::streams::StreamError> {
-        prompts::ListPromptsWriter::write(id, out, prompts)
+    fn send(id: bindings::wasmcp::mcp::protocol::Id, out: bindings::wasi::io::streams::OutputStream, prompts: Vec<bindings::exports::wasmcp::mcp::list_prompts_writer::Prompt>) -> Result<(), bindings::wasi::io::streams::StreamError> {
+        prompts::ListPromptsWriter::send(id, out, prompts)
     }
 
     type Writer = prompts::ListPromptsWriterResource;
@@ -163,8 +163,8 @@ impl bindings::exports::wasmcp::mcp::list_prompts_writer::Guest for Component {
 }
 
 impl bindings::exports::wasmcp::mcp::get_prompt_writer::Guest for Component {
-    fn write(id: bindings::wasmcp::mcp::protocol::Id, out: bindings::wasi::io::streams::OutputStream, messages: Vec<bindings::exports::wasmcp::mcp::get_prompt_writer::PromptMessage>) -> Result<(), bindings::wasi::io::streams::StreamError> {
-        prompts::GetPromptWriter::write(id, out, messages)
+    fn send(id: bindings::wasmcp::mcp::protocol::Id, out: bindings::wasi::io::streams::OutputStream, messages: Vec<bindings::exports::wasmcp::mcp::get_prompt_writer::PromptMessage>) -> Result<(), bindings::wasi::io::streams::StreamError> {
+        prompts::GetPromptWriter::send(id, out, messages)
     }
 
     type Writer = prompts::GetPromptWriterResource;
@@ -175,8 +175,8 @@ impl bindings::exports::wasmcp::mcp::get_prompt_writer::Guest for Component {
 }
 
 impl bindings::exports::wasmcp::mcp::complete_writer::Guest for Component {
-    fn write(id: bindings::wasmcp::mcp::protocol::Id, out: bindings::wasi::io::streams::OutputStream, values: Vec<String>) -> Result<(), bindings::wasi::io::streams::StreamError> {
-        completion::CompleteWriter::write(id, out, values)
+    fn send(id: bindings::wasmcp::mcp::protocol::Id, out: bindings::wasi::io::streams::OutputStream, values: Vec<String>, options: Option<bindings::wasmcp::mcp::protocol::CompletionResultOptions>) -> Result<(), bindings::wasi::io::streams::StreamError> {
+        completion::CompleteWriter::send(id, out, values, options)
     }
 
     type Writer = completion::CompleteWriterResource;

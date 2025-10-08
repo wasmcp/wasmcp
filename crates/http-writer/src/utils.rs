@@ -251,7 +251,7 @@ pub fn build_content_block_json(block: &crate::bindings::wasmcp::mcp::protocol::
             }
         }
         ContentBlock::ResourceLink(link) => {
-            obj.add_string("type", "resource");
+            obj.add_string("type", "resource_link");
             obj.add_string("uri", &link.uri);
             obj.add_string("name", &link.name);
 
