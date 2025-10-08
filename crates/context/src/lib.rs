@@ -45,8 +45,9 @@ use bindings::wasmcp::mcp::protocol::{
     ArgParams, Cancellation, ClientCapabilities, CompleteParams, CompletionArgument,
     CompletionContext, CompletionPromptReference, CompletionRef, ElicitResult,
     ElicitResultAction, ElicitResultContent, Error as McpError, ErrorCode, Id, Implementation,
-    InitializeParams, JsonrpcObject, Notification, NotificationMethod, ProgressToken,
-    ProtocolVersion, Request, RequestMethod, ResponseResult, Result as McpResult,
+    InitializeParams, JsonrpcObject, ListChangedCapabilityOption, Notification, NotificationMethod,
+    ProgressToken, ProtocolVersion, Request, RequestMethod, ResponseResult, Result as McpResult,
+    ServerCapabilities,
 };
 
 use serde_json::Value;
@@ -146,6 +147,58 @@ impl GuestContext for Context {
     fn set(&self, key: String, value: String) {
         if let Ok(mut ctx) = self.context.write() {
             ctx.insert(key, value);
+        }
+    }
+
+    /// Register server capabilities in the context store.
+    ///
+    /// This provides a type-safe way for middleware components to register
+    /// their capabilities. Each non-None capability is serialized to JSON
+    /// and stored with the key "wasmcp:capability:{name}".
+    fn register_capabilities(&self, capabilities: ServerCapabilities) {
+        const PREFIX: &str = "wasmcp:capability:";
+
+        if let Ok(mut ctx) = self.context.write() {
+            // Register tools capability
+            if let Some(tools) = capabilities.tools {
+                let json = serde_json::json!({
+                    "listChanged": tools.list_changed,
+                });
+                ctx.insert(format!("{}tools", PREFIX), json.to_string());
+            }
+
+            // Register prompts capability
+            if let Some(prompts) = capabilities.prompts {
+                let json = serde_json::json!({
+                    "listChanged": prompts.list_changed,
+                });
+                ctx.insert(format!("{}prompts", PREFIX), json.to_string());
+            }
+
+            // Register resources capability
+            if let Some(resources) = capabilities.resources {
+                let json = serde_json::json!({
+                    "listChanged": resources.list_changed,
+                    "subscribe": resources.subscribe,
+                });
+                ctx.insert(format!("{}resources", PREFIX), json.to_string());
+            }
+
+            // Register completions capability
+            if let Some(completions) = capabilities.completions {
+                ctx.insert(format!("{}completions", PREFIX), completions);
+            }
+
+            // Register logging capability
+            if let Some(logging) = capabilities.logging {
+                ctx.insert(format!("{}logging", PREFIX), logging);
+            }
+
+            // Register experimental capabilities
+            if let Some(experimental) = capabilities.experimental {
+                let json = serde_json::to_string(&experimental).unwrap_or_else(|_| "[]".to_string());
+                ctx.insert(format!("{}experimental", PREFIX), json);
+            }
         }
     }
 }
@@ -399,22 +452,54 @@ fn parse_initialize_params(params: &Value) -> Result<InitializeParams, String> {
     let capabilities = params
         .get("capabilities")
         .map(|caps| {
-            let mut flags = ClientCapabilities::empty();
-            if caps.get("elicitation").is_some() {
-                flags |= ClientCapabilities::ELICITATION;
+            // Parse elicitation capability (if present, it's an object)
+            let elicitation = caps
+                .get("elicitation")
+                .map(|e| serde_json::to_string(e).unwrap_or_else(|_| "{}".to_string()));
+
+            // Parse roots capability (with listChanged option)
+            let roots = caps.get("roots").and_then(|r| {
+                Some(ListChangedCapabilityOption {
+                    list_changed: r.get("listChanged").and_then(|lc| lc.as_bool()),
+                })
+            });
+
+            // Parse sampling capability (if present, it's an object)
+            let sampling = caps
+                .get("sampling")
+                .map(|s| serde_json::to_string(s).unwrap_or_else(|_| "{}".to_string()));
+
+            // Parse experimental capabilities
+            let experimental = caps.get("experimental").and_then(|exp| {
+                if let Some(obj) = exp.as_object() {
+                    Some(
+                        obj.iter()
+                            .map(|(k, v)| {
+                                (
+                                    k.clone(),
+                                    serde_json::to_string(v).unwrap_or_else(|_| "{}".to_string()),
+                                )
+                            })
+                            .collect(),
+                    )
+                } else {
+                    None
+                }
+            });
+
+            ClientCapabilities {
+                elicitation,
+                roots,
+                sampling,
+                experimental,
             }
-            if caps.get("roots").is_some() {
-                flags |= ClientCapabilities::ROOTS;
-            }
-            if caps.get("sampling").is_some() {
-                flags |= ClientCapabilities::SAMPLING;
-            }
-            if caps.get("experimental").is_some() {
-                flags |= ClientCapabilities::EXPERIMENTAL;
-            }
-            flags
         })
-        .unwrap_or_else(ClientCapabilities::empty);
+        .unwrap_or(ClientCapabilities {
+            elicitation: None,
+            roots: None,
+            sampling: None,
+            experimental: None,
+        });
 
     Ok(InitializeParams {
         capabilities,

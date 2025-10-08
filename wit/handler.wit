@@ -1,7 +1,7 @@
 use wasi:io/streams@0.2.3;
 
 interface context {
-    use protocol.{jsonrpc-object};
+    use protocol.{jsonrpc-object, server-capabilities};
 
     type parse-error = string;
 
@@ -19,6 +19,8 @@ interface context {
         /// Set a context value by key.
         @since(version = 0.3.0)
         set: func(key: string, value: string);
+
+        register-capabilities: func(capabilities: server-capabilities);
     }
 }
 
