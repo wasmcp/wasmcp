@@ -28,3 +28,12 @@ registry = "wasi.dev"
 requirement = "=0.2.3"
 version = "0.2.3"
 digest = "sha256:06b1e3bfc7548e3c0c06a78b4c1f98a3fa81b8b231ea3d4e7602fe221e2f3cc5"
+
+[[packages]]
+name = "wasi:otel-sdk"
+registry = "ghcr.io"
+
+[[packages.versions]]
+requirement = "=0.1.0-alpha.3"
+version = "0.1.0-alpha.3"
+digest = "sha256:5fc220da3373aacaa1ff456a625d06f7ed5078ee91b88f41edd419e26bea4781"

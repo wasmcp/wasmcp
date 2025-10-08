@@ -1,0 +1,1164 @@
+package wasmcp:mcp@0.3.0;
+
+/// OpenTelemetry configuration interface
+/// Configuration components export this to provide provider settings
+@since(version = 0.3.0)
+interface otel-config {
+  use wasi:otel-providers/common-providers@0.1.0.{provider};
+
+  /// Get OTEL provider configuration
+  /// Called once by middleware on initialization (first request)
+  @since(version = 0.3.0)
+  get-config: func() -> provider;
+}
+
+/// OpenTelemetry instrumentation interface
+/// Middleware exports this, handlers import it
+@since(version = 0.3.0)
+interface otel-instrumentation {
+  use wasi:otel-sdk/common@0.1.0-alpha.3.{attribute};
+  use wasi:otel-sdk/trace@0.1.0-alpha.3.{span-kind};
+
+  /// Add an attribute to the current active span
+  @since(version = 0.3.0)
+  add-span-attribute: func(key: string, value: string);
+
+  /// Add a timestamped event to the current active span
+  @since(version = 0.3.0)
+  add-span-event: func(name: string, attributes: list<attribute>);
+
+  /// Start a new child span under the current active span
+  /// Returns a span ID that can be used to end the span
+  @since(version = 0.3.0)
+  start-child-span: func(name: string, kind: span-kind) -> u64;
+
+  /// End a child span by its ID
+  @since(version = 0.3.0)
+  end-child-span: func(span-id: u64);
+}
+
+/// Core MCP data types and aliases
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema>
+@since(version = 0.3.0)
+interface types {
+  /// Optional metadata for vendor-specific extensions.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
+  @since(version = 0.3.0)
+  type meta = option<list<tuple<string, string>>>;
+
+  /// Opaque pagination token.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#cursor>
+  @since(version = 0.3.0)
+  type cursor = string;
+
+  /// JSON-encoded data as a string.
+  @since(version = 0.3.0)
+  type json = string;
+
+  /// Uniform Resource Identifier.
+  @since(version = 0.3.0)
+  type uri = string;
+
+  /// Client capabilities (extensible).
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#clientcapabilities>
+  @since(version = 0.3.0)
+  flags client-capabilities {
+    elicitation,
+    roots,
+    sampling,
+    experimental,
+  }
+
+  /// Capabilities that a server supports.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#servercapabilities>
+  @since(version = 0.3.0)
+  flags server-capabilities {
+    /// Argument autocompletion
+    completions,
+    /// Prompts
+    prompts,
+    /// Resources
+    resources,
+    /// Tools
+    tools,
+    /// Experimental features
+    experimental,
+  }
+
+  /// MCP protocol versions.
+  @since(version = 0.3.0)
+  enum protocol-version {
+    /// Version 2025-06-18
+    v20250618,
+    /// Version 2025-03-26
+    v20250326,
+    /// Version 2024-11-05
+    v20241105,
+  }
+
+  /// MCP implementation metadata.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#implementation>
+  @since(version = 0.3.0)
+  record implementation {
+    name: string,
+    title: option<string>,
+    version: string,
+  }
+
+  /// JSON-RPC request ID (string or number).
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#requestid>
+  @since(version = 0.3.0)
+  variant id {
+    number(s64),
+    %string(string),
+  }
+}
+
+/// Error handling for MCP operations.
+///
+/// This interface provides error types that map to JSON-RPC error codes
+/// as defined in the MCP specification.
+@since(version = 0.3.0)
+interface error {
+  /// Standard JSON-RPC error codes.
+  ///
+  /// Maps to the error codes in JSONRPCError as defined in the MCP spec.
+  /// Standard codes per JSON-RPC 2.0:
+  /// - Parse error: -32700
+  /// - Invalid request: -32600
+  /// - Method not found: -32601
+  /// - Invalid params: -32602
+  /// - Internal error: -32603
+  ///
+  /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#jsonrpcerror>
+  @since(version = 0.3.0)
+  enum error-code {
+    /// Parse error (-32700)
+    parse-error,
+    /// Invalid request (-32600)
+    invalid-request,
+    /// Method not found (-32601)
+    method-not-found,
+    /// Invalid parameters (-32602)
+    invalid-params,
+    /// Internal error (-32603)
+    internal-error,
+  }
+
+  /// Standard MCP error structure.
+  ///
+  /// Maps to JSONRPCError.error in the MCP spec:
+  /// - code: number - "The error type that occurred"
+  /// - message: string - "A short description of the error"
+  /// - data?: unknown - "Additional information about the error"
+  ///
+  /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#jsonrpcerror>
+  @since(version = 0.3.0)
+  record error {
+    code: error-code,
+    message: string,
+    data: option<string>,
+  }
+}
+
+/// MCP request types
+@since(version = 0.3.0)
+interface request {
+  use wasi:io/streams@0.2.3.{input-stream, stream-error};
+  use types.{id, implementation, json, uri, cursor, client-capabilities, protocol-version, server-capabilities};
+  use error.{error as mcp-error};
+
+  /// Arguments for tool calls and prompt requests.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
+  @since(version = 0.3.0)
+  record arguments {
+    name: string,
+    arguments: option<json>,
+  }
+
+  /// Argument for completion requests.
+  @since(version = 0.3.0)
+  record completion-argument {
+    name: string,
+    value: string,
+  }
+
+  /// Context for completion requests.
+  @since(version = 0.3.0)
+  record completion-context {
+    arguments: option<json>,
+  }
+
+  /// Reference to a prompt for completion.
+  @since(version = 0.3.0)
+  record completion-prompt-reference {
+    name: string,
+    title: option<string>,
+  }
+
+  /// Reference types for completions.
+  @since(version = 0.3.0)
+  variant completion-ref {
+    /// Prompt reference.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptreference>
+    prompt(completion-prompt-reference),
+    /// Resource template reference.
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplatereference>
+    resource-template(uri),
+  }
+
+  /// Initialize request parameters.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
+  @since(version = 0.3.0)
+  record initialize-params {
+    capabilities: client-capabilities,
+    client-info: implementation,
+    protocol-version: protocol-version,
+  }
+
+  /// Parameters for listing tools.
+  @since(version = 0.3.0)
+  type list-tools-params = cursor;
+
+  /// Parameters for calling a tool.
+  @since(version = 0.3.0)
+  type call-tool-params = arguments;
+
+  /// Parameters for listing resources.
+  @since(version = 0.3.0)
+  type list-resources-params = cursor;
+
+  /// Parameters for reading a resource.
+  @since(version = 0.3.0)
+  type read-resource-params = uri;
+
+  /// Parameters for listing resource templates.
+  @since(version = 0.3.0)
+  type list-resource-templates-params = cursor;
+
+  /// Parameters for listing prompts.
+  @since(version = 0.3.0)
+  type list-prompts-params = cursor;
+
+  /// Parameters for getting a prompt.
+  @since(version = 0.3.0)
+  type get-prompt-params = arguments;
+
+  /// Parameters for completion requests.
+  @since(version = 0.3.0)
+  record completion-params {
+    argument: completion-argument,
+    ref: completion-ref,
+    context: option<completion-context>,
+  }
+
+  /// Parameters for different MCP methods.
+  @since(version = 0.3.0)
+  variant params {
+    /// initialize
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
+    initialize(initialize-params),
+    /// tools/list
+    tools-list(list-tools-params),
+    /// tools/call
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
+    tools-call(call-tool-params),
+    /// resources/list
+    resources-list(list-resources-params),
+    /// resources/read
+    resources-read(read-resource-params),
+    /// resources/templates/list
+    resources-templates-list(list-resource-templates-params),
+    /// prompts/list
+    prompts-list(list-prompts-params),
+    /// prompts/get
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest>
+    prompts-get(get-prompt-params),
+    /// completion/complete
+    completion-complete(completion-params),
+  }
+
+  enum feature {
+    initialize,
+    tools,
+    resources,
+    prompts,
+    completion,
+  }
+
+  /// MCP request resource providing lazy access to request data
+  /// and request-scoped context storage.
+  @since(version = 0.3.0)
+  resource request {
+    /// Parse a JSON-RPC 2.0 request from an HTTP request body stream.
+    /// Reads until EOF (stream closes). The entire request body is buffered.
+    /// Used by the HTTP transport which provides complete request bodies.
+    @since(version = 0.3.0)
+    from-http-stream: static func(input: borrow<input-stream>) -> result<request, stream-error>;
+    /// Parse a JSON-RPC 2.0 request from a stdio stream.
+    /// Reads until newline delimiter (\n or \r\n). Supports persistent connections
+    /// with multiple newline-delimited messages on the same stream.
+    /// Used by the stdio transport which provides newline-delimited JSON-RPC messages.
+    @since(version = 0.3.0)
+    from-stdio-stream: static func(input: borrow<input-stream>) -> result<request, stream-error>;
+    /// Get the request ID.
+    @since(version = 0.3.0)
+    id: func() -> id;
+    /// Get the capability required for this request.
+    @since(version = 0.3.0)
+    feature: func() -> feature;
+    /// Get the request parameters.
+    @since(version = 0.3.0)
+    params: func() -> result<params, mcp-error>;
+    /// Get a context value by key.
+    @since(version = 0.3.0)
+    get: func(key: string) -> result<option<list<u8>>>;
+    /// Set a context value by key.
+    @since(version = 0.3.0)
+    set: func(key: string, value: list<u8>) -> result;
+    /// Check if this request needs the provided capabilities.
+    /// Registers capabilities during initialize requests and returns false (forward to next handler).
+    /// For other requests, returns true if the request feature matches the provided capabilities.
+    @since(version = 0.3.0)
+    needs: func(capabilities: server-capabilities) -> bool;
+    /// Get the server capabilities associated with this request.
+    @since(version = 0.3.0)
+    get-capabilities: func() -> result<option<server-capabilities>>;
+  }
+}
+
+/// Handler interface for incoming MCP requests.
+///
+/// This interface defines the contract for handling MCP requests
+/// and writing responses to an output stream.
+@since(version = 0.3.0)
+interface incoming-handler {
+  use wasi:io/streams@0.2.3.{output-stream};
+  use request.{request};
+
+  /// Handle an incoming MCP request and write the response to the output stream.
+  /// The handler receives ownership of the request resource, allowing it to
+  /// either process the request or forward it to the next handler in the chain.
+  @since(version = 0.3.0)
+  handle: func(request: request, output: output-stream);
+}
+
+/// Content types and structures for MCP messages.
+///
+/// This interface defines the content blocks that can be included in MCP messages,
+/// mapping directly to the ContentBlock type union in the MCP specification.
+///
+/// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
+@since(version = 0.3.0)
+interface content {
+  use types.{meta};
+
+  /// Role in a conversation.
+  ///
+  /// Maps to the Role type in the MCP spec:
+  /// "The sender or recipient of messages and data in a conversation."
+  /// Valid values: "user" | "assistant"
+  ///
+  /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#role>
+  @since(version = 0.3.0)
+  enum role {
+    user,
+    assistant,
+  }
+
+  /// Optional annotations for the client.
+  ///
+  /// The client can use annotations to inform how objects are used or displayed.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#annotations>
+  @since(version = 0.3.0)
+  record annotations {
+    /// Describes who the intended customer of this object or data is.
+    ///
+    /// It can include multiple entries to indicate content useful for multiple audiences (e.g., [“user”, “assistant”]).
+    audience: option<list<role>>,
+    /// The moment the resource was last modified, as an ISO 8601 formatted string.
+    ///
+    /// Should be an ISO 8601 formatted string (e.g., “2025-01-12T15:00:58Z”).
+    ///
+    /// Examples: last activity timestamp in an open file, timestamp when the resource was attached, etc.
+    last-modified: option<string>,
+    /// Describes how important this data is for operating the server.
+    ///
+    /// A value of 1 means “most important,” and indicates that the data is effectively required, while 0 means “least important,” and indicates that the data is entirely optional.
+    priority: f64,
+  }
+
+  /// Options for content blocks.
+  @since(version = 0.3.0)
+  record content-options {
+    /// Optional annotations for the client.
+    annotations: option<annotations>,
+    /// Optional metadata.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
+    meta: meta,
+  }
+
+  /// Text provided to or from an LLM.
+  ///
+  /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#textcontent>
+  @since(version = 0.3.0)
+  record text-content {
+    /// The text content of the message.
+    text: string,
+    options: option<content-options>,
+  }
+
+  /// An image provided to or from an LLM.
+  ///
+  /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#imagecontent>
+  @since(version = 0.3.0)
+  record image-content {
+    /// The base64-encoded image data.
+    data: list<u8>,
+    /// The MIME type of the image. Different providers may support different image types.
+    mime-type: string,
+    options: option<content-options>,
+  }
+
+  /// Audio provided to or from an LLM.
+  ///
+  /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#audiocontent>
+  @since(version = 0.3.0)
+  record audio-content {
+    /// The base64-encoded audio data.
+    data: list<u8>,
+    /// The MIME type of the audio. Different providers may support different audio types.
+    mime-type: string,
+    options: option<content-options>,
+  }
+
+  /// Options for resource link content.
+  @since(version = 0.3.0)
+  record resource-link-content-options {
+    title: option<string>,
+    description: option<string>,
+    size: option<u64>,
+    mime-type: option<string>,
+    /// Optional annotations for the client.
+    annotations: option<annotations>,
+    /// Optional metadata.
+    ///
+    /// See: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
+    meta: meta,
+  }
+
+  /// A resource that the server is capable of reading, included in a prompt or tool call result.
+  ///
+  /// Note: resource links returned by tools are not guaranteed to appear in the results of resources/list requests.
+  ///
+  /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcelink>
+  @since(version = 0.3.0)
+  record resource-link-content {
+    /// The URI of this resource.
+    uri: string,
+    /// Intended for programmatic or logical use, but used as a display name in past specs or fallback (if title isn’t present).
+    name: string,
+    options: option<resource-link-content-options>,
+  }
+
+  /// Options for embedded resources.
+  @since(version = 0.3.0)
+  record embedded-resource-options {
+    mime-type: option<string>,
+    meta: meta,
+  }
+
+  /// Text resource contents.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#textresourcecontents>
+  @since(version = 0.3.0)
+  record text-resource-contents {
+    uri: string,
+    text: string,
+    options: option<embedded-resource-options>,
+  }
+
+  /// Binary resource contents.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#blobresourcecontents>
+  @since(version = 0.3.0)
+  record blob-resource-contents {
+    uri: string,
+    blob: list<u8>,
+    options: option<embedded-resource-options>,
+  }
+
+  /// Embedded resource data.
+  @since(version = 0.3.0)
+  variant embedded-resource {
+    text(text-resource-contents),
+    blob(blob-resource-contents),
+  }
+
+  /// Embedded resource with content options.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#embeddedresource>
+  @since(version = 0.3.0)
+  record embedded-resource-content {
+    %resource: embedded-resource,
+    options: option<content-options>,
+  }
+
+  /// Content blocks that can be included in messages.
+  ///
+  /// See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
+  @since(version = 0.3.0)
+  variant content-block {
+    text(text-content),
+    image(image-content),
+    audio(audio-content),
+    resource-link(resource-link-content),
+    embedded-resource(embedded-resource-content),
+  }
+}
+
+/// Writes JSON-RPC error responses to an output stream.
+///
+/// This interface provides a standardized way to write error responses
+/// that conform to the JSON-RPC 2.0 specification.
+///
+/// See: <https://spec.json-rpc.org/specification>
+@since(version = 0.3.0)
+interface error-result {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use types.{id};
+  use error.{error as mcp-error};
+
+  write: func(id: id, output: output-stream, error: mcp-error) -> result<_, stream-error>;
+}
+
+/// Writes initialization results to an output stream.
+///
+/// initialize: <https://modelcontextprotocol.io/specification/2025-06-18/schema#initialize>
+@since(version = 0.3.0)
+interface initialize-result {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use types.{id, implementation, meta, protocol-version, server-capabilities};
+
+  /// Options for initialization results.
+  @since(version = 0.3.0)
+  record initialize-result-options {
+    instructions: option<string>,
+    meta: meta,
+  }
+
+  /// Initialization result structure.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializeresult>
+  @since(version = 0.3.0)
+  record initialize-result {
+    server-info: implementation,
+    capabilities: server-capabilities,
+    protocol-version: protocol-version,
+    options: option<initialize-result-options>,
+  }
+
+  @since(version = 0.3.0)
+  write: func(id: id, output: output-stream, %result: initialize-result) -> result<_, stream-error>;
+}
+
+/// Writes tools/list results to an output stream.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-list>
+@since(version = 0.3.0)
+interface tools-list-result {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use types.{id, cursor, meta, json};
+
+  /// Hints about tool behavior.
+  @since(version = 0.3.0)
+  flags tool-hints {
+    destructive,
+    idempotent,
+    open-world,
+    read-only,
+  }
+
+  /// Annotations for tool capabilities.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
+  @since(version = 0.3.0)
+  record tool-annotations {
+    hints: tool-hints,
+    title: option<string>,
+  }
+
+  /// Optional properties for tool definitions.
+  @since(version = 0.3.0)
+  record tool-options {
+    meta: meta,
+    annotations: option<tool-annotations>,
+    description: option<string>,
+    output-schema: option<json>,
+    title: option<string>,
+  }
+
+  /// Tool definition.
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
+  @since(version = 0.3.0)
+  record tool {
+    name: string,
+    input-schema: string,
+    options: option<tool-options>,
+  }
+
+  /// Options for list-tools results.
+  @since(version = 0.3.0)
+  record options {
+    meta: meta,
+    next-cursor: option<cursor>,
+  }
+
+  resource writer {
+    check-write: func() -> result<u32, stream-error>;
+    write: func(tool: tool) -> result<_, stream-error>;
+    close: func(options: option<options>) -> result<_, stream-error>;
+  }
+
+  write: func(id: id, output: output-stream, tools: list<tool>, options: option<options>) -> result<_, stream-error>;
+
+  open: func(id: id, output: output-stream, initial: list<tool>) -> result<writer, stream-error>;
+}
+
+/// Writes tools/call content results (unstructured).
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-call>
+@since(version = 0.3.0)
+interface tools-call-content {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use content.{content-block};
+  use types.{id, meta};
+
+  @since(version = 0.3.0)
+  record options {
+    is-error: bool,
+    meta: meta,
+  }
+
+  resource writer {
+    check-write: func() -> result<u64, stream-error>;
+    write: func(contents: list<u8>) -> result<_, stream-error>;
+    next: func(content: content-block) -> result<_, stream-error>;
+    close: func(options: option<options>) -> result<_, stream-error>;
+  }
+
+  write-text: func(id: id, output: output-stream, text: string, options: option<options>) -> result<_, stream-error>;
+
+  write-error: func(id: id, output: output-stream, reason: string) -> result<_, stream-error>;
+
+  write: func(id: id, output: output-stream, content: list<content-block>, options: option<options>) -> result<_, stream-error>;
+
+  open: func(id: id, output: output-stream, initial: content-block) -> result<writer, stream-error>;
+}
+
+/// Writes tools/call structured results.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-call>
+@since(version = 0.3.0)
+interface tools-call-structured {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use types.{id, meta, json};
+
+  @since(version = 0.3.0)
+  record options {
+    is-error: bool,
+    meta: meta,
+  }
+
+  write: func(id: id, output: output-stream, structured: json, options: option<options>) -> result<_, stream-error>;
+}
+
+/// Writes resources/list results to an output stream.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-list>
+@since(version = 0.3.0)
+interface resources-list-result {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use types.{id, cursor, meta};
+  use content.{annotations};
+
+  @since(version = 0.3.0)
+  record resource-options {
+    size: option<u64>,
+    title: option<string>,
+    description: option<string>,
+    mime-type: option<string>,
+    annotations: option<annotations>,
+    meta: meta,
+  }
+
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resource>
+  @since(version = 0.3.0)
+  record %resource {
+    uri: string,
+    name: string,
+    options: option<resource-options>,
+  }
+
+  @since(version = 0.3.0)
+  record options {
+    meta: meta,
+    next-cursor: option<cursor>,
+  }
+
+  resource writer {
+    check-write: func() -> result<u32, stream-error>;
+    write: func(%resource: %resource) -> result<_, stream-error>;
+    close: func(options: option<options>) -> result<_, stream-error>;
+  }
+
+  write: func(id: id, output: output-stream, resources: list<%resource>, options: option<options>) -> result<_, stream-error>;
+
+  open: func(id: id, output: output-stream, initial: %resource) -> result<writer, stream-error>;
+}
+
+/// Writes resources/read results to an output stream.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-read>
+@since(version = 0.3.0)
+interface resources-read-result {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use types.{id, meta};
+
+  @since(version = 0.3.0)
+  record contents-options {
+    mime-type: option<string>,
+    meta: meta,
+  }
+
+  @since(version = 0.3.0)
+  record contents {
+    uri: string,
+    data: list<u8>,
+    options: option<contents-options>,
+  }
+
+  @since(version = 0.3.0)
+  record options {
+    meta: meta,
+  }
+
+  resource writer {
+    check-write: func() -> result<u64, stream-error>;
+    write: func(contents: list<u8>) -> result<_, stream-error>;
+    close: func(options: option<options>) -> result<_, stream-error>;
+  }
+
+  write: func(id: id, output: output-stream, contents: contents, options: option<options>) -> result<_, stream-error>;
+
+  open: func(id: id, output: output-stream, initial: contents) -> result<writer, stream-error>;
+}
+
+/// Writes resource-templates/list results to an output stream.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-templates-list>
+@since(version = 0.3.0)
+interface resource-templates-list-result {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use types.{id, cursor, meta};
+  use content.{annotations};
+
+  @since(version = 0.3.0)
+  record template-options {
+    description: option<string>,
+    title: option<string>,
+    mime-type: option<string>,
+    annotations: option<annotations>,
+    meta: meta,
+  }
+
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplate>
+  @since(version = 0.3.0)
+  record template {
+    uri-template: string,
+    name: string,
+    options: option<template-options>,
+  }
+
+  @since(version = 0.3.0)
+  record options {
+    meta: meta,
+    next-cursor: option<cursor>,
+  }
+
+  resource writer {
+    check-write: func() -> result<u32, stream-error>;
+    write: func(template: template) -> result<_, stream-error>;
+    close: func(options: option<options>) -> result<_, stream-error>;
+  }
+
+  write: func(id: id, output: output-stream, templates: list<template>, options: option<options>) -> result<_, stream-error>;
+
+  open: func(id: id, output: output-stream) -> result<writer, stream-error>;
+}
+
+/// Writes prompts/list results to an output stream.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts-list>
+@since(version = 0.3.0)
+interface prompts-list-result {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use types.{id, meta};
+
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptargument>
+  @since(version = 0.3.0)
+  record argument {
+    name: string,
+    description: option<string>,
+    required: option<bool>,
+    title: option<string>,
+  }
+
+  @since(version = 0.3.0)
+  record prompt-options {
+    meta: meta,
+    arguments: option<list<argument>>,
+    description: option<string>,
+    title: option<string>,
+  }
+
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompt>
+  @since(version = 0.3.0)
+  record prompt {
+    name: string,
+    options: option<prompt-options>,
+  }
+
+  @since(version = 0.3.0)
+  record options {
+    meta: meta,
+    next-cursor: option<string>,
+  }
+
+  resource writer {
+    check-write: func() -> result<u32, stream-error>;
+    write: func(prompt: prompt) -> result<_, stream-error>;
+    close: func(options: option<options>) -> result<_, stream-error>;
+  }
+
+  write: func(id: id, output: output-stream, prompts: list<prompt>, options: option<options>) -> result<_, stream-error>;
+
+  open: func(id: id, output: output-stream) -> result<writer, stream-error>;
+}
+
+/// Writes prompts/get results to an output stream.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts%2Fget>
+@since(version = 0.3.0)
+interface prompts-get-result {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use types.{id, meta};
+  use content.{content-block, role};
+
+  /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptmessage>
+  @since(version = 0.3.0)
+  record message {
+    content: content-block,
+    role: role,
+  }
+
+  @since(version = 0.3.0)
+  record options {
+    meta: meta,
+    description: option<string>,
+  }
+
+  resource writer {
+    check-write: func() -> result<u32, stream-error>;
+    write: func(message: message) -> result<_, stream-error>;
+    close: func(options: option<options>) -> result<_, stream-error>;
+  }
+
+  write: func(id: id, output: output-stream, messages: list<message>, options: option<options>) -> result<_, stream-error>;
+
+  open: func(id: id, output: output-stream) -> result<writer, stream-error>;
+}
+
+/// Writes completion/complete results to an output stream.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#completion-complete>
+@since(version = 0.3.0)
+interface completion-complete-result {
+  use wasi:io/streams@0.2.3.{output-stream, stream-error};
+  use types.{id};
+
+  @since(version = 0.3.0)
+  record options {
+    has-more: option<bool>,
+  }
+
+  resource writer {
+    check-write: func() -> result<u32, stream-error>;
+    write: func(values: list<string>) -> result<_, stream-error>;
+    close: func(options: option<options>) -> result<_, stream-error>;
+  }
+
+  write: func(id: id, output: output-stream, values: list<string>, options: option<options>) -> result<_, stream-error>;
+
+  open: func(id: id, output: output-stream) -> result<writer, stream-error>;
+}
+
+/// A WIT framework for composing Model Context Protocol servers as WebAssembly components.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema>
+/// Transport components terminate the transport layer protocol and forward the MCP request resource and output stream handle to the first handler in the chain.
+///
+/// Middleware components intercept an MCP request resource. They can modify the request context before passing the resource to the next handler.
+///
+/// Handler components process specific MCP methods and can forward the request resource to the next handler in the chain.
+///
+/// The `initialize` method handler is the final handler in the chain. It processes the `initialize` MCP request using the server capabilities added to the request context by upstream handlers and middleware.
+/// Transport world for stdio-based MCP communication.
+///
+/// This world provides MCP server functionality over standard I/O,
+/// suitable for command-line tools and local process communication.
+@since(version = 0.3.0)
+world stdio-transport {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import error;
+  import request;
+  import incoming-handler;
+  import wasi:cli/environment@0.2.3;
+  import wasi:cli/exit@0.2.3;
+  import wasi:cli/stdin@0.2.3;
+  import wasi:cli/stdout@0.2.3;
+  import wasi:cli/stderr@0.2.3;
+  import wasi:cli/terminal-input@0.2.3;
+  import wasi:cli/terminal-output@0.2.3;
+  import wasi:cli/terminal-stdin@0.2.3;
+  import wasi:cli/terminal-stdout@0.2.3;
+  import wasi:cli/terminal-stderr@0.2.3;
+  import wasi:clocks/monotonic-clock@0.2.3;
+  import wasi:clocks/wall-clock@0.2.3;
+  import wasi:filesystem/types@0.2.3;
+  import wasi:filesystem/preopens@0.2.3;
+  import wasi:sockets/network@0.2.3;
+  import wasi:sockets/instance-network@0.2.3;
+  import wasi:sockets/udp@0.2.3;
+  import wasi:sockets/udp-create-socket@0.2.3;
+  import wasi:sockets/tcp@0.2.3;
+  import wasi:sockets/tcp-create-socket@0.2.3;
+  import wasi:sockets/ip-name-lookup@0.2.3;
+  import wasi:random/random@0.2.3;
+  import wasi:random/insecure@0.2.3;
+  import wasi:random/insecure-seed@0.2.3;
+
+  export wasi:cli/run@0.2.3;
+}
+/// Transport world for HTTP-based MCP communication.
+///
+/// This world provides MCP server functionality over HTTP,
+/// suitable for network-based communication and web services.
+@since(version = 0.3.0)
+world http-transport {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import error;
+  import request;
+  import incoming-handler;
+  import wasi:clocks/monotonic-clock@0.2.3;
+  import wasi:clocks/wall-clock@0.2.3;
+  import wasi:random/random@0.2.3;
+  import wasi:cli/stdout@0.2.3;
+  import wasi:cli/stderr@0.2.3;
+  import wasi:cli/stdin@0.2.3;
+  import wasi:http/types@0.2.3;
+  import wasi:http/outgoing-handler@0.2.3;
+
+  export wasi:http/incoming-handler@0.2.3;
+}
+/// Handler world for MCP initialization.
+///
+/// Terminates the middleware chain by processing initialize requests
+/// using capabilities accumulated from upstream handlers.
+@since(version = 0.3.0)
+world initialize-handler {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import error;
+  import error-result;
+  import initialize-result;
+  import request;
+
+  export incoming-handler;
+}
+/// Middleware world for request interception.
+///
+/// Both imports and exports the handler interface, enabling components
+/// to intercept requests before forwarding to the next handler.
+@since(version = 0.3.0)
+world middleware {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import error;
+  import request;
+  import incoming-handler;
+
+  export incoming-handler;
+}
+/// Handler world for MCP tool operations.
+@since(version = 0.3.0)
+world tools-handler {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import error;
+  import error-result;
+  import tools-list-result;
+  import content;
+  import tools-call-content;
+  import tools-call-structured;
+  import request;
+  import incoming-handler;
+
+  export incoming-handler;
+}
+/// Handler world for MCP resource operations.
+@since(version = 0.3.0)
+world resources-handler {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import error;
+  import error-result;
+  import content;
+  import resources-list-result;
+  import resources-read-result;
+  import resource-templates-list-result;
+  import request;
+  import incoming-handler;
+
+  export incoming-handler;
+}
+/// Handler world for MCP prompt operations.
+@since(version = 0.3.0)
+world prompts-handler {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import error;
+  import error-result;
+  import prompts-list-result;
+  import content;
+  import prompts-get-result;
+  import request;
+  import incoming-handler;
+
+  export incoming-handler;
+}
+/// Handler world for MCP completion operations.
+@since(version = 0.3.0)
+world completion-handler {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import error;
+  import error-result;
+  import completion-complete-result;
+  import request;
+  import incoming-handler;
+
+  export incoming-handler;
+}
+/// Handler world for MCP tool operations with OpenTelemetry instrumentation.
+/// Extends tools-handler with ability to add custom trace information.
+@since(version = 0.3.0)
+world tools-handler-otel {
+  import wasi:otel-sdk/common@0.1.0-alpha.3;
+  import wasi:otel-sdk/context@0.1.0-alpha.3;
+  import wasi:otel-sdk/transport@0.1.0-alpha.3;
+  import wasi:otel-sdk/trace@0.1.0-alpha.3;
+  import otel-instrumentation;
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import error;
+  import error-result;
+  import tools-list-result;
+  import content;
+  import tools-call-content;
+  import tools-call-structured;
+  import request;
+  import incoming-handler;
+
+  export incoming-handler;
+}
+@since(version = 0.3.0)
+world error-writer {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import error;
+
+  export error-result;
+}
+@since(version = 0.3.0)
+world initialize-writer {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+
+  export initialize-result;
+}
+@since(version = 0.3.0)
+world tools-writer {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import content;
+
+  export tools-list-result;
+  export tools-call-content;
+  export tools-call-structured;
+}
+@since(version = 0.3.0)
+world resources-writer {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import content;
+
+  export resources-list-result;
+  export resources-read-result;
+  export resource-templates-list-result;
+}
+@since(version = 0.3.0)
+world prompts-writer {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+  import content;
+
+  export prompts-list-result;
+  export prompts-get-result;
+}
+@since(version = 0.3.0)
+world completion-writer {
+  import wasi:io/error@0.2.3;
+  import wasi:io/poll@0.2.3;
+  import wasi:io/streams@0.2.3;
+  import types;
+
+  export completion-complete-result;
+}

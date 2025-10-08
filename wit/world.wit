@@ -89,3 +89,11 @@ world completion-handler {
     import error-result;
     import completion-complete-result;
 }
+
+/// Handler world for MCP tool operations with OpenTelemetry instrumentation.
+/// Extends tools-handler with ability to add custom trace information.
+@since(version = 0.3.0)
+world tools-handler-otel {
+    include tools-handler;
+    import otel-instrumentation;
+}

@@ -1,0 +1,70 @@
+package wasi:otel-providers@0.1.0;
+
+/// Common provider configurations for popular observability platforms.
+///
+/// This package provides curated configurations for well-known OTLP endpoints,
+/// making it easy to send telemetry data to Grafana, DataDog, Honeycomb, etc.
+/// without manually constructing HTTP configs.
+///
+/// Framework-agnostic - can be used with any telemetry framework (MCP, HTTP servers, CLI tools).
+interface common-providers {
+  use wasi:otel-sdk/http-transport@0.1.0-alpha.3.{http-config, auth-config, bearer-token-config, compression-type, retry-config};
+
+  /// Grafana Cloud Tempo configuration
+  /// Automatically constructs endpoint: https://otlp-gateway-{region}.grafana.net/otlp
+  record grafana-config {
+    /// Grafana Cloud instance ID (e.g., "123456")
+    instance-id: string,
+    /// Grafana Cloud API key
+    api-key: string,
+    /// Region (e.g., "prod-us-central-0", "prod-eu-west-0")
+    region: string,
+  }
+
+  /// DataDog APM configuration
+  /// Automatically constructs endpoint: https://trace.agent.{site}
+  record datadog-config {
+    /// DataDog site (e.g., "datadoghq.com", "datadoghq.eu", "us5.datadoghq.com")
+    site: string,
+    /// DataDog API key
+    api-key: string,
+  }
+
+  /// Honeycomb configuration
+  record honeycomb-config {
+    /// Honeycomb API endpoint (default: "https://api.honeycomb.io")
+    endpoint: option<string>,
+    /// Honeycomb API key
+    api-key: string,
+    /// Dataset name (sent as X-Honeycomb-Dataset header)
+    dataset: option<string>,
+  }
+
+  /// Curated provider configurations with sensible defaults
+  variant provider {
+    /// Grafana Cloud / Tempo configuration
+    grafana(grafana-config),
+    /// DataDog APM configuration
+    datadog(datadog-config),
+    /// Honeycomb configuration
+    honeycomb(honeycomb-config),
+    /// Generic OTLP HTTP endpoint
+    otlp-http(http-config),
+    /// Disable telemetry
+    disabled,
+  }
+
+  /// Convert provider configuration to HTTP transport config
+  ///
+  /// This is the main conversion function - takes a provider-specific config
+  /// and returns a fully-formed http-config ready for create-http-transport().
+  to-http-config: func(config: provider) -> result<http-config, string>;
+}
+
+/// World for the providers component
+world providers {
+  import wasi:otel-sdk/transport@0.1.0-alpha.3;
+  import wasi:otel-sdk/http-transport@0.1.0-alpha.3;
+
+  export common-providers;
+}

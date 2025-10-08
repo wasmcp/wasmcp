@@ -1,0 +1,36 @@
+/// OpenTelemetry configuration interface
+/// Configuration components export this to provide provider settings
+@since(version = 0.3.0)
+interface otel-config {
+  use wasi:otel-providers/common-providers@0.1.0.{provider};
+
+  /// Get OTEL provider configuration
+  /// Called once by middleware on initialization (first request)
+  @since(version = 0.3.0)
+  get-config: func() -> provider;
+}
+
+/// OpenTelemetry instrumentation interface
+/// Middleware exports this, handlers import it
+@since(version = 0.3.0)
+interface otel-instrumentation {
+  use wasi:otel-sdk/common@0.1.0-alpha.3.{attribute};
+  use wasi:otel-sdk/trace@0.1.0-alpha.3.{span-kind};
+
+  /// Add an attribute to the current active span
+  @since(version = 0.3.0)
+  add-span-attribute: func(key: string, value: string);
+
+  /// Add a timestamped event to the current active span
+  @since(version = 0.3.0)
+  add-span-event: func(name: string, attributes: list<attribute>);
+
+  /// Start a new child span under the current active span
+  /// Returns a span ID that can be used to end the span
+  @since(version = 0.3.0)
+  start-child-span: func(name: string, kind: span-kind) -> u64;
+
+  /// End a child span by its ID
+  @since(version = 0.3.0)
+  end-child-span: func(span-id: u64);
+}

@@ -1,0 +1,34 @@
+package wasmcp:otel-tracing-middleware@1.0.0;
+
+/// Tracing middleware that instruments MCP requests with OpenTelemetry spans.
+///
+/// This middleware creates a span for each MCP request, capturing:
+/// - Request method, ID, and parameters as span attributes
+/// - Request timing (start/end)
+/// - Error status if the request fails
+///
+/// The middleware is completely decoupled from the OTEL SDK implementation,
+/// only depending on the WIT interface definitions. This allows the OTEL SDK
+/// to be an independent project that gets composed in at build time.
+world stuff {
+    // MCP middleware pattern: import handler to forward, export handler to receive
+    import wasmcp:mcp/incoming-handler@0.3.0;
+    export wasmcp:mcp/incoming-handler@0.3.0;
+
+    // OpenTelemetry provider configuration from user component
+    import wasmcp:mcp/otel-config@0.3.0;
+
+    // OpenTelemetry provider conversion (framework-agnostic)
+    import wasi:otel-providers/common-providers@0.1.0;
+
+    // OpenTelemetry SDK imports (satisfied by composition with otel-sdk-composed)
+    // These are interface imports only - no direct code dependencies
+    import wasi:otel-sdk/common@0.1.0-alpha.3;
+    import wasi:otel-sdk/context@0.1.0-alpha.3;
+    import wasi:otel-sdk/trace@0.1.0-alpha.3;
+    import wasi:otel-sdk/transport@0.1.0-alpha.3;
+    import wasi:otel-sdk/http-transport@0.1.0-alpha.3;
+
+    // Export instrumentation interface for handlers to add custom spans
+    export wasmcp:mcp/otel-instrumentation@0.3.0;
+}

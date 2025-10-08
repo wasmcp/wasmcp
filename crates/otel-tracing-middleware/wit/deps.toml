@@ -1,0 +1,5 @@
+[dependencies]
+"wasmcp:mcp" = "0.3.0"
+"wasi:otel-sdk" = "0.1.0-alpha.3"
+"wasi:otel-providers" = "0.1.0"
+"wasi:http" = "0.2.0"
