@@ -1,5 +1,5 @@
-interface context {
-    use protocol.{mcp-message, server-capability, meta};
+interface message-context {
+    use protocol.{mcp-message, server-capability, meta, transport};
 
     variant parse-error {
         /// Raw JSON parse/utf8 failure

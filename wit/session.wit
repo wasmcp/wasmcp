@@ -19,6 +19,11 @@ interface session {
     /// MCP session resource for request-scoped context storage
     @since(version = 0.3.1-alpha.1)
     resource session {
+        /// Create a new session with a globally unique and cryptographically secure ID.
+        /// The session is initially empty and can be populated with persistent context values.
+        @since(version = 0.3.1-alpha.1)
+        initialize: static func() -> result<session, session-error>;
+
         /// Get the session ID.
         @since(version = 0.3.1-alpha.1)
         id: func() -> string;
@@ -35,6 +40,11 @@ interface session {
         /// Set a persistent session context value by key.
         @since(version = 0.3.1-alpha.1)
         set: func(key: string, value: list<u8>) -> result<_, session-error>;
+        
+        /// Attach this session to an MCP request context.
+        /// This allows downstream handlers to retrieve the session.
+        @since(version = 0.3.1-alpha.1)
+        attach: func(ctx: borrow<message-context>);
 
         /// Elicit information from the client.
         /// Blocks until the elicitation is complete.
@@ -52,24 +62,14 @@ interface session {
         /// Subsequent calls will have no effect.
         @since(version = 0.3.1-alpha.1)
         terminate: func(reason: option<string>) -> result<_, session-error>;
+
+        /// Deletes all data associated with the session.
+        /// After deleting, the session is invalid and cannot be used.
+        @since(version = 0.3.1-alpha.1)
+        delete: static func(this: session) -> result<_, session-error>;
     }
 
-    /// Create a new session with a globally unique and cryptographically secure ID.
-    /// The session is initially empty and can be populated with persistent context values.
+    /// Get an existing session from an MCP request context, if one exists.
     @since(version = 0.3.1-alpha.1)
-    initialize: func() -> result<session, session-error>;
-
-    /// Deletes all data associated with the session.
-    /// After deleting, the session is invalid and cannot be used.
-    @since(version = 0.3.1-alpha.1)
-    delete: func(session: session) -> result<_, session-error>;
-
-    /// Attach a session to an MCP request context.
-    /// This allows downstream handlers to retrieve the session.
-    @since(version = 0.3.1-alpha.1)
-    attach: func(req: borrow<message-context>, session: borrow<session>);
-
-    /// Get an existing session from an MCP request context, if one is attached.
-    @since(version = 0.3.1-alpha.1)
-    get: func(req: borrow<message-context>) -> result<option<session>, session-error>;
+    load-session: func(ctx: borrow<message-context>) -> result<option<session>, session-error>;
 }

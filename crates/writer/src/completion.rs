@@ -2,7 +2,7 @@
 //!
 //! Handles serialization of auto-completion suggestions for prompts and commands.
 
-use crate::bindings::exports::wasmcp::mcp::complete_writer;
+use crate::bindings::exports::wasmcp::mcp::;
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
 use crate::bindings::wasmcp::mcp::protocol::Id;
 use crate::utils::{

@@ -1,5 +1,9 @@
 package wasmcp:writer@0.1.0;
 
 world writer {
-    include wasmcp:mcp/writer@0.3.1-alpha.14;
+    include wasmcp:mcp/core-responses-writer@0.3.1-alpha.18;
+    include wasmcp:mcp/tools-responses-writer@0.3.1-alpha.18;
+    include wasmcp:mcp/resources-responses-writer@0.3.1-alpha.18;
+    include wasmcp:mcp/prompts-responses-writer@0.3.1-alpha.18;
+    include wasmcp:mcp/completions-responses-writer@0.3.1-alpha.18;
 }

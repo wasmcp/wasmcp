@@ -5,6 +5,7 @@
 
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
 use crate::bindings::wasmcp::mcp::protocol::{Id, Meta, Annotations, Role};
+use crate::bindings::wasmcp::mcp::message_frame::frame_message;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 
 /// Write a message with transport-appropriate framing.
@@ -17,60 +18,9 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 ///
 /// Both implementations handle WASI I/O backpressure correctly.
 pub fn write_message(stream: &OutputStream, data: &str) -> Result<(), StreamError> {
-    #[cfg(feature = "http")]
-    {
-        write_http_message(stream, data)
-    }
-
-    #[cfg(feature = "stdio")]
-    {
-        write_stdio_message(stream, data)
-    }
-}
-
-/// Write a message using HTTP/SSE framing.
-///
-/// Formats according to Server-Sent Events specification:
-/// - Each line prefixed with `data: `
-/// - Message terminated with double newline
-/// - Handles multi-line JSON (though our output is always compact)
-#[cfg(feature = "http")]
-fn write_http_message(stream: &OutputStream, data: &str) -> Result<(), StreamError> {
-    let mut sse_formatted = String::with_capacity(data.len() + (data.lines().count() * 6) + 2);
-
-    // Prefix each line with "data: " per SSE spec
-    for line in data.lines() {
-        sse_formatted.push_str("data: ");
-        sse_formatted.push_str(line);
-        sse_formatted.push('\n');
-    }
-
-    // Double newline terminates SSE message
-    sse_formatted.push('\n');
-
-    write_with_backpressure(stream, sse_formatted.as_bytes())?;
-    stream.flush()
-}
-
-/// Write a message using stdio framing.
-///
-/// Simple newline-delimited format:
-/// - Single line per message
-/// - Terminated with newline
-/// - No embedded newlines allowed (enforced by debug assertion)
-#[cfg(feature = "stdio")]
-fn write_stdio_message(stream: &OutputStream, data: &str) -> Result<(), StreamError> {
-    // MCP stdio spec: messages MUST NOT contain embedded newlines
-    // Our JSON builders always produce compact output, so this should never fire
-    debug_assert!(
-        !data.contains('\n'),
-        "stdio messages must not contain newlines: {:?}",
-        data
-    );
-
-    write_with_backpressure(stream, data.as_bytes())?;
-    stream.write(b"\n")?;
-    stream.flush()
+    let framed_message = frame_message(data);
+    write_with_backpressure(stream, framed_message.as_bytes())?;
+    stream.flush();
 }
 
 /// Write bytes to stream with proper backpressure handling.

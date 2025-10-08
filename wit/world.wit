@@ -1,120 +1,41 @@
-package wasmcp:mcp@0.3.1-alpha.17;
+package wasmcp:mcp@0.3.1-alpha.18;
 
-/// Middleware world for object interception.
-///
-/// Both imports and exports the handler interface, enabling components
-/// to intercept objects before forwarding to the next handler.
 @since(version = 0.3.0)
 world middleware {
-    import incoming-handler;
-    export incoming-handler;
-    include use-common-writers;
+    import message-handler;
+    import notifications-writer;
+    import error-writer;
+    export message-handler;
 }
-
-// Feature handlers
 
 world tools-handler {
     include middleware;
-    include use-tools-writers;
+    import tools-writer;
 }
 
 world resources-handler {
     include middleware;
-    include use-resources-writers;
+    import resources-writer;
 }
 
 world prompts-handler {
     include middleware;
-    include use-prompts-writers;
+    import prompts-writer;
 }
 
 world completions-handler {
     include middleware;
-    include use-completions-writers;
+    import completions-writer;
 }
 
-/// This is the terminal handler in the object processing chain.
 world terminal-handler {
-    export incoming-handler;
-    include use-lifecycle-writers;
+    import lifecycle-writer;
+    export message-handler;
 }
 
 world session-handler {
-    export session;
     include middleware;
-    include use-common-writers;
-}
-
-// Stream writers
-
-world common-writers {
-    export notifications-writer;
-    export error-writer;
-}
-
-world use-common-writers {
     import notifications-writer;
     import error-writer;
-}
-
-world tools-writers {
-    include common-writers;
-    export list-tools-writer;
-    export tool-call-content-writer;
-    export tool-call-structured-writer;
-}
-
-world use-tools-writers {
-    include use-common-writers;
-    import list-tools-writer;
-    import tool-call-content-writer;
-    import tool-call-structured-writer;
-}
-
-world resources-writers {
-    include common-writers;
-    export list-resources-writer;
-    export read-resource-writer;
-    export list-resource-templates-writer;
-}
-
-world use-resources-writers {
-    include use-common-writers;
-    import list-resources-writer;
-    import read-resource-writer;
-    import list-resource-templates-writer;
-}
-    
-world prompts-writers {
-    include common-writers;
-    export list-prompts-writer;
-    export get-prompt-writer;
-}
-
-world use-prompts-writers {
-    include use-common-writers;
-    import list-prompts-writer;
-    import get-prompt-writer;
-}
-
-world completions-writers {
-    include common-writers;
-    export complete-writer;
-}
-
-world use-completions-writers {
-    include use-common-writers;
-    import complete-writer;
-}
-
-world lifecycle-writers {
-    include common-writers;
-    export initialize-writer;
-    export empty-writer;
-}
-
-world use-lifecycle-writers {
-    include use-common-writers;
-    import initialize-writer;
-    import empty-writer;
+    export session;
 }

@@ -1,5 +1,9 @@
 use wasi:io/streams@0.2.3;
 
+interface message-formatter {
+    fmt: func(message: string) -> string;
+}
+
 interface notifications-writer {
     use streams.{output-stream, stream-error};
     use protocol.{progress-token, log-level, log-message, client-notification, change-notification-type, update-notification-type};
@@ -41,239 +45,148 @@ interface error-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, error};
 
-    respond: func(
+    write-error: func(
         out: output-stream,
         error: error,
     ) -> result<_, stream-error>;
-}
-
-/// Writes an empty JSON-RPC result to an output stream.
-/// Useful for ping responses etc.
-///
-/// <https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/ping#behavior-requirements>
-@since(version = 0.3.1-alpha.2)
-interface empty-writer {
-    use protocol.{id};
-    use streams.{output-stream, stream-error};
-
-    respond: func(out: output-stream, id: id) -> result<_, stream-error>;
 }
 
 /// Writes initialization results to an output stream.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initialize>
 @since(version = 0.3.0)
-interface initialize-writer {
+interface lifecycle-writer {
     use streams.{output-stream, stream-error};
     use protocol.{id, initialize-result};
 
     @since(version = 0.3.0)
-    respond: func(out: output-stream, id: id, %result: initialize-result) -> result<_, stream-error>;
+    write-initialization: func(out: output-stream, id: id, %result: initialize-result) -> result<_, stream-error>;
+
+    write-pong: func(out: output-stream, id: id) -> result<_, stream-error>;
 }
 
-/// Writes tools/list results to an output stream.
-///
-/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-list>
-@since(version = 0.3.0)
-interface list-tools-writer {
+interface tools-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, tool, next-cursor-options};
+    use protocol.{content-block, id, tool, meta, next-cursor-options, structured-tool-result};
 
-    respond: func(
+    @since(version = 0.3.0)
+    record content-blocks-result-options {
+        is-error: bool,
+        meta: meta,
+    }
+
+    write-tools: func(
         out: output-stream,
         id: id,
         tools: list<tool>,
     ) -> result<_, stream-error>;
 
-    resource writer {
-        write: func(tool: tool) -> result<_, stream-error>;
-        close: func(options: option<next-cursor-options>) -> result<_, stream-error>;
-    }
-
-    open: func(
-        out: output-stream,
-        id: id,
-    ) -> result<writer, stream-error>;
-}
-
-/// Writes tools/call content results (unstructured).
-///
-/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-call>
-@since(version = 0.3.0)
-interface tool-call-content-writer {
-    use streams.{output-stream, stream-error};
-    use protocol.{content-block, id, is-error-options};
-
-    respond-text: func(
+    write-text: func(
         out: output-stream,
         id: id,
         text: string,
     ) -> result<_, stream-error>;
 
-    respond-error: func(
+    write-error: func(
         out: output-stream,
         id: id,
         reason: string
     ) -> result<_, stream-error>;
 
-    respond-contents: func(
+    write-content-blocks: func(
         out: output-stream,
         id: id,
         content: list<content-block>,
     ) -> result<_, stream-error>;
 
-    resource writer {
-        write: func(contents: list<u8>) -> result<_, stream-error>;
-        next: func(content: content-block) -> result<_, stream-error>;
-        close: func(options: option<is-error-options>) -> result<_, stream-error>;
-    }
-
-    open: func(
-        out: output-stream,
-        id: id,
-        initial: content-block
-    ) -> result<writer, stream-error>;
-}
-
-/// Writes a tools/call structured result.
-///
-/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tools-call>
-@since(version = 0.3.0)
-interface tool-call-structured-writer {
-    use streams.{output-stream, stream-error};
-    use protocol.{id, is-error-options, structured-tool-result};
-
-    respond: func(
+    write-structured: func(
         out: output-stream,
         id: id,
         structured: structured-tool-result,
     ) -> result<_, stream-error>;
+
+    resource tools-writer {
+        start: static func(out: output-stream, id: id) -> result<tools-writer, stream-error>;
+        write: func(tool: tool) -> result<_, stream-error>;
+        finish: static func(this: tools-writer, options: option<next-cursor-options>) -> result<_, stream-error>;
+    }
+
+    resource content-blocks-writer {
+        start: static func(out: output-stream, id: id, initial: content-block) -> result<content-blocks-writer, stream-error>;
+        write: func(contents: list<u8>) -> result<_, stream-error>;
+        next: func(content: content-block) -> result<_, stream-error>;
+        finish: static func(this: content-blocks-writer, options: option<content-blocks-result-options>) -> result<_, stream-error>;
+    }
 }
 
-/// Writes resources/list results to an output stream.
-///
-/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-list>
-@since(version = 0.3.0)
-interface list-resources-writer {
+interface resources-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, %resource, next-cursor-options};
+    use protocol.{id, %resource, resource-contents, resource-template, meta-options, next-cursor-options};
 
-    respond: func(
+    write-resources: func(
         out: output-stream,
         id: id,
         resources: list<%resource>,
     ) -> result<_, stream-error>;
 
-    resource writer {
-        write: func(%resource: %resource) -> result<_, stream-error>;
-        close: func(options: option<next-cursor-options>) -> result<_, stream-error>;
-    }
-
-    open: func(
-        out: output-stream,
-        id: id,
-    ) -> result<writer, stream-error>;
-}
-
-/// Writes resources/read results to an output stream.
-///
-/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-read>
-@since(version = 0.3.0)
-interface read-resource-writer {
-    use streams.{output-stream, stream-error};
-    use protocol.{id, resource-contents, meta-options};
-
-    respond: func(
+    write-contents: func(
         out: output-stream,
         id: id,
         contents: resource-contents,
     ) -> result<_, stream-error>;
 
-    resource writer {
-        write: func(contents: list<u8>) -> result<_, stream-error>;
-        close: func(options: option<meta-options>) -> result<_, stream-error>;
-    }
-
-    open: func(
-        out: output-stream,
-        id: id,
-        initial: resource-contents,
-    ) -> result<writer, stream-error>;
-}
-
-/// Writes resource-templates/list results to an output stream.
-///
-/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#resources-templates-list>
-@since(version = 0.3.0)
-interface list-resource-templates-writer {
-    use streams.{output-stream, stream-error};
-    use protocol.{id, resource-template, next-cursor-options};
-
-    respond: func(
+    write-templates: func(
         out: output-stream,
         id: id,
         templates: list<resource-template>,
     ) -> result<_, stream-error>;
 
-    resource writer {
-        write: func(template: resource-template) -> result<_, stream-error>;
-        close: func(options: option<next-cursor-options>) -> result<_, stream-error>;
+    resource resources-writer {
+        start: static func(out: output-stream, id: id) -> result<resources-writer, stream-error>;
+        write: func(%resource: %resource) -> result<_, stream-error>;
+        finish: static func(this: resources-writer, options: option<next-cursor-options>) -> result<_, stream-error>;
     }
 
-    open: func(
-        out: output-stream,
-        id: id,
-    ) -> result<writer, stream-error>;
+    resource contents-writer {
+        start: static func(out: output-stream, id: id, initial: resource-contents) -> result<contents-writer, stream-error>;
+        write: func(contents: list<u8>) -> result<_, stream-error>;
+        finish: static func(this: contents-writer, options: option<meta-options>) -> result<_, stream-error>;
+    }
+
+    resource templates-writer {
+        start: static func(out: output-stream, id: id) -> result<templates-writer, stream-error>;
+        write: func(template: resource-template) -> result<_, stream-error>;
+        finish: static func(this: templates-writer, options: option<next-cursor-options>) -> result<_, stream-error>;
+    }
 }
 
-/// Writes prompts/list results to an output stream.
-///
-/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts-list>
-@since(version = 0.3.0)
-interface list-prompts-writer {
+interface prompts-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, prompt, next-cursor-options};
+    use protocol.{description-options, id, prompt, prompt-message, next-cursor-options};
 
-    respond: func(
+    write-prompts: func(
         out: output-stream,
         id: id,
         prompts: list<prompt>,
     ) -> result<_, stream-error>;
 
-    resource writer {
-        write: func(prompt: prompt) -> result<_, stream-error>;
-        close: func(options: option<next-cursor-options>) -> result<_, stream-error>;
-    }
-
-    open: func(
-        out: output-stream,
-        id: id,
-    ) -> result<writer, stream-error>;
-}
-
-/// Writes prompts/get results to an output stream.
-///
-/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompts%2Fget>
-@since(version = 0.3.0)
-interface get-prompt-writer {
-    use streams.{output-stream, stream-error};
-    use protocol.{id, prompt-message, description-options};
-
-    respond: func(
+    write-prompt-messages: func(
         out: output-stream,
         id: id,
         messages: list<prompt-message>,
     ) -> result<_, stream-error>;
 
-    resource writer {
-        write: func(message: prompt-message) -> result<_, stream-error>;
-        close: func(options: option<description-options>) -> result<_, stream-error>;
+    resource prompts-writer {
+        start: static func(out: output-stream, id: id) -> result<prompts-writer, stream-error>;
+        write: func(prompt: prompt) -> result<_, stream-error>;
+        finish: static func(this: prompts-writer, options: option<next-cursor-options>) -> result<_, stream-error>;
     }
 
-    open: func(
-        out: output-stream,
-        id: id,
-    ) -> result<writer, stream-error>;
+    resource prompt-messages-writer {
+        start: static func(out: output-stream, id: id) -> result<prompt-messages-writer, stream-error>;
+        write: func(message: prompt-message) -> result<_, stream-error>;
+        finish: static func(this: prompt-messages-writer, options: option<description-options>) -> result<_, stream-error>;
+    }
 }
 
 /// Writes completion/complete results to an output stream.
@@ -283,33 +196,39 @@ interface get-prompt-writer {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#completion-complete>
 @since(version = 0.3.0)
-interface complete-writer {
+interface completions-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, completion-result-options};
+    use protocol.{id};
+
+    /// Options for completion results, matching MCP schema.
+    /// Used to provide additional metadata about completion results.
+    @since(version = 0.3.0)
+    record completion-result-options {
+        /// The total number of completion options available.
+        /// This can exceed the number of values actually sent in the response.
+        total: option<u64>,
+        /// Indicates whether there are additional completion options beyond
+        /// those provided in the current response.
+        has-more: option<bool>,
+    }
+
+    record completions {
+        values: list<string>,
+        options: option<completion-result-options>,
+    }
 
     /// Send a complete list of completion values in one call.
     /// The implementation will output the proper nested MCP structure:
-    /// {"completion": {"values": [...], "total": N, "hasMore": bool}}
-    respond: func(
+    write-completions: func(
         out: output-stream,
         id: id,
-        values: list<string>,
+        completions: completions,
     ) -> result<_, stream-error>;
 
     /// Streaming writer for sending completion values incrementally.
-    resource writer {
-        /// Write a single completion value to the stream.
+    resource completions-writer {
+        start: static func(out: output-stream,id: id) -> result<completions-writer, stream-error>;
         write: func(value: string) -> result<_, stream-error>;
-
-        /// Close the stream and finalize with optional metadata.
-        /// This will properly close the nested MCP structure.
-        close: func(options: option<completion-result-options>) -> result<_, stream-error>;
+        finish: static func(this: completions-writer, options: option<completion-result-options>) -> result<_, stream-error>;
     }
-
-    /// Open a streaming writer for sending completion values.
-    /// The implementation will start the proper nested MCP structure.
-    open: func(
-        out: output-stream,
-        id: id,
-    ) -> result<writer, stream-error>;
 }

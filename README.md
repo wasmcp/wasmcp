@@ -15,24 +15,20 @@ See [Installation](#installation)
 wasmcp new my-tools --type tools --language python
 
 # Develop your handler
-cd my-tools && code app.py
+cd my-tools && source venv/bin/activate && code app.py
 
 # Compile it to a component binary
 make
 
 # Compose your component binary with the default HTTP transport component
-wasmcp compose --tools my_tools.wasm -o http_mcp_server.wasm
+wasmcp compose --tools target/my_tools.wasm -o http_mcp_server.wasm
 
 # Run the composed MCP server over HTTP
 wasmtime serve -Scommon http_mcp_server.wasm
 
 # Or stdio
-wasmcp compose \
-  --tools my_tools.wasm \
-  --transport stdio \
-  -o stdio_mcp_server.wasm
-
-wasmtime run stdio-server.wasm
+wasmcp compose --tools target/my_tools.wasm --transport stdio -o stdio_mcp_server.wasm
+wasmtime run stdio_mcp_server.wasm
 ```
 
 See [cli/README.md](cli/README.md) and [examples/hello-world](examples/hello-world/) for complete examples in Rust, Python, TypeScript, and Go.

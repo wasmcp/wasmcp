@@ -365,12 +365,6 @@ interface protocol {
         next-cursor: cursor,
     }
 
-    @since(version = 0.3.0)
-    record is-error-options {
-        is-error: bool,
-        meta: meta,
-    }
-
     /// Tool definition.
     /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
     @since(version = 0.3.0)
@@ -382,7 +376,8 @@ interface protocol {
 
     record structured-tool-result {
         structured-content: json,
-        options: option<is-error-options>,
+        is-error: bool,
+        meta: meta,
     }
 
     @since(version = 0.3.0)
@@ -473,18 +468,6 @@ interface protocol {
     record description-options {
         meta: meta,
         description: option<string>,
-    }
-
-    /// Options for completion results, matching MCP schema.
-    /// Used to provide additional metadata about completion results.
-    @since(version = 0.3.0)
-    record completion-result-options {
-        /// The total number of completion options available.
-        /// This can exceed the number of values actually sent in the response.
-        total: option<u64>,
-        /// Indicates whether there are additional completion options beyond
-        /// those provided in the current response.
-        has-more: option<bool>,
     }
 
     @since(version = 0.3.1-alpha.1)

@@ -1,5 +1,5 @@
 @since(version = 0.3.0)
-interface incoming-handler {
+interface message-handler {
     use wasi:io/streams@0.2.3.{output-stream};
     use context.{message-context};
 

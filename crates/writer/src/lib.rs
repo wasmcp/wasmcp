@@ -89,7 +89,7 @@ impl bindings::exports::wasmcp::mcp::notifications_writer::Guest for Component {
     }
 }
 
-impl bindings::exports::wasmcp::mcp::error_writer::Guest for Component {
+impl bindings::exports::wasmcp::mcp::error_response::Guest for Component {
     fn send(id: bindings::wasmcp::mcp::protocol::Id, out: bindings::wasi::io::streams::OutputStream, error: bindings::wasmcp::mcp::protocol::Error) -> Result<(), bindings::wasi::io::streams::StreamError> {
         error::ErrorWriter::send(id, out, error)
     }
