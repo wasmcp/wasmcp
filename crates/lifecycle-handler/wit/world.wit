@@ -1,0 +1,5 @@
+package wasmcp:lifecycle-handler@0.1.0;
+
+world lifecycle-handler {
+    include wasmcp:mcp/lifecycle-handler@0.3.1-alpha.13;
+}
