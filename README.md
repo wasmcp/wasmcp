@@ -11,33 +11,24 @@ A [WebAssembly Component](https://component-model.bytecodealliance.org/) Develop
 See [Installation](#installation)
 
 ```bash
-# Scaffold a new handler
+# Start a new handler
 wasmcp new my-tools --type tools --language python
 
-# Build your handler; develop
+# Develop your handler
+cd my-tools && source venv/bin/activate && code app.py
+
+# Compile it to a component binary
 make
 
-# Compose your handler with the default HTTP transport component
-wasmcp compose --tools target/my_tools.wasm
-
-# Or compose multiple handlers and middleware in any sequence
-wasmcp compose \
-  --middleware ../logging.wasm \
-  --tools target/my_tools.wasm \
-  --middleware ../other_stuff.wasm \
-  --resources ../my_resources.wasm \
-  -o mcp-server.wasm
+# Compose your component binary with the default HTTP transport component
+wasmcp compose --tools target/my_tools.wasm -o http_mcp_server.wasm
 
 # Run the composed MCP server over HTTP
-wasmtime serve -Scommon mcp-server.wasm
+wasmtime serve -Scommon http_mcp_server.wasm
 
-# Or compose with stdio transport
-wasmcp compose \
-  --tools ./my_tools.wasm \
-  --transport stdio \
-  -o server-stdio.wasm
-
-wasmtime run server-stdio.wasm
+# Or stdio
+wasmcp compose --tools target/my_tools.wasm --transport stdio -o stdio_mcp_server.wasm
+wasmtime run stdio_mcp_server.wasm
 ```
 
 See [cli/README.md](cli/README.md) and [examples/hello-world](examples/hello-world/) for complete examples in Rust, Python, TypeScript, and Go.
@@ -47,26 +38,25 @@ See [cli/README.md](cli/README.md) and [examples/hello-world](examples/hello-wor
 > [!TIP]
 > You only write handlers for the individual MCP server features and middleware that you need.
 
-Wasmcp provides [WIT](https://component-model.bytecodealliance.org/design/wit.html) (Wasm Interface Type) definitions and [published](https://github.com/orgs/wasmcp/packages?repo_name=wasmcp) framework components for building complete, deployable MCP servers as WebAssembly components.
+WebAssembly components work server-side. They are
+- **Composable** - Compose compiled component binaries together into new ones, like legos.
+- **Sandboxed** - A component [interacts](https://component-model.bytecodealliance.org/design/why-component-model.html#benefits-of-the-component-model) with a runtime or other components only by calling its imports and having its exports called.
+- **Distributable** - Push and pull component binaries from OCI registries.
+- **Lean** - Fully composed servers can be under 1MB.
+
+These qualities complement MCP's server [architecture](https://modelcontextprotocol.io/specification/2025-06-18/architecture).
+
+## What's here?
+
+Wasmcp provides a framework for for building complete, deployable MCP servers as WebAssembly components.
+
+*You* author specific MCP server features and middleware in your favorite language, as a WebAssembly component.
+
+Your component binary can then be composed with a set of [published](https://github.com/orgs/wasmcp/packages?repo_name=wasmcp) binaries that collectively implement the rest of the server. Any of the default framework components can be swapped out during composition for another that fulfills its [WIT world](https://component-model.bytecodealliance.org/design/worlds.html#wit-worlds).
 
 Any language with a [component toolchain](https://component-model.bytecodealliance.org/language-support.html) can be used for any individual component in the server.
 
-MCP servers are:
-- **Modular** - Composed of discrete capabilities (tools, resources, prompts, etc.) that can be implemented progressively
-- **Security-sensitive** - Handling client requests in a least-privilege sandbox is a core requirement of secure MCP servers
-- **Performance-sensitive** - Scalability and efficiency dictate the types of clients that can be served. Real-time AI applications require real-time tool responses
-
-WebAssembly components are
-- **Composable** - Compose multiple components together into new ones, like binary lego bricks
-- **Secure** - Execute in a least-privilege sandbox
-- **Efficient** - Run portably on a wide variety of hosts, including edge workers
-- **Lean** - Published framework components are each under 300KB
-
-They are a natural fit.
-
-## Components
-
-### Handler components (you implement as needed)
+### Handler components (Implement what you need now, add features progressively)
 
 - **tools-handler** - Handles `tools/list` and `tools/call` methods
 - **resources-handler** - Handles `resources/read` method
@@ -74,7 +64,7 @@ They are a natural fit.
 - **completion-handler** - Handles `completion/complete` method
 - **middleware** - Any custom middleware (e.g. logging, auth), as many as needed, at any point in the chain
 
-### Framework components (published to ghcr.io/wasmcp)
+### Framework components (Published to ghcr.io/wasmcp)
 
 - **[http-transport](./crates/http-transport/)** - HTTP server transport using WASI HTTP (for `wasmtime serve`)
 - **[stdio-transport](./crates/stdio-transport/)** - Stdio transport
@@ -128,21 +118,21 @@ wasmcp --version
 
 ## Architecture
 
-Wasmcp prescribes a [chain-of-responsibility](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) pattern where components are composed into request processing pipelines. A typical chain:
+Wasmcp prescribes a [chain-of-responsibility](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) pattern where components are composed into a JSON-RPC call processing pipeline. A typical chain:
 
 ```
 transport → middleware/handlers -> terminal handler
 ```
 
-**Transport components** terminate the transport protocol (HTTP or stdio) and pass a handle to the JSON-RPC request and `wasi:io/streams.{output-stream}` to the next component. They import the `incoming-handler` interface and export transport-specific interfaces:
+**Transport components** terminate the transport protocol (HTTP or stdio) and pass a handle to the JSON-RPC object and `wasi:io/streams.{output-stream}` to the next component. They import the `incoming-handler` interface and export transport-specific interfaces:
 - **HTTP transport** - Exports `wasi:http/incoming-handler` for use with `wasmtime serve`
 - **Stdio transport** - Exports `wasi:cli/run` and uses newline-delimited JSON-RPC over stdin/stdout per the MCP specification
 
-**Middleware components** intercept requests to add capabilities, perform authorization, logging, or other cross-cutting concerns. They both import and export the `incoming-handler` interface. As many middleware components as needed can be chained together and interleaved with other components in the chain.
+**Middleware components** intercept JSON-RPC calls to add capabilities, perform authorization, logging, or other cross-cutting concerns. They both import and export the `incoming-handler` interface. As many middleware components as needed can be chained together and interleaved with other components in the chain.
 
 **Handler components** are middleware that process specific MCP methods (`tools/call`, `resources/read`, `prompts/get`). They terminate the response for their supported method, short-circuiting the chain. Unrecognized methods are forwarded to the next component in the chain. Handlers can be interleaved with generic middleware in any order.
 
-**`initialize` handler** processes the `initialize` method using capabilities accumulated from upstream handler components. It acts as the terminal handler, completing the chain and handling any remaining unprocessed requests.
+**`initialize` handler** processes the `initialize` method using capabilities accumulated from upstream handler components. It acts as the terminal handler, completing the chain.
 
 Components communicate in memory through WIT interfaces defined in the [/wit](/wit) package. Composition happens with [wac](https://github.com/bytecodealliance/wac).
 
