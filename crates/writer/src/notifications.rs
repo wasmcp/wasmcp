@@ -9,7 +9,7 @@ use crate::bindings::wasmcp::mcp::protocol::{
     ProgressToken, LogLevel, LogMessage, ClientNotification,
     ChangeNotificationType, UpdateNotificationType
 };
-use crate::utils::{build_jsonrpc_notification, escape_json_string, write_sse_message, JsonObjectBuilder};
+use crate::utils::{build_jsonrpc_notification, escape_json_string, write_message, JsonObjectBuilder};
 
 pub struct NotificationsWriter;
 
@@ -43,12 +43,12 @@ impl Guest for NotificationsWriter {
         params.add_optional_string("logger", message.logger.as_deref());
 
         let notification = build_jsonrpc_notification("notifications/log", Some(&params.build()));
-        write_sse_message(out, &notification)
+        write_message(out, &notification)
     }
 
     fn send(out: &OutputStream, notification: ClientNotification) -> Result<(), StreamError> {
         let json = build_jsonrpc_notification(&notification.method, notification.params.as_deref());
-        write_sse_message(out, &json)
+        write_message(out, &json)
     }
 
     fn send_list_changed(out: &OutputStream, change: ChangeNotificationType) -> Result<(), StreamError> {
@@ -59,7 +59,7 @@ impl Guest for NotificationsWriter {
         };
 
         let notification = build_jsonrpc_notification(method, None);
-        write_sse_message(out, &notification)
+        write_message(out, &notification)
     }
 
     fn send_updated(out: &OutputStream, update: UpdateNotificationType) -> Result<(), StreamError> {
@@ -71,7 +71,7 @@ impl Guest for NotificationsWriter {
         };
 
         let notification = build_jsonrpc_notification(method, Some(&params));
-        write_sse_message(out, &notification)
+        write_message(out, &notification)
     }
 
     fn send_progress(
@@ -95,6 +95,6 @@ impl Guest for NotificationsWriter {
         params.add_optional_string("message", message.as_deref());
 
         let notification = build_jsonrpc_notification("notifications/progress", Some(&params.build()));
-        write_sse_message(out, &notification)
+        write_message(out, &notification)
     }
 }

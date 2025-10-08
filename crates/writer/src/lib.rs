@@ -1,19 +1,52 @@
-//! HTTP writer component for the Model Context Protocol (MCP).
+//! MCP Protocol Writer Component
 //!
-//! This component exports all writer interfaces for serializing MCP messages
-//! to output streams with Server-Sent Events (SSE) framing for HTTP transport.
+//! Provides serialization of MCP messages to output streams with proper
+//! transport framing for both HTTP/SSE and stdio transports.
 //!
-//! SSE Format:
-//! - Each message is prefixed with "data: "
-//! - Messages end with double newline "\n\n"
-//! - Multi-line JSON is split with "data: " on each line
+//! # Transport Modes
 //!
-//! This implementation follows the MCP 2025-06-18 specification for
-//! Streamable HTTP transport using text/event-stream responses.
+//! This crate supports two transport modes via feature flags:
+//!
+//! ## HTTP/SSE Transport (default)
+//!
+//! Frames messages using Server-Sent Events format:
+//! ```text
+//! data: {"jsonrpc":"2.0","id":1,"result":{...}}
+//!
+//! ```
+//! - Each line prefixed with `data: `
+//! - Messages end with double newline
+//! - Supports streaming responses
+//! - Multiple messages per stream
+//!
+//! ## stdio Transport
+//!
+//! Frames messages with simple newline delimiters:
+//! ```text
+//! {"jsonrpc":"2.0","id":1,"result":{...}}
+//! ```
+//! - Single line per message
+//! - No embedded newlines allowed
+//! - Atomic message exchange
+//!
+//! # Building
+//!
+//! ```bash
+//! # HTTP/SSE transport (default)
+//! cargo build --target wasm32-wasip2 -p writer
+//!
+//! # stdio transport
+//! cargo build --target wasm32-wasip2 -p writer --no-default-features --features stdio
+//! ```
+//!
+//! # Implementation
+//!
+//! This component follows the MCP 2025-06-18 specification and implements
+//! true streaming with proper WASI I/O backpressure handling.
 
 mod bindings {
     wit_bindgen::generate!({
-        world: "http-writer",
+        world: "writer",
         generate_all,
     });
 }

@@ -7,7 +7,7 @@ use crate::bindings::exports::wasmcp::mcp::initialize_writer::{Guest, Initialize
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
 use crate::bindings::wasmcp::mcp::protocol::Id;
 use crate::utils::{
-    build_jsonrpc_response, format_meta_field, write_sse_message,
+    build_jsonrpc_response, format_meta_field, write_message,
     JsonObjectBuilder,
 };
 
@@ -51,7 +51,7 @@ impl Guest for InitializeWriter {
         }
 
         let response = build_jsonrpc_response(&id, &result_obj.build());
-        write_sse_message(&out, &response)
+        write_message(&out, &response)
     }
 }
 

@@ -6,7 +6,7 @@ use crate::bindings::exports::wasmcp::mcp::complete_writer;
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
 use crate::bindings::wasmcp::mcp::protocol::Id;
 use crate::utils::{
-    build_jsonrpc_response, escape_json_string, write_sse_message,
+    build_jsonrpc_response, escape_json_string, write_message,
     JsonObjectBuilder,
 };
 use std::cell::RefCell;
@@ -41,7 +41,7 @@ impl complete_writer::Guest for CompleteWriter {
         result.add_field("completion", &completion_obj.build());
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)?;
+        write_message(&out, &response)?;
 
         // Flush to ensure delivery
         out.flush()?;
@@ -61,7 +61,7 @@ impl complete_writer::Guest for CompleteWriter {
         );
 
         // Write the opening of the response
-        write_sse_message(&out, &header)?;
+        write_message(&out, &header)?;
 
         Ok(complete_writer::Writer::new(CompleteWriterResource {
             state: RefCell::new(CompleteWriterState {
@@ -105,7 +105,7 @@ impl complete_writer::GuestWriter for CompleteWriterResource {
         output.push('"');
 
         // Write immediately - true streaming!
-        write_sse_message(&state.out, &output)?;
+        write_message(&state.out, &output)?;
 
         Ok(())
     }
@@ -136,7 +136,7 @@ impl complete_writer::GuestWriter for CompleteWriterResource {
         closing.push_str("}}}");
 
         // Write the closing
-        write_sse_message(&state.out, &closing)?;
+        write_message(&state.out, &closing)?;
 
         // Final flush to ensure all data is sent
         state.out.flush()?;

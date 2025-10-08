@@ -15,7 +15,7 @@ use crate::bindings::wasmcp::mcp::protocol::{
 };
 use crate::utils::{
     build_content_block_json, build_jsonrpc_response, format_id,
-    build_meta_object, write_sse_message, JsonObjectBuilder,
+    build_meta_object, write_message, JsonObjectBuilder,
 };
 use std::cell::RefCell;
 
@@ -38,7 +38,7 @@ impl list_tools_writer::Guest for ListToolsWriter {
         result.add_field("tools", &tools_json);
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)?;
+        write_message(&out, &response)?;
 
         // Flush to ensure delivery
         out.flush()?;
@@ -58,7 +58,7 @@ impl list_tools_writer::Guest for ListToolsWriter {
         );
 
         // Write the opening of the response
-        write_sse_message(&out, &header)?;
+        write_message(&out, &header)?;
 
         Ok(list_tools_writer::Writer::new(ListToolsWriterResource {
             state: RefCell::new(StreamingWriterState {
@@ -101,7 +101,7 @@ impl list_tools_writer::GuestWriter for ListToolsWriterResource {
         output.push_str(&tool_json);
 
         // Write immediately - true streaming!
-        write_sse_message(&state.out, &output)?;
+        write_message(&state.out, &output)?;
 
         Ok(())
     }
@@ -134,7 +134,7 @@ impl list_tools_writer::GuestWriter for ListToolsWriterResource {
         closing.push_str("}}");
 
         // Write the closing
-        write_sse_message(&state.out, &closing)?;
+        write_message(&state.out, &closing)?;
 
         // Final flush to ensure all data is sent
         state.out.flush()?;
@@ -160,7 +160,7 @@ impl content_tool_writer::Guest for ContentToolWriter {
         result.add_field("content", &format!("[{}]", content.build()));
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)?;
+        write_message(&out, &response)?;
         out.flush()?;
         Ok(())
     }
@@ -179,7 +179,7 @@ impl content_tool_writer::Guest for ContentToolWriter {
         result.add_bool("isError", true);
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)?;
+        write_message(&out, &response)?;
         out.flush()?;
         Ok(())
     }
@@ -195,7 +195,7 @@ impl content_tool_writer::Guest for ContentToolWriter {
         result.add_field("content", &content_json);
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)?;
+        write_message(&out, &response)?;
         out.flush()?;
         Ok(())
     }
@@ -212,11 +212,11 @@ impl content_tool_writer::Guest for ContentToolWriter {
         let header = format!(
             r#"{{"jsonrpc":"2.0","id":{id_str},"result":{{"content":["#
         );
-        write_sse_message(&out, &header)?;
+        write_message(&out, &header)?;
 
         // Write the initial block
         let initial_json = build_content_block_json(&initial);
-        write_sse_message(&out, &initial_json)?;
+        write_message(&out, &initial_json)?;
 
         Ok(content_tool_writer::Writer::new(ContentToolWriterResource {
             state: RefCell::new(ContentStreamingState {
@@ -248,7 +248,7 @@ impl content_tool_writer::GuestWriter for ContentToolWriterResource {
         // This enables true streaming of large binary content
         if !contents.is_empty() {
             let encoded = crate::utils::base64_encode(&contents);
-            write_sse_message(&state.out, &encoded)?;
+            write_message(&state.out, &encoded)?;
         }
 
         Ok(())
@@ -264,7 +264,7 @@ impl content_tool_writer::GuestWriter for ContentToolWriterResource {
         // Add a new content block to the stream
         let block_json = build_content_block_json(&content);
         let output = format!(",{}", block_json);
-        write_sse_message(&state.out, &output)?;
+        write_message(&state.out, &output)?;
 
         Ok(())
     }
@@ -292,7 +292,7 @@ impl content_tool_writer::GuestWriter for ContentToolWriterResource {
         }
 
         closing.push_str("}}");
-        write_sse_message(&state.out, &closing)?;
+        write_message(&state.out, &closing)?;
 
         state.out.flush()?;
         state.closed = true;
@@ -328,7 +328,7 @@ impl structured_tool_writer::Guest for StructuredToolWriter {
         }
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)?;
+        write_message(&out, &response)?;
         out.flush()?;
         Ok(())
     }

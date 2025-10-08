@@ -1,41 +1,76 @@
-//! Shared utilities for HTTP writer implementations.
+//! Shared utilities for MCP writer implementations.
 //!
 //! This module contains common functions used across all writer implementations
-//! for JSON serialization, SSE formatting, and stream management.
+//! for JSON serialization, message framing, and stream management.
 
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
 use crate::bindings::wasmcp::mcp::protocol::{Id, Meta, Annotations, Role};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 
-/// Write SSE-formatted data to a stream.
+/// Write a message with transport-appropriate framing.
 ///
-/// Formats the data according to Server-Sent Events specification:
-/// - Each line prefixed with "data: "
-/// - Message ends with double newline
-/// - Handles multi-line JSON properly
+/// This is the unified entry point for writing messages. The actual framing
+/// is determined at compile-time based on the active feature flag:
 ///
-/// Also implements proper check-write semantics for WASI I/O streams.
-pub fn write_sse_message(stream: &OutputStream, data: &str) -> Result<(), StreamError> {
-    // For SSE, we need to prefix each line with "data: "
-    // and end with double newline
+/// - `http` feature: Server-Sent Events framing (`data: {json}\n\n`)
+/// - `stdio` feature: Simple newline framing (`{json}\n`)
+///
+/// Both implementations handle WASI I/O backpressure correctly.
+pub fn write_message(stream: &OutputStream, data: &str) -> Result<(), StreamError> {
+    #[cfg(feature = "http")]
+    {
+        write_http_message(stream, data)
+    }
+
+    #[cfg(feature = "stdio")]
+    {
+        write_stdio_message(stream, data)
+    }
+}
+
+/// Write a message using HTTP/SSE framing.
+///
+/// Formats according to Server-Sent Events specification:
+/// - Each line prefixed with `data: `
+/// - Message terminated with double newline
+/// - Handles multi-line JSON (though our output is always compact)
+#[cfg(feature = "http")]
+fn write_http_message(stream: &OutputStream, data: &str) -> Result<(), StreamError> {
     let mut sse_formatted = String::with_capacity(data.len() + (data.lines().count() * 6) + 2);
 
-    // Split the JSON by newlines in case it's pretty-printed
+    // Prefix each line with "data: " per SSE spec
     for line in data.lines() {
         sse_formatted.push_str("data: ");
         sse_formatted.push_str(line);
         sse_formatted.push('\n');
     }
 
-    // Add the final newline to create the double newline that ends an SSE message
+    // Double newline terminates SSE message
     sse_formatted.push('\n');
 
-    // Check available space before writing
-    let bytes = sse_formatted.as_bytes();
-    write_with_backpressure(stream, bytes)?;
+    write_with_backpressure(stream, sse_formatted.as_bytes())?;
+    stream.flush()
+}
 
-    stream.flush()?;
-    Ok(())
+/// Write a message using stdio framing.
+///
+/// Simple newline-delimited format:
+/// - Single line per message
+/// - Terminated with newline
+/// - No embedded newlines allowed (enforced by debug assertion)
+#[cfg(feature = "stdio")]
+fn write_stdio_message(stream: &OutputStream, data: &str) -> Result<(), StreamError> {
+    // MCP stdio spec: messages MUST NOT contain embedded newlines
+    // Our JSON builders always produce compact output, so this should never fire
+    debug_assert!(
+        !data.contains('\n'),
+        "stdio messages must not contain newlines: {:?}",
+        data
+    );
+
+    write_with_backpressure(stream, data.as_bytes())?;
+    stream.write(b"\n")?;
+    stream.flush()
 }
 
 /// Write bytes to stream with proper backpressure handling.
@@ -339,19 +374,19 @@ impl JsonObjectBuilder {
 
     /// Add a required field.
     pub fn add_field(&mut self, name: &str, value: &str) {
-        self.fields.push(format!(r#""{name}"":{value}"#));
+        self.fields.push(format!("\"{}\":{}", name, value));
     }
 
     /// Add an optional field (only if Some).
     pub fn add_optional_field(&mut self, name: &str, value: Option<String>) {
         if let Some(v) = value {
-            self.fields.push(format!(r#""{name}"":{v}"#));
+            self.fields.push(format!("\"{}\":{}", name, v));
         }
     }
 
     /// Add a string field with proper escaping.
     pub fn add_string(&mut self, name: &str, value: &str) {
-        self.fields.push(format!(r#""{}"":"{}""#, name, escape_json_string(value)));
+        self.fields.push(format!("\"{}\":\"{}\"", name, escape_json_string(value)));
     }
 
     /// Add an optional string field.
@@ -363,7 +398,7 @@ impl JsonObjectBuilder {
 
     /// Add a boolean field.
     pub fn add_bool(&mut self, name: &str, value: bool) {
-        self.fields.push(format!(r#""{name}"":{value}"#));
+        self.fields.push(format!("\"{}\":{}", name, value));
     }
 
     /// Add an optional boolean field.
@@ -375,7 +410,7 @@ impl JsonObjectBuilder {
 
     /// Add a number field.
     pub fn add_number(&mut self, name: &str, value: impl std::fmt::Display) {
-        self.fields.push(format!(r#""{name}"":{value}"#));
+        self.fields.push(format!("\"{}\":{}", name, value));
     }
 
     /// Add an optional number field.
@@ -394,26 +429,174 @@ impl JsonObjectBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bindings::wasmcp::mcp::protocol::{Id, Role};
+
+    // ===== String Escaping Tests =====
 
     #[test]
-    fn test_escape_json_string() {
+    fn escape_json_string_basic() {
         assert_eq!(escape_json_string("hello"), "hello");
-        assert_eq!(escape_json_string(r#"hello "world""#), r#"hello \"world\""#);
-        assert_eq!(escape_json_string("line1\nline2"), r#"line1\nline2"#);
-        assert_eq!(escape_json_string("\t\r\n"), r#"\t\r\n"#);
+        assert_eq!(escape_json_string(""), "");
     }
 
     #[test]
-    fn test_base64_encode() {
-        assert_eq!(base64_encode(b"hello"), "aGVsbG8=");
+    fn escape_json_string_quotes() {
+        assert_eq!(escape_json_string(r#"hello "world""#), r#"hello \"world\""#);
+        assert_eq!(escape_json_string(r#"""#), r#"\""#);
+    }
+
+    #[test]
+    fn escape_json_string_backslashes() {
+        assert_eq!(escape_json_string(r#"path\to\file"#), r#"path\\to\\file"#);
+        assert_eq!(escape_json_string("\\"), "\\\\");
+    }
+
+    #[test]
+    fn escape_json_string_control_characters() {
+        assert_eq!(escape_json_string("\n"), r#"\n"#);
+        assert_eq!(escape_json_string("\r"), r#"\r"#);
+        assert_eq!(escape_json_string("\t"), r#"\t"#);
+        assert_eq!(escape_json_string("\u{0008}"), r#"\b"#);
+        assert_eq!(escape_json_string("\u{000C}"), r#"\f"#);
+    }
+
+    #[test]
+    fn escape_json_string_mixed() {
+        assert_eq!(escape_json_string("line1\nline2"), r#"line1\nline2"#);
+        assert_eq!(escape_json_string("\t\r\n"), r#"\t\r\n"#);
+        assert_eq!(
+            escape_json_string(r#"He said "hello\nworld""#),
+            r#"He said \"hello\\nworld\""#
+        );
+    }
+
+    #[test]
+    fn escape_json_string_unicode() {
+        // Regular unicode should pass through
+        assert_eq!(escape_json_string("hello 世界"), "hello 世界");
+        assert_eq!(escape_json_string("emoji 🦀"), "emoji 🦀");
+    }
+
+    // ===== Base64 Encoding Tests =====
+
+    #[test]
+    fn base64_encode_empty() {
         assert_eq!(base64_encode(b""), "");
+    }
+
+    #[test]
+    fn base64_encode_standard_vectors() {
+        assert_eq!(base64_encode(b"hello"), "aGVsbG8=");
         assert_eq!(base64_encode(b"f"), "Zg==");
         assert_eq!(base64_encode(b"fo"), "Zm8=");
         assert_eq!(base64_encode(b"foo"), "Zm9v");
+        assert_eq!(base64_encode(b"foob"), "Zm9vYg==");
+        assert_eq!(base64_encode(b"fooba"), "Zm9vYmE=");
+        assert_eq!(base64_encode(b"foobar"), "Zm9vYmFy");
     }
 
     #[test]
-    fn test_json_object_builder() {
+    fn base64_encode_binary() {
+        assert_eq!(base64_encode(&[0, 1, 2, 3, 255]), "AAECA/8=");
+    }
+
+    // ===== ID Formatting Tests =====
+
+    #[test]
+    fn format_id_number() {
+        assert_eq!(format_id(&Id::Number(42)), "42");
+        assert_eq!(format_id(&Id::Number(0)), "0");
+        assert_eq!(format_id(&Id::Number(-1)), "-1");
+    }
+
+    #[test]
+    fn format_id_string() {
+        assert_eq!(format_id(&Id::String("test".to_string())), r#""test""#);
+        assert_eq!(format_id(&Id::String("".to_string())), r#""""#);
+    }
+
+    #[test]
+    fn format_id_string_with_escaping() {
+        assert_eq!(
+            format_id(&Id::String(r#"with "quotes""#.to_string())),
+            r#""with \"quotes\"""#
+        );
+        assert_eq!(
+            format_id(&Id::String("line1\nline2".to_string())),
+            r#""line1\nline2""#
+        );
+    }
+
+    // ===== JSON-RPC Construction Tests =====
+
+    #[test]
+    fn build_jsonrpc_response_number_id() {
+        let id = Id::Number(1);
+        let result = build_jsonrpc_response(&id, r#"{"status":"ok"}"#);
+
+        assert_eq!(result, r#"{"jsonrpc":"2.0","id":1,"result":{"status":"ok"}}"#);
+    }
+
+    #[test]
+    fn build_jsonrpc_response_string_id() {
+        let id = Id::String("req-123".to_string());
+        let result = build_jsonrpc_response(&id, "{}");
+
+        assert_eq!(result, r#"{"jsonrpc":"2.0","id":"req-123","result":{}}"#);
+    }
+
+    #[test]
+    fn build_jsonrpc_error_basic() {
+        let id = Id::Number(1);
+        let error = build_jsonrpc_error(&id, -32601, "Method not found", None);
+
+        assert!(error.contains(r#""jsonrpc":"2.0""#));
+        assert!(error.contains(r#""id":1"#));
+        assert!(error.contains(r#""code":-32601"#));
+        assert!(error.contains(r#""message":"Method not found""#));
+        assert!(!error.contains("data"));
+    }
+
+    #[test]
+    fn build_jsonrpc_error_with_data() {
+        let id = Id::Number(2);
+        let error = build_jsonrpc_error(&id, -32600, "Invalid Request", Some(r#"{"info":"test"}"#));
+
+        assert!(error.contains(r#""data":{"info":"test"}"#));
+    }
+
+    #[test]
+    fn build_jsonrpc_notification_basic() {
+        let notif = build_jsonrpc_notification("test/method", None);
+
+        assert_eq!(notif, r#"{"jsonrpc":"2.0","method":"test/method"}"#);
+    }
+
+    #[test]
+    fn build_jsonrpc_notification_with_params() {
+        let notif = build_jsonrpc_notification("notifications/progress", Some(r#"{"token":1}"#));
+
+        assert!(notif.contains(r#""method":"notifications/progress""#));
+        assert!(notif.contains(r#""params":{"token":1}"#));
+    }
+
+    // ===== JsonObjectBuilder Tests =====
+
+    #[test]
+    fn json_object_builder_empty() {
+        let obj = JsonObjectBuilder::new();
+        assert_eq!(obj.build(), "{}");
+    }
+
+    #[test]
+    fn json_object_builder_single_field() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_string("name", "value");
+        assert_eq!(obj.build(), r#"{"name":"value"}"#);
+    }
+
+    #[test]
+    fn json_object_builder_multiple_fields() {
         let mut obj = JsonObjectBuilder::new();
         obj.add_string("name", "test");
         obj.add_number("count", 42);
@@ -423,5 +606,116 @@ mod tests {
         assert!(json.contains(r#""name":"test""#));
         assert!(json.contains(r#""count":42"#));
         assert!(json.contains(r#""enabled":true"#));
+    }
+
+    #[test]
+    fn json_object_builder_optional_fields() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_string("required", "value");
+        obj.add_optional_string("present", Some("yes"));
+        obj.add_optional_string("absent", None);
+        obj.add_optional_number("num", Some(123));
+        obj.add_optional_number::<i32>("no_num", None);
+        obj.add_optional_bool("flag", Some(false));
+        obj.add_optional_bool("no_flag", None);
+
+        let json = obj.build();
+        assert!(json.contains(r#""required":"value""#));
+        assert!(json.contains(r#""present":"yes""#));
+        assert!(!json.contains("absent"));
+        assert!(json.contains(r#""num":123"#));
+        assert!(!json.contains("no_num"));
+        assert!(json.contains(r#""flag":false"#));
+        assert!(!json.contains("no_flag"));
+    }
+
+    #[test]
+    fn json_object_builder_raw_field() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_field("nested", r#"{"inner":"value"}"#);
+
+        let json = obj.build();
+        assert_eq!(json, r#"{"nested":{"inner":"value"}}"#);
+    }
+
+    #[test]
+    fn json_object_builder_escaping() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_string("quoted", r#"value with "quotes""#);
+        obj.add_string("newlines", "line1\nline2");
+
+        let json = obj.build();
+        assert!(json.contains(r#""quoted":"value with \"quotes\"""#));
+        assert!(json.contains(r#""newlines":"line1\nline2""#));
+    }
+
+    // ===== Meta Object Tests =====
+
+    #[test]
+    fn build_meta_object_empty() {
+        assert_eq!(build_meta_object(&[]), "{}");
+    }
+
+    #[test]
+    fn build_meta_object_single_entry() {
+        let meta = vec![("key".to_string(), "value".to_string())];
+        let json = build_meta_object(&meta);
+
+        assert_eq!(json, r#"{"key":"value"}"#);
+    }
+
+    #[test]
+    fn build_meta_object_multiple_entries() {
+        let meta = vec![
+            ("one".to_string(), "first".to_string()),
+            ("two".to_string(), "second".to_string()),
+        ];
+        let json = build_meta_object(&meta);
+
+        assert!(json.contains(r#""one":"first""#));
+        assert!(json.contains(r#""two":"second""#));
+    }
+
+    // ===== Annotations Tests =====
+
+    #[test]
+    fn build_annotations_minimal() {
+        let ann = Annotations {
+            audience: None,
+            last_modified: None,
+            priority: 0.5,
+        };
+
+        let json = build_annotations_json(&ann);
+        assert!(json.contains(r#""priority":0.5"#));
+        assert!(!json.contains("audience"));
+        assert!(!json.contains("lastModified"));
+    }
+
+    #[test]
+    fn build_annotations_with_audience() {
+        let ann = Annotations {
+            audience: Some(vec![Role::User, Role::Assistant]),
+            last_modified: None,
+            priority: 1.0,
+        };
+
+        let json = build_annotations_json(&ann);
+        assert!(json.contains(r#""audience":["user","assistant"]"#));
+        assert!(json.contains(r#""priority":1"#));
+    }
+
+    #[test]
+    fn build_annotations_complete() {
+        let ann = Annotations {
+            audience: Some(vec![Role::User]),
+            last_modified: Some("2025-10-07T18:00:00Z".to_string()),
+            priority: 0.8,
+        };
+
+        let json = build_annotations_json(&ann);
+        assert!(json.contains(r#""audience":["user"]"#));
+        assert!(json.contains(r#""lastModified":"2025-10-07T18:00:00Z""#));
+        assert!(json.contains(r#""priority":0.8"#));
     }
 }

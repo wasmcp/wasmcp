@@ -14,7 +14,7 @@ use crate::bindings::wasmcp::mcp::protocol::{
 };
 use crate::utils::{
     base64_encode, build_annotations_json, build_jsonrpc_response,
-    build_meta_object, write_sse_message, JsonObjectBuilder,
+    build_meta_object, write_message, JsonObjectBuilder,
 };
 use std::cell::RefCell;
 
@@ -37,7 +37,7 @@ impl list_resources_writer::Guest for ListResourcesWriter {
         result.add_field("resources", &resources_json);
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)?;
+        write_message(&out, &response)?;
 
         // Flush to ensure delivery
         out.flush()?;
@@ -57,7 +57,7 @@ impl list_resources_writer::Guest for ListResourcesWriter {
         );
 
         // Write the opening of the response
-        write_sse_message(&out, &header)?;
+        write_message(&out, &header)?;
 
         Ok(list_resources_writer::Writer::new(ListResourcesWriterResource {
             state: RefCell::new(ResourcesWriterState {
@@ -100,7 +100,7 @@ impl list_resources_writer::GuestWriter for ListResourcesWriterResource {
         output.push_str(&resource_json);
 
         // Write immediately - true streaming!
-        write_sse_message(&state.out, &output)?;
+        write_message(&state.out, &output)?;
 
         Ok(())
     }
@@ -133,7 +133,7 @@ impl list_resources_writer::GuestWriter for ListResourcesWriterResource {
         closing.push_str("}}");
 
         // Write the closing
-        write_sse_message(&state.out, &closing)?;
+        write_message(&state.out, &closing)?;
 
         // Final flush to ensure all data is sent
         state.out.flush()?;
@@ -175,7 +175,7 @@ impl read_resource_writer::Guest for ReadResourceWriter {
         }
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)
+        write_message(&out, &response)
     }
 
     type Writer = ReadResourceWriterResource;
@@ -258,7 +258,7 @@ impl read_resource_writer::GuestWriter for ReadResourceWriterResource {
         }
 
         let response = build_jsonrpc_response(&state.id, &result.build());
-        write_sse_message(&state.out, &response)
+        write_message(&state.out, &response)
     }
 }
 
@@ -277,7 +277,7 @@ impl list_resource_templates_writer::Guest for ListResourceTemplatesWriter {
         result.add_field("resourceTemplates", &templates_json);
 
         let response = build_jsonrpc_response(&id, &result.build());
-        write_sse_message(&out, &response)?;
+        write_message(&out, &response)?;
 
         // Flush to ensure delivery
         out.flush()?;
@@ -297,7 +297,7 @@ impl list_resource_templates_writer::Guest for ListResourceTemplatesWriter {
         );
 
         // Write the opening of the response
-        write_sse_message(&out, &header)?;
+        write_message(&out, &header)?;
 
         Ok(list_resource_templates_writer::Writer::new(ListResourceTemplatesWriterResource {
             state: RefCell::new(TemplatesWriterState {
@@ -340,7 +340,7 @@ impl list_resource_templates_writer::GuestWriter for ListResourceTemplatesWriter
         output.push_str(&template_json);
 
         // Write immediately - true streaming!
-        write_sse_message(&state.out, &output)?;
+        write_message(&state.out, &output)?;
 
         Ok(())
     }
@@ -373,7 +373,7 @@ impl list_resource_templates_writer::GuestWriter for ListResourceTemplatesWriter
         closing.push_str("}}");
 
         // Write the closing
-        write_sse_message(&state.out, &closing)?;
+        write_message(&state.out, &closing)?;
 
         // Final flush to ensure all data is sent
         state.out.flush()?;

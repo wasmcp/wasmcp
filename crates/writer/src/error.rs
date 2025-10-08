@@ -5,7 +5,7 @@
 use crate::bindings::exports::wasmcp::mcp::error_writer::Guest;
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
 use crate::bindings::wasmcp::mcp::protocol::{Error, Id, ErrorCode};
-use crate::utils::{build_jsonrpc_error, write_sse_message};
+use crate::utils::{build_jsonrpc_error, write_message};
 
 pub struct ErrorWriter;
 
@@ -27,6 +27,6 @@ impl Guest for ErrorWriter {
         let response = build_jsonrpc_error(&id, error_code, &error.message, data_json);
 
         // Write as SSE message
-        write_sse_message(&out, &response)
+        write_message(&out, &response)
     }
 }
