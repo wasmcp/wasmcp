@@ -22,15 +22,15 @@
 #[allow(warnings)]
 mod bindings {
     wit_bindgen::generate!({
-        world: "stuff",
+        world: "tracing-middleware",
         generate_all,
     });
 }
 
 use bindings::exports::wasmcp::mcp::incoming_handler::{Guest as IncomingHandlerGuest, OutputStream, Request};
-use bindings::exports::wasmcp::mcp::otel_instrumentation::Guest as OtelInstrumentationGuest;
+use bindings::exports::wasmcp::otel::trace_instrumentation::Guest as TraceInstrumentationGuest;
 use bindings::wasmcp::mcp::incoming_handler as next_handler;
-use bindings::wasmcp::mcp::otel_config;
+use bindings::wasmcp::otel::otel_config;
 use bindings::wasi::otel_providers::common_providers;
 use bindings::wasi::otel_sdk::common::{Attribute, AttributeValue};
 use bindings::wasi::otel_sdk::context;
@@ -244,7 +244,7 @@ impl IncomingHandlerGuest for Component {
     }
 }
 
-impl OtelInstrumentationGuest for Component {
+impl TraceInstrumentationGuest for Component {
     fn add_span_attribute(key: String, value: String) {
         // Get current active context to access the span
         if let Some(span_context) = context::get_active_context() {

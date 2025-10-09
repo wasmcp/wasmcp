@@ -12,10 +12,10 @@ interface otel-config {
   get-config: func() -> provider;
 }
 
-/// OpenTelemetry instrumentation interface
-/// Middleware exports this, handlers import it
+/// OpenTelemetry trace instrumentation interface
+/// Middleware exports this, handlers import it for custom span creation and attributes
 @since(version = 0.3.0)
-interface otel-instrumentation {
+interface trace-instrumentation {
   use wasi:otel-sdk/common@0.1.0-alpha.3.{attribute};
   use wasi:otel-sdk/trace@0.1.0-alpha.3.{span-kind};
 
@@ -900,6 +900,28 @@ interface completion-complete-result {
   open: func(id: id, output: output-stream) -> result<writer, stream-error>;
 }
 
+/// OpenTelemetry distributed tracing instrumentation
+/// Include this to create custom trace spans and add trace-specific attributes in your handler
+/// Provides fine-grained control over trace data beyond automatic middleware tracing
+@since(version = 0.3.0)
+world otel-trace {
+  import wasi:otel-sdk/common@0.1.0-alpha.3;
+  import wasi:otel-sdk/context@0.1.0-alpha.3;
+  import wasi:otel-sdk/transport@0.1.0-alpha.3;
+  import wasi:otel-sdk/trace@0.1.0-alpha.3;
+  import trace-instrumentation;
+}
+/// Full OpenTelemetry observability suite
+/// Include this for access to all observability signals (trace, metrics, logs)
+/// Currently provides tracing; metrics and logging will be added in future releases
+@since(version = 0.3.0)
+world otel-full {
+  import wasi:otel-sdk/common@0.1.0-alpha.3;
+  import wasi:otel-sdk/context@0.1.0-alpha.3;
+  import wasi:otel-sdk/transport@0.1.0-alpha.3;
+  import wasi:otel-sdk/trace@0.1.0-alpha.3;
+  import trace-instrumentation;
+}
 /// A WIT framework for composing Model Context Protocol servers as WebAssembly components.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema>
@@ -1070,30 +1092,6 @@ world completion-handler {
   import error;
   import error-result;
   import completion-complete-result;
-  import request;
-  import incoming-handler;
-
-  export incoming-handler;
-}
-/// Handler world for MCP tool operations with OpenTelemetry instrumentation.
-/// Extends tools-handler with ability to add custom trace information.
-@since(version = 0.3.0)
-world tools-handler-otel {
-  import wasi:otel-sdk/common@0.1.0-alpha.3;
-  import wasi:otel-sdk/context@0.1.0-alpha.3;
-  import wasi:otel-sdk/transport@0.1.0-alpha.3;
-  import wasi:otel-sdk/trace@0.1.0-alpha.3;
-  import otel-instrumentation;
-  import wasi:io/error@0.2.3;
-  import wasi:io/poll@0.2.3;
-  import wasi:io/streams@0.2.3;
-  import types;
-  import error;
-  import error-result;
-  import tools-list-result;
-  import content;
-  import tools-call-content;
-  import tools-call-structured;
   import request;
   import incoming-handler;
 

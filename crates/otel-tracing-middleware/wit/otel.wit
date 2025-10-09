@@ -1,5 +1,7 @@
+package wasmcp:otel@0.3.0;
+
 /// OpenTelemetry configuration interface
-/// Configuration components export this to provide provider settings
+/// Handler components export this to provide runtime OTEL configuration
 @since(version = 0.3.0)
 interface otel-config {
   use wasi:otel-providers/common-providers@0.1.0.{provider};
@@ -10,10 +12,10 @@ interface otel-config {
   get-config: func() -> provider;
 }
 
-/// OpenTelemetry instrumentation interface
-/// Middleware exports this, handlers import it
+/// OpenTelemetry trace instrumentation interface
+/// Middleware exports this, handlers import it for custom span creation and attributes
 @since(version = 0.3.0)
-interface otel-instrumentation {
+interface trace-instrumentation {
   use wasi:otel-sdk/common@0.1.0-alpha.3.{attribute};
   use wasi:otel-sdk/trace@0.1.0-alpha.3.{span-kind};
 
@@ -33,4 +35,22 @@ interface otel-instrumentation {
   /// End a child span by its ID
   @since(version = 0.3.0)
   end-child-span: func(span-id: u64);
+}
+
+/// OpenTelemetry distributed tracing instrumentation
+/// Include this to create custom trace spans and add trace-specific attributes in your handler
+/// Provides fine-grained control over trace data beyond automatic middleware tracing
+@since(version = 0.3.0)
+world otel-trace {
+    import trace-instrumentation;
+}
+
+/// Full OpenTelemetry observability suite
+/// Include this for access to all observability signals (trace, metrics, logs)
+/// Currently provides tracing; metrics and logging will be added in future releases
+@since(version = 0.3.0)
+world otel-full {
+    import trace-instrumentation;
+    // Future: import metrics-instrumentation;
+    // Future: import logs-instrumentation;
 }
