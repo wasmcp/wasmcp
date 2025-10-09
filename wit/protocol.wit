@@ -108,37 +108,26 @@ interface protocol {
         tools: option<list-changed-capability-option>,
     }
 
-    record completions-capability {
-        completions: option<json>,
+    flags tools-capability-options {
+        list-changed,
     }
 
-    record experimental-capability {
-        experimental: option<list<tuple<string, json>>>,
+    flags resources-capability-options {
+        list-changed,
+        subscribe,
     }
 
-    record logging-capability {
-        logging: option<json>,
-    }
-
-    record prompts-capability {
-        prompts: option<list-changed-capability-option>,
-    }
-
-    record resources-capability {
-        resources: option<resources-list-changed-capability-option>,
-    }
-
-    record tools-capability {
-        tools: option<list-changed-capability-option>,
+    flags prompts-capability-options {
+        list-changed,
     }
 
     variant server-capability {
-        completions(completions-capability),
-        experimental(experimental-capability),
-        logging(logging-capability),
-        prompts(prompts-capability),
-        resources(resources-capability),
-        tools(tools-capability),
+        completions(option<json>),
+        experimental(option<list<tuple<string, json>>>),
+        logging(option<json>),
+        prompts(prompts-capability-options),
+        resources(resources-capability-options),
+        tools(tools-capability-options),
     }
 
     record client-capabilities {
@@ -693,32 +682,32 @@ interface protocol {
     }
 
     /// Bidirectional error message.
-    record error {
+    record mcp-error {
         id: option<id>,
         code: error-code,
         message: string,
         data: option<json>,
     }
 
-    record request {
+    record mcp-request {
         id: id,
         method: request-method,
         progress-token: option<progress-token>,
     }
 
-    record notification {
+    record mcp-notification {
         method: notification-method,
     }
 
-    record %result {
+    record mcp-result {
         id: id,
         %result: response-result,
     }
 
     variant mcp-message {
-        request(request),
-        notification(notification),
-        %result(%result),
-        error(error),
+        request(mcp-request),
+        notification(mcp-notification),
+        %result(mcp-result),
+        error(mcp-error),
     }
 }

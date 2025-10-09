@@ -1,9 +1,5 @@
 use wasi:io/streams@0.2.3;
 
-interface message-formatter {
-    fmt: func(message: string) -> string;
-}
-
 interface notifications-writer {
     use streams.{output-stream, stream-error};
     use protocol.{progress-token, log-level, log-message, client-notification, change-notification-type, update-notification-type};
@@ -43,11 +39,11 @@ interface notifications-writer {
 @since(version = 0.3.0)
 interface error-writer {
     use streams.{output-stream, stream-error};
-    use protocol.{id, error};
+    use protocol.{id, mcp-error};
 
     write-error: func(
         out: output-stream,
-        error: error,
+        error: mcp-error,
     ) -> result<_, stream-error>;
 }
 

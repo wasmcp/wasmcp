@@ -2,7 +2,7 @@
 //!
 //! This component provides JSON-RPC 2.0 message parsing and context management for MCP handlers.
 //! It is responsible for:
-//! - Parsing JSON-RPC 2.0 messages (requests, notifications, results, errors) from byte arrays
+//! - Parsing JSON-RPC 2.0 messages (requests, McpNotifications, results, errors) from byte arrays
 //! - Validating message structure according to the JSON-RPC 2.0 specification
 //! - Managing request-scoped context for middleware communication
 //! - Providing strongly-typed access to the parsed message data
@@ -26,27 +26,27 @@
 //! // Access the JSON-RPC message
 //! let message = context.data();
 //! match message {
-//!     JsonrpcObject::Request(req) => handle_request(req),
-//!     JsonrpcObject::Notification(notif) => handle_notification(notif),
-//!     JsonrpcObject::Result(res) => handle_result(res),
-//!     JsonrpcObject::Error(err) => handle_error(err),
+//!     McpMessage::Request(req) => handle_request(req),
+//!     McpMessage::McpNotification(notif) => handle_McpNotification(notif),
+//!     McpMessage::Result(res) => handle_result(res),
+//!     McpMessage::Error(err) => handle_error(err),
 //! }
 //! ```
 
 mod bindings {
     wit_bindgen::generate!({
-        world: "context",
+        world: "message-context",
         generate_all,
     });
 }
 
-use bindings::exports::wasmcp::mcp::context::{GuestContext, ParseError};
+use bindings::exports::wasmcp::mcp::message_context::{Guest, GuestMessageContext, MessageContext, ParseError};
 use bindings::wasmcp::mcp::protocol::{
     ArgParams, Cancellation, ClientCapabilities, CompleteParams, CompletionArgument,
     CompletionContext, CompletionPromptReference, CompletionRef, ElicitResult,
-    ElicitResultAction, ElicitResultContent, Error as McpError, ErrorCode, Id, Implementation,
-    InitializeParams, JsonrpcObject, ListChangedCapabilityOption, Notification, NotificationMethod,
-    ProgressToken, ProtocolVersion, Request, RequestMethod, ResponseResult, Result as McpResult,
+    ElicitResultAction, ElicitResultContent, McpError, ErrorCode, Id, Implementation,
+    InitializeParams, McpMessage, ListChangedCapabilityOption, McpNotification, NotificationMethod,
+    ProgressToken, ProtocolVersion, McpRequest, RequestMethod, ResponseResult, McpResult,
     ServerCapability,
 };
 
@@ -62,24 +62,24 @@ struct Component;
 /// thread-safe access to request-scoped context.
 struct Context {
     /// The parsed JSON-RPC object
-    jsonrpc: JsonrpcObject,
+    message: McpMessage,
     /// Request-scoped context for middleware communication
     context: RwLock<HashMap<String, String>>,
 }
 
-impl GuestContext for Context {
+impl GuestMessageContext for Context {
     /// Parse a JSON-RPC 2.0 message from a byte array.
     ///
     /// This method validates the JSON structure and ensures it conforms
     /// to the JSON-RPC 2.0 specification before creating a Context object.
-    fn from_bytes(bytes: Vec<u8>) -> Result<bindings::exports::wasmcp::mcp::context::Context, ParseError> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<MessageContext, ParseError> {
         // Parse as generic JSON first
         let parsed: Value = serde_json::from_slice(&bytes)
-            .map_err(|e| format!("JSON parse error: {}", e))?;
+            .map_err(|e| ParseError::InvalidJson(format!("JSON parse error: {}", e)))?;
 
         // Validate it's a JSON object
         if !parsed.is_object() {
-            return Err("Not a valid JSON object".to_string());
+            return Err(ParseError::InvalidJson("Not a valid JSON object".to_string()));
         }
 
         // Check for JSON-RPC 2.0 version
@@ -87,46 +87,48 @@ impl GuestContext for Context {
 
         // Parse based on what fields are present
         let jsonrpc = if parsed.get("method").is_some() {
-            // It's either a request or notification
+            // It's either a request or McpNotification
             if jsonrpc_version != Some("2.0") {
-                return Err("Invalid or missing jsonrpc version for request/notification".to_string());
+                return Err(ParseError::InvalidJsonrpc("Invalid or missing jsonrpc version for request/McpNotification".to_string()));
             }
 
             if let Some(_id_value) = parsed.get("id") {
                 // It's a request (has id)
-                parse_request(&parsed)?
+                parse_request(&parsed)
             } else {
-                // It's a notification (no id)
-                parse_notification(&parsed)?
+                // It's a McpNotification (no id)
+                parse_notification(&parsed)
             }
         } else if parsed.get("result").is_some() {
             // It's a result response
             if jsonrpc_version != Some("2.0") {
-                return Err("Invalid or missing jsonrpc version for result".to_string());
+                return Err(ParseError::InvalidJsonrpc("Invalid or missing jsonrpc version for result".to_string()));
             }
-            parse_result(&parsed)?
+            parse_result(&parsed)
         } else if parsed.get("error").is_some() {
             // It's an error response
             if jsonrpc_version != Some("2.0") {
-                return Err("Invalid or missing jsonrpc version for error".to_string());
+                return Err(ParseError::InvalidJsonrpc("Invalid or missing jsonrpc version for error".to_string()));
             }
-            parse_error(&parsed)?
+            parse_error(&parsed)
         } else {
-            return Err("Unrecognized JSON-RPC message format".to_string());
+            return Err(ParseError::InvalidJsonrpc("Unrecognized JSON-RPC message format".to_string()));
         };
 
+        let message = jsonrpc.map_err(|e| ParseError::InvalidJsonrpc(e))?;
+
         // Create context with parsed JSON-RPC object
-        Ok(bindings::exports::wasmcp::mcp::context::Context::new(
+        Ok(MessageContext::new(
             Context {
-                jsonrpc,
+                message,
                 context: RwLock::new(HashMap::new()),
             },
         ))
     }
 
     /// Get the parsed JSON-RPC object.
-    fn body(&self) -> JsonrpcObject {
-        self.jsonrpc.clone()
+    fn message(&self) -> McpMessage {
+        self.message.clone()
     }
 
     /// Get a request-scoped context value by key.
@@ -160,42 +162,47 @@ impl GuestContext for Context {
 
         if let Ok(mut ctx) = self.context.write() {
             // Register tools capability
-            if let Some(tools) = capabilities.tools {
-                let json = serde_json::json!({
-                    "listChanged": tools.list_changed,
-                });
-                ctx.insert(format!("{}tools", PREFIX), json.to_string());
+            if let ServerCapability::Tools(Some(tools)) = &capability {
+                let mut json = serde_json::Map::new();
+                if let Some(list_changed) = tools.list_changed {
+                    json.insert("listChanged".to_string(), serde_json::Value::Bool(list_changed));
+                }
+                ctx.insert(format!("{}tools", PREFIX), serde_json::Value::Object(json).to_string());
             }
 
             // Register prompts capability
-            if let Some(prompts) = capabilities.prompts {
-                let json = serde_json::json!({
-                    "listChanged": prompts.list_changed,
-                });
-                ctx.insert(format!("{}prompts", PREFIX), json.to_string());
+            if let ServerCapability::Prompts(Some(prompts)) = &capability {
+                let mut json = serde_json::Map::new();
+                if let Some(list_changed) = prompts.list_changed {
+                    json.insert("listChanged".to_string(), serde_json::Value::Bool(list_changed));
+                }
+                ctx.insert(format!("{}prompts", PREFIX), serde_json::Value::Object(json).to_string());
             }
 
             // Register resources capability
-            if let Some(resources) = capabilities.resources {
-                let json = serde_json::json!({
-                    "listChanged": resources.list_changed,
-                    "subscribe": resources.subscribe,
-                });
-                ctx.insert(format!("{}resources", PREFIX), json.to_string());
+            if let ServerCapability::Resources(Some(resources)) = &capability {
+                let mut json = serde_json::Map::new();
+                if let Some(list_changed) = resources.list_changed {
+                    json.insert("listChanged".to_string(), serde_json::Value::Bool(list_changed));
+                }
+                if let Some(subscribe) = resources.subscribe {
+                    json.insert("subscribe".to_string(), serde_json::Value::Bool(subscribe));
+                }
+                ctx.insert(format!("{}resources", PREFIX), serde_json::Value::Object(json).to_string());
             }
 
             // Register completions capability
-            if let Some(completions) = capabilities.completions {
-                ctx.insert(format!("{}completions", PREFIX), completions);
+            if let ServerCapability::Completions(Some(completions)) = &capability {
+                ctx.insert(format!("{}completions", PREFIX), completions.clone());
             }
 
             // Register logging capability
-            if let Some(logging) = capabilities.logging {
-                ctx.insert(format!("{}logging", PREFIX), logging);
+            if let ServerCapability::Logging(Some(logging)) = &capability {
+                ctx.insert(format!("{}logging", PREFIX), logging.clone());
             }
 
             // Register experimental capabilities
-            if let Some(experimental) = capabilities.experimental {
+            if let ServerCapability::Experimental(Some(experimental)) = &capability {
                 let json = serde_json::to_string(&experimental).unwrap_or_else(|_| "[]".to_string());
                 ctx.insert(format!("{}experimental", PREFIX), json);
             }
@@ -206,7 +213,7 @@ impl GuestContext for Context {
 // === Helper Parsing Functions ===
 
 /// Parse a JSON-RPC request
-fn parse_request(parsed: &Value) -> Result<JsonrpcObject, String> {
+fn parse_request(parsed: &Value) -> Result<McpMessage, String> {
     // Parse ID
     let id = parsed
         .get("id")
@@ -298,46 +305,46 @@ fn parse_request(parsed: &Value) -> Result<JsonrpcObject, String> {
         .and_then(|meta| meta.get("progressToken"))
         .and_then(|token| parse_progress_token(token).ok());
 
-    Ok(JsonrpcObject::Request(Request {
+    Ok(McpMessage::Request(McpRequest {
         id,
         method,
         progress_token,
     }))
 }
 
-/// Parse a JSON-RPC notification
-fn parse_notification(parsed: &Value) -> Result<JsonrpcObject, String> {
+/// Parse a JSON-RPC McpNotification
+fn parse_notification(parsed: &Value) -> Result<McpMessage, String> {
     let method_str = parsed
         .get("method")
         .and_then(|m| m.as_str())
-        .ok_or("Notification missing method field")?;
+        .ok_or("McpNotification missing method field")?;
 
     let params = parsed.get("params");
 
     let method = match method_str {
-        "notifications/cancelled" => {
+        "McpNotifications/cancelled" => {
             if let Some(params) = params {
                 NotificationMethod::Cancellation(parse_cancellation(params)?)
             } else {
-                return Err("cancellation notification missing params".to_string());
+                return Err("cancellation McpNotification missing params".to_string());
             }
         }
-        "notifications/progress" => {
+        "McpNotifications/progress" => {
             let token = params
                 .and_then(|p| p.get("progressToken"))
-                .ok_or("progress notification missing progressToken")?;
+                .ok_or("progress McpNotification missing progressToken")?;
             NotificationMethod::Progress(parse_progress_token(token)?)
         }
-        "notifications/initialized" => NotificationMethod::Initialized,
+        "McpNotifications/initialized" => NotificationMethod::Initialized,
         "roots/list_changed" => NotificationMethod::RootsListChanged,
-        _ => return Err(format!("Unknown notification method: {}", method_str)),
+        _ => return Err(format!("Unknown McpNotification method: {}", method_str)),
     };
 
-    Ok(JsonrpcObject::Notification(Notification { method }))
+    Ok(McpMessage::Notification(McpNotification { method }))
 }
 
 /// Parse a JSON-RPC result
-fn parse_result(parsed: &Value) -> Result<JsonrpcObject, String> {
+fn parse_result(parsed: &Value) -> Result<McpMessage, String> {
     let id = parsed
         .get("id")
         .ok_or("Result missing id field")?;
@@ -357,11 +364,11 @@ fn parse_result(parsed: &Value) -> Result<JsonrpcObject, String> {
         return Err("Unknown result type".to_string());
     };
 
-    Ok(JsonrpcObject::Result(McpResult { id, result }))
+    Ok(McpMessage::Result(McpResult { id, result }))
 }
 
 /// Parse a JSON-RPC error
-fn parse_error(parsed: &Value) -> Result<JsonrpcObject, String> {
+fn parse_error(parsed: &Value) -> Result<McpMessage, String> {
     let id = parsed.get("id").and_then(|id| parse_id(id).ok());
 
     let error_obj = parsed
@@ -392,7 +399,7 @@ fn parse_error(parsed: &Value) -> Result<JsonrpcObject, String> {
         .get("data")
         .map(|d| serde_json::to_string(d).unwrap_or_else(|_| d.to_string()));
 
-    Ok(JsonrpcObject::Error(McpError {
+    Ok(McpMessage::Error(McpError {
         id,
         code: error_code,
         message,
@@ -652,7 +659,7 @@ fn parse_elicit_result(params: &Value) -> Result<ElicitResult, String> {
     })
 }
 
-/// Parse cancellation notification parameters
+/// Parse cancellation McpNotification parameters
 fn parse_cancellation(params: &Value) -> Result<Cancellation, String> {
     let request_id = params
         .get("requestId")
@@ -670,8 +677,8 @@ fn parse_cancellation(params: &Value) -> Result<Cancellation, String> {
     })
 }
 
-impl bindings::exports::wasmcp::mcp::context::Guest for Component {
-    type Context = Context;
+impl Guest for Component {
+    type MessageContext = Context;
 }
 
 bindings::export!(Component with_types_in bindings);

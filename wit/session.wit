@@ -2,10 +2,10 @@
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#session>
 @since(version = 0.3.1-alpha.1)
-interface session {
+interface session-manager {
     use wasi:io/streams@0.2.3.{output-stream, stream-error};
     use protocol.{elicit-request, elicit-result};
-    use context.{message-context};
+    use message-context.{message-context};
 
     /// Errors that can occur during session operations.
     @since(version = 0.3.1-alpha.1)

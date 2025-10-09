@@ -1,7 +1,7 @@
 @since(version = 0.3.0)
 interface message-handler {
     use wasi:io/streams@0.2.3.{output-stream};
-    use context.{message-context};
+    use message-context.{message-context};
 
     /// Handle an incoming MCP object and write the response to the output-stream.
     ///

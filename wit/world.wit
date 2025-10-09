@@ -1,4 +1,4 @@
-package wasmcp:mcp@0.3.1-alpha.18;
+package wasmcp:mcp@0.3.1-alpha.24;
 
 @since(version = 0.3.0)
 world middleware {
@@ -6,6 +6,11 @@ world middleware {
     import notifications-writer;
     import error-writer;
     export message-handler;
+}
+
+world session-handler {
+    include middleware;
+    export session-manager;
 }
 
 world tools-handler {
@@ -30,12 +35,7 @@ world completions-handler {
 
 world terminal-handler {
     import lifecycle-writer;
-    export message-handler;
-}
-
-world session-handler {
-    include middleware;
     import notifications-writer;
     import error-writer;
-    export session;
+    export message-handler;
 }

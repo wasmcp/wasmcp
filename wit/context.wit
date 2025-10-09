@@ -1,5 +1,5 @@
 interface message-context {
-    use protocol.{mcp-message, server-capability, meta, transport};
+    use protocol.{mcp-message, server-capability};
 
     variant parse-error {
         /// Raw JSON parse/utf8 failure
@@ -17,8 +17,6 @@ interface message-context {
         from-bytes: static func(bytes: list<u8>) -> result<message-context, parse-error>;
 
         message: func() -> mcp-message;
-
-        meta: func() -> meta;
 
         /// Get a context value by key.
         @since(version = 0.3.0)
