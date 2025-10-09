@@ -43,14 +43,7 @@ mod bindings {
 use bindings::exports::wasmcp::mcp::message_context::{
     Guest, GuestMessageContext, MessageContext, ParseError,
 };
-use bindings::wasmcp::mcp::protocol::{
-    ArgParams, Cancellation, ClientCapabilities, CompleteParams, CompletionArgument,
-    CompletionContext, CompletionPromptReference, CompletionRef, ElicitResult, ElicitResultAction,
-    ElicitResultContent, ErrorCode, Id, Implementation, InitializeParams,
-    ListChangedCapabilityOption, McpError, McpMessage, McpNotification, McpRequest, McpResult,
-    NotificationMethod, ProgressToken, PromptsCapabilityOptions, ProtocolVersion, RequestMethod,
-    ResourcesCapabilityOptions, ResponseResult, ServerCapability, ToolsCapabilityOptions,
-};
+use bindings::wasmcp::mcp::protocol as mcp;
 
 use serde_json::Value;
 use std::collections::HashMap;
@@ -58,22 +51,22 @@ use std::sync::RwLock;
 
 struct Component;
 
-/// Internal representation of an MCP context.
+/// Internal implementation of the MessageContext resource.
 ///
 /// This struct holds the parsed JSON-RPC message and provides
-/// thread-safe access to request-scoped context.
-struct Context {
-    /// The parsed JSON-RPC object
-    message: McpMessage,
-    /// Request-scoped context for middleware communication
-    context: RwLock<HashMap<String, String>>,
+/// thread-safe access to request-scoped metadata for middleware communication.
+struct MessageContextData {
+    /// The parsed JSON-RPC message
+    message: mcp::McpMessage,
+    /// Request-scoped metadata for middleware to share state
+    metadata: RwLock<HashMap<String, String>>,
 }
 
-impl GuestMessageContext for Context {
+impl GuestMessageContext for MessageContextData {
     /// Parse a JSON-RPC 2.0 message from a byte array.
     ///
     /// This method validates the JSON structure and ensures it conforms
-    /// to the JSON-RPC 2.0 specification before creating a Context object.
+    /// to the JSON-RPC 2.0 specification before creating a MessageContext.
     fn from_bytes(bytes: Vec<u8>) -> Result<MessageContext, ParseError> {
         // Parse as generic JSON first
         let parsed: Value = serde_json::from_slice(&bytes)
@@ -91,18 +84,18 @@ impl GuestMessageContext for Context {
 
         // Parse based on what fields are present
         let jsonrpc = if parsed.get("method").is_some() {
-            // It's either a request or McpNotification
+            // It's either a request or notification
             if jsonrpc_version != Some("2.0") {
                 return Err(ParseError::InvalidJsonrpc(
-                    "Invalid or missing jsonrpc version for request/McpNotification".to_string(),
+                    "Invalid or missing jsonrpc version for request/notification".to_string(),
                 ));
             }
 
-            if let Some(_id_value) = parsed.get("id") {
+            if parsed.get("id").is_some() {
                 // It's a request (has id)
                 parse_request(&parsed)
             } else {
-                // It's a McpNotification (no id)
+                // It's a notification (no id)
                 parse_notification(&parsed)
             }
         } else if parsed.get("result").is_some() {
@@ -129,92 +122,92 @@ impl GuestMessageContext for Context {
 
         let message = jsonrpc.map_err(ParseError::InvalidJsonrpc)?;
 
-        // Create context with parsed JSON-RPC object
-        Ok(MessageContext::new(Context {
+        // Create context with parsed JSON-RPC message
+        Ok(MessageContext::new(MessageContextData {
             message,
-            context: RwLock::new(HashMap::new()),
+            metadata: RwLock::new(HashMap::new()),
         }))
     }
 
-    /// Get the parsed JSON-RPC object.
-    fn message(&self) -> McpMessage {
+    /// Get the parsed JSON-RPC message.
+    fn message(&self) -> mcp::McpMessage {
         self.message.clone()
     }
 
-    /// Get a request-scoped context value by key.
+    /// Get a request-scoped metadata value by key.
     ///
     /// This allows middleware components to retrieve shared state
     /// that was set earlier in the request processing chain.
     fn get(&self, key: String) -> Option<String> {
-        self.context
+        self.metadata
             .read()
             .ok()
-            .and_then(|ctx| ctx.get(&key).cloned())
+            .and_then(|meta| meta.get(&key).cloned())
     }
 
-    /// Set a request-scoped context value by key.
+    /// Set a request-scoped metadata value by key.
     ///
     /// This allows middleware components to share state with components
     /// later in the request processing chain.
     fn set(&self, key: String, value: String) {
-        if let Ok(mut ctx) = self.context.write() {
-            ctx.insert(key, value);
+        if let Ok(mut meta) = self.metadata.write() {
+            meta.insert(key, value);
         }
     }
 
-    /// Register server capabilities in the context store.
+    /// Register server capabilities in the metadata store.
     ///
     /// This provides a type-safe way for middleware components to register
     /// their capabilities. Capabilities are serialized to JSON and stored
     /// with the key "wasmcp:capability:{name}".
-    fn register_capability(&self, capability: ServerCapability) {
+    fn register_capability(&self, capability: mcp::ServerCapability) {
         const PREFIX: &str = "wasmcp:capability:";
 
-        if let Ok(mut ctx) = self.context.write() {
+        if let Ok(mut meta) = self.metadata.write() {
             match capability {
-                ServerCapability::Tools(tools) => {
+                mcp::ServerCapability::Tools(tools) => {
                     let mut json = serde_json::Map::new();
-                    if tools.contains(ToolsCapabilityOptions::LIST_CHANGED) {
+                    if tools.contains(mcp::ToolsCapabilityOptions::LIST_CHANGED) {
                         json.insert("listChanged".to_string(), serde_json::Value::Bool(true));
                     }
-                    ctx.insert(
+                    meta.insert(
                         format!("{PREFIX}tools"),
                         serde_json::Value::Object(json).to_string(),
                     );
                 }
-                ServerCapability::Prompts(prompts) => {
+                mcp::ServerCapability::Prompts(prompts) => {
                     let mut json = serde_json::Map::new();
-                    if prompts.contains(PromptsCapabilityOptions::LIST_CHANGED) {
+                    if prompts.contains(mcp::PromptsCapabilityOptions::LIST_CHANGED) {
                         json.insert("listChanged".to_string(), serde_json::Value::Bool(true));
                     }
-                    ctx.insert(
+                    meta.insert(
                         format!("{PREFIX}prompts"),
                         serde_json::Value::Object(json).to_string(),
                     );
                 }
-                ServerCapability::Resources(resources) => {
+                mcp::ServerCapability::Resources(resources) => {
                     let mut json = serde_json::Map::new();
-                    if resources.contains(ResourcesCapabilityOptions::LIST_CHANGED) {
+                    if resources.contains(mcp::ResourcesCapabilityOptions::LIST_CHANGED) {
                         json.insert("listChanged".to_string(), serde_json::Value::Bool(true));
                     }
-                    if resources.contains(ResourcesCapabilityOptions::SUBSCRIBE) {
+                    if resources.contains(mcp::ResourcesCapabilityOptions::SUBSCRIBE) {
                         json.insert("subscribe".to_string(), serde_json::Value::Bool(true));
                     }
-                    ctx.insert(
+                    meta.insert(
                         format!("{PREFIX}resources"),
                         serde_json::Value::Object(json).to_string(),
                     );
                 }
-                ServerCapability::Completions(Some(completions)) => {
-                    ctx.insert(format!("{PREFIX}completions"), completions);
+                mcp::ServerCapability::Completions(Some(completions)) => {
+                    meta.insert(format!("{PREFIX}completions"), completions);
                 }
-                ServerCapability::Logging(Some(logging)) => {
-                    ctx.insert(format!("{PREFIX}logging"), logging);
+                mcp::ServerCapability::Logging(Some(logging)) => {
+                    meta.insert(format!("{PREFIX}logging"), logging);
                 }
-                ServerCapability::Experimental(Some(experimental)) => {
+                mcp::ServerCapability::Experimental(Some(experimental)) => {
                     let json =
                         serde_json::to_string(&experimental).unwrap_or_else(|_| "[]".to_string());
-                    ctx.insert(format!("{PREFIX}experimental"), json);
+                    meta.insert(format!("{PREFIX}experimental"), json);
                 }
                 // None variants don't register anything
                 _ => {}
@@ -226,7 +219,7 @@ impl GuestMessageContext for Context {
 // === Helper Parsing Functions ===
 
 /// Parse a JSON-RPC request
-fn parse_request(parsed: &Value) -> Result<McpMessage, String> {
+fn parse_request(parsed: &Value) -> Result<mcp::McpMessage, String> {
     // Parse ID
     let id = parsed.get("id").ok_or("Request missing id field")?;
 
@@ -244,7 +237,7 @@ fn parse_request(parsed: &Value) -> Result<McpMessage, String> {
     let method = match method_str {
         "initialize" => {
             if let Some(params) = params {
-                RequestMethod::Initialize(parse_initialize_params(params)?)
+                mcp::RequestMethod::Initialize(parse_initialize_params(params)?)
             } else {
                 return Err("initialize request missing params".to_string());
             }
@@ -254,11 +247,11 @@ fn parse_request(parsed: &Value) -> Result<McpMessage, String> {
                 .and_then(|p| p.get("cursor"))
                 .and_then(|c| c.as_str())
                 .map(|s| s.to_string());
-            RequestMethod::ToolsList(cursor)
+            mcp::RequestMethod::ToolsList(cursor)
         }
         "tools/call" => {
             if let Some(params) = params {
-                RequestMethod::ToolsCall(parse_tools_call_params(params)?)
+                mcp::RequestMethod::ToolsCall(parse_tools_call_params(params)?)
             } else {
                 return Err("tools/call request missing params".to_string());
             }
@@ -268,7 +261,7 @@ fn parse_request(parsed: &Value) -> Result<McpMessage, String> {
                 .and_then(|p| p.get("cursor"))
                 .and_then(|c| c.as_str())
                 .map(|s| s.to_string());
-            RequestMethod::ResourcesList(cursor)
+            mcp::RequestMethod::ResourcesList(cursor)
         }
         "resources/read" => {
             let uri = params
@@ -276,37 +269,37 @@ fn parse_request(parsed: &Value) -> Result<McpMessage, String> {
                 .and_then(|u| u.as_str())
                 .ok_or("resources/read missing uri param")?
                 .to_string();
-            RequestMethod::ResourcesRead(uri)
+            mcp::RequestMethod::ResourcesRead(uri)
         }
         "resources/templates/list" => {
             let cursor = params
                 .and_then(|p| p.get("cursor"))
                 .and_then(|c| c.as_str())
                 .map(|s| s.to_string());
-            RequestMethod::ResourcesTemplatesList(cursor)
+            mcp::RequestMethod::ResourcesTemplatesList(cursor)
         }
         "prompts/list" => {
             let cursor = params
                 .and_then(|p| p.get("cursor"))
                 .and_then(|c| c.as_str())
                 .map(|s| s.to_string());
-            RequestMethod::PromptsList(cursor)
+            mcp::RequestMethod::PromptsList(cursor)
         }
         "prompts/get" => {
             if let Some(params) = params {
-                RequestMethod::PromptsGet(parse_prompts_get_params(params)?)
+                mcp::RequestMethod::PromptsGet(parse_prompts_get_params(params)?)
             } else {
                 return Err("prompts/get request missing params".to_string());
             }
         }
         "completion/complete" => {
             if let Some(params) = params {
-                RequestMethod::CompletionComplete(parse_complete_params(params)?)
+                mcp::RequestMethod::CompletionComplete(parse_complete_params(params)?)
             } else {
                 return Err("completion/complete request missing params".to_string());
             }
         }
-        "ping" => RequestMethod::Ping,
+        "ping" => mcp::RequestMethod::Ping,
         _ => return Err(format!("Unknown request method: {method_str}")),
     };
 
@@ -316,46 +309,48 @@ fn parse_request(parsed: &Value) -> Result<McpMessage, String> {
         .and_then(|meta| meta.get("progressToken"))
         .and_then(|token| parse_progress_token(token).ok());
 
-    Ok(McpMessage::Request(McpRequest {
+    Ok(mcp::McpMessage::Request(mcp::McpRequest {
         id,
         method,
         progress_token,
     }))
 }
 
-/// Parse a JSON-RPC McpNotification
-fn parse_notification(parsed: &Value) -> Result<McpMessage, String> {
+/// Parse a JSON-RPC notification
+fn parse_notification(parsed: &Value) -> Result<mcp::McpMessage, String> {
     let method_str = parsed
         .get("method")
         .and_then(|m| m.as_str())
-        .ok_or("McpNotification missing method field")?;
+        .ok_or("Notification missing method field")?;
 
     let params = parsed.get("params");
 
     let method = match method_str {
-        "McpNotifications/cancelled" => {
+        "notifications/cancelled" => {
             if let Some(params) = params {
-                NotificationMethod::Cancellation(parse_cancellation(params)?)
+                mcp::NotificationMethod::Cancellation(parse_cancellation(params)?)
             } else {
-                return Err("cancellation McpNotification missing params".to_string());
+                return Err("cancellation notification missing params".to_string());
             }
         }
-        "McpNotifications/progress" => {
+        "notifications/progress" => {
             let token = params
                 .and_then(|p| p.get("progressToken"))
-                .ok_or("progress McpNotification missing progressToken")?;
-            NotificationMethod::Progress(parse_progress_token(token)?)
+                .ok_or("progress notification missing progressToken")?;
+            mcp::NotificationMethod::Progress(parse_progress_token(token)?)
         }
-        "McpNotifications/initialized" => NotificationMethod::Initialized,
-        "roots/list_changed" => NotificationMethod::RootsListChanged,
-        _ => return Err(format!("Unknown McpNotification method: {method_str}")),
+        "notifications/initialized" => mcp::NotificationMethod::Initialized,
+        "roots/list_changed" => mcp::NotificationMethod::RootsListChanged,
+        _ => return Err(format!("Unknown notification method: {method_str}")),
     };
 
-    Ok(McpMessage::Notification(McpNotification { method }))
+    Ok(mcp::McpMessage::Notification(mcp::McpNotification {
+        method,
+    }))
 }
 
 /// Parse a JSON-RPC result
-fn parse_result(parsed: &Value) -> Result<McpMessage, String> {
+fn parse_result(parsed: &Value) -> Result<mcp::McpMessage, String> {
     let id = parsed.get("id").ok_or("Result missing id field")?;
 
     let id = parse_id(id)?;
@@ -366,16 +361,16 @@ fn parse_result(parsed: &Value) -> Result<McpMessage, String> {
     // In the future, this could be extended based on context or other indicators
     let result = if result_value.get("action").is_some() {
         // It looks like an elicit result
-        ResponseResult::ElicitResult(parse_elicit_result(result_value)?)
+        mcp::ResponseResult::ElicitResult(parse_elicit_result(result_value)?)
     } else {
         return Err("Unknown result type".to_string());
     };
 
-    Ok(McpMessage::Result(McpResult { id, result }))
+    Ok(mcp::McpMessage::Result(mcp::McpResult { id, result }))
 }
 
 /// Parse a JSON-RPC error
-fn parse_error(parsed: &Value) -> Result<McpMessage, String> {
+fn parse_error(parsed: &Value) -> Result<mcp::McpMessage, String> {
     let id = parsed.get("id").and_then(|id| parse_id(id).ok());
 
     let error_obj = parsed.get("error").ok_or("Error missing error field")?;
@@ -386,12 +381,12 @@ fn parse_error(parsed: &Value) -> Result<McpMessage, String> {
         .ok_or("Error missing code field")?;
 
     let error_code = match code {
-        -32700 => ErrorCode::ParseError,
-        -32600 => ErrorCode::InvalidRequest,
-        -32601 => ErrorCode::MethodNotFound,
-        -32602 => ErrorCode::InvalidParams,
-        -32603 => ErrorCode::InternalError,
-        _ => ErrorCode::InternalError, // Default for unknown codes
+        -32700 => mcp::ErrorCode::ParseError,
+        -32600 => mcp::ErrorCode::InvalidRequest,
+        -32601 => mcp::ErrorCode::MethodNotFound,
+        -32602 => mcp::ErrorCode::InvalidParams,
+        -32603 => mcp::ErrorCode::InternalError,
+        _ => mcp::ErrorCode::InternalError, // Default for unknown codes
     };
 
     let message = error_obj
@@ -404,7 +399,7 @@ fn parse_error(parsed: &Value) -> Result<McpMessage, String> {
         .get("data")
         .map(|d| serde_json::to_string(d).unwrap_or_else(|_| d.to_string()));
 
-    Ok(McpMessage::Error(McpError {
+    Ok(mcp::McpMessage::Error(mcp::McpError {
         id,
         code: error_code,
         message,
@@ -413,39 +408,39 @@ fn parse_error(parsed: &Value) -> Result<McpMessage, String> {
 }
 
 /// Parse an ID value (string or number)
-fn parse_id(value: &Value) -> Result<Id, String> {
+fn parse_id(value: &Value) -> Result<mcp::Id, String> {
     if let Some(num) = value.as_i64() {
-        Ok(Id::Number(num))
+        Ok(mcp::Id::Number(num))
     } else if let Some(s) = value.as_str() {
-        Ok(Id::String(s.to_string()))
+        Ok(mcp::Id::String(s.to_string()))
     } else {
         Err("Invalid id type (must be string or number)".to_string())
     }
 }
 
 /// Parse a progress token (string or number)
-fn parse_progress_token(value: &Value) -> Result<ProgressToken, String> {
+fn parse_progress_token(value: &Value) -> Result<mcp::ProgressToken, String> {
     if let Some(s) = value.as_str() {
-        Ok(ProgressToken::String(s.to_string()))
+        Ok(mcp::ProgressToken::String(s.to_string()))
     } else if let Some(n) = value.as_i64() {
-        Ok(ProgressToken::Integer(n))
+        Ok(mcp::ProgressToken::Integer(n))
     } else {
         Err("Invalid progress token type".to_string())
     }
 }
 
 /// Parse initialize request parameters
-fn parse_initialize_params(params: &Value) -> Result<InitializeParams, String> {
+fn parse_initialize_params(params: &Value) -> Result<mcp::InitializeParams, String> {
     let protocol_version = params
         .get("protocolVersion")
         .and_then(|v| v.as_str())
         .map(|s| match s {
-            "2025-06-18" => ProtocolVersion::V20250618,
-            "2025-03-26" => ProtocolVersion::V20250326,
-            "2024-11-05" => ProtocolVersion::V20241105,
-            _ => ProtocolVersion::V20250618, // Default to latest
+            "2025-06-18" => mcp::ProtocolVersion::V20250618,
+            "2025-03-26" => mcp::ProtocolVersion::V20250326,
+            "2024-11-05" => mcp::ProtocolVersion::V20241105,
+            _ => mcp::ProtocolVersion::V20250618, // Default to latest
         })
-        .unwrap_or(ProtocolVersion::V20250618);
+        .unwrap_or(mcp::ProtocolVersion::V20250618);
 
     let client_info = params
         .get("clientInfo")
@@ -453,7 +448,7 @@ fn parse_initialize_params(params: &Value) -> Result<InitializeParams, String> {
             let name = ci.get("name")?.as_str()?.to_string();
             let version = ci.get("version")?.as_str()?.to_string();
             let title = ci.get("title").and_then(|t| t.as_str()).map(String::from);
-            Some(Implementation {
+            Some(mcp::Implementation {
                 name,
                 version,
                 title,
@@ -470,7 +465,7 @@ fn parse_initialize_params(params: &Value) -> Result<InitializeParams, String> {
                 .map(|e| serde_json::to_string(e).unwrap_or_else(|_| "{}".to_string()));
 
             // Parse roots capability (with listChanged option)
-            let roots = caps.get("roots").map(|r| ListChangedCapabilityOption {
+            let roots = caps.get("roots").map(|r| mcp::ListChangedCapabilityOption {
                 list_changed: r.get("listChanged").and_then(|lc| lc.as_bool()),
             });
 
@@ -493,21 +488,21 @@ fn parse_initialize_params(params: &Value) -> Result<InitializeParams, String> {
                 })
             });
 
-            ClientCapabilities {
+            mcp::ClientCapabilities {
                 elicitation,
                 roots,
                 sampling,
                 experimental,
             }
         })
-        .unwrap_or(ClientCapabilities {
+        .unwrap_or(mcp::ClientCapabilities {
             elicitation: None,
             roots: None,
             sampling: None,
             experimental: None,
         });
 
-    Ok(InitializeParams {
+    Ok(mcp::InitializeParams {
         capabilities,
         client_info,
         protocol_version,
@@ -515,7 +510,7 @@ fn parse_initialize_params(params: &Value) -> Result<InitializeParams, String> {
 }
 
 /// Parse tools/call request parameters
-fn parse_tools_call_params(params: &Value) -> Result<ArgParams, String> {
+fn parse_tools_call_params(params: &Value) -> Result<mcp::ArgParams, String> {
     let name = params
         .get("name")
         .and_then(|n| n.as_str())
@@ -526,11 +521,11 @@ fn parse_tools_call_params(params: &Value) -> Result<ArgParams, String> {
         .get("arguments")
         .map(|a| serde_json::to_string(a).unwrap_or_else(|_| a.to_string()));
 
-    Ok(ArgParams { name, arguments })
+    Ok(mcp::ArgParams { name, arguments })
 }
 
 /// Parse prompts/get request parameters
-fn parse_prompts_get_params(params: &Value) -> Result<ArgParams, String> {
+fn parse_prompts_get_params(params: &Value) -> Result<mcp::ArgParams, String> {
     let name = params
         .get("name")
         .and_then(|n| n.as_str())
@@ -541,11 +536,11 @@ fn parse_prompts_get_params(params: &Value) -> Result<ArgParams, String> {
         .get("arguments")
         .map(|a| serde_json::to_string(a).unwrap_or_else(|_| a.to_string()));
 
-    Ok(ArgParams { name, arguments })
+    Ok(mcp::ArgParams { name, arguments })
 }
 
 /// Parse completion/complete request parameters
-fn parse_complete_params(params: &Value) -> Result<CompleteParams, String> {
+fn parse_complete_params(params: &Value) -> Result<mcp::CompleteParams, String> {
     // Parse argument
     let argument = params
         .get("argument")
@@ -561,7 +556,7 @@ fn parse_complete_params(params: &Value) -> Result<CompleteParams, String> {
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| "Missing 'value' in completion argument".to_string())?
                 .to_string();
-            Ok(CompletionArgument { name, value })
+            Ok(mcp::CompletionArgument { name, value })
         })?;
 
     // Parse ref
@@ -579,13 +574,13 @@ fn parse_complete_params(params: &Value) -> Result<CompleteParams, String> {
                     .get("title")
                     .and_then(|t| t.as_str())
                     .map(String::from);
-                Ok(CompletionRef::Prompt(CompletionPromptReference {
+                Ok(mcp::CompletionRef::Prompt(mcp::CompletionPromptReference {
                     name,
                     title,
                 }))
             } else if let Some(template) = r.get("resourceTemplate") {
                 let uri = template.as_str().unwrap_or("").to_string();
-                Ok(CompletionRef::ResourceTemplate(uri))
+                Ok(mcp::CompletionRef::ResourceTemplate(uri))
             } else {
                 Err("Invalid 'ref' in completion params".to_string())
             }
@@ -597,10 +592,10 @@ fn parse_complete_params(params: &Value) -> Result<CompleteParams, String> {
             .get("arguments")
             .and_then(|args| args.as_str())
             .map(String::from);
-        CompletionContext { arguments }
+        mcp::CompletionContext { arguments }
     });
 
-    Ok(CompleteParams {
+    Ok(mcp::CompleteParams {
         argument,
         ref_,
         context,
@@ -608,7 +603,7 @@ fn parse_complete_params(params: &Value) -> Result<CompleteParams, String> {
 }
 
 /// Parse elicit/result parameters
-fn parse_elicit_result(params: &Value) -> Result<ElicitResult, String> {
+fn parse_elicit_result(params: &Value) -> Result<mcp::ElicitResult, String> {
     let meta = params.get("meta").and_then(|m| {
         if m.is_object() {
             Some(
@@ -626,23 +621,23 @@ fn parse_elicit_result(params: &Value) -> Result<ElicitResult, String> {
         .get("action")
         .and_then(|a| a.as_str())
         .map(|s| match s {
-            "accept" => ElicitResultAction::Accept,
-            "decline" => ElicitResultAction::Decline,
-            "cancel" => ElicitResultAction::Cancel,
-            _ => ElicitResultAction::Cancel,
+            "accept" => mcp::ElicitResultAction::Accept,
+            "decline" => mcp::ElicitResultAction::Decline,
+            "cancel" => mcp::ElicitResultAction::Cancel,
+            _ => mcp::ElicitResultAction::Cancel,
         })
-        .unwrap_or(ElicitResultAction::Cancel);
+        .unwrap_or(mcp::ElicitResultAction::Cancel);
 
     let content = params.get("content").and_then(|c| {
         c.as_object().map(|obj| {
             obj.iter()
                 .filter_map(|(k, v)| {
                     let content = if let Some(s) = v.as_str() {
-                        ElicitResultContent::String(s.to_string())
+                        mcp::ElicitResultContent::String(s.to_string())
                     } else if let Some(n) = v.as_f64() {
-                        ElicitResultContent::Number(n)
+                        mcp::ElicitResultContent::Number(n)
                     } else if let Some(b) = v.as_bool() {
-                        ElicitResultContent::Boolean(b)
+                        mcp::ElicitResultContent::Boolean(b)
                     } else {
                         return None;
                     };
@@ -652,15 +647,15 @@ fn parse_elicit_result(params: &Value) -> Result<ElicitResult, String> {
         })
     });
 
-    Ok(ElicitResult {
+    Ok(mcp::ElicitResult {
         meta,
         action,
         content,
     })
 }
 
-/// Parse cancellation McpNotification parameters
-fn parse_cancellation(params: &Value) -> Result<Cancellation, String> {
+/// Parse cancellation notification parameters
+fn parse_cancellation(params: &Value) -> Result<mcp::Cancellation, String> {
     let request_id = params
         .get("requestId")
         .ok_or_else(|| "Missing 'requestId' in cancellation".to_string())
@@ -671,11 +666,33 @@ fn parse_cancellation(params: &Value) -> Result<Cancellation, String> {
         .and_then(|r| r.as_str())
         .map(String::from);
 
-    Ok(Cancellation { request_id, reason })
+    Ok(mcp::Cancellation { request_id, reason })
 }
 
+// === Component Export Glue ===
+//
+// This is the WIT bindings "glue code" that connects our Rust implementation
+// to the WebAssembly Component Model.
+
+/// Implements the world-level Guest trait.
+///
+/// The `Guest` trait is generated from the WIT world definition and requires
+/// us to specify which Rust type implements each resource defined in the world.
+///
+/// Here we map the WIT `resource message-context` to our Rust `MessageContextData` type.
 impl Guest for Component {
-    type MessageContext = Context;
+    /// Maps WIT's `resource message-context` to our internal implementation.
+    ///
+    /// When other components call `MessageContext::new(...)`, the Component Model
+    /// runtime will wrap our `MessageContextData` in a handle and pass it across
+    /// the WIT boundary as an opaque resource reference.
+    type MessageContext = MessageContextData;
 }
 
+// Export the component following the WIT world specification.
+//
+// This macro invocation exports `Component` as the implementation of the `message-context` world
+//
+// The result is a `.wasm` component that can be composed with other components
+// that import the `wasmcp:mcp/message-context` interface.
 bindings::export!(Component with_types_in bindings);
