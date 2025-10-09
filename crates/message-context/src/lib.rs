@@ -40,14 +40,16 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp::message_context::{Guest, GuestMessageContext, MessageContext, ParseError};
+use bindings::exports::wasmcp::mcp::message_context::{
+    Guest, GuestMessageContext, MessageContext, ParseError,
+};
 use bindings::wasmcp::mcp::protocol::{
     ArgParams, Cancellation, ClientCapabilities, CompleteParams, CompletionArgument,
-    CompletionContext, CompletionPromptReference, CompletionRef, ElicitResult,
-    ElicitResultAction, ElicitResultContent, McpError, ErrorCode, Id, Implementation,
-    InitializeParams, McpMessage, ListChangedCapabilityOption, McpNotification, NotificationMethod,
-    ProgressToken, ProtocolVersion, McpRequest, RequestMethod, ResponseResult, McpResult,
-    ServerCapability,
+    CompletionContext, CompletionPromptReference, CompletionRef, ElicitResult, ElicitResultAction,
+    ElicitResultContent, ErrorCode, Id, Implementation, InitializeParams,
+    ListChangedCapabilityOption, McpError, McpMessage, McpNotification, McpRequest, McpResult,
+    NotificationMethod, ProgressToken, PromptsCapabilityOptions, ProtocolVersion, RequestMethod,
+    ResourcesCapabilityOptions, ResponseResult, ServerCapability, ToolsCapabilityOptions,
 };
 
 use serde_json::Value;
@@ -75,11 +77,13 @@ impl GuestMessageContext for Context {
     fn from_bytes(bytes: Vec<u8>) -> Result<MessageContext, ParseError> {
         // Parse as generic JSON first
         let parsed: Value = serde_json::from_slice(&bytes)
-            .map_err(|e| ParseError::InvalidJson(format!("JSON parse error: {}", e)))?;
+            .map_err(|e| ParseError::InvalidJson(format!("JSON parse error: {e}")))?;
 
         // Validate it's a JSON object
         if !parsed.is_object() {
-            return Err(ParseError::InvalidJson("Not a valid JSON object".to_string()));
+            return Err(ParseError::InvalidJson(
+                "Not a valid JSON object".to_string(),
+            ));
         }
 
         // Check for JSON-RPC 2.0 version
@@ -89,7 +93,9 @@ impl GuestMessageContext for Context {
         let jsonrpc = if parsed.get("method").is_some() {
             // It's either a request or McpNotification
             if jsonrpc_version != Some("2.0") {
-                return Err(ParseError::InvalidJsonrpc("Invalid or missing jsonrpc version for request/McpNotification".to_string()));
+                return Err(ParseError::InvalidJsonrpc(
+                    "Invalid or missing jsonrpc version for request/McpNotification".to_string(),
+                ));
             }
 
             if let Some(_id_value) = parsed.get("id") {
@@ -102,28 +108,32 @@ impl GuestMessageContext for Context {
         } else if parsed.get("result").is_some() {
             // It's a result response
             if jsonrpc_version != Some("2.0") {
-                return Err(ParseError::InvalidJsonrpc("Invalid or missing jsonrpc version for result".to_string()));
+                return Err(ParseError::InvalidJsonrpc(
+                    "Invalid or missing jsonrpc version for result".to_string(),
+                ));
             }
             parse_result(&parsed)
         } else if parsed.get("error").is_some() {
             // It's an error response
             if jsonrpc_version != Some("2.0") {
-                return Err(ParseError::InvalidJsonrpc("Invalid or missing jsonrpc version for error".to_string()));
+                return Err(ParseError::InvalidJsonrpc(
+                    "Invalid or missing jsonrpc version for error".to_string(),
+                ));
             }
             parse_error(&parsed)
         } else {
-            return Err(ParseError::InvalidJsonrpc("Unrecognized JSON-RPC message format".to_string()));
+            return Err(ParseError::InvalidJsonrpc(
+                "Unrecognized JSON-RPC message format".to_string(),
+            ));
         };
 
-        let message = jsonrpc.map_err(|e| ParseError::InvalidJsonrpc(e))?;
+        let message = jsonrpc.map_err(ParseError::InvalidJsonrpc)?;
 
         // Create context with parsed JSON-RPC object
-        Ok(MessageContext::new(
-            Context {
-                message,
-                context: RwLock::new(HashMap::new()),
-            },
-        ))
+        Ok(MessageContext::new(Context {
+            message,
+            context: RwLock::new(HashMap::new()),
+        }))
     }
 
     /// Get the parsed JSON-RPC object.
@@ -155,56 +165,59 @@ impl GuestMessageContext for Context {
     /// Register server capabilities in the context store.
     ///
     /// This provides a type-safe way for middleware components to register
-    /// their capabilities. Each non-None capability is serialized to JSON
-    /// and stored with the key "wasmcp:capability:{name}".
+    /// their capabilities. Capabilities are serialized to JSON and stored
+    /// with the key "wasmcp:capability:{name}".
     fn register_capability(&self, capability: ServerCapability) {
         const PREFIX: &str = "wasmcp:capability:";
 
         if let Ok(mut ctx) = self.context.write() {
-            // Register tools capability
-            if let ServerCapability::Tools(Some(tools)) = &capability {
-                let mut json = serde_json::Map::new();
-                if let Some(list_changed) = tools.list_changed {
-                    json.insert("listChanged".to_string(), serde_json::Value::Bool(list_changed));
+            match capability {
+                ServerCapability::Tools(tools) => {
+                    let mut json = serde_json::Map::new();
+                    if tools.contains(ToolsCapabilityOptions::LIST_CHANGED) {
+                        json.insert("listChanged".to_string(), serde_json::Value::Bool(true));
+                    }
+                    ctx.insert(
+                        format!("{PREFIX}tools"),
+                        serde_json::Value::Object(json).to_string(),
+                    );
                 }
-                ctx.insert(format!("{}tools", PREFIX), serde_json::Value::Object(json).to_string());
-            }
-
-            // Register prompts capability
-            if let ServerCapability::Prompts(Some(prompts)) = &capability {
-                let mut json = serde_json::Map::new();
-                if let Some(list_changed) = prompts.list_changed {
-                    json.insert("listChanged".to_string(), serde_json::Value::Bool(list_changed));
+                ServerCapability::Prompts(prompts) => {
+                    let mut json = serde_json::Map::new();
+                    if prompts.contains(PromptsCapabilityOptions::LIST_CHANGED) {
+                        json.insert("listChanged".to_string(), serde_json::Value::Bool(true));
+                    }
+                    ctx.insert(
+                        format!("{PREFIX}prompts"),
+                        serde_json::Value::Object(json).to_string(),
+                    );
                 }
-                ctx.insert(format!("{}prompts", PREFIX), serde_json::Value::Object(json).to_string());
-            }
-
-            // Register resources capability
-            if let ServerCapability::Resources(Some(resources)) = &capability {
-                let mut json = serde_json::Map::new();
-                if let Some(list_changed) = resources.list_changed {
-                    json.insert("listChanged".to_string(), serde_json::Value::Bool(list_changed));
+                ServerCapability::Resources(resources) => {
+                    let mut json = serde_json::Map::new();
+                    if resources.contains(ResourcesCapabilityOptions::LIST_CHANGED) {
+                        json.insert("listChanged".to_string(), serde_json::Value::Bool(true));
+                    }
+                    if resources.contains(ResourcesCapabilityOptions::SUBSCRIBE) {
+                        json.insert("subscribe".to_string(), serde_json::Value::Bool(true));
+                    }
+                    ctx.insert(
+                        format!("{PREFIX}resources"),
+                        serde_json::Value::Object(json).to_string(),
+                    );
                 }
-                if let Some(subscribe) = resources.subscribe {
-                    json.insert("subscribe".to_string(), serde_json::Value::Bool(subscribe));
+                ServerCapability::Completions(Some(completions)) => {
+                    ctx.insert(format!("{PREFIX}completions"), completions);
                 }
-                ctx.insert(format!("{}resources", PREFIX), serde_json::Value::Object(json).to_string());
-            }
-
-            // Register completions capability
-            if let ServerCapability::Completions(Some(completions)) = &capability {
-                ctx.insert(format!("{}completions", PREFIX), completions.clone());
-            }
-
-            // Register logging capability
-            if let ServerCapability::Logging(Some(logging)) = &capability {
-                ctx.insert(format!("{}logging", PREFIX), logging.clone());
-            }
-
-            // Register experimental capabilities
-            if let ServerCapability::Experimental(Some(experimental)) = &capability {
-                let json = serde_json::to_string(&experimental).unwrap_or_else(|_| "[]".to_string());
-                ctx.insert(format!("{}experimental", PREFIX), json);
+                ServerCapability::Logging(Some(logging)) => {
+                    ctx.insert(format!("{PREFIX}logging"), logging);
+                }
+                ServerCapability::Experimental(Some(experimental)) => {
+                    let json =
+                        serde_json::to_string(&experimental).unwrap_or_else(|_| "[]".to_string());
+                    ctx.insert(format!("{PREFIX}experimental"), json);
+                }
+                // None variants don't register anything
+                _ => {}
             }
         }
     }
@@ -215,9 +228,7 @@ impl GuestMessageContext for Context {
 /// Parse a JSON-RPC request
 fn parse_request(parsed: &Value) -> Result<McpMessage, String> {
     // Parse ID
-    let id = parsed
-        .get("id")
-        .ok_or("Request missing id field")?;
+    let id = parsed.get("id").ok_or("Request missing id field")?;
 
     let id = parse_id(id)?;
 
@@ -296,7 +307,7 @@ fn parse_request(parsed: &Value) -> Result<McpMessage, String> {
             }
         }
         "ping" => RequestMethod::Ping,
-        _ => return Err(format!("Unknown request method: {}", method_str)),
+        _ => return Err(format!("Unknown request method: {method_str}")),
     };
 
     // Parse progress token if present
@@ -337,7 +348,7 @@ fn parse_notification(parsed: &Value) -> Result<McpMessage, String> {
         }
         "McpNotifications/initialized" => NotificationMethod::Initialized,
         "roots/list_changed" => NotificationMethod::RootsListChanged,
-        _ => return Err(format!("Unknown McpNotification method: {}", method_str)),
+        _ => return Err(format!("Unknown McpNotification method: {method_str}")),
     };
 
     Ok(McpMessage::Notification(McpNotification { method }))
@@ -345,15 +356,11 @@ fn parse_notification(parsed: &Value) -> Result<McpMessage, String> {
 
 /// Parse a JSON-RPC result
 fn parse_result(parsed: &Value) -> Result<McpMessage, String> {
-    let id = parsed
-        .get("id")
-        .ok_or("Result missing id field")?;
+    let id = parsed.get("id").ok_or("Result missing id field")?;
 
     let id = parse_id(id)?;
 
-    let result_value = parsed
-        .get("result")
-        .ok_or("Result missing result field")?;
+    let result_value = parsed.get("result").ok_or("Result missing result field")?;
 
     // For now, we only support elicit-result as a response type
     // In the future, this could be extended based on context or other indicators
@@ -371,9 +378,7 @@ fn parse_result(parsed: &Value) -> Result<McpMessage, String> {
 fn parse_error(parsed: &Value) -> Result<McpMessage, String> {
     let id = parsed.get("id").and_then(|id| parse_id(id).ok());
 
-    let error_obj = parsed
-        .get("error")
-        .ok_or("Error missing error field")?;
+    let error_obj = parsed.get("error").ok_or("Error missing error field")?;
 
     let code = error_obj
         .get("code")
@@ -465,10 +470,8 @@ fn parse_initialize_params(params: &Value) -> Result<InitializeParams, String> {
                 .map(|e| serde_json::to_string(e).unwrap_or_else(|_| "{}".to_string()));
 
             // Parse roots capability (with listChanged option)
-            let roots = caps.get("roots").and_then(|r| {
-                Some(ListChangedCapabilityOption {
-                    list_changed: r.get("listChanged").and_then(|lc| lc.as_bool()),
-                })
+            let roots = caps.get("roots").map(|r| ListChangedCapabilityOption {
+                list_changed: r.get("listChanged").and_then(|lc| lc.as_bool()),
             });
 
             // Parse sampling capability (if present, it's an object)
@@ -478,20 +481,16 @@ fn parse_initialize_params(params: &Value) -> Result<InitializeParams, String> {
 
             // Parse experimental capabilities
             let experimental = caps.get("experimental").and_then(|exp| {
-                if let Some(obj) = exp.as_object() {
-                    Some(
-                        obj.iter()
-                            .map(|(k, v)| {
-                                (
-                                    k.clone(),
-                                    serde_json::to_string(v).unwrap_or_else(|_| "{}".to_string()),
-                                )
-                            })
-                            .collect(),
-                    )
-                } else {
-                    None
-                }
+                exp.as_object().map(|obj| {
+                    obj.iter()
+                        .map(|(k, v)| {
+                            (
+                                k.clone(),
+                                serde_json::to_string(v).unwrap_or_else(|_| "{}".to_string()),
+                            )
+                        })
+                        .collect()
+                })
             });
 
             ClientCapabilities {
@@ -580,7 +579,10 @@ fn parse_complete_params(params: &Value) -> Result<CompleteParams, String> {
                     .get("title")
                     .and_then(|t| t.as_str())
                     .map(String::from);
-                Ok(CompletionRef::Prompt(CompletionPromptReference { name, title }))
+                Ok(CompletionRef::Prompt(CompletionPromptReference {
+                    name,
+                    title,
+                }))
             } else if let Some(template) = r.get("resourceTemplate") {
                 let uri = template.as_str().unwrap_or("").to_string();
                 Ok(CompletionRef::ResourceTemplate(uri))
@@ -607,20 +609,18 @@ fn parse_complete_params(params: &Value) -> Result<CompleteParams, String> {
 
 /// Parse elicit/result parameters
 fn parse_elicit_result(params: &Value) -> Result<ElicitResult, String> {
-    let meta = params
-        .get("meta")
-        .and_then(|m| {
-            if m.is_object() {
-                Some(
-                    m.as_object()?
-                        .iter()
-                        .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
-                        .collect(),
-                )
-            } else {
-                None
-            }
-        });
+    let meta = params.get("meta").and_then(|m| {
+        if m.is_object() {
+            Some(
+                m.as_object()?
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                    .collect(),
+            )
+        } else {
+            None
+        }
+    });
 
     let action = params
         .get("action")
@@ -664,17 +664,14 @@ fn parse_cancellation(params: &Value) -> Result<Cancellation, String> {
     let request_id = params
         .get("requestId")
         .ok_or_else(|| "Missing 'requestId' in cancellation".to_string())
-        .and_then(|id| parse_id(id))?;
+        .and_then(parse_id)?;
 
     let reason = params
         .get("reason")
         .and_then(|r| r.as_str())
         .map(String::from);
 
-    Ok(Cancellation {
-        request_id,
-        reason,
-    })
+    Ok(Cancellation { request_id, reason })
 }
 
 impl Guest for Component {
