@@ -1,6 +1,6 @@
-package wasmcp:mcp@0.3.1-alpha.25;
+package wasmcp:mcp@0.3.1-alpha.26;
 
-/// Provides I/O, message framing, and request-scoped context values
+/// Provides I/O, message framing, and message-scoped mutable context
 world transport {
     export context;
     export output;
@@ -28,7 +28,7 @@ world authorized-handler {
 /// Uses session data while handling messages
 world session-handler {
     include handler;
-    import sessions;
+    import session;
 }
 
 /// Handles lifecycle events (initialization, pings, etc.)

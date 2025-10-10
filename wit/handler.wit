@@ -18,7 +18,7 @@ interface identity {
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/schema#session>
 @since(version = 0.3.1-alpha.1)
-interface sessions {
+interface session {
     use protocol.{elicit-request, elicit-result};
     use output.{io-error};
     
@@ -33,49 +33,43 @@ interface sessions {
         other(string),
     }
 
-    load-current-session: func() -> result<session, session-error>;
-
-    /// MCP session resource for request-scoped context storage
+    /// Get the session ID.
     @since(version = 0.3.1-alpha.1)
-    resource session {
-        /// Get the session ID.
-        @since(version = 0.3.1-alpha.1)
-        id: func() -> string;
+    id: func() -> string;
 
-        /// Get a persistent session context value by key.
-        @since(version = 0.3.1-alpha.1)
-        get: func(key: string) -> result<option<list<u8>>, session-error>;
+    /// Get a persistent session context value by key.
+    @since(version = 0.3.1-alpha.1)
+    get: func(key: string) -> result<option<list<u8>>, session-error>;
 
-        /// Set a persistent session context value by key.
-        @since(version = 0.3.1-alpha.1)
-        set: func(key: string, value: list<u8>) -> result<_, session-error>;
+    /// Set a persistent session context value by key.
+    @since(version = 0.3.1-alpha.1)
+    set: func(key: string, value: list<u8>) -> result<_, session-error>;
 
-        /// Elicit information from the client.
-        /// Blocks until the elicitation is complete.
-        /// 
-        /// https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
-        elicit: func(elicitation: elicit-request) -> result<elicit-result, io-error>;
+    /// Elicit information from the client.
+    /// Blocks until the elicitation is complete.
+    /// 
+    /// https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
+    elicit: func(elicitation: elicit-request) -> result<elicit-result, io-error>;
 
-        /// Terminate the session, optionally providing a reason.
-        /// is-active will return false after termination.
-        ///
-        /// Data associated with the terminated session is NOT deleted.
-        /// Use delete() to remove all session data.
-        ///
-        /// Subsequent calls will have no effect.
-        @since(version = 0.3.1-alpha.1)
-        terminate: func(reason: option<string>) -> result<_, session-error>;
+    /// Terminate the session, optionally providing a reason.
+    /// is-active will return false after termination.
+    ///
+    /// Data associated with the terminated session is NOT deleted.
+    /// Use delete() to remove all session data.
+    ///
+    /// Subsequent calls will have no effect.
+    @since(version = 0.3.1-alpha.1)
+    terminate: func(reason: option<string>) -> result<_, session-error>;
 
-        /// Check if the session is terminated.
-        /// Returns true if the session has been terminated.
-        @since(version = 0.3.1-alpha.1)
-        is-terminated: func() -> result<bool, session-error>;
+    /// Check if the session is terminated.
+    /// Returns true if the session has been terminated.
+    @since(version = 0.3.1-alpha.1)
+    is-terminated: func() -> result<bool, session-error>;
 
-        /// Deletes all data associated with the session.
-        /// After deleting, the session is invalid and cannot be used.
-        @since(version = 0.3.1-alpha.1)
-        delete: static func(this: session) -> result<_, session-error>;
-    }
+    /// Deletes all data associated with the session.
+    /// After deleting, the session is invalid and cannot be used.
+    @since(version = 0.3.1-alpha.1)
+    delete: func() -> result<_, session-error>;
 }
 
 @since(version = 0.3.0)
