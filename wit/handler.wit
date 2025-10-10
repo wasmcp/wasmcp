@@ -1,7 +1,86 @@
+interface context {
+    use protocol.{server-capability};
+
+    get: func(key: string) -> option<list<u8>>;
+    set: func(key: string, value: list<u8>);
+
+    /// Register a server capability.
+    register-capability: func(capability: server-capability);
+}
+
+interface identity {
+    use protocol.{json};
+
+    get-claims: func() -> option<json>;
+}
+
+/// MCP session management and related features
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#session>
+@since(version = 0.3.1-alpha.1)
+interface sessions {
+    use protocol.{elicit-request, elicit-result};
+    use output.{io-error};
+    
+    /// Errors that can occur during session operations.
+    @since(version = 0.3.1-alpha.1)
+    variant session-error {
+        /// No session exists for the current message.
+        no-such-session,
+        /// Access to the session's underlying store is denied.
+        access-denied,
+        /// Some error occurred.
+        other(string),
+    }
+
+    load-current-session: func() -> result<session, session-error>;
+
+    /// MCP session resource for request-scoped context storage
+    @since(version = 0.3.1-alpha.1)
+    resource session {
+        /// Get the session ID.
+        @since(version = 0.3.1-alpha.1)
+        id: func() -> string;
+
+        /// Get a persistent session context value by key.
+        @since(version = 0.3.1-alpha.1)
+        get: func(key: string) -> result<option<list<u8>>, session-error>;
+
+        /// Set a persistent session context value by key.
+        @since(version = 0.3.1-alpha.1)
+        set: func(key: string, value: list<u8>) -> result<_, session-error>;
+
+        /// Elicit information from the client.
+        /// Blocks until the elicitation is complete.
+        /// 
+        /// https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
+        elicit: func(elicitation: elicit-request) -> result<elicit-result, io-error>;
+
+        /// Terminate the session, optionally providing a reason.
+        /// is-active will return false after termination.
+        ///
+        /// Data associated with the terminated session is NOT deleted.
+        /// Use delete() to remove all session data.
+        ///
+        /// Subsequent calls will have no effect.
+        @since(version = 0.3.1-alpha.1)
+        terminate: func(reason: option<string>) -> result<_, session-error>;
+
+        /// Check if the session is terminated.
+        /// Returns true if the session has been terminated.
+        @since(version = 0.3.1-alpha.1)
+        is-terminated: func() -> result<bool, session-error>;
+
+        /// Deletes all data associated with the session.
+        /// After deleting, the session is invalid and cannot be used.
+        @since(version = 0.3.1-alpha.1)
+        delete: static func(this: session) -> result<_, session-error>;
+    }
+}
+
 @since(version = 0.3.0)
 interface message-handler {
-    use wasi:io/streams@0.2.3.{output-stream};
-    use message-context.{message-context};
+    use protocol.{mcp-message};
 
     /// Handle an incoming MCP object and write the response to the output-stream.
     ///
@@ -11,5 +90,5 @@ interface message-handler {
     /// The handler receives ownership of the context and output-stream, allowing it to
     /// either process the object or forward it to the next handler in the chain.
     @since(version = 0.3.0)
-    handle: func(ctx: message-context, out: output-stream);
+    handle: func(msg: mcp-message);
 }

@@ -681,7 +681,6 @@ interface protocol {
         elicit-result(elicit-result),
     }
 
-    /// Bidirectional error message.
     record mcp-error {
         id: option<id>,
         code: error-code,
@@ -704,6 +703,7 @@ interface protocol {
         %result: response-result,
     }
 
+    /// Bidirectional MCP message
     variant mcp-message {
         request(mcp-request),
         notification(mcp-notification),

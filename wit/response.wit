@@ -1,0 +1,228 @@
+interface output {
+    variant io-error {
+        /// An I/O error occurred.
+        io(string),
+        /// The output stream has been closed.
+        closed,
+        /// Some other error occurred.
+        other(string),
+    }
+
+    write-message: func(message: list<u8>) -> result<_, io-error>;
+}
+
+interface notification-response {
+    use output.{io-error};
+    use protocol.{progress-token, log-level, log-message, client-notification, change-notification-type, update-notification-type};
+
+    /// Log a message to the client.
+    @since(version = 0.3.1-alpha.1)
+    log: func(message: log-message) -> result<_, io-error>;
+
+    // Send a JSON-RPC notification to the client.
+    @since(version = 0.3.1-alpha.1)
+    notify: func(notification: client-notification) -> result<_, io-error>;
+
+    /// Send a `notifications/*/list_changed` notification to the client.
+    notify-list-changed: func(change: change-notification-type) -> result<_, io-error>;
+
+    /// Send a `notifications/*/updated` notification to the client.
+    notify-updated: func(update: update-notification-type) -> result<_, io-error>;
+
+    /// Send a `notifications/progress` notification to the client.
+    ///
+    /// <https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/progress>
+    notify-progress: func(
+        progress-token: progress-token,
+        progress: f64,
+        total: option<f64>,
+        message: option<string>,
+    ) -> result<_, io-error>;
+}
+
+/// Write a JSON-RPC error response to an output stream.
+///
+/// This interface provides a standardized way to write error responses
+/// that conform to the JSON-RPC 2.0 specification.
+///
+/// See: <https://spec.json-rpc.org/specification>
+@since(version = 0.3.0)
+interface error-response {
+    use output.{io-error};
+    use protocol.{id, mcp-error};
+
+    write: func(
+        error: mcp-error,
+    ) -> result<_, io-error>;
+}
+
+/// Writes initialization results to an output stream.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#initialize>
+@since(version = 0.3.0)
+interface lifecycle-response {
+    use output.{io-error};
+    use protocol.{id, initialize-result};
+
+    @since(version = 0.3.0)
+    write-initialization: func(id: id, %result: initialize-result) -> result<_, io-error>;
+
+    write-pong: func(id: id) -> result<_, io-error>;
+}
+
+interface tools-response {
+    use output.{io-error};
+    use protocol.{content-block, id, tool, meta, next-cursor-options, structured-tool-result};
+
+    @since(version = 0.3.0)
+    record content-blocks-result-options {
+        is-error: bool,
+        meta: meta,
+    }
+
+    write-tools: func(
+        id: id,
+        tools: list<tool>,
+    ) -> result<_, io-error>;
+
+    write-text: func(
+        id: id,
+        text: string,
+    ) -> result<_, io-error>;
+
+    write-error: func(
+        id: id,
+        reason: string
+    ) -> result<_, io-error>;
+
+    write-content-blocks: func(
+        id: id,
+        content: list<content-block>,
+    ) -> result<_, io-error>;
+
+    write-structured: func(
+        id: id,
+        structured: structured-tool-result,
+    ) -> result<_, io-error>;
+
+    resource tools-writer {
+        start: static func(id: id) -> result<tools-writer, io-error>;
+        write: func(tool: tool) -> result<_, io-error>;
+        finish: static func(this: tools-writer, options: option<next-cursor-options>) -> result<_, io-error>;
+    }
+
+    resource content-blocks-writer {
+        start: static func(id: id, initial: content-block) -> result<content-blocks-writer, io-error>;
+        write: func(contents: list<u8>) -> result<_, io-error>;
+        next: func(content: content-block) -> result<_, io-error>;
+        finish: static func(this: content-blocks-writer, options: option<content-blocks-result-options>) -> result<_, io-error>;
+    }
+}
+
+interface resources-response {
+    use output.{io-error};
+    use protocol.{id, %resource, resource-contents, resource-template, meta-options, next-cursor-options};
+
+    write-resources: func(
+        id: id,
+        resources: list<%resource>,
+    ) -> result<_, io-error>;
+
+    write-contents: func(
+        id: id,
+        contents: resource-contents,
+    ) -> result<_, io-error>;
+
+    write-templates: func(
+        id: id,
+        templates: list<resource-template>,
+    ) -> result<_, io-error>;
+
+    resource resources-writer {
+        start: static func(id: id) -> result<resources-writer, io-error>;
+        write: func(%resource: %resource) -> result<_, io-error>;
+        finish: static func(this: resources-writer, options: option<next-cursor-options>) -> result<_, io-error>;
+    }
+
+    resource contents-writer {
+        start: static func(id: id, initial: resource-contents) -> result<contents-writer, io-error>;
+        write: func(contents: list<u8>) -> result<_, io-error>;
+        finish: static func(this: contents-writer, options: option<meta-options>) -> result<_, io-error>;
+    }
+
+    resource templates-writer {
+        start: static func(id: id) -> result<templates-writer, io-error>;
+        write: func(template: resource-template) -> result<_, io-error>;
+        finish: static func(this: templates-writer, options: option<next-cursor-options>) -> result<_, io-error>;
+    }
+}
+
+interface prompts-response {
+    use output.{io-error};
+    use protocol.{description-options, id, prompt, prompt-message, next-cursor-options};
+
+    write-prompts: func(
+        id: id,
+        prompts: list<prompt>,
+    ) -> result<_, io-error>;
+
+    write-prompt-messages: func(
+        id: id,
+        messages: list<prompt-message>,
+    ) -> result<_, io-error>;
+
+    resource prompts-writer {
+        start: static func(id: id) -> result<prompts-writer, io-error>;
+        write: func(prompt: prompt) -> result<_, io-error>;
+        finish: static func(this: prompts-writer, options: option<next-cursor-options>) -> result<_, io-error>;
+    }
+
+    resource prompt-messages-writer {
+        start: static func(id: id) -> result<prompt-messages-writer, io-error>;
+        write: func(message: prompt-message) -> result<_, io-error>;
+        finish: static func(this: prompt-messages-writer, options: option<description-options>) -> result<_, io-error>;
+    }
+}
+
+/// Writes completion/complete results to an output stream.
+///
+/// The response structure follows MCP schema with a nested "completion" object
+/// containing "values", "total", and "hasMore" fields.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18/schema#completion-complete>
+@since(version = 0.3.0)
+interface completions-response {
+    use output.{io-error};
+    use protocol.{id};
+
+    /// Options for completion results, matching MCP schema.
+    /// Used to provide additional metadata about completion results.
+    @since(version = 0.3.0)
+    record completion-result-options {
+        /// The total number of completion options available.
+        /// This can exceed the number of values actually sent in the response.
+        total: option<u64>,
+        /// Indicates whether there are additional completion options beyond
+        /// those provided in the current response.
+        has-more: option<bool>,
+    }
+
+    record completions {
+        values: list<string>,
+        options: option<completion-result-options>,
+    }
+
+    /// Send a complete list of completion values in one call.
+    /// The implementation will output the proper nested MCP structure:
+    write-completions: func(
+        id: id,
+        completions: completions,
+    ) -> result<_, io-error>;
+
+    /// Streaming writer for sending completion values incrementally.
+    resource completions-writer {
+        start: static func(id: id) -> result<completions-writer, io-error>;
+        write: func(value: string) -> result<_, io-error>;
+        finish: static func(this: completions-writer, options: option<completion-result-options>) -> result<_, io-error>;
+    }
+}

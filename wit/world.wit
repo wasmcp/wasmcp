@@ -1,41 +1,70 @@
-package wasmcp:mcp@0.3.1-alpha.24;
+package wasmcp:mcp@0.3.1-alpha.25;
 
-@since(version = 0.3.0)
-world middleware {
+/// Provides I/O, message framing, and request-scoped context values
+world transport {
+    export context;
+    export output;
     import message-handler;
-    import notifications-writer;
-    import error-writer;
+}
+
+/// Processes incoming messages
+world handler {
+    // Fulfilled by a transport
+    import context;
+    import output;
     export message-handler;
+
+    // Writes notifications and errors to output
+    import notification-response;
+    import error-response;
 }
 
+/// Uses identity claims while handling messages
+world authorized-handler {
+    include handler;
+    import identity;
+}
+
+/// Uses session data while handling messages
 world session-handler {
-    include middleware;
-    export session-manager;
+    include handler;
+    import sessions;
 }
 
+/// Handles lifecycle events (initialization, pings, etc.)
+world lifecycle-handler {
+    include handler;
+    import lifecycle-response;
+}
+
+/// Composable with other handlers
+world middleware {
+    include handler;
+    import message-handler;
+}
+
+// MCP server features
+
+/// Provides models with tools for interacting with the outside world
 world tools-handler {
     include middleware;
-    import tools-writer;
+    import tools-response;
 }
 
+/// Provides models with access to external data
 world resources-handler {
     include middleware;
-    import resources-writer;
+    import resources-response;
 }
 
+/// Provides clients with structured messages and instructions for interacting with language models
 world prompts-handler {
     include middleware;
-    import prompts-writer;
+    import prompts-response;
 }
 
+/// Provides argument autocompletion suggestions for prompts and resource URIs
 world completions-handler {
     include middleware;
-    import completions-writer;
-}
-
-world terminal-handler {
-    import lifecycle-writer;
-    import notifications-writer;
-    import error-writer;
-    export message-handler;
+    import completions-response;
 }
