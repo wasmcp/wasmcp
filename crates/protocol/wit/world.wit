@@ -1,6 +1,6 @@
-package wasmcp:lifecycle@0.1.0;
+package wasmcp:protocol@0.1.0;
 
-world lifecycle {
+world protocol {
     // Lifecycle handler
     include wasmcp:mcp/handler@0.3.1-alpha.31;
 

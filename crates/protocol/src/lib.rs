@@ -1,35 +1,46 @@
-//! Lifecycle Component for WebAssembly Component Model Context Protocol (wasmcp)
+//! MCP Protocol Component for WebAssembly Component Model Context Protocol (wasmcp)
 //!
-//! This component provides core lifecycle management and response writing capabilities
-//! for MCP servers. It serves two key roles:
+//! This component implements the complete MCP data layer protocol as defined in the
+//! Model Context Protocol specification. It provides JSON-RPC 2.0 message serialization
+//! for all MCP primitives and lifecycle operations.
 //!
-//! ## 1. Lifecycle Handler
+//! ## Data Layer Protocol
 //!
-//! Acts as the terminal handler in a middleware chain, processing:
-//! - `initialize` - Establishes MCP connection and negotiates capabilities
-//! - `ping` - Health check and keep-alive
-//! - Unknown methods - Returns MethodNotFound errors
+//! Implements the MCP data layer as specified at:
+//! https://modelcontextprotocol.io/specification/2025-06-18
 //!
-//! ## 2. Response Writer Library
+//! This includes:
 //!
-//! Exports all MCP response serialization interfaces used by feature handlers:
-//! - Error responses
-//! - Lifecycle responses (initialization, ping)
-//! - Notifications (logging, progress, list changes, updates)
-//! - Tools responses (listings, call results, streaming content)
-//! - Resources responses (listings, content, templates)
-//! - Prompts responses (listings, messages)
-//! - Completions responses (auto-complete suggestions)
+//! ### Lifecycle Management
+//! - `initialize` - Connection establishment and capability negotiation
+//! - `ping` - Health checks and keep-alive
+//!
+//! ### Server Primitives (Response Serialization)
+//! - **Tools**: Executable functions that AI applications can invoke
+//! - **Resources**: Data sources providing contextual information
+//! - **Prompts**: Reusable templates for LLM interactions
+//! - **Completions**: Argument autocompletion suggestions
+//!
+//! ### Core Protocol Features
+//! - **Error Responses**: JSON-RPC 2.0 error formatting
+//! - **Notifications**: Real-time updates (logging, progress, list changes)
 //!
 //! ## Architecture
 //!
-//! The component uses the new stateful output interface where message writing
-//! follows a start/write/finish state machine enforced at the interface level.
-//! This ensures proper SSE framing and prevents message interleaving.
+//! The protocol component is transport-agnostic. It uses the `output` interface
+//! provided by transport layers (stdio, HTTP) to write properly framed messages.
+//! Message writing follows a start/write/finish state machine enforced at the
+//! transport level, ensuring correct framing without protocol layer awareness.
+//!
+//! ```text
+//! Transport Layer (http/stdio)  →  Protocol Layer (this)  →  Handler Layer
+//!        ↓                                ↓                         ↓
+//!   I/O + Framing            →    JSON-RPC Messages    →    Business Logic
+//! ```
 
 mod bindings {
     wit_bindgen::generate!({
-        world: "lifecycle",
+        world: "protocol",
         generate_all,
     });
 }
