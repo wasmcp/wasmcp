@@ -22,8 +22,15 @@
 //! - Exporting `output` interface for newline-delimited message writing
 //! - Importing `message-handler` to delegate parsed messages to handler chains
 //!
-//! State is managed per-message using thread-local storage, which is safe in the
-//! single-threaded WASI execution model.
+//! ## State Management & WASI Preview 3 Readiness
+//!
+//! State is managed per-message using the `task_local` module, which provides
+//! an abstraction layer that works in both:
+//! - **Preview 2 (Current)**: thread-local storage with Mutex (one task per thread)
+//! - **Preview 3 (Future)**: context-local storage via `context.get/set` built-ins
+//!
+//! When Preview 3 is released, only the `task_local` module needs updating.
+//! All other code remains unchanged. See `task_local.rs` for migration details.
 //!
 //! ## Message Flow
 //!
@@ -37,8 +44,7 @@
 //! 8. Response is written with newline delimiter and state is cleaned up
 //! 9. Loop continues until stdin is closed
 
-use std::cell::RefCell;
-use std::collections::HashMap;
+mod task_local;
 
 mod bindings {
     wit_bindgen::generate!({
@@ -57,25 +63,10 @@ use bindings::wasmcp::mcp::protocol::{self as mcp, McpMessage, ServerCapability}
 
 use serde_json::Value;
 
-// Per-message state stored in thread-local storage.
-// This is safe because WASI components are single-threaded and each message
-// is processed sequentially.
-thread_local! {
-    /// The output stream for the current message's response
-    static OUTPUT_STREAM: RefCell<Option<OutputStream>> = const { RefCell::new(None) };
-
-    /// Key-value context storage accessible to handlers via context::get/set
-    static CONTEXT_STORE: RefCell<HashMap<String, Vec<u8>>> = RefCell::new(HashMap::new());
-
-    /// Registered server capabilities for this message
-    static CAPABILITIES: RefCell<Vec<ServerCapability>> = const { RefCell::new(Vec::new()) };
-
-    /// Track message lifecycle state for output interface
-    static MESSAGE_STATE: RefCell<MessageState> = const { RefCell::new(MessageState::NotStarted) };
-}
+// Per-message state is managed via task_local module (see task_local.rs).
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum MessageState {
+pub enum MessageState {
     NotStarted,
     InProgress,
     Finished,
@@ -145,30 +136,21 @@ impl Guest for Component {
             let needs_response = matches!(message, McpMessage::Request(_));
 
             if needs_response {
-                // Get output stream and store in thread-local
+                // Get output stream and initialize per-message state
                 let output_stream = stdout::get_stdout();
-
-                // Initialize per-message state
-                OUTPUT_STREAM.with(|s| {
-                    *s.borrow_mut() = Some(output_stream);
-                });
-                MESSAGE_STATE.with(|s| {
-                    *s.borrow_mut() = MessageState::NotStarted;
+                task_local::init_task(output_stream);
+            } else {
+                // For notifications, still clear context storage
+                task_local::with_state(|state| {
+                    state.context_store.clear();
+                    state.capabilities.clear();
                 });
             }
 
-            // Always initialize context storage (handlers may use it)
-            CONTEXT_STORE.with(|s| {
-                s.borrow_mut().clear();
-            });
-            CAPABILITIES.with(|c| {
-                c.borrow_mut().clear();
-            });
-
-            // Store session ID in context
-            CONTEXT_STORE.with(|store| {
-                store
-                    .borrow_mut()
+            // Store session ID in context (for both requests and notifications)
+            task_local::with_state(|state| {
+                state
+                    .context_store
                     .insert("session-id".to_string(), session_id.as_bytes().to_vec());
             });
 
@@ -184,12 +166,7 @@ impl Guest for Component {
 
             // Always clean up state, even after panic
             if needs_response {
-                OUTPUT_STREAM.with(|s| {
-                    *s.borrow_mut() = None;
-                });
-                MESSAGE_STATE.with(|s| {
-                    *s.borrow_mut() = MessageState::NotStarted;
-                });
+                task_local::cleanup_task();
             }
         }
     }
@@ -197,29 +174,28 @@ impl Guest for Component {
 
 impl ContextGuest for Component {
     fn get(key: String) -> Option<Vec<u8>> {
-        CONTEXT_STORE.with(|store| store.borrow().get(&key).cloned())
+        task_local::with_state(|state| state.context_store.get(&key).cloned())
     }
 
     fn set(key: String, value: Vec<u8>) {
-        CONTEXT_STORE.with(|store| {
-            store.borrow_mut().insert(key, value);
+        task_local::with_state(|state| {
+            state.context_store.insert(key, value);
         });
     }
 
     fn register_capability(capability: ServerCapability) {
-        CAPABILITIES.with(|caps| {
-            caps.borrow_mut().push(capability);
+        task_local::with_state(|state| {
+            state.capabilities.push(capability);
         });
     }
 }
 
 impl OutputGuest for Component {
     fn start_message() -> Result<(), IoError> {
-        MESSAGE_STATE.with(|state| {
-            let current = *state.borrow();
-            match current {
+        task_local::with_state(|state| {
+            match state.message_state {
                 MessageState::NotStarted => {
-                    *state.borrow_mut() = MessageState::InProgress;
+                    state.message_state = MessageState::InProgress;
                     Ok(())
                 }
                 MessageState::InProgress => Err(IoError::MessageInProgress),
@@ -229,52 +205,45 @@ impl OutputGuest for Component {
     }
 
     fn write_message_contents(contents: Vec<u8>) -> Result<(), IoError> {
-        // Check state
-        MESSAGE_STATE.with(|state| {
-            let current = *state.borrow();
-            match current {
-                MessageState::NotStarted => Err(IoError::MessageNotStarted),
-                MessageState::InProgress => Ok(()),
-                MessageState::Finished => Err(IoError::MessageFinished),
+        task_local::with_state(|state| {
+            // Check state
+            match state.message_state {
+                MessageState::NotStarted => return Err(IoError::MessageNotStarted),
+                MessageState::InProgress => {}
+                MessageState::Finished => return Err(IoError::MessageFinished),
             }
-        })?;
 
-        // Write to output stream
-        OUTPUT_STREAM.with(|stream_cell| {
-            let stream_opt = stream_cell.borrow();
-            let stream = stream_opt
+            // Write to output stream
+            let stream = state
+                .output_stream
                 .as_ref()
-                .ok_or_else(|| IoError::Unexpected("No output stream available".to_string()))?;
+                .ok_or(IoError::MessageNotStarted)?;
 
             write_with_backpressure(stream, &contents)
-                .map_err(|e| IoError::Io(format!("Stream error: {e:?}")))
+                .map_err(IoError::Stream)
         })
     }
 
     fn finish_message() -> Result<(), IoError> {
-        // Check state
-        MESSAGE_STATE.with(|state| {
-            let current = *state.borrow();
-            match current {
-                MessageState::NotStarted => Err(IoError::MessageNotStarted),
+        task_local::with_state(|state| {
+            // Check state and transition to Finished
+            match state.message_state {
+                MessageState::NotStarted => return Err(IoError::MessageNotStarted),
                 MessageState::InProgress => {
-                    *state.borrow_mut() = MessageState::Finished;
-                    Ok(())
+                    state.message_state = MessageState::Finished;
                 }
-                MessageState::Finished => Err(IoError::MessageFinished),
+                MessageState::Finished => return Err(IoError::MessageFinished),
             }
-        })?;
 
-        // Write newline delimiter and flush
-        OUTPUT_STREAM.with(|stream_cell| {
-            let stream_opt = stream_cell.borrow();
-            let stream = stream_opt
+            // Write newline delimiter and flush
+            let stream = state
+                .output_stream
                 .as_ref()
-                .ok_or_else(|| IoError::Unexpected("No output stream available".to_string()))?;
+                .ok_or(IoError::MessageNotStarted)?;
 
             write_with_backpressure(stream, b"\n")
                 .and_then(|_| stream.flush())
-                .map_err(|e| IoError::Io(format!("Stream error: {e:?}")))
+                .map_err(IoError::Stream)
         })
     }
 }
@@ -810,33 +779,30 @@ fn escape_json_string(s: &str) -> String {
 fn send_panic_error_response() {
     const ERROR_JSON: &[u8] = br#"{"jsonrpc":"2.0","error":{"code":-32603,"message":"Internal error: handler panicked"},"id":null}"#;
 
-    MESSAGE_STATE.with(|state| {
-        let current = *state.borrow();
+    task_local::with_state(|state| {
+        let current = state.message_state;
 
-        OUTPUT_STREAM.with(|stream_cell| {
-            let stream_opt = stream_cell.borrow();
-            if let Some(stream) = stream_opt.as_ref() {
-                match current {
-                    MessageState::NotStarted => {
-                        // Write complete error message with newline delimiter
-                        let _ = write_with_backpressure(stream, ERROR_JSON);
-                        let _ = write_with_backpressure(stream, b"\n");
-                        let _ = stream.flush();
-                        *state.borrow_mut() = MessageState::Finished;
-                    }
-                    MessageState::InProgress => {
-                        // Message started but not finished - complete it with error
-                        let _ = write_with_backpressure(stream, ERROR_JSON);
-                        let _ = write_with_backpressure(stream, b"\n");
-                        let _ = stream.flush();
-                        *state.borrow_mut() = MessageState::Finished;
-                    }
-                    MessageState::Finished => {
-                        // Message already finished - cannot send error
-                    }
+        if let Some(stream) = state.output_stream.as_ref() {
+            match current {
+                MessageState::NotStarted => {
+                    // Write complete error message with newline delimiter
+                    let _ = write_with_backpressure(stream, ERROR_JSON);
+                    let _ = write_with_backpressure(stream, b"\n");
+                    let _ = stream.flush();
+                    state.message_state = MessageState::Finished;
+                }
+                MessageState::InProgress => {
+                    // Message started but not finished - complete it with error
+                    let _ = write_with_backpressure(stream, ERROR_JSON);
+                    let _ = write_with_backpressure(stream, b"\n");
+                    let _ = stream.flush();
+                    state.message_state = MessageState::Finished;
+                }
+                MessageState::Finished => {
+                    // Message already finished - cannot send error
                 }
             }
-        });
+        }
     });
 }
 

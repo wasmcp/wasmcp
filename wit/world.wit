@@ -1,4 +1,4 @@
-package wasmcp:mcp@0.3.1-alpha.31;
+package wasmcp:mcp@0.3.1-alpha.33;
 
 /// Provides I/O, message framing, and message-scoped context
 world transport {
@@ -21,9 +21,8 @@ world authorizer {
     export identity;
 }
 
-/// Uses identity claims while handling messages
-world authorized-handler {
-    include handler;
+/// Uses identity claims
+world authorized {
     import identity;
 }
 
@@ -34,8 +33,7 @@ world session-store {
 }
 
 /// Uses session data while handling messages
-world stateful-handler {
-    include handler;
+world stateful {
     import session;
 }
 
@@ -45,38 +43,38 @@ world middleware {
     import message-handler;
 }
 
-world feature-handler {
-    include handler;
+/// Common protocol responses
+world protocol-responses {
     import notification-response;
     import error-response;
 }
 
 /// Handles lifecycle events (initialization, pings, etc.)
-world lifecycle-handler {
-    include feature-handler;
+world lifecycle-responses {
+    include protocol-responses;
     import lifecycle-response;
 }
 
 /// Provides models with tools for interacting with the outside world
-world tools-handler {
-    include feature-handler;
+world tools-responses {
+    include protocol-responses;
     import tools-response;
 }
 
 /// Provides models with access to external data
-world resources-handler {
-    include feature-handler;
+world resources-responses {
+    include protocol-responses;
     import resources-response;
 }
 
 /// Provides clients with structured messages and instructions for interacting with language models
-world prompts-handler {
-    include feature-handler;
+world prompts-responses {
+    include protocol-responses;
     import prompts-response;
 }
 
 /// Provides argument autocompletion suggestions for prompts and resource URIs
-world completions-handler {
-    include feature-handler;
+world completions-responses {
+    include protocol-responses;
     import completions-response;
 }

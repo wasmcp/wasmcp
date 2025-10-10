@@ -366,6 +366,7 @@ interface protocol {
     record structured-tool-result {
         structured-content: json,
         is-error: bool,
+        supplementary-content: option<list<content-block>>,
         meta: meta,
     }
 

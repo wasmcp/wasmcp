@@ -2,14 +2,14 @@ package wasmcp:protocol@0.1.0;
 
 world protocol {
     // Lifecycle handler
-    include wasmcp:mcp/handler@0.3.1-alpha.31;
+    include wasmcp:mcp/handler@0.3.1-alpha.33;
 
     // Writers
-    export wasmcp:mcp/notification-response@0.3.1-alpha.31;
-    export wasmcp:mcp/error-response@0.3.1-alpha.31;
-    export wasmcp:mcp/lifecycle-response@0.3.1-alpha.31;
-    export wasmcp:mcp/tools-response@0.3.1-alpha.31;
-    export wasmcp:mcp/resources-response@0.3.1-alpha.31;
-    export wasmcp:mcp/prompts-response@0.3.1-alpha.31;
-    export wasmcp:mcp/completions-response@0.3.1-alpha.31;
+    export wasmcp:mcp/notification-response@0.3.1-alpha.33;
+    export wasmcp:mcp/error-response@0.3.1-alpha.33;
+    export wasmcp:mcp/lifecycle-response@0.3.1-alpha.33;
+    export wasmcp:mcp/tools-response@0.3.1-alpha.33;
+    export wasmcp:mcp/resources-response@0.3.1-alpha.33;
+    export wasmcp:mcp/prompts-response@0.3.1-alpha.33;
+    export wasmcp:mcp/completions-response@0.3.1-alpha.33;
 }

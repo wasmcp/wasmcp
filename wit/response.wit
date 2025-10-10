@@ -1,4 +1,7 @@
+use wasi:io/streams@0.2.3;
+
 interface output {
+    use streams.{input-stream, stream-error};
     variant io-error {
         /// The message has not been started yet.
         message-not-started,
@@ -6,12 +9,8 @@ interface output {
         message-in-progress,
         /// The message has been finished.
         message-finished,
-        /// The output stream has been closed.
-        closed,
         /// An I/O error occurred.
-        io(string),
-        /// Some other error occurred.
-        unexpected(string),
+        %stream(stream-error),
     }
 
     start-message: func() -> result<_, io-error>;
@@ -79,13 +78,15 @@ interface lifecycle-response {
 }
 
 interface tools-response {
+    use streams.{input-stream};
     use output.{io-error};
-    use protocol.{content-block, id, tool, meta, next-cursor-options, structured-tool-result};
+    use protocol.{content-block, id, json, tool, meta, next-cursor-options, structured-tool-result};
 
     @since(version = 0.3.0)
     record content-blocks-result-options {
         is-error: bool,
         meta: meta,
+        structured-content: option<json>,
     }
 
     write-tools: func(
@@ -119,15 +120,71 @@ interface tools-response {
         finish: static func(this: tools-writer, options: option<next-cursor-options>) -> result<_, io-error>;
     }
 
+    /// Stream-first writer for tool call content blocks.
+    ///
+    /// Enables bounded-memory streaming of arbitrarily large binary content (images, audio)
+    /// while maintaining valid JSON throughout. Each `add-*` method writes a complete
+    /// content block to the output stream.
+    ///
+    /// Architecture:
+    /// - Small content: Handler provides complete data, protocol serializes
+    /// - Large content: Handler provides input-stream, protocol reads + base64-encodes incrementally
+    /// - Memory bounded: ~10KB for streaming regardless of content size
+    ///
+    /// Usage:
+    /// ```
+    /// let writer = content-blocks-writer::start(id)?;
+    /// writer.add-text("Result: ")?;
+    /// writer.add-image-stream("image/png", image_stream)?;  // 100MB image, 10KB memory
+    /// writer.finish(options)?;
+    /// ```
     resource content-blocks-writer {
-        start: static func(id: id, initial: content-block) -> result<content-blocks-writer, io-error>;
-        write: func(contents: list<u8>) -> result<_, io-error>;
-        next: func(content: content-block) -> result<_, io-error>;
+        /// Start writing tool call content blocks.
+        /// Writes JSON-RPC response header and opens content array.
+        start: static func(id: id) -> result<content-blocks-writer, io-error>;
+
+        /// Add a text content block.
+        add-text: func(text: string) -> result<_, io-error>;
+
+        /// Add an image content block with complete data.
+        /// Use for small images where handler has all data in memory.
+        add-image: func(data: list<u8>, mime-type: string) -> result<_, io-error>;
+
+        /// Add an image content block by streaming from input-stream.
+        /// Enables bounded-memory streaming of large images (e.g., 100MB with 10KB memory).
+        /// Protocol reads chunks and base64-encodes incrementally.
+        /// Returns number of bytes read from stream.
+        add-image-stream: func(mime-type: string, source: borrow<input-stream>) -> result<u64, io-error>;
+
+        /// Add an audio content block with complete data.
+        add-audio: func(data: list<u8>, mime-type: string) -> result<_, io-error>;
+
+        /// Add an audio content block by streaming from input-stream.
+        /// Returns number of bytes read from stream.
+        add-audio-stream: func(mime-type: string, source: borrow<input-stream>) -> result<u64, io-error>;
+
+        /// Add a resource link content block.
+        add-resource-link: func(uri: string, name: string) -> result<_, io-error>;
+
+        /// Add an embedded resource content block with text content.
+        add-embedded-resource-text: func(uri: string, text: string, mime-type: option<string>) -> result<_, io-error>;
+
+        /// Add an embedded resource content block with complete blob data.
+        /// Use for small blobs where handler has all data in memory.
+        add-embedded-resource-blob: func(uri: string, blob: list<u8>, mime-type: option<string>) -> result<_, io-error>;
+
+        /// Add an embedded resource content block by streaming blob from input-stream.
+        /// Enables bounded-memory streaming of large embedded resource blobs.
+        /// Returns number of bytes read from stream.
+        add-embedded-resource-blob-stream: func(uri: string, mime-type: option<string>, source: borrow<input-stream>) -> result<u64, io-error>;
+
+        /// Finish writing content blocks and close the response.
         finish: static func(this: content-blocks-writer, options: option<content-blocks-result-options>) -> result<_, io-error>;
     }
 }
 
 interface resources-response {
+    use streams.{input-stream};
     use output.{io-error};
     use protocol.{id, %resource, resource-contents, resource-template, meta-options, next-cursor-options};
 
@@ -152,9 +209,36 @@ interface resources-response {
         finish: static func(this: resources-writer, options: option<next-cursor-options>) -> result<_, io-error>;
     }
 
+    /// Stream-first writer for resource contents.
+    ///
+    /// Enables bounded-memory streaming of large resource blobs while maintaining
+    /// valid JSON. Each `add-*` method writes a complete resource contents object.
+    ///
+    /// Usage:
+    /// ```
+    /// let writer = contents-writer::start(id)?;
+    /// writer.add-blob-stream("file:///large.bin", "application/octet-stream", blob_stream)?;
+    /// writer.finish(options)?;
+    /// ```
     resource contents-writer {
-        start: static func(id: id, initial: resource-contents) -> result<contents-writer, io-error>;
-        write: func(contents: list<u8>) -> result<_, io-error>;
+        /// Start writing resource contents.
+        /// Writes JSON-RPC response header and opens contents array.
+        start: static func(id: id) -> result<contents-writer, io-error>;
+
+        /// Add resource contents with text data.
+        add-text: func(uri: string, text: string, mime-type: option<string>) -> result<_, io-error>;
+
+        /// Add resource contents with complete blob data.
+        /// Use for small blobs where handler has all data in memory.
+        add-blob: func(uri: string, data: list<u8>, mime-type: option<string>) -> result<_, io-error>;
+
+        /// Add resource contents by streaming blob from input-stream.
+        /// Enables bounded-memory streaming of large resource files.
+        /// Protocol reads chunks and base64-encodes incrementally.
+        /// Returns number of bytes read from stream.
+        add-blob-stream: func(uri: string, mime-type: option<string>, source: borrow<input-stream>) -> result<u64, io-error>;
+
+        /// Finish writing resource contents and close the response.
         finish: static func(this: contents-writer, options: option<meta-options>) -> result<_, io-error>;
     }
 

@@ -147,89 +147,166 @@ pub struct ContentsWriter {
 }
 
 struct ContentsWriterState {
-    id: Id,
-    uri: String,
-    chunks: Vec<Vec<u8>>,
-    mime_type: Option<String>,
+    first_item: bool,
 }
 
 impl crate::bindings::exports::wasmcp::mcp::resources_response::GuestContentsWriter
     for ContentsWriter
 {
-    fn start(
-        id: Id,
-        initial: ResourceContents,
-    ) -> Result<resources_response::ContentsWriter, IoError> {
-        // For streaming resource contents, we need to buffer the data
-        // because we can't determine if it's text or binary until we have all chunks
-        let initial_data = initial.data.clone();
+    fn start(id: Id) -> Result<resources_response::ContentsWriter, IoError> {
+        let id_str = format_id(&id);
+        let header = format!(r#"{{"jsonrpc":"2.0","id":{id_str},"result":{{"contents":["#);
 
-        let mime_type = initial
-            .options
-            .as_ref()
-            .and_then(|opts| opts.mime_type.clone());
+        start_message()?;
+        write_message_contents(&header.into_bytes())?;
 
         Ok(resources_response::ContentsWriter::new(ContentsWriter {
-            state: RefCell::new(ContentsWriterState {
-                id,
-                uri: initial.uri,
-                chunks: vec![initial_data],
-                mime_type,
-            }),
+            state: RefCell::new(ContentsWriterState { first_item: true }),
         }))
     }
 
-    fn write(&self, contents: Vec<u8>) -> Result<(), IoError> {
-        let mut state = self.state.borrow_mut();
-        state.chunks.push(contents);
-        Ok(())
+    fn add_text(
+        &self,
+        uri: String,
+        text: String,
+        mime_type: Option<String>,
+    ) -> Result<(), IoError> {
+        self.write_comma_if_needed()?;
+
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_string("uri", &uri);
+        obj.add_string("text", &text);
+        if let Some(mt) = mime_type {
+            obj.add_string("mimeType", &mt);
+        }
+
+        write_message_contents(&obj.build().into_bytes())
+    }
+
+    fn add_blob(
+        &self,
+        uri: String,
+        data: Vec<u8>,
+        mime_type: Option<String>,
+    ) -> Result<(), IoError> {
+        self.write_comma_if_needed()?;
+
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_string("uri", &uri);
+        obj.add_string("blob", &base64_encode(&data));
+        if let Some(mt) = mime_type {
+            obj.add_string("mimeType", &mt);
+        }
+
+        write_message_contents(&obj.build().into_bytes())
+    }
+
+    fn add_blob_stream(
+        &self,
+        uri: String,
+        mime_type: Option<String>,
+        source: &crate::bindings::wasi::io::streams::InputStream,
+    ) -> Result<u64, IoError> {
+        self.write_comma_if_needed()?;
+
+        // Write object opening
+        write_message_contents(
+            format!(r#"{{"uri":"{}","blob":""#, escape_json_string(&uri)).as_bytes(),
+        )?;
+
+        // Stream base64-encode
+        let bytes_read = self.stream_base64_encode(source)?;
+
+        // Close object
+        if let Some(mt) = mime_type {
+            write_message_contents(
+                format!(r#"","mimeType":"{}"}}"#, escape_json_string(&mt)).as_bytes(),
+            )?;
+        } else {
+            write_message_contents(br#""}"#)?;
+        }
+
+        Ok(bytes_read)
     }
 
     fn finish(
-        this: resources_response::ContentsWriter,
+        _this: resources_response::ContentsWriter,
         options: Option<MetaOptions>,
     ) -> Result<(), IoError> {
-        // Get inner implementation from wrapper
-        let inner: ContentsWriter = this.into_inner();
-        let state = inner.state.borrow();
+        let mut closing = String::from("]");
 
-        let mut result = JsonObjectBuilder::new();
-        result.add_string("uri", &state.uri);
-
-        // Combine all chunks
-        let total_len: usize = state.chunks.iter().map(|c| c.len()).sum();
-        let mut combined = Vec::with_capacity(total_len);
-        for chunk in &state.chunks {
-            combined.extend_from_slice(chunk);
-        }
-
-        // Check if it's valid UTF-8 text
-        if let Ok(text) = String::from_utf8(combined.clone()) {
-            result.add_string("text", &text);
-        } else {
-            // Binary data - encode as base64
-            result.add_string("blob", &base64_encode(&combined));
-        }
-
-        // Add mime type
-        if let Some(mime) = &state.mime_type {
-            result.add_string("mimeType", mime);
-        }
-
-        // Add meta from options
         if let Some(opts) = options {
             if let Some(meta) = opts.meta {
                 if !meta.is_empty() {
-                    result.add_raw_json("_meta", &build_meta_json(&meta));
+                    let meta_json = build_meta_json(&meta);
+                    closing.push_str(&format!(r#","_meta":{}"#, meta_json));
                 }
             }
         }
 
-        let response = build_json_rpc_response(&state.id, &result.build());
+        closing.push_str("}}");
 
-        start_message()?;
-        write_message_contents(&response.into_bytes())?;
+        write_message_contents(&closing.into_bytes())?;
         finish_message()
+    }
+}
+
+impl ContentsWriter {
+    /// Write comma if this is not the first item
+    fn write_comma_if_needed(&self) -> Result<(), IoError> {
+        let mut state = self.state.borrow_mut();
+        if !state.first_item {
+            write_message_contents(b",")?;
+        }
+        state.first_item = false;
+        Ok(())
+    }
+
+    /// Stream base64-encode data from input-stream with bounded memory.
+    ///
+    /// Reads 4KB chunks, encodes incrementally, and writes to output.
+    /// Returns total bytes read from stream.
+    fn stream_base64_encode(
+        &self,
+        source: &crate::bindings::wasi::io::streams::InputStream,
+    ) -> Result<u64, IoError> {
+        use crate::bindings::wasi::io::streams::StreamError;
+        use crate::utils::Base64StreamEncoder;
+
+        let mut encoder = Base64StreamEncoder::new();
+        let mut total_bytes: u64 = 0;
+
+        loop {
+            // Read chunk with blocking (up to 4KB)
+            let chunk = source
+                .blocking_read(4096)
+                .map_err(|e| match e {
+                    StreamError::LastOperationFailed(err) => {
+                        IoError::Stream(StreamError::LastOperationFailed(err))
+                    }
+                    StreamError::Closed => IoError::Stream(StreamError::Closed),
+                })?;
+
+            if chunk.is_empty() {
+                break;
+            }
+
+            total_bytes += chunk.len() as u64;
+
+            // Encode and write chunk
+            let encoded = encoder.encode_chunk(&chunk);
+            if !encoded.is_empty() {
+                write_message_contents(encoded.as_bytes())?;
+            }
+        }
+
+        // Finalize encoding (write any remaining buffered bytes with padding)
+        let final_encoded = encoder.finalize();
+        if !final_encoded.is_empty() {
+            write_message_contents(final_encoded.as_bytes())?;
+        }
+
+        Ok(total_bytes)
     }
 }
 

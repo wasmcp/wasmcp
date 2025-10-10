@@ -56,6 +56,97 @@ pub fn base64_encode(data: &[u8]) -> String {
     BASE64.encode(data)
 }
 
+/// Streaming base64 encoder for bounded-memory encoding of large data.
+///
+/// Maintains internal state to handle data that doesn't align to 3-byte boundaries.
+/// Base64 encodes 3 input bytes → 4 output bytes, so partial chunks are buffered.
+///
+/// # Example
+/// ```ignore
+/// let mut encoder = Base64StreamEncoder::new();
+///
+/// // Encode chunks as they arrive
+/// let chunk1 = encoder.encode_chunk(&[0x48, 0x65]);  // "He" → buffered
+/// let chunk2 = encoder.encode_chunk(&[0x6c, 0x6c, 0x6f]); // "llo" → "SGVs" + buffer "lo"
+///
+/// // Finalize adds padding if needed
+/// let final_chunk = encoder.finalize();  // "bG8="
+/// ```
+pub struct Base64StreamEncoder {
+    /// Buffer for incomplete 3-byte groups (0-2 bytes)
+    buffer: [u8; 2],
+    /// Number of bytes currently in buffer
+    buffer_len: usize,
+}
+
+impl Base64StreamEncoder {
+    /// Create a new streaming encoder.
+    pub fn new() -> Self {
+        Self {
+            buffer: [0; 2],
+            buffer_len: 0,
+        }
+    }
+
+    /// Encode a chunk of data, returning base64 output for complete 3-byte groups.
+    ///
+    /// Incomplete bytes at the end are buffered for the next call or finalize().
+    /// Returns empty string if all input is buffered.
+    pub fn encode_chunk(&mut self, data: &[u8]) -> String {
+        if data.is_empty() {
+            return String::new();
+        }
+
+        // Calculate total bytes available (buffer + new data)
+        let total_len = self.buffer_len + data.len();
+
+        // Calculate how many complete 3-byte groups we can encode
+        let complete_groups = total_len / 3;
+
+        if complete_groups == 0 {
+            // Not enough for even one group, buffer everything
+            for (i, &byte) in data.iter().enumerate() {
+                if self.buffer_len + i < 2 {
+                    self.buffer[self.buffer_len + i] = byte;
+                }
+            }
+            self.buffer_len += data.len();
+            return String::new();
+        }
+
+        // Calculate how many bytes to encode
+        let bytes_to_encode = complete_groups * 3;
+        let bytes_from_data = bytes_to_encode - self.buffer_len;
+
+        // Build input for encoding: buffer + portion of data
+        let mut input = Vec::with_capacity(bytes_to_encode);
+        input.extend_from_slice(&self.buffer[..self.buffer_len]);
+        input.extend_from_slice(&data[..bytes_from_data]);
+
+        // Encode complete groups
+        let encoded = BASE64.encode(&input);
+
+        // Buffer remaining bytes from data
+        let remaining_bytes = &data[bytes_from_data..];
+        self.buffer_len = remaining_bytes.len();
+        self.buffer[..self.buffer_len].copy_from_slice(remaining_bytes);
+
+        encoded
+    }
+
+    /// Finalize encoding, returning base64 output for any buffered bytes with padding.
+    ///
+    /// Consumes the encoder. If no bytes are buffered, returns empty string.
+    pub fn finalize(self) -> String {
+        if self.buffer_len == 0 {
+            return String::new();
+        }
+
+        // Encode remaining buffered bytes (will add padding)
+        BASE64.encode(&self.buffer[..self.buffer_len])
+    }
+}
+
 /// Build JSON for a single content block.
 ///
 /// Handles all content block types: text, image, audio, resource-link, embedded-resource.
