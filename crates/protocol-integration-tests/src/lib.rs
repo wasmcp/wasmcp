@@ -9,6 +9,11 @@
 //! NOTE: This test outputs JSON-RPC messages to stdout (via stdio-transport).
 //! The test validates the structure but the output will appear in the test logs.
 
+// Uncomment to enable memory tracking (adds global allocator overhead)
+// mod memory_tracking;
+// #[global_allocator]
+// static GLOBAL: memory_tracking::TrackingAllocator = memory_tracking::TrackingAllocator;
+
 wit_bindgen::generate!({
     path: "wit",
     world: "test-harness",
@@ -508,3 +513,77 @@ fn test_large_file_streaming() {
     println!("  ✓ Large file streaming completed ({} bytes = {:.2} MB)",
              bytes_read, bytes_read as f64 / (1024.0 * 1024.0));
 }
+
+// ===== Memory Scaling Test (Optional) =====
+//
+// This test can be enabled by uncommenting the memory_tracking module at the top.
+// It verifies that memory usage remains bounded regardless of content size.
+//
+// #[allow(dead_code)]
+// fn test_memory_scaling() {
+//     use memory_tracking::{reset_peak, get_stats};
+//     use wasmcp::mcp::resources_response::*;
+//     use wasmcp::mcp::protocol::Id;
+//
+//     println!("Test: Memory scaling verification");
+//
+//     let sizes = vec![
+//         1 * 1024 * 1024,      // 1MB
+//         5 * 1024 * 1024,      // 5MB
+//         10 * 1024 * 1024,     // 10MB
+//     ];
+//
+//     let mut results = Vec::new();
+//
+//     for (idx, size) in sizes.iter().enumerate() {
+//         reset_peak();
+//
+//         let data = vec![0x42; *size];
+//         let (_file_desc, stream) = create_test_stream(&data);
+//
+//         let id = Id::Number(100 + idx as i64);
+//         let writer = ContentsWriter::start(&id).expect("Should create writer");
+//
+//         writer
+//             .add_blob_stream(&"file:///memory-test.bin".to_string(), None, &stream)
+//             .expect("Should stream");
+//
+//         ContentsWriter::finish(writer, None).expect("Should finish");
+//
+//         let stats = get_stats();
+//         let peak_kb = stats.peak / 1024;
+//         results.push((*size, stats.peak));
+//
+//         println!(
+//             "  Size: {}MB → Peak memory: {}KB",
+//             size / (1024 * 1024),
+//             peak_kb
+//         );
+//     }
+//
+//     // Verify memory scaling is bounded
+//     // Memory should grow sub-linearly (much slower than content size)
+//     for i in 1..results.len() {
+//         let (size_prev, mem_prev) = results[i - 1];
+//         let (size_curr, mem_curr) = results[i];
+//
+//         let size_ratio = size_curr as f64 / size_prev as f64;
+//         let mem_ratio = mem_curr as f64 / mem_prev as f64;
+//
+//         println!(
+//             "  {}x size increase → {:.2}x memory increase",
+//             size_ratio, mem_ratio
+//         );
+//
+//         // If memory was O(n), ratio would match size ratio
+//         // With bounded memory, ratio should be close to 1.0
+//         assert!(
+//             mem_ratio < 2.0,
+//             "Memory grew {:.2}x for {:.0}x size increase - not bounded!",
+//             mem_ratio,
+//             size_ratio
+//         );
+//     }
+//
+//     println!("  ✓ Memory scaling verified: bounded (O(1) not O(n))");
+// }

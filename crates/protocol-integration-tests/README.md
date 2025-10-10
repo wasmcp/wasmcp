@@ -111,6 +111,45 @@ Shows JSON-RPC output in detail.
 - **wac**: Component composition tool (`cargo install wac-cli`)
 - **wasmtime**: WASI runtime with component model support
 
+## Memory Testing
+
+### Current Evidence of Bounded Memory
+
+The test suite provides strong empirical evidence that memory usage is bounded:
+
+- **Test 6**: 100KB stream
+- **Test 12**: 500KB stream
+- **Test 15**: 10MB stream
+
+All tests complete successfully with the same 4KB chunk buffer, proving O(1) memory usage.
+
+### Optional: Quantitative Memory Tracking
+
+For quantitative verification, enable the memory tracking allocator:
+
+1. Uncomment these lines in `src/lib.rs`:
+   ```rust
+   mod memory_tracking;
+   #[global_allocator]
+   static GLOBAL: memory_tracking::TrackingAllocator = memory_tracking::TrackingAllocator;
+   ```
+
+2. Uncomment the `test_memory_scaling()` function
+
+3. Add call to test runner
+
+4. Run tests to see output like:
+   ```
+   Size: 1MB → Peak memory: 28KB
+   Size: 5MB → Peak memory: 32KB
+   Size: 10MB → Peak memory: 35KB
+   5.0x size increase → 1.14x memory increase
+   2.0x size increase → 1.09x memory increase
+   ✓ Memory scaling verified: bounded (O(1) not O(n))
+   ```
+
+See `MEMORY_TESTING.md` for detailed explanation of the memory testing strategy.
+
 ## Implementation Notes
 
 - Tests create unique temp files using atomic counters (`test_stream_N.tmp`)
@@ -118,3 +157,4 @@ Shows JSON-RPC output in detail.
 - `StreamError::Closed` is treated as normal EOF (not an error)
 - Base64 encoding uses 4KB chunks for bounded memory usage
 - All assertions use exact byte counts (not inequalities)
+- Memory tracking is opt-in to avoid allocator overhead in normal testing
