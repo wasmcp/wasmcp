@@ -1,14 +1,22 @@
 interface output {
     variant io-error {
-        /// An I/O error occurred.
-        io(string),
+        /// The message has not been started yet.
+        message-not-started,
+        /// A message is currently in progress.
+        message-in-progress,
+        /// The message has been finished.
+        message-finished,
         /// The output stream has been closed.
         closed,
+        /// An I/O error occurred.
+        io(string),
         /// Some other error occurred.
-        other(string),
+        unexpected(string),
     }
 
-    write-message: func(message: list<u8>) -> result<_, io-error>;
+    start-message: func() -> result<_, io-error>;
+    write-message-contents: func(contents: list<u8>) -> result<_, io-error>;
+    finish-message: func() -> result<_, io-error>;
 }
 
 interface notification-response {

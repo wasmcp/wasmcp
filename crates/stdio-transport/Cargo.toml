@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 wit-bindgen = "0.34"
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 
 [lib]
 crate-type = ["cdylib"]

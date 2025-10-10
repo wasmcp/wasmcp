@@ -1,0 +1,15 @@
+package wasmcp:lifecycle@0.1.0;
+
+world lifecycle {
+    // Lifecycle handler
+    include wasmcp:mcp/handler@0.3.1-alpha.31;
+
+    // Writers
+    export wasmcp:mcp/notification-response@0.3.1-alpha.31;
+    export wasmcp:mcp/error-response@0.3.1-alpha.31;
+    export wasmcp:mcp/lifecycle-response@0.3.1-alpha.31;
+    export wasmcp:mcp/tools-response@0.3.1-alpha.31;
+    export wasmcp:mcp/resources-response@0.3.1-alpha.31;
+    export wasmcp:mcp/prompts-response@0.3.1-alpha.31;
+    export wasmcp:mcp/completions-response@0.3.1-alpha.31;
+}

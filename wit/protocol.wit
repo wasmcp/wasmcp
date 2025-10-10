@@ -359,7 +359,7 @@ interface protocol {
     @since(version = 0.3.0)
     record tool {
         name: string,
-        input-schema: string,
+        input-schema: json,
         options: option<tool-options>,
     }
 

@@ -1,6 +1,6 @@
-package wasmcp:mcp@0.3.1-alpha.26;
+package wasmcp:mcp@0.3.1-alpha.31;
 
-/// Provides I/O, message framing, and message-scoped mutable context
+/// Provides I/O, message framing, and message-scoped context
 world transport {
     export context;
     export output;
@@ -13,10 +13,12 @@ world handler {
     import context;
     import output;
     export message-handler;
+}
 
-    // Writes notifications and errors to output
-    import notification-response;
-    import error-response;
+/// Provides identity claims about the current message
+/// State is optional and left up to the implementation
+world authorizer {
+    export identity;
 }
 
 /// Uses identity claims while handling messages
@@ -25,16 +27,16 @@ world authorized-handler {
     import identity;
 }
 
-/// Uses session data while handling messages
-world session-handler {
-    include handler;
-    import session;
+/// Provides persistent, session-scoped storage and session lifecycle management.
+/// Unlocks session-scoped bidirectional client capabilities like elicitations.
+world session-store {
+    export session;
 }
 
-/// Handles lifecycle events (initialization, pings, etc.)
-world lifecycle-handler {
+/// Uses session data while handling messages
+world stateful-handler {
     include handler;
-    import lifecycle-response;
+    import session;
 }
 
 /// Composable with other handlers
@@ -43,28 +45,38 @@ world middleware {
     import message-handler;
 }
 
-// MCP server features
+world feature-handler {
+    include handler;
+    import notification-response;
+    import error-response;
+}
+
+/// Handles lifecycle events (initialization, pings, etc.)
+world lifecycle-handler {
+    include feature-handler;
+    import lifecycle-response;
+}
 
 /// Provides models with tools for interacting with the outside world
 world tools-handler {
-    include middleware;
+    include feature-handler;
     import tools-response;
 }
 
 /// Provides models with access to external data
 world resources-handler {
-    include middleware;
+    include feature-handler;
     import resources-response;
 }
 
 /// Provides clients with structured messages and instructions for interacting with language models
 world prompts-handler {
-    include middleware;
+    include feature-handler;
     import prompts-response;
 }
 
 /// Provides argument autocompletion suggestions for prompts and resource URIs
 world completions-handler {
-    include middleware;
+    include feature-handler;
     import completions-response;
 }
