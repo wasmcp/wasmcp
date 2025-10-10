@@ -1,8 +1,20 @@
-//! HTTP transport component for the Model Context Protocol (MCP)
+//! Streamable HTTP transport component for the Model Context Protocol (MCP)
 //!
-//! This component provides a Server-Sent Events (SSE) HTTP transport implementation
-//! that converts incoming HTTP requests into MCP protocol messages for processing
-//! by handler chains.
+//! This component implements the MCP Streamable HTTP transport as specified at:
+//! https://modelcontextprotocol.io/specification/2025-06-18/transport#streamable-http-transport
+//!
+//! The Streamable HTTP transport uses Server-Sent Events (SSE) for streaming responses,
+//! enabling real-time message delivery from servers to clients over HTTP.
+//!
+//! ## MCP Transport Specification Compliance
+//!
+//! This implementation provides:
+//! - POST endpoint at `/mcp` for client messages
+//! - Server-Sent Events streaming for requests (200 OK with `text/event-stream`)
+//! - 202 Accepted responses for notifications (no streaming)
+//! - Origin header validation to prevent DNS rebinding attacks
+//! - MCP-Protocol-Version header support (2025-06-18, 2025-03-26, 2024-11-05)
+//! - Runtime-configurable allowed origins via `wasi:config`
 //!
 //! ## Architecture
 //!
@@ -16,13 +28,14 @@
 //!
 //! ## Request Flow
 //!
-//! 1. HTTP request arrives at `/mcp` endpoint
-//! 2. Body is read and parsed as JSON-RPC 2.0 into `mcp-message`
-//! 3. Per-request state is initialized (output stream, context KV store)
-//! 4. Message is forwarded to the composed handler chain via `message-handler::handle()`
-//! 5. Handlers access state through imported `context` and `output` functions
-//! 6. These function calls route back to this transport's exported implementations
-//! 7. Response is written with SSE framing and the stream is cleaned up
+//! 1. HTTP request arrives at `/mcp` endpoint (POST only)
+//! 2. Security headers validated (Origin, MCP-Protocol-Version, Accept)
+//! 3. Body is read and parsed as JSON-RPC 2.0 into `mcp-message`
+//! 4. Per-request state is initialized (output stream, context KV store)
+//! 5. Message is forwarded to the composed handler chain via `message-handler::handle()`
+//! 6. Handlers access state through imported `context` and `output` functions
+//! 7. These function calls route back to this transport's exported implementations
+//! 8. Response is written with SSE framing (for requests) and stream is cleaned up
 
 use std::cell::RefCell;
 use std::collections::HashMap;

@@ -1,7 +1,19 @@
 //! Stdio transport component for the Model Context Protocol (MCP)
 //!
-//! This component provides stdio-based transport for MCP, handling communication
-//! over standard input and output streams with newline-delimited JSON-RPC messages.
+//! This component implements the MCP stdio transport as specified at:
+//! https://modelcontextprotocol.io/specification/2025-06-18/transport#stdio-transport
+//!
+//! The stdio transport enables local process communication using standard input/output
+//! streams with newline-delimited JSON-RPC messages.
+//!
+//! ## MCP Transport Specification Compliance
+//!
+//! This implementation provides:
+//! - Newline-delimited message framing (messages MUST NOT contain embedded newlines)
+//! - UTF-8 encoded JSON-RPC 2.0 messages
+//! - Server reads from stdin, writes to stdout
+//! - stderr reserved for logging only (not protocol messages)
+//! - Single persistent session per process lifetime
 //!
 //! ## Architecture
 //!
