@@ -1,0 +1,28 @@
+// Compose integration test with protocol and output
+//
+// Connection graph:
+// 1. output-passthrough exports wasmcp:mcp/output
+// 2. protocol imports output from output-passthrough, exports tools-response & resources-response
+// 3. test imports tools-response & resources-response from protocol
+// 4. test exports output (uses output-passthrough), exports wasi:cli/run
+
+package wasmcp:test-composition@0.1.0;
+
+// Step 1: Instantiate output passthrough (propagate WASI imports)
+let output = new wasmcp:output-passthrough { ... };
+
+// Step 2: Instantiate protocol, providing output implementation and propagating WASI
+let protocol = new wasmcp:protocol {
+    "wasmcp:mcp/output@0.3.1-alpha.33": output,
+    ...
+};
+
+// Step 3: Instantiate test, providing protocol exports and propagating WASI
+let test = new wasmcp:protocol-integration-tests {
+    "wasmcp:mcp/tools-response@0.3.1-alpha.33": protocol,
+    "wasmcp:mcp/resources-response@0.3.1-alpha.33": protocol,
+    ...
+};
+
+// Export everything from test (including wasi:cli/run)
+export test...;

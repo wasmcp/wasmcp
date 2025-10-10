@@ -278,14 +278,16 @@ impl ContentsWriter {
 
         loop {
             // Read chunk with blocking (up to 4KB)
-            let chunk = source
-                .blocking_read(4096)
-                .map_err(|e| match e {
-                    StreamError::LastOperationFailed(err) => {
-                        IoError::Stream(StreamError::LastOperationFailed(err))
-                    }
-                    StreamError::Closed => IoError::Stream(StreamError::Closed),
-                })?;
+            let chunk = match source.blocking_read(4096) {
+                Ok(data) => data,
+                Err(StreamError::Closed) => {
+                    // Closed stream means EOF - break cleanly
+                    break;
+                }
+                Err(StreamError::LastOperationFailed(err)) => {
+                    return Err(IoError::Stream(StreamError::LastOperationFailed(err)));
+                }
+            };
 
             if chunk.is_empty() {
                 break;

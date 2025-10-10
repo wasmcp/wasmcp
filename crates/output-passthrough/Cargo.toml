@@ -1,0 +1,10 @@
+[package]
+name = "output-passthrough"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wit-bindgen = "0.34"
+
+[lib]
+crate-type = ["cdylib"]

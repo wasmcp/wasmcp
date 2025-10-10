@@ -1,0 +1,13 @@
+package wasmcp:output-passthrough@0.1.0;
+
+/// Simple passthrough output component that writes directly to stdout
+///
+/// This component implements the wasmcp:mcp/output interface by writing
+/// each message to stdout as a newline-delimited JSON message.
+world output-passthrough {
+    // WASI stdout for writing output
+    import wasi:cli/stdout@0.2.3;
+
+    // Export the output interface
+    export wasmcp:mcp/output@0.3.1-alpha.33;
+}

@@ -436,12 +436,16 @@ impl ContentBlocksWriter {
 
         loop {
             // Read chunk with blocking (up to 4KB)
-            let chunk = source
-                .blocking_read(4096)
-                .map_err(|e| match e {
-                    StreamError::LastOperationFailed(err) => IoError::Stream(StreamError::LastOperationFailed(err)),
-                    StreamError::Closed => IoError::Stream(StreamError::Closed),
-                })?;
+            let chunk = match source.blocking_read(4096) {
+                Ok(data) => data,
+                Err(StreamError::Closed) => {
+                    // Closed stream means EOF - break cleanly
+                    break;
+                }
+                Err(StreamError::LastOperationFailed(err)) => {
+                    return Err(IoError::Stream(StreamError::LastOperationFailed(err)));
+                }
+            };
 
             if chunk.is_empty() {
                 break;
@@ -529,7 +533,7 @@ fn build_tool_annotations_json(
     obj.build()
 }
 
-fn build_content_blocks_array(blocks: &[ContentBlock]) -> String {
+pub(crate) fn build_content_blocks_array(blocks: &[ContentBlock]) -> String {
     if blocks.is_empty() {
         return "[]".to_string();
     }
@@ -538,7 +542,7 @@ fn build_content_blocks_array(blocks: &[ContentBlock]) -> String {
     format!("[{}]", block_jsons.join(","))
 }
 
-fn build_meta_json(meta: &[(String, String)]) -> String {
+pub(crate) fn build_meta_json(meta: &[(String, String)]) -> String {
     let mut obj = JsonObjectBuilder::new();
     for (key, value) in meta {
         obj.add_string(key, value);
@@ -546,12 +550,12 @@ fn build_meta_json(meta: &[(String, String)]) -> String {
     obj.build()
 }
 
-fn build_json_rpc_response(id: &Id, result: &str) -> String {
+pub(crate) fn build_json_rpc_response(id: &Id, result: &str) -> String {
     let id_str = format_id(id);
     format!(r#"{{"jsonrpc":"2.0","id":{},"result":{}}}"#, id_str, result)
 }
 
-fn format_id(id: &Id) -> String {
+pub(crate) fn format_id(id: &Id) -> String {
     match id {
         Id::Number(n) => n.to_string(),
         Id::String(s) => format!(r#""{}""#, escape_json_string(s)),

@@ -48,7 +48,9 @@ mod bindings {
 // Module structure
 mod handler;
 mod responses;
-mod utils;
+
+// Public utilities module for testing
+pub mod utils;
 
 struct Component;
 

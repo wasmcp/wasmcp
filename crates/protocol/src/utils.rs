@@ -261,3 +261,359 @@ impl Default for JsonObjectBuilder {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // === escape_json_string tests ===
+
+    #[test]
+    fn test_escape_json_string_no_escapes() {
+        assert_eq!(escape_json_string("hello world"), "hello world");
+    }
+
+    #[test]
+    fn test_escape_json_string_quotes() {
+        assert_eq!(escape_json_string("say \"hello\""), r#"say \"hello\""#);
+    }
+
+    #[test]
+    fn test_escape_json_string_backslash() {
+        assert_eq!(escape_json_string(r"path\to\file"), r#"path\\to\\file"#);
+    }
+
+    #[test]
+    fn test_escape_json_string_newline() {
+        assert_eq!(escape_json_string("line1\nline2"), r"line1\nline2");
+    }
+
+    #[test]
+    fn test_escape_json_string_carriage_return() {
+        assert_eq!(escape_json_string("line1\rline2"), r"line1\rline2");
+    }
+
+    #[test]
+    fn test_escape_json_string_tab() {
+        assert_eq!(escape_json_string("col1\tcol2"), r"col1\tcol2");
+    }
+
+    #[test]
+    fn test_escape_json_string_backspace() {
+        assert_eq!(escape_json_string("test\u{0008}"), r"test\b");
+    }
+
+    #[test]
+    fn test_escape_json_string_form_feed() {
+        assert_eq!(escape_json_string("test\u{000C}"), r"test\f");
+    }
+
+    #[test]
+    fn test_escape_json_string_control_char() {
+        assert_eq!(escape_json_string("\u{0001}"), r"\u0001");
+    }
+
+    #[test]
+    fn test_escape_json_string_no_embedded_newlines() {
+        let input = "line1\nline2\rline3\r\nline4";
+        let escaped = escape_json_string(input);
+        assert!(!escaped.contains('\n'));
+        assert!(!escaped.contains('\r'));
+    }
+
+    #[test]
+    fn test_escape_json_string_unicode() {
+        assert_eq!(escape_json_string("emoji: 🎯"), "emoji: 🎯");
+    }
+
+    // === compact_json tests ===
+
+    #[test]
+    fn test_compact_json_removes_whitespace() {
+        let pretty = r#"{
+            "type": "object",
+            "properties": {
+                "name": "value"
+            }
+        }"#;
+        let compact = compact_json(pretty);
+        assert!(!compact.contains('\n'));
+        assert!(!compact.contains("  "));
+        // Note: serde_json may reorder object keys, so we just verify structure
+        assert!(compact.contains(r#""type":"object""#));
+        assert!(compact.contains(r#""properties":{"name":"value"}"#));
+    }
+
+    #[test]
+    fn test_compact_json_already_compact() {
+        let input = r#"{"key":"value","number":42}"#;
+        assert_eq!(compact_json(input), input);
+    }
+
+    #[test]
+    fn test_compact_json_array() {
+        let pretty = r#"[
+            1,
+            2,
+            3
+        ]"#;
+        assert_eq!(compact_json(pretty), "[1,2,3]");
+    }
+
+    #[test]
+    #[should_panic(expected = "Handler provided invalid JSON")]
+    fn test_compact_json_invalid_json() {
+        compact_json("not valid json");
+    }
+
+    #[test]
+    #[should_panic(expected = "Handler provided invalid JSON")]
+    fn test_compact_json_truncated_object() {
+        compact_json(r#"{"key":"value""#);
+    }
+
+    // === Base64StreamEncoder tests ===
+
+    #[test]
+    fn test_base64_stream_encoder_aligned_3_bytes() {
+        let mut encoder = Base64StreamEncoder::new();
+        let chunk = encoder.encode_chunk(b"abc");
+        assert_eq!(chunk, "YWJj");
+        assert_eq!(encoder.finalize(), "");
+    }
+
+    #[test]
+    fn test_base64_stream_encoder_aligned_6_bytes() {
+        let mut encoder = Base64StreamEncoder::new();
+        let chunk = encoder.encode_chunk(b"abcdef");
+        assert_eq!(chunk, "YWJjZGVm");
+        assert_eq!(encoder.finalize(), "");
+    }
+
+    #[test]
+    fn test_base64_stream_encoder_1_byte_buffered() {
+        let mut encoder = Base64StreamEncoder::new();
+
+        // First chunk: 1 byte (buffered)
+        assert_eq!(encoder.encode_chunk(b"a"), "");
+
+        // Second chunk: 2 bytes (3 total, encodes)
+        assert_eq!(encoder.encode_chunk(b"bc"), "YWJj");
+
+        assert_eq!(encoder.finalize(), "");
+    }
+
+    #[test]
+    fn test_base64_stream_encoder_2_bytes_buffered() {
+        let mut encoder = Base64StreamEncoder::new();
+
+        // First chunk: 2 bytes (buffered)
+        assert_eq!(encoder.encode_chunk(b"ab"), "");
+
+        // Second chunk: 1 byte (3 total, encodes)
+        assert_eq!(encoder.encode_chunk(b"c"), "YWJj");
+
+        assert_eq!(encoder.finalize(), "");
+    }
+
+    #[test]
+    fn test_base64_stream_encoder_finalize_1_byte() {
+        let mut encoder = Base64StreamEncoder::new();
+        encoder.encode_chunk(b"abcd");  // Encodes "abc", buffers "d"
+
+        let final_chunk = encoder.finalize();
+        assert_eq!(final_chunk, "ZA==");  // "d" with padding
+    }
+
+    #[test]
+    fn test_base64_stream_encoder_finalize_2_bytes() {
+        let mut encoder = Base64StreamEncoder::new();
+        encoder.encode_chunk(b"abcde");  // Encodes "abc", buffers "de"
+
+        let final_chunk = encoder.finalize();
+        assert_eq!(final_chunk, "ZGU=");  // "de" with padding
+    }
+
+    #[test]
+    fn test_base64_stream_encoder_empty_finalize() {
+        let encoder = Base64StreamEncoder::new();
+        assert_eq!(encoder.finalize(), "");
+    }
+
+    #[test]
+    fn test_base64_stream_encoder_empty_chunk() {
+        let mut encoder = Base64StreamEncoder::new();
+        assert_eq!(encoder.encode_chunk(b""), "");
+        assert_eq!(encoder.finalize(), "");
+    }
+
+    #[test]
+    fn test_base64_stream_encoder_multi_chunk_matches_single_pass() {
+        let mut encoder = Base64StreamEncoder::new();
+
+        let mut result = String::new();
+        result.push_str(&encoder.encode_chunk(b"Hell"));
+        result.push_str(&encoder.encode_chunk(b"o, Wo"));
+        result.push_str(&encoder.encode_chunk(b"rld!"));
+        result.push_str(&encoder.finalize());
+
+        let expected = BASE64.encode(b"Hello, World!");
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_base64_stream_encoder_single_byte_chunks() {
+        let mut encoder = Base64StreamEncoder::new();
+
+        let mut result = String::new();
+        result.push_str(&encoder.encode_chunk(b"a"));
+        result.push_str(&encoder.encode_chunk(b"b"));
+        result.push_str(&encoder.encode_chunk(b"c"));
+        result.push_str(&encoder.encode_chunk(b"d"));
+        result.push_str(&encoder.finalize());
+
+        let expected = BASE64.encode(b"abcd");
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_base64_stream_encoder_large_data() {
+        let mut encoder = Base64StreamEncoder::new();
+
+        let data = b"The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.";
+
+        let mut result = String::new();
+        for chunk in data.chunks(7) {  // Weird chunk size to test misalignment
+            result.push_str(&encoder.encode_chunk(chunk));
+        }
+        result.push_str(&encoder.finalize());
+
+        let expected = BASE64.encode(data);
+        assert_eq!(result, expected);
+    }
+
+    // === JsonObjectBuilder tests ===
+
+    #[test]
+    fn test_json_object_builder_empty() {
+        let obj = JsonObjectBuilder::new();
+        assert_eq!(obj.build(), "{}");
+    }
+
+    #[test]
+    fn test_json_object_builder_single_string() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_string("name", "value");
+        assert_eq!(obj.build(), r#"{"name":"value"}"#);
+    }
+
+    #[test]
+    fn test_json_object_builder_string_with_escapes() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_string("text", "line1\nline2");
+        assert_eq!(obj.build(), r#"{"text":"line1\nline2"}"#);
+    }
+
+    #[test]
+    fn test_json_object_builder_bool_true() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_bool("flag", true);
+        assert_eq!(obj.build(), r#"{"flag":true}"#);
+    }
+
+    #[test]
+    fn test_json_object_builder_bool_false() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_bool("flag", false);
+        assert_eq!(obj.build(), r#"{"flag":false}"#);
+    }
+
+    #[test]
+    fn test_json_object_builder_number_integer() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_number("count", 42);
+        assert_eq!(obj.build(), r#"{"count":42}"#);
+    }
+
+    #[test]
+    fn test_json_object_builder_number_float() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_number("value", 3.14);
+        assert_eq!(obj.build(), r#"{"value":3.14}"#);
+    }
+
+    #[test]
+    fn test_json_object_builder_raw_json_object() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_raw_json("nested", r#"{"inner":"value"}"#);
+        assert_eq!(obj.build(), r#"{"nested":{"inner":"value"}}"#);
+    }
+
+    #[test]
+    fn test_json_object_builder_raw_json_array() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_raw_json("items", r#"[1,2,3]"#);
+        assert_eq!(obj.build(), r#"{"items":[1,2,3]}"#);
+    }
+
+    #[test]
+    fn test_json_object_builder_validated_json() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_validated_json("schema", "{\n  \"type\": \"object\"\n}");
+        let result = obj.build();
+        assert!(!result.contains('\n'));
+        assert!(result.contains(r#""schema":{"type":"object"}"#));
+    }
+
+    #[test]
+    fn test_json_object_builder_multiple_fields() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_string("name", "test");
+        obj.add_number("count", 5);
+        obj.add_bool("active", true);
+        obj.add_raw_json("data", r#"{"key":"val"}"#);
+
+        let result = obj.build();
+
+        // Parse as JSON to verify validity
+        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+        assert_eq!(parsed["name"], "test");
+        assert_eq!(parsed["count"], 5);
+        assert_eq!(parsed["active"], true);
+        assert_eq!(parsed["data"]["key"], "val");
+    }
+
+    #[test]
+    fn test_json_object_builder_field_ordering() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_string("a", "first");
+        obj.add_string("b", "second");
+        obj.add_string("c", "third");
+
+        let result = obj.build();
+
+        // Field order should be preserved
+        let a_pos = result.find(r#""a":"first""#).unwrap();
+        let b_pos = result.find(r#""b":"second""#).unwrap();
+        let c_pos = result.find(r#""c":"third""#).unwrap();
+
+        assert!(a_pos < b_pos);
+        assert!(b_pos < c_pos);
+    }
+
+    #[test]
+    fn test_json_object_builder_produces_valid_json() {
+        let mut obj = JsonObjectBuilder::new();
+        obj.add_string("string", "value");
+        obj.add_number("number", 42);
+        obj.add_bool("bool", true);
+        obj.add_raw_json("null", "null");
+        obj.add_raw_json("array", "[1,2,3]");
+        obj.add_raw_json("object", r#"{"nested":true}"#);
+
+        let result = obj.build();
+
+        // Should parse as valid JSON
+        serde_json::from_str::<serde_json::Value>(&result).unwrap();
+    }
+}
