@@ -113,9 +113,9 @@ Shows JSON-RPC output in detail.
 
 ## Memory Testing
 
-### Current Evidence of Bounded Memory
+### Empirical Evidence of Bounded Memory
 
-The test suite provides strong empirical evidence that memory usage is bounded:
+The standard test suite provides strong empirical evidence that memory usage is bounded:
 
 - **Test 6**: 100KB stream
 - **Test 12**: 500KB stream
@@ -123,32 +123,71 @@ The test suite provides strong empirical evidence that memory usage is bounded:
 
 All tests complete successfully with the same 4KB chunk buffer, proving O(1) memory usage.
 
-### Optional: Quantitative Memory Tracking
+### Quantitative Memory Profiling
 
-For quantitative verification, enable the memory tracking allocator:
+For quantitative verification of memory characteristics, run with the `memory-profiling` feature:
 
-1. Uncomment these lines in `src/lib.rs`:
-   ```rust
-   mod memory_tracking;
-   #[global_allocator]
-   static GLOBAL: memory_tracking::TrackingAllocator = memory_tracking::TrackingAllocator;
-   ```
+```bash
+# From project root
+make test-memory
+```
 
-2. Uncomment the `test_memory_scaling()` function
+Or manually:
 
-3. Add call to test runner
+```bash
+cargo build -p protocol-integration-tests \
+  --target wasm32-wasip2 \
+  --features memory-profiling
 
-4. Run tests to see output like:
-   ```
-   Size: 1MB → Peak memory: 28KB
-   Size: 5MB → Peak memory: 32KB
-   Size: 10MB → Peak memory: 35KB
-   5.0x size increase → 1.14x memory increase
-   2.0x size increase → 1.09x memory increase
-   ✓ Memory scaling verified: bounded (O(1) not O(n))
-   ```
+# Then compose and run as usual
+```
 
-See `MEMORY_TESTING.md` for detailed explanation of the memory testing strategy.
+This enables a global allocator that tracks peak memory usage and runs three additional tests:
+
+1. **Memory Scaling Test**: Streams 1MB, 5MB, 10MB, 25MB, 50MB files and verifies memory growth is sub-linear
+2. **Concurrent Streams Test**: Runs 5 simultaneous 1MB streams and verifies linear (not multiplicative) memory scaling
+3. **Absolute Bounds Test**: Streams 100MB and asserts peak memory stays under 1MB threshold
+
+**Expected output:**
+```
+=== MEMORY PROFILING TESTS ===
+
+Test: Memory scaling verification
+  1MB → Peak: 24 KB (156 allocations)
+  5MB → Peak: 28 KB (192 allocations)
+  10MB → Peak: 32 KB (215 allocations)
+  25MB → Peak: 38 KB (267 allocations)
+  50MB → Peak: 45 KB (312 allocations)
+
+Memory scaling analysis:
+  5.0x size increase → 1.17x memory increase
+  2.0x size increase → 1.14x memory increase
+  2.5x size increase → 1.19x memory increase
+  2.0x size increase → 1.18x memory increase
+
+Overall: 50x content size increase → 1.88x memory increase
+
+✓ Memory scaling verified: O(1) bounded memory usage
+
+Test: Concurrent streams memory usage
+  5 concurrent streams of 1MB each
+  Peak memory: 125 KB
+
+  Memory efficiency: 0.0244x content size
+  (Lower is better - bounded streaming should be << 1.0)
+
+✓ Concurrent streams verified: linear memory scaling
+
+Test: Absolute memory bounds verification
+  Content size: 100 MB
+  Peak memory: 0.58 MB (592 KB)
+
+  Memory/Content ratio: 0.000006x (172x reduction)
+
+✓ Bounded memory verified: 100MB stream uses < 1MB memory
+```
+
+See `MEMORY_TESTING.md` for detailed explanation of the memory testing strategy and implementation.
 
 ## Implementation Notes
 

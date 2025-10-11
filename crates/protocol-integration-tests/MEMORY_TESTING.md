@@ -198,9 +198,10 @@ This is by design for security and portability. Our testing approach works withi
 
 ## Implementation Status
 
-- ✅ Empirical scaling tests (1MB, 10MB working)
-- ⏳ Allocation tracking (proposed, not implemented)
-- ⏳ Comparative memory test (proposed, not implemented)
-- ⏳ Chunk size bounds test (proposed, not implemented)
+- ✅ Empirical scaling tests (1MB, 10MB, 50MB working)
+- ✅ Allocation tracking (implemented via feature flag)
+- ✅ Comparative memory test (implemented)
+- ✅ Concurrent streams test (implemented)
+- ✅ Absolute bounds test (100MB stream < 1MB memory)
 
-The empirical evidence from existing tests is already strong. Allocation tracking would provide quantitative confirmation.
+All quantitative memory testing is implemented and functional via the `memory-profiling` feature flag.

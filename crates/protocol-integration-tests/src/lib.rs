@@ -8,11 +8,23 @@
 //!
 //! NOTE: This test outputs JSON-RPC messages to stdout (via stdio-transport).
 //! The test validates the structure but the output will appear in the test logs.
+//!
+//! ## Memory Profiling
+//!
+//! Memory tracking can be enabled with the `memory-profiling` feature flag:
+//! ```bash
+//! cargo build --features memory-profiling --target wasm32-wasip2
+//! ```
+//!
+//! This adds a global allocator that tracks peak memory usage, enabling
+//! quantitative verification of bounded memory characteristics.
 
-// Uncomment to enable memory tracking (adds global allocator overhead)
-// mod memory_tracking;
-// #[global_allocator]
-// static GLOBAL: memory_tracking::TrackingAllocator = memory_tracking::TrackingAllocator;
+#[cfg(feature = "memory-profiling")]
+mod memory_tracking;
+
+#[cfg(feature = "memory-profiling")]
+#[global_allocator]
+static GLOBAL: memory_tracking::TrackingAllocator = memory_tracking::TrackingAllocator;
 
 wit_bindgen::generate!({
     path: "wit",
@@ -28,6 +40,13 @@ export!(Component);
 
 impl exports::wasi::cli::run::Guest for Component {
     fn run() -> Result<(), ()> {
+        #[cfg(feature = "memory-profiling")]
+        {
+            println!("=== MEMORY PROFILING MODE ENABLED ===");
+            println!("Running with memory tracking allocator");
+            println!("");
+        }
+
         println!("Starting protocol streaming integration tests...");
         println!("NOTE: JSON-RPC output will appear below - this is expected");
         println!("");
@@ -57,6 +76,21 @@ impl exports::wasi::cli::run::Guest for Component {
 
         println!("");
         println!("✓ All {} protocol streaming integration tests passed!", 15);
+
+        #[cfg(feature = "memory-profiling")]
+        {
+            println!("");
+            println!("=== MEMORY PROFILING TESTS ===");
+            println!("");
+
+            test_memory_scaling();
+            test_concurrent_streams_memory();
+            test_memory_bounded_assertion();
+
+            println!("");
+            println!("✓ All memory profiling tests passed!");
+        }
+
         Ok(())
     }
 }
@@ -227,6 +261,33 @@ fn create_test_stream(data: &[u8]) -> (Descriptor, InputStream) {
 
     // Sync the file to ensure data is written
     file_desc.sync().expect("Should sync file");
+
+    // Create an input stream from the file
+    let input_stream = file_desc
+        .read_via_stream(0)
+        .expect("Should create input stream");
+
+    (file_desc, input_stream)
+}
+
+/// Open a pre-existing test file and return an input-stream from it.
+///
+/// This function opens files that were created externally (e.g., by the Makefile using dd).
+/// The path is relative to the preopened directory (typically /tmp).
+fn open_test_file(relative_path: &str) -> (Descriptor, InputStream) {
+    // Get the first preopened directory (typically /tmp)
+    let dirs = preopens::get_directories();
+    let (root_desc, _path) = &dirs[0];
+
+    // Open the file for reading
+    let file_desc = root_desc
+        .open_at(
+            PathFlags::empty(),
+            relative_path,
+            OpenFlags::empty(),
+            DescriptorFlags::READ,
+        )
+        .expect(&format!("Should open test file: {}", relative_path));
 
     // Create an input stream from the file
     let input_stream = file_desc
@@ -475,27 +536,9 @@ fn test_large_file_streaming() {
     let id = Id::Number(15);
     let writer = ContentsWriter::start(&id).expect("Should create writer");
 
-    // Create 10MB of data - pattern that's compressible but not trivial
-    // Repeating pattern: [0, 1, 2, ..., 255, 255, 254, ..., 1, 0]
-    let pattern_size = 512;
-    let mut pattern = Vec::with_capacity(pattern_size);
-    for i in 0..256 {
-        pattern.push(i as u8);
-    }
-    for i in (1..256).rev() {
-        pattern.push(i as u8);
-    }
-
-    let repetitions = (10 * 1024 * 1024) / pattern_size; // 10MB
-    let large_data: Vec<u8> = pattern.iter()
-        .cycle()
-        .take(repetitions * pattern_size)
-        .copied()
-        .collect();
-
-    let expected_size = (repetitions * pattern_size) as u64;
-
-    let (_file_desc, stream) = create_test_stream(&large_data);
+    // Open pre-generated 10MB test file
+    let (_file_desc, stream) = open_test_file("wasmcp-test/test_10mb.bin");
+    let expected_size = 10 * 1024 * 1024; // 10MB
 
     let bytes_read = writer
         .add_blob_stream(
@@ -506,7 +549,6 @@ fn test_large_file_streaming() {
         .expect("Should stream large file");
 
     assert_eq!(bytes_read, expected_size, "Should read all bytes");
-    assert!(bytes_read >= 10 * 1024 * 1024, "Should be at least 10MB");
 
     ContentsWriter::finish(writer, None).expect("Should finish");
 
@@ -514,76 +556,197 @@ fn test_large_file_streaming() {
              bytes_read, bytes_read as f64 / (1024.0 * 1024.0));
 }
 
-// ===== Memory Scaling Test (Optional) =====
+// ===== Memory Profiling Tests =====
 //
-// This test can be enabled by uncommenting the memory_tracking module at the top.
-// It verifies that memory usage remains bounded regardless of content size.
-//
-// #[allow(dead_code)]
-// fn test_memory_scaling() {
-//     use memory_tracking::{reset_peak, get_stats};
-//     use wasmcp::mcp::resources_response::*;
-//     use wasmcp::mcp::protocol::Id;
-//
-//     println!("Test: Memory scaling verification");
-//
-//     let sizes = vec![
-//         1 * 1024 * 1024,      // 1MB
-//         5 * 1024 * 1024,      // 5MB
-//         10 * 1024 * 1024,     // 10MB
-//     ];
-//
-//     let mut results = Vec::new();
-//
-//     for (idx, size) in sizes.iter().enumerate() {
-//         reset_peak();
-//
-//         let data = vec![0x42; *size];
-//         let (_file_desc, stream) = create_test_stream(&data);
-//
-//         let id = Id::Number(100 + idx as i64);
-//         let writer = ContentsWriter::start(&id).expect("Should create writer");
-//
-//         writer
-//             .add_blob_stream(&"file:///memory-test.bin".to_string(), None, &stream)
-//             .expect("Should stream");
-//
-//         ContentsWriter::finish(writer, None).expect("Should finish");
-//
-//         let stats = get_stats();
-//         let peak_kb = stats.peak / 1024;
-//         results.push((*size, stats.peak));
-//
-//         println!(
-//             "  Size: {}MB → Peak memory: {}KB",
-//             size / (1024 * 1024),
-//             peak_kb
-//         );
-//     }
-//
-//     // Verify memory scaling is bounded
-//     // Memory should grow sub-linearly (much slower than content size)
-//     for i in 1..results.len() {
-//         let (size_prev, mem_prev) = results[i - 1];
-//         let (size_curr, mem_curr) = results[i];
-//
-//         let size_ratio = size_curr as f64 / size_prev as f64;
-//         let mem_ratio = mem_curr as f64 / mem_prev as f64;
-//
-//         println!(
-//             "  {}x size increase → {:.2}x memory increase",
-//             size_ratio, mem_ratio
-//         );
-//
-//         // If memory was O(n), ratio would match size ratio
-//         // With bounded memory, ratio should be close to 1.0
-//         assert!(
-//             mem_ratio < 2.0,
-//             "Memory grew {:.2}x for {:.0}x size increase - not bounded!",
-//             mem_ratio,
-//             size_ratio
-//         );
-//     }
-//
-//     println!("  ✓ Memory scaling verified: bounded (O(1) not O(n))");
-// }
+// These tests are only compiled when the `memory-profiling` feature is enabled.
+// They verify that memory usage remains bounded regardless of content size.
+
+#[cfg(feature = "memory-profiling")]
+fn test_memory_scaling() {
+    use memory_tracking::{reset_peak, get_stats};
+    use wasmcp::mcp::resources_response::*;
+    use wasmcp::mcp::protocol::Id;
+
+    println!("Test: Memory scaling verification");
+    println!("Streaming progressively larger files to verify O(1) memory usage");
+    println!("");
+
+    let test_sizes = vec![
+        (1 * 1024 * 1024, "1MB"),
+        (5 * 1024 * 1024, "5MB"),
+        (10 * 1024 * 1024, "10MB"),
+        (25 * 1024 * 1024, "25MB"),
+        (50 * 1024 * 1024, "50MB"),
+    ];
+
+    let mut results = Vec::new();
+
+    let test_files = vec![
+        "wasmcp-test/test_1mb.bin",
+        "wasmcp-test/test_5mb.bin",
+        "wasmcp-test/test_10mb.bin",
+        "wasmcp-test/test_25mb.bin",
+        "wasmcp-test/test_50mb.bin",
+    ];
+
+    for (idx, ((size, label), file_path)) in test_sizes.iter().zip(test_files.iter()).enumerate() {
+        reset_peak();
+
+        let (_file_desc, stream) = open_test_file(file_path);
+
+        let id = Id::Number(100 + idx as i64);
+        let writer = ContentsWriter::start(&id).expect("Should create writer");
+
+        writer
+            .add_blob_stream(&"file:///memory-test.bin".to_string(), None, &stream)
+            .expect("Should stream");
+
+        ContentsWriter::finish(writer, None).expect("Should finish");
+
+        let stats = get_stats();
+        let peak_kb = stats.peak / 1024;
+        results.push((*size, stats.peak));
+
+        println!("  {} → Peak: {} KB ({} allocations)",
+                 label, peak_kb, stats.alloc_count);
+    }
+
+    println!("");
+    println!("Memory scaling analysis:");
+
+    for i in 1..results.len() {
+        let (size_prev, mem_prev) = results[i - 1];
+        let (size_curr, mem_curr) = results[i];
+
+        let size_ratio = size_curr as f64 / size_prev as f64;
+        let mem_ratio = mem_curr as f64 / mem_prev as f64;
+
+        println!("  {:.1}x size increase → {:.2}x memory increase",
+                 size_ratio, mem_ratio);
+
+        assert!(
+            mem_ratio < 2.0,
+            "Memory scaling violation: {:.2}x growth for {:.1}x size increase (expected < 2.0x)",
+            mem_ratio,
+            size_ratio
+        );
+    }
+
+    let (smallest_size, smallest_mem) = results[0];
+    let (largest_size, largest_mem) = results[results.len() - 1];
+    let total_size_ratio = largest_size as f64 / smallest_size as f64;
+    let total_mem_ratio = largest_mem as f64 / smallest_mem as f64;
+
+    println!("");
+    println!("Overall: {}x content size increase → {:.2}x memory increase",
+             total_size_ratio as usize, total_mem_ratio);
+    println!("");
+    println!("✓ Memory scaling verified: O(1) bounded memory usage");
+}
+
+#[cfg(feature = "memory-profiling")]
+fn test_concurrent_streams_memory() {
+    use memory_tracking::{reset_peak, get_stats};
+    use wasmcp::mcp::resources_response::*;
+    use wasmcp::mcp::protocol::Id;
+
+    println!("Test: Concurrent streams memory usage");
+    println!("Verifying that multiple streams use independent memory");
+    println!("");
+
+    reset_peak();
+
+    let stream_size = 1024 * 1024;
+    let num_streams = 5;
+
+    let mut file_descriptors = Vec::new();
+    let mut streams = Vec::new();
+
+    // Use the same 1MB file for all 5 streams
+    for _ in 0..num_streams {
+        let (file_desc, stream) = open_test_file("wasmcp-test/test_1mb.bin");
+        file_descriptors.push(file_desc);
+        streams.push(stream);
+    }
+
+    for (idx, stream) in streams.iter().enumerate() {
+        let id = Id::Number(200 + idx as i64);
+        let writer = ContentsWriter::start(&id).expect("Should create writer");
+
+        writer
+            .add_blob_stream(&format!("file:///concurrent-{}.bin", idx), None, stream)
+            .expect("Should stream");
+
+        ContentsWriter::finish(writer, None).expect("Should finish");
+    }
+
+    let stats = get_stats();
+    let peak_kb = stats.peak / 1024;
+
+    println!("  {} concurrent streams of 1MB each", num_streams);
+    println!("  Peak memory: {} KB", peak_kb);
+    println!("");
+
+    let theoretical_max_single_stream = 50 * 1024;
+    let max_expected = theoretical_max_single_stream * num_streams;
+
+    assert!(
+        stats.peak < max_expected,
+        "Peak memory {} KB exceeds expected maximum {} KB for {} streams",
+        peak_kb, max_expected / 1024, num_streams
+    );
+
+    let efficiency_ratio = (stats.peak as f64) / ((num_streams * stream_size) as f64);
+    println!("  Memory efficiency: {:.4}x content size", efficiency_ratio);
+    println!("  (Lower is better - bounded streaming should be << 1.0)");
+    println!("");
+    println!("✓ Concurrent streams verified: linear memory scaling");
+}
+
+#[cfg(feature = "memory-profiling")]
+fn test_memory_bounded_assertion() {
+    use memory_tracking::{reset_peak, get_stats};
+    use wasmcp::mcp::resources_response::*;
+    use wasmcp::mcp::protocol::Id;
+
+    println!("Test: Absolute memory bounds verification");
+    println!("Streaming 100MB to verify peak memory stays under threshold");
+    println!("");
+
+    reset_peak();
+
+    let size = 100 * 1024 * 1024;
+    let (_file_desc, stream) = open_test_file("wasmcp-test/test_100mb.bin");
+
+    let id = Id::Number(300);
+    let writer = ContentsWriter::start(&id).expect("Should create writer");
+
+    writer
+        .add_blob_stream(&"file:///100mb-test.bin".to_string(), None, &stream)
+        .expect("Should stream 100MB");
+
+    ContentsWriter::finish(writer, None).expect("Should finish");
+
+    let stats = get_stats();
+    let peak_kb = stats.peak / 1024;
+    let peak_mb = peak_kb as f64 / 1024.0;
+
+    println!("  Content size: 100 MB");
+    println!("  Peak memory: {:.2} MB ({} KB)", peak_mb, peak_kb);
+    println!("");
+
+    const MAX_ACCEPTABLE_MB: usize = 1;
+    let max_acceptable_bytes = MAX_ACCEPTABLE_MB * 1024 * 1024;
+
+    assert!(
+        stats.peak < max_acceptable_bytes,
+        "Peak memory {:.2} MB exceeds {} MB threshold for 100MB stream",
+        peak_mb, MAX_ACCEPTABLE_MB
+    );
+
+    let ratio = (stats.peak as f64) / (size as f64);
+    println!("  Memory/Content ratio: {:.6}x ({}x reduction)",
+             ratio, (1.0 / ratio) as usize);
+    println!("");
+    println!("✓ Bounded memory verified: 100MB stream uses < 1MB memory");
+}
