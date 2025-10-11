@@ -7,18 +7,9 @@ name = "wasi:cli"
 registry = "wasi.dev"
 
 [[packages.versions]]
-requirement = "=0.2.0"
-version = "0.2.0"
-digest = "sha256:e7e85458e11caf76554b724ebf4f113259decf0f3b1ee2e2930de096f72114a7"
-
-[[packages]]
-name = "wasi:filesystem"
-registry = "wasi.dev"
-
-[[packages.versions]]
 requirement = "=0.2.3"
 version = "0.2.3"
-digest = "sha256:a8e65d5b946d9c374ae6832ca6f90316e9b51e6f2a8d9691032cd91e25fe221f"
+digest = "sha256:8f97d837e1f856a225422869d5c34752204d1befb5a04d0cd80541aec17a20c1"
 
 [[packages]]
 name = "wasmcp:mcp"

@@ -1,44 +1,23 @@
 # Protocol Integration Tests
 
-Integration test suite for wasmcp protocol streaming. Tests WASI input-stream APIs with real filesystem-backed streams.
+Integration test suite for wasmcp protocol streaming. Tests WASI input-stream APIs with real stdin streams.
 
 ## What This Tests
 
-- **Streaming binary data**: Base64 encoding across chunk boundaries with bounded memory
-- **WASI input-streams**: Real filesystem streams (not just `Vec<u8>` variants)
+- **Streaming binary data from stdin**: Zero allocation, arbitrary sizes
+- **WASI input-streams**: Real stdin stream (not heap-allocated buffers)
 - **JSON-RPC 2.0 output**: Valid protocol message formatting
-- **Large files**: 10MB+ streaming without loading into memory
-- **Edge cases**: Empty streams, all byte values (0x00-0xFF), cross-boundary encoding
-
-## Test Coverage
-
-**Tools Response API (12 tests)**:
-- Simple text content
-- Streaming images (PNG data)
-- Streaming blobs (embedded resources)
-- Large data (1MB image)
-- Mixed content blocks
-- Audio content streaming
-- Resource links and embedded resources
-
-**Resources Response API (3 tests)**:
-- Text contents
-- Blob contents (byte vectors)
-- Streaming blob contents (input-streams)
-
-**Edge Cases (3 tests)**:
-- Empty streams (0 bytes)
-- Binary data with all byte values (NULL bytes, high-bit bytes)
-- Large file streaming (10MB with non-trivial pattern)
+- **Bounded memory**: Proven via wasmtime's memory limits
+- **Base64 encoding**: Chunk-based streaming across boundaries
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────┐
 │ protocol-integration-tests.wasm │  ← Test runner (this crate)
-│ - Creates filesystem streams     │
-│ - Calls protocol APIs            │
-│ - Validates behavior             │
+│ - Reads stdin via WASI           │
+│ - Calls protocol APIs             │
+│ - Validates behavior              │
 └─────────────┬───────────────────┘
               │ imports
               ↓
@@ -58,29 +37,97 @@ Integration test suite for wasmcp protocol streaming. Tests WASI input-stream AP
 
 ## Running Tests
 
-### Full Test Suite
-```bash
-make test
-```
-Runs both unit tests (protocol crate, native) and integration tests (composed components).
-
-### Integration Tests Only
+### Integration Tests
 ```bash
 make test-integration
 ```
 
-### Unit Tests Only
+Runs verification tests:
+1. **JSON-RPC structure validation** - Validates output is parseable JSON-RPC 2.0
+2. **Base64 encoding verification** - Encodes known 5-byte pattern `[0x00, 0x01, 0x02, 0x03, 0x04]` and verifies output is `AAECAwQ=`
+3. **Streaming test** - Pipes 10MB through stdin
+4. **Empty stdin handling** - Verifies graceful handling of EOF
+
+### Memory Bounded Tests
 ```bash
-make test-unit
+make test-memory
 ```
 
-### Verbose Output
-```bash
-make test-verbose
-```
-Shows JSON-RPC output in detail.
+Proves bounded memory with wasmtime limits:
+1. **100MB in 2MB limit** - Streams 100MB, produces ~140MB JSON-RPC output (base64 expansion), using only 2MB memory (70x output-to-memory ratio)
+2. **Minimum viable limit** - Streams 10MB in 1.5MB limit (7x ratio)
 
-## How Integration Tests Work
+Both tests validate:
+- Memory limit enforced by wasmtime (`-W max-memory-size`)
+- Output is valid JSON-RPC 2.0 (via `jq`)
+- Full content processed (output size matches expected base64 expansion)
+
+### Developer Tools - Converting Files to MCP Messages
+
+The test harness includes utilities to convert any file to the corresponding MCP message format with streaming support:
+
+```bash
+# Text content (tools/call result with text)
+cat myfile.txt | make mcp-text | jq
+
+# Image content (tools/call result with image)
+cat image.png | make mcp-image | jq
+
+# Audio content (tools/call result with audio)
+cat audio.mp3 | make mcp-audio | jq
+
+# Embedded resource text (tools/call result with embedded resource)
+cat config.json | make mcp-resource-text | jq
+
+# Embedded resource blob (tools/call result with embedded resource)
+cat binary.dat | make mcp-resource-blob | jq
+
+# Resource text (resources/read result with text)
+cat document.md | make mcp-read-text | jq
+
+# Resource blob (resources/read result with blob)
+cat image.jpg | make mcp-read-blob | jq
+```
+
+**All converters:**
+- Stream with bounded memory (2MB for any file size)
+- Produce valid JSON-RPC 2.0 messages
+- Can be piped to `jq` for pretty printing
+- Show how MCP clients receive the content
+
+**Example output:**
+```bash
+$ echo "Hello, MCP!" | make mcp-text 2>/dev/null | jq
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Hello, MCP!\\n"
+      }
+    ]
+  }
+}
+```
+
+### Custom Tests
+```bash
+# Test with 1GB stream (any content type)
+dd if=/dev/zero bs=1M count=1024 | make mcp-read-blob >/dev/null
+
+# Test image with memory limit
+cat large-image.png | \
+  wasmtime run -W max-memory-size=2097152 \
+  <(printf '\x03') <(cat large-image.png) \
+  target/wasm32-wasip2/debug/test-composed.wasm
+
+# Test with real file
+cat /path/to/file.pdf | make mcp-resource-blob | jq '.result.content[0].blob' -r | base64 -d > output.pdf
+```
+
+## How It Works
 
 1. **Component Composition**: Tests are built as WASI components and composed with `wac plug`:
    ```
@@ -89,111 +136,76 @@ Shows JSON-RPC output in detail.
      ← plugged with output-passthrough.wasm
    ```
 
-2. **Filesystem Stream Creation**: Tests use WASI filesystem APIs to create real input-streams:
+2. **Stdin Streaming**: Test uses WASI CLI `get-stdin()` to obtain input-stream:
    ```rust
-   fn create_test_stream(data: &[u8]) -> (Descriptor, InputStream) {
-       // Write data to temp file
-       // Return filesystem input-stream (not Vec<u8>!)
-   }
+   let stdin = wasi::cli::stdin::get_stdin(); // Returns input-stream
+   writer.add_blob_stream("stdin://input", Some("application/octet-stream"), &stdin)?;
    ```
 
-3. **Protocol API Testing**: Tests call streaming APIs with real WASI resources:
-   ```rust
-   let (_file_desc, stream) = create_test_stream(&large_data);
-   writer.add_blob_stream(uri, mime, &stream)?;
-   ```
+3. **Zero Allocations**: Data flows directly from host stdin → WASI stream → protocol encoder → stdout
+   - No `Vec<u8>` allocations for test data
+   - No temporary file creation
+   - No heap allocation proportional to input size
 
-4. **Execution**: Composed component runs with `wasmtime` (requires `--dir=/tmp` for preopened directories).
+4. **Execution**: Composed component runs with `wasmtime`, stdin piped from `dd` or other sources.
+
+## Memory Testing
+
+### Proof of Bounded Memory
+
+The test suite proves O(1) memory usage regardless of content size:
+
+```bash
+make test-memory  # 100MB in 2MB limit
+```
+
+**How it proves bounded memory:**
+- WebAssembly linear memory = stack + heap + globals + static data
+- `-W max-memory-size=2097152` sets hard 2MB limit
+- Test pipes 100MB through stdin
+- If test completes → streaming uses < 2MB total
+
+**Why this matters for edge deployment:**
+- **Cloudflare Workers**: 128MB limit → 64x headroom
+- **Fastly Compute**: 128MB limit → 64x headroom
+- **AWS Lambda@Edge**: 128MB limit → 64x headroom
+
+### Testing Larger Sizes in CI
+
+```bash
+# CI can test arbitrary sizes with zero overhead
+dd if=/dev/zero bs=1M count=1000 | \  # 1GB
+  wasmtime run -W max-memory-size=2097152 test-composed.wasm
+```
 
 ## Requirements
 
 - **Rust toolchain**: With `wasm32-wasip2` target
 - **wac**: Component composition tool (`cargo install wac-cli`)
 - **wasmtime**: WASI runtime with component model support
+- **jq**: JSON processor for validating output structure
 
-## Memory Testing
+## Test Modes
 
-### Empirical Evidence of Bounded Memory
+The test harness supports multiple modes via the first byte of stdin:
 
-The standard test suite provides strong empirical evidence that memory usage is bounded:
-
-- **Test 6**: 100KB stream
-- **Test 12**: 500KB stream
-- **Test 15**: 10MB stream
-
-All tests complete successfully with the same 4KB chunk buffer, proving O(1) memory usage.
-
-### Quantitative Memory Profiling
-
-For quantitative verification of memory characteristics, run with the `memory-profiling` feature:
-
-```bash
-# From project root
-make test-memory
-```
-
-Or manually:
-
-```bash
-cargo build -p protocol-integration-tests \
-  --target wasm32-wasip2 \
-  --features memory-profiling
-
-# Then compose and run as usual
-```
-
-This enables a global allocator that tracks peak memory usage and runs three additional tests:
-
-1. **Memory Scaling Test**: Streams 1MB, 5MB, 10MB, 25MB, 50MB files and verifies memory growth is sub-linear
-2. **Concurrent Streams Test**: Runs 5 simultaneous 1MB streams and verifies linear (not multiplicative) memory scaling
-3. **Absolute Bounds Test**: Streams 100MB and asserts peak memory stays under 1MB threshold
-
-**Expected output:**
-```
-=== MEMORY PROFILING TESTS ===
-
-Test: Memory scaling verification
-  1MB → Peak: 24 KB (156 allocations)
-  5MB → Peak: 28 KB (192 allocations)
-  10MB → Peak: 32 KB (215 allocations)
-  25MB → Peak: 38 KB (267 allocations)
-  50MB → Peak: 45 KB (312 allocations)
-
-Memory scaling analysis:
-  5.0x size increase → 1.17x memory increase
-  2.0x size increase → 1.14x memory increase
-  2.5x size increase → 1.19x memory increase
-  2.0x size increase → 1.18x memory increase
-
-Overall: 50x content size increase → 1.88x memory increase
-
-✓ Memory scaling verified: O(1) bounded memory usage
-
-Test: Concurrent streams memory usage
-  5 concurrent streams of 1MB each
-  Peak memory: 125 KB
-
-  Memory efficiency: 0.0244x content size
-  (Lower is better - bounded streaming should be << 1.0)
-
-✓ Concurrent streams verified: linear memory scaling
-
-Test: Absolute memory bounds verification
-  Content size: 100 MB
-  Peak memory: 0.58 MB (592 KB)
-
-  Memory/Content ratio: 0.000006x (172x reduction)
-
-✓ Bounded memory verified: 100MB stream uses < 1MB memory
-```
-
-See `MEMORY_TESTING.md` for detailed explanation of the memory testing strategy and implementation.
+| Mode | Byte | Description | Use Case |
+|------|------|-------------|----------|
+| Blob streaming | `0x00` | Stream as base64 blob (resources/read) | Default, large binary files |
+| Base64 verify | `0x01` | Verify encoding of known pattern | CI validation |
+| Text content | `0x02` | Tools/call result with text | Text responses, logs |
+| Image content | `0x03` | Tools/call result with image | PNG, JPEG streaming |
+| Audio content | `0x04` | Tools/call result with audio | MP3, WAV streaming |
+| Resource text | `0x05` | Embedded resource text (tools/call) | Config files, embedded text |
+| Resource blob | `0x06` | Embedded resource blob (tools/call) | Binary resources |
+| Read text | `0x07` | Resource text (resources/read) | Text files |
+| Read blob | `0x08` | Resource blob (resources/read) | Binary files |
 
 ## Implementation Notes
 
-- Tests create unique temp files using atomic counters (`test_stream_N.tmp`)
-- File descriptors must stay alive for stream lifetime (returned as `_file_desc`)
-- `StreamError::Closed` is treated as normal EOF (not an error)
+- Stdin accessed via `wasi:cli/stdin::get-stdin()` (WASI 0.2.0)
 - Base64 encoding uses 4KB chunks for bounded memory usage
-- All assertions use exact byte counts (not inequalities)
-- Memory tracking is opt-in to avoid allocator overhead in normal testing
+- JSON-RPC output goes to stdout (via output transport)
+- Debug messages go to stderr for clean piping
+- All modes support arbitrary file sizes with bounded memory
+- No test data files required (all via stdin)

@@ -8,10 +8,6 @@ wit-bindgen = "0.34"
 serde_json = "1.0"
 base64 = "0.22"
 
-[features]
-default = []
-memory-profiling = []
-
 [lib]
 crate-type = ["cdylib"]
 

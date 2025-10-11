@@ -49,6 +49,48 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+  test-protocol:
+    name: Protocol Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: protocol-tests
+          workspaces: crates/protocol
+
+      - name: Run protocol unit tests
+        run: cargo test --package protocol --lib
+
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          targets: wasm32-wasip2
+          cache-key: integration
+          workspaces: |
+            crates/protocol
+            crates/protocol-integration-tests
+            crates/output-passthrough
+
+      - name: Install wac
+        run: cargo install wac-cli
+
+      - name: Install wasmtime
+        run: |
+          curl -fsSL https://github.com/bytecodealliance/wasmtime/releases/download/v29.0.0/wasmtime-v29.0.0-x86_64-linux.tar.xz | tar -xJ
+          sudo mv wasmtime-v29.0.0-x86_64-linux/wasmtime /usr/local/bin/
+
+      - name: Run integration tests
+        run: make test-integration
+
   build-cli:
     name: Build CLI
     runs-on: ubuntu-latest

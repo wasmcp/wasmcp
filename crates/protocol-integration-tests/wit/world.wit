@@ -10,13 +10,9 @@ world test-harness {
     import wasmcp:mcp/tools-response@0.3.1-alpha.33;
     import wasmcp:mcp/resources-response@0.3.1-alpha.33;
 
-    // Import the output interface (provided by stdio-transport)
+    // Import the output interface
     import wasmcp:mcp/output@0.3.1-alpha.33;
 
-    // Import WASI filesystem to create input-streams for testing
-    import wasi:filesystem/types@0.2.3;
-    import wasi:filesystem/preopens@0.2.3;
-
-    // Export WASI CLI to make this a runnable test
-    export wasi:cli/run@0.2.0;
+    // Tests are CLI commands
+    include wasi:cli/command@0.2.3;
 }
