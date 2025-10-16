@@ -1,125 +1,99 @@
 /**
- * {{project_name}} - MCP Tools Handler
+ * {{project_name}} Tools Capability
  *
- * This component exports MCP tools using the tools-capability interface.
- * Tools are automatically composed into the MCP server pipeline.
+ * A tools capability that provides example operations.
  */
 
-import { z } from 'zod';
-import type * as protocol from './generated/interfaces/wasmcp-mcp-protocol';
-import type * as capability from './generated/interfaces/wasmcp-mcp-tools-capability';
+import * as z from 'zod';
+import type {
+  ListToolsRequest,
+  ListToolsResult,
+  CallToolRequest,
+  CallToolResult,
+  ClientContext,
+  Tool,
+} from './generated/interfaces/wasmcp-mcp-protocol.js';
 
-// Define your tool input schema with Zod
+// Tool input schemas
 const ExampleToolSchema = z.object({
   input: z.string().describe('Example input parameter'),
 });
 
-type ExampleToolInput = z.infer<typeof ExampleToolSchema>;
+type ExampleToolArgs = z.infer<typeof ExampleToolSchema>;
 
-/**
- * List all tools provided by this handler
- */
-export function listTools(
-  _request: capability.ListToolsRequest,
-  _client: protocol.ClientContext
-): protocol.ListToolsResult {
-  return {
-    tools: [
-      {
-        name: 'example-tool',
-        inputSchema: JSON.stringify(z.toJSONSchema(ExampleToolSchema)),
-        options: {
-          description: 'An example tool - replace with your own implementation',
-          title: 'Example Tool',
-        },
+function listTools(
+  _request: ListToolsRequest,
+  _client: ClientContext
+): ListToolsResult {
+  const tools: Tool[] = [
+    {
+      name: 'example-tool',
+      inputSchema: JSON.stringify(z.toJSONSchema(ExampleToolSchema)),
+      options: {
+        title: 'Example Tool',
+        description: 'An example tool - replace with your own implementation',
       },
-    ],
-    nextCursor: undefined,
-    meta: undefined,
-  };
+    },
+  ];
+
+  return { tools };
 }
 
-/**
- * Execute a tool call
- *
- * Return the result if this handler implements the requested tool,
- * or undefined to delegate to the next handler in the pipeline.
- */
-export function callTool(
-  request: protocol.CallToolRequest,
-  _client: protocol.ClientContext
-): protocol.CallToolResult | undefined {
+function callTool(
+  request: CallToolRequest,
+  _client: ClientContext
+): CallToolResult | undefined {
   switch (request.name) {
     case 'example-tool':
-      return executeExampleTool(request);
+      return handleExampleTool(request.arguments);
     default:
-      // Return undefined to delegate to next handler
-      return undefined;
+      return undefined; // We don't handle this tool
   }
 }
 
-/**
- * Execute the example tool
- */
-function executeExampleTool(request: protocol.CallToolRequest): protocol.CallToolResult {
+function handleExampleTool(args?: string): CallToolResult {
   try {
-    // Parse and validate input
-    if (!request.arguments) {
+    if (!args) {
       return errorResult('Arguments are required');
     }
 
-    const args = JSON.parse(request.arguments);
-    const parsedArgs = ExampleToolSchema.parse(args);
+    const parsed: ExampleToolArgs = ExampleToolSchema.parse(JSON.parse(args));
 
     // TODO: Replace with your tool logic
-    const result = `Received: ${parsedArgs.input}`;
+    const result = `Received: ${parsed.input}`;
 
     return textResult(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return errorResult(`Invalid arguments: ${error.message}`);
     }
-    return errorResult(error instanceof Error ? error.message : 'Unknown error');
+    return errorResult(
+      `Error processing request: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
-/**
- * Create a successful text result
- */
-function textResult(text: string): protocol.CallToolResult {
+function textResult(text: string): CallToolResult {
   return {
-    content: [
-      {
-        tag: 'text',
-        val: {
-          text: { tag: 'text', val: text },
-          options: undefined,
-        },
+    content: [{
+      tag: 'text',
+      val: {
+        text: { tag: 'text', val: text },
       },
-    ],
+    }],
     isError: false,
-    structuredContent: undefined,
-    meta: undefined,
   };
 }
 
-/**
- * Create an error result
- */
-function errorResult(message: string): protocol.CallToolResult {
+function errorResult(message: string): CallToolResult {
   return {
-    content: [
-      {
-        tag: 'text',
-        val: {
-          text: { tag: 'text', val: message },
-          options: undefined,
-        },
+    content: [{
+      tag: 'text',
+      val: {
+        text: { tag: 'text', val: message },
       },
-    ],
+    }],
     isError: true,
-    structuredContent: undefined,
-    meta: undefined,
   };
 }
 

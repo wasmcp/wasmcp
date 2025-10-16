@@ -1,7 +1,7 @@
 .PHONY: all setup build clean
 
 OUT_DIR = dist
-COMPONENT_NAME = {{project_name}}
+COMPONENT_NAME = weather
 
 # Default target - build (setup if needed)
 all: node_modules build

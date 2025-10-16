@@ -2,25 +2,45 @@
 
 # `wasmcp`
 
-Build [Model Context Protocol](https://modelcontextprotocol.io/) servers using composable [WebAssembly Components](https://component-model.bytecodealliance.org/)
+A [WebAssembly Component](https://component-model.bytecodealliance.org/) Development Kit for the [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro)
 
 </div>
 
 ## Quick Start
 
+Author MCP tools in your favorite language
 ```bash
-# Create a new handler
-wasmcp new my-handler --language python
+wasmcp new time-tools --language python
 
-# Build the component
-cd my-handler
-make setup && make build
+# Develop and build the component
+cd time-tools
+make
 
-# Compose into a server
-wasmcp compose target/my-handler.wasm -o server.wasm
+# Compose your tools with a Streamable HTTP transport component (default) to form an MCP server
+wasmcp compose time-tools.wasm -t http -o http-server.wasm
 
 # Run
-wasmtime serve -Scli server.wasm
+wasmtime serve -Scli http-server.wasm
+
+# Or with the stdio transport
+wasmcp compose time-tools.wasm -t stdio -o stdio-server.wasm
+wasmtime run stdio-server.wasm
+```
+
+You can add any number of components together in sequence. If you include multiple tool components, the server will expose the combined set of tools automatically.
+```bash
+wasmcp new math-tools --language rust
+
+cd math-tools
+make
+
+# Use the time-tools.wasm you built earlier
+wasmcp compose math-tools.wasm ../time-tools.wasm -o server.wasm
+```
+
+The same tool components you built can be composed with different transports or middleware. For example, to run locally over stdio:
+```bash
+wasmcp compose math-tools.wasm ../time-tools.wasm -t stdio -o server.wasm
 ```
 
 See [cli/README.md](cli/README.md) for detailed usage.
@@ -30,10 +50,15 @@ See [cli/README.md](cli/README.md) for detailed usage.
 WebAssembly components are:
 - **Composable** - Combine compiled binaries like building blocks
 - **Sandboxed** - Isolated execution with explicit interfaces
-- **Distributable** - Push/pull from OCI registries
+- **Distributable** - Push/pull components from OCI registries
 - **Lean** - Complete servers under 1MB
 
-These qualities align perfectly with MCP's modular server architecture.
+These qualities are a perfect match for MCP's [server design principals](https://modelcontextprotocol.io/specification/2025-06-18/architecture#design-principles).
+
+> 1. Servers should be extremely easy to build
+> 2. Servers should be highly composable
+> 3. Servers should not be able to read the whole conversation, nor “see into” other servers
+> 4. Features can be added to servers and clients progressively
 
 ## Architecture
 
@@ -69,11 +94,12 @@ When a client requests `tools/list`, each component contributes its tools, creat
 Write handlers in any language with [component toolchain support](https://component-model.bytecodealliance.org/language-support.html):
 
 ```bash
-wasmcp new my-handler --language rust    # Rust
-wasmcp new my-handler --language python  # Python
+wasmcp new my-handler --language rust       # Rust (calculator example)
+wasmcp new my-handler --language python     # Python (string tools example)
+wasmcp new my-handler --language typescript # TypeScript (example tool)
 ```
 
-Generated templates implement a simple calculator demonstrating the handler pattern.
+Generated templates demonstrate the capability pattern with working tool implementations.
 
 ### Framework Components
 
@@ -94,7 +120,7 @@ See [releases](https://github.com/wasmcp/wasmcp/releases) for pre-built binaries
 **Build from source:**
 ```bash
 cd cli
-cargo build --release --target <your-host-triple>
+cargo build --release
 ```
 
 **Prerequisites:**

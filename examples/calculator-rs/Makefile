@@ -1,21 +1,16 @@
-# Makefile for rust
+.PHONY: all setup build clean
 
-.PHONY: work setup wit build
-
-# Output directory and component name
-OUT_DIR = target/wasm32-wasip2/release
-COMPONENT_NAME = rust
-
-# Default target - full workflow
-work: setup wit build
+# Default target
+all: build
 
 # Install required tools
 setup:
 	@rustup target add wasm32-wasip2
 
-wit:
-	@wkg wit fetch
-
 # Build the component
 build:
 	@cargo build --target wasm32-wasip2 --release
+
+# Clean build artifacts
+clean:
+	@cargo clean
