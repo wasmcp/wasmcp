@@ -1,6 +1,6 @@
 [package]
 name = "wasmcp"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 rust-version = "1.89"
 authors = ["wasmcp contributors"]
@@ -9,6 +9,9 @@ license = "Apache-2.0"
 repository = "https://github.com/wasmcp/wasmcp"
 keywords = ["mcp", "webassembly", "component-model", "wasi"]
 categories = ["command-line-utilities", "development-tools", "wasm"]
+
+# CLI is a standalone workspace (not part of parent workspace)
+[workspace]
 
 [[bin]]
 name = "wasmcp"

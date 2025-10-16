@@ -1,6 +1,6 @@
-"""{{project_name}} - Tools Capability Provider
+"""{{project_name}} Tools Capability Provider
 
-A clean tools capability component that provides basic string manipulation operations.
+A tools capability that provides string manipulation operations.
 """
 
 import json
@@ -21,141 +21,100 @@ from wit_world.imports.protocol import (
 
 
 class ToolsCapability(exports.ToolsCapability):
-    """String manipulation tools capability."""
-
     def list_tools(
         self,
-        request: ListToolsRequest,
-        client: ClientContext,
+        _request: ListToolsRequest,
+        _client: ClientContext,
     ) -> ListToolsResult:
         return ListToolsResult(
             tools=[
-                self._create_reverse_tool(),
-                self._create_uppercase_tool(),
+                Tool(
+                    name="reverse",
+                    input_schema=json.dumps({
+                        "type": "object",
+                        "properties": {
+                            "text": {"type": "string", "description": "Text to reverse"}
+                        },
+                        "required": ["text"]
+                    }),
+                    options=None,
+                ),
+                Tool(
+                    name="uppercase",
+                    input_schema=json.dumps({
+                        "type": "object",
+                        "properties": {
+                            "text": {"type": "string", "description": "Text to convert to uppercase"}
+                        },
+                        "required": ["text"]
+                    }),
+                    options=ToolOptions(
+                        meta=None,
+                        annotations=None,
+                        description="Convert text to uppercase",
+                        output_schema=None,
+                        title="Uppercase",
+                    ),
+                ),
             ],
-            next_cursor=None,
             meta=None,
+            next_cursor=None,
         )
 
     def call_tool(
         self,
         request: CallToolRequest,
-        client: ClientContext,
+        _client: ClientContext,
     ) -> Optional[CallToolResult]:
-        tool_name = request.name
-
-        if tool_name == "reverse":
-            return self._execute_reverse(request)
-        elif tool_name == "uppercase":
-            return self._execute_uppercase(request)
-        else:
-            # We don't handle this tool
-            return None
-
-    # Tool Definitions
-    # ----------------
-
-    def _create_reverse_tool(self) -> Tool:
-        return Tool(
-            name="reverse",
-            input_schema=json.dumps({
-                "type": "object",
-                "properties": {
-                    "text": {"type": "string", "description": "Text to reverse"}
-                },
-                "required": ["text"]
-            }),
-            options=ToolOptions(
-                meta=None,
-                annotations=None,
-                description="Reverse a string",
-                output_schema=None,
-                title="Reverse",
-            ),
-        )
-
-    def _create_uppercase_tool(self) -> Tool:
-        return Tool(
-            name="uppercase",
-            input_schema=json.dumps({
-                "type": "object",
-                "properties": {
-                    "text": {"type": "string", "description": "Text to convert to uppercase"}
-                },
-                "required": ["text"]
-            }),
-            options=ToolOptions(
-                meta=None,
-                annotations=None,
-                description="Convert text to uppercase",
-                output_schema=None,
-                title="Uppercase",
-            ),
-        )
-
-    # Tool Execution
-    # --------------
-
-    def _execute_reverse(self, req: CallToolRequest) -> CallToolResult:
-        args = self._parse_json_args(req.arguments)
-        text = args.get("text")
-
-        if not isinstance(text, str):
-            return self._error_result("Parameter 'text' must be a string")
-
-        result = text[::-1]
-
-        return CallToolResult(
-            content=[ContentBlock_Text(TextContent(
-                text=TextData_Text(result),
-                options=None,
-            ))],
-            is_error=None,
-            meta=None,
-            structured_content=None,
-        )
-
-    def _execute_uppercase(self, req: CallToolRequest) -> CallToolResult:
-        args = self._parse_json_args(req.arguments)
-        text = args.get("text")
-
-        if not isinstance(text, str):
-            return self._error_result("Parameter 'text' must be a string")
-
-        result = text.upper()
-
-        return CallToolResult(
-            content=[ContentBlock_Text(TextContent(
-                text=TextData_Text(result),
-                options=None,
-            ))],
-            is_error=None,
-            meta=None,
-            structured_content=None,
-        )
-
-    # Helper Functions
-    # ----------------
-
-    def _parse_json_args(self, arguments: Optional[str]) -> dict:
-        if arguments is None:
-            return {}
+        if not request.arguments:
+            return error_result("Missing tool arguments")
 
         try:
-            parsed = json.loads(arguments)
-            if isinstance(parsed, dict):
-                return parsed
-            return {}
-        except json.JSONDecodeError:
-            return {}
+            args = json.loads(request.arguments)
+        except json.JSONDecodeError as e:
+            return error_result(f"Invalid JSON arguments: {e}")
 
-    def _error_result(self, message: str) -> CallToolResult:
-        return CallToolResult(
-            content=[ContentBlock_Text(TextContent(
-                text=TextData_Text(message),
-                options=None,
-            ))],
-            is_error=True,
-            meta=None,
-            structured_content=None,
-        )
+        if request.name == "reverse":
+            return reverse_string(args.get("text"))
+        elif request.name == "uppercase":
+            return uppercase_string(args.get("text"))
+        else:
+            return None  # We don't handle this tool
+
+
+def reverse_string(text: str) -> CallToolResult:
+    if not isinstance(text, str):
+        return error_result("Missing or invalid parameter 'text'")
+
+    return success_result(text[::-1])
+
+
+def uppercase_string(text: str) -> CallToolResult:
+    if not isinstance(text, str):
+        return error_result("Missing or invalid parameter 'text'")
+
+    return success_result(text.upper())
+
+
+def success_result(text: str) -> CallToolResult:
+    return CallToolResult(
+        content=[ContentBlock_Text(TextContent(
+            text=TextData_Text(text),
+            options=None,
+        ))],
+        is_error=None,
+        meta=None,
+        structured_content=None,
+    )
+
+
+def error_result(message: str) -> CallToolResult:
+    return CallToolResult(
+        content=[ContentBlock_Text(TextContent(
+            text=TextData_Text(message),
+            options=None,
+        ))],
+        is_error=True,
+        meta=None,
+        structured_content=None,
+    )

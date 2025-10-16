@@ -1,12 +1,7 @@
-# Makefile for {{project_name}}
-
 .PHONY: all setup build clean
 
-# Output directory
-OUT_DIR = target/wasm32-wasip2/release
-
-# Default target - setup and build
-all: setup build
+# Default target
+all: build
 
 # Install required tools
 setup:

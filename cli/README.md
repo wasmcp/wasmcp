@@ -6,8 +6,10 @@ Build composable MCP servers using WebAssembly components.
 
 ```bash
 cd cli
-cargo build --release --target <your-host-triple>
+cargo build --release
 ```
+
+The CLI is a native binary (not WebAssembly). It builds for your host platform automatically.
 
 Requires [Wasmtime](https://wasmtime.dev/) to run composed servers.
 
@@ -103,13 +105,22 @@ No protocol handling, no delegation, no merging. The middleware handles everythi
 
 ## Building Components
 
-Generated projects include Makefiles:
+Generated projects include Makefiles that handle dependencies automatically:
 
 ```bash
 cd my-component
-make setup  # Install language-specific dependencies
-make build  # Build the component
+make  # Installs dependencies if needed, then builds the component
 ```
+
+**Available targets:**
+- `make` or `make build` - Build the component
+- `make setup` - Explicitly install dependencies (optional, done automatically)
+- `make clean` - Remove build artifacts
+
+**Component output locations:**
+- **Python**: `{project-name}.wasm` (in project root)
+- **Rust**: `target/wasm32-wasip2/release/{project-name}.wasm`
+- **TypeScript**: `dist/{project-name}.wasm`
 
 See generated `README.md` files for language-specific details.
 

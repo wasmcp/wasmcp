@@ -107,10 +107,10 @@ jobs:
           if [ "${{ matrix.language }}" = "rust" ]; then
             COMPONENT="target/wasm32-wasip2/release/ci_test_${{ matrix.language }}.wasm"
           elif [ "${{ matrix.language }}" = "typescript" ]; then
-            COMPONENT="target/ci-test-typescript.wasm"
+            COMPONENT="dist/ci-test-typescript.wasm"
           else
-            # Python keeps hyphens in component names
-            COMPONENT="target/ci-test-${{ matrix.language }}.wasm"
+            # Python outputs to project root
+            COMPONENT="ci-test-${{ matrix.language }}.wasm"
           fi
           wasmcp compose $COMPONENT -o mcp-server.wasm
 
@@ -121,10 +121,10 @@ jobs:
           if [ "${{ matrix.language }}" = "rust" ]; then
             COMPONENT="target/wasm32-wasip2/release/ci_test_${{ matrix.language }}.wasm"
           elif [ "${{ matrix.language }}" = "typescript" ]; then
-            COMPONENT="target/ci-test-typescript.wasm"
+            COMPONENT="dist/ci-test-typescript.wasm"
           else
-            # Python keeps hyphens in component names
-            COMPONENT="target/ci-test-${{ matrix.language }}.wasm"
+            # Python outputs to project root
+            COMPONENT="ci-test-${{ matrix.language }}.wasm"
           fi
           wasmcp compose $COMPONENT --transport stdio -o mcp-server-stdio.wasm
 
@@ -143,8 +143,8 @@ jobs:
 
           # Verify tools are present (different per language)
           if [ "${{ matrix.language }}" = "rust" ]; then
-            echo "$tools_list" | grep -q "sum"
-            echo "$tools_list" | grep -q "sub"
+            echo "$tools_list" | grep -q "add"
+            echo "$tools_list" | grep -q "subtract"
           elif [ "${{ matrix.language }}" = "typescript" ]; then
             echo "$tools_list" | grep -q "example-tool"
           else
@@ -156,7 +156,7 @@ jobs:
           if [ "${{ matrix.language }}" = "rust" ]; then
             response=$(npx @modelcontextprotocol/inspector@0.16.8 --cli http://localhost:8080/mcp \
               --method tools/call \
-              --tool-name sum \
+              --tool-name add \
               --tool-arg a=10 --tool-arg b=32)
             echo "$response" | grep -q "42"
           elif [ "${{ matrix.language }}" = "typescript" ]; then
@@ -190,8 +190,8 @@ jobs:
 
           # Verify tools are present (different per language)
           if [ "${{ matrix.language }}" = "rust" ]; then
-            echo "$tools_list" | grep -q "sum"
-            echo "$tools_list" | grep -q "sub"
+            echo "$tools_list" | grep -q "add"
+            echo "$tools_list" | grep -q "subtract"
           elif [ "${{ matrix.language }}" = "typescript" ]; then
             echo "$tools_list" | grep -q "example-tool"
           else
@@ -202,7 +202,7 @@ jobs:
           # Test tools/call
           if [ "${{ matrix.language }}" = "rust" ]; then
             response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
-              --cli --transport stdio --method tools/call --tool-name sum --tool-arg a=10 --tool-arg b=32)
+              --cli --transport stdio --method tools/call --tool-name add --tool-arg a=10 --tool-arg b=32)
             echo "$response" | grep -q "42"
           elif [ "${{ matrix.language }}" = "typescript" ]; then
             response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \

@@ -192,10 +192,18 @@ async fn main() -> Result<()> {
                 .context("Failed to create project")?;
 
             println!("Created {} handler in {}", language, name);
+
+            // Determine the output path based on language
+            let component_path = match language {
+                Language::Python => format!("{}.wasm", name),
+                Language::Rust => format!("target/wasm32-wasip2/release/{}.wasm", name),
+                Language::TypeScript => format!("dist/{}.wasm", name),
+            };
+
             println!("\nNext steps:");
             println!("  cd {}", name);
-            println!("  make");
-            println!("  wasmcp compose <your-handler.wasm> -o server.wasm");
+            println!("  make          # Build the component");
+            println!("  wasmcp compose {} -o server.wasm", component_path);
 
             Ok(())
         }

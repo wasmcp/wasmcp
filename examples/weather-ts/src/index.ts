@@ -1,10 +1,8 @@
 /**
  * Weather Tools Capability
  *
- * A simple MCP tools capability that provides weather information using the
- * Open-Meteo public API. Demonstrates outbound HTTP requests using fetch.
- *
- * Uses Zod v4 for schema definition and automatic JSON Schema conversion.
+ * A tools capability that provides weather information using the Open-Meteo
+ * public API. Demonstrates outbound HTTP requests and concurrent operations.
  */
 
 import * as z from 'zod';
@@ -15,14 +13,9 @@ import type {
   CallToolResult,
   ClientContext,
   Tool,
-  ContentBlock,
-  TextContent,
 } from './generated/interfaces/wasmcp-mcp-protocol.js';
 
-// =========================================================================
-// Tool Schemas (Zod)
-// =========================================================================
-
+// Tool input schemas
 const GetWeatherSchema = z.object({
   location: z.string().describe('City name to get weather for'),
 });
@@ -34,19 +27,9 @@ const MultiWeatherSchema = z.object({
     .describe('List of city names (max 3)'),
 });
 
-// Type inference for runtime validation
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type GetWeatherArgs = z.infer<typeof GetWeatherSchema>;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type MultiWeatherArgs = z.infer<typeof MultiWeatherSchema>;
 
-// =========================================================================
-// Tools Capability Interface Implementation
-// =========================================================================
-
-/**
- * List all tools provided by this capability
- */
 function listTools(
   _request: ListToolsRequest,
   _client: ClientContext
@@ -78,41 +61,22 @@ function listTools(
     },
   ];
 
-  return {
-    tools,
-  };
+  return { tools };
 }
 
-/**
- * Execute a tool call
- *
- * Returns Some(result) if we handle this tool, None otherwise
- */
 async function callTool(
   request: CallToolRequest,
   _client: ClientContext
 ): Promise<CallToolResult | undefined> {
-  try {
-    switch (request.name) {
-      case 'get_weather':
-        return await handleGetWeather(request.arguments);
-      case 'multi_weather':
-        return await handleMultiWeather(request.arguments);
-      default:
-        // Return undefined to indicate we don't handle this tool
-        // Middleware will delegate to next capability
-        return undefined;
-    }
-  } catch (error) {
-    return errorResult(
-      `Error executing ${request.name}: ${error instanceof Error ? error.message : String(error)}`
-    );
+  switch (request.name) {
+    case 'get_weather':
+      return await handleGetWeather(request.arguments);
+    case 'multi_weather':
+      return await handleMultiWeather(request.arguments);
+    default:
+      return undefined; // We don't handle this tool
   }
 }
-
-// =========================================================================
-// Tool Implementations
-// =========================================================================
 
 async function handleGetWeather(args?: string): Promise<CallToolResult> {
   try {
@@ -120,8 +84,8 @@ async function handleGetWeather(args?: string): Promise<CallToolResult> {
       return errorResult('Arguments are required');
     }
 
-    const parsedArgs = GetWeatherSchema.parse(JSON.parse(args));
-    const weather = await getWeatherForCity(parsedArgs.location);
+    const parsed: GetWeatherArgs = GetWeatherSchema.parse(JSON.parse(args));
+    const weather = await getWeatherForCity(parsed.location);
     return textResult(weather);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -139,30 +103,28 @@ async function handleMultiWeather(args?: string): Promise<CallToolResult> {
       return errorResult('Arguments are required');
     }
 
-    const parsedArgs = MultiWeatherSchema.parse(JSON.parse(args));
+    const parsed: MultiWeatherArgs = MultiWeatherSchema.parse(JSON.parse(args));
 
-    if (parsedArgs.cities.length === 0) {
+    if (parsed.cities.length === 0) {
       return errorResult('No cities provided');
     }
 
-    // Execute all requests concurrently
+    // Fetch weather for all cities concurrently
     const results = await Promise.all(
-      parsedArgs.cities.map(async (city) => {
+      parsed.cities.map(async (city) => {
         try {
-          const weather = await getWeatherForCity(city);
-          return `${weather}\n`;
+          return await getWeatherForCity(city);
         } catch (error) {
-          return `Error fetching weather for ${city}: ${error instanceof Error ? error.message : String(error)}\n`;
+          return `Error fetching weather for ${city}: ${error instanceof Error ? error.message : String(error)}`;
         }
       })
     );
 
-    let output = '=== Weather Results ===\n\n';
-    for (const result of results) {
-      output += result;
-      output += '\n';
-    }
-    output += '=== All requests completed ===';
+    const output = `=== Weather Results ===
+
+${results.join('\n\n')}
+
+=== All requests completed ===`;
 
     return textResult(output);
   } catch (error) {
@@ -175,10 +137,7 @@ async function handleMultiWeather(args?: string): Promise<CallToolResult> {
   }
 }
 
-// =========================================================================
-// Weather API Functions
-// =========================================================================
-
+// Weather API integration
 const GeocodingResponseSchema = z.object({
   results: z
     .array(
@@ -203,10 +162,10 @@ const WeatherResponseSchema = z.object({
 });
 
 async function getWeatherForCity(city: string): Promise<string> {
-  // First, geocode the location
+  // Geocode the location
   const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`;
-
   const geoResponse = await fetch(geoUrl);
+
   if (!geoResponse.ok) {
     throw new Error(`Geocoding failed with status: ${geoResponse.status}`);
   }
@@ -218,23 +177,20 @@ async function getWeatherForCity(city: string): Promise<string> {
   }
 
   const location = geoData.results[0];
-  if (!location) {
-    throw new Error(`No location data found for '${city}'`);
-  }
 
-  // Now fetch the weather
+  // Fetch the weather
   const weatherUrl =
     `https://api.open-meteo.com/v1/forecast?` +
     `latitude=${location.latitude}&longitude=${location.longitude}` +
     `&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code`;
 
   const weatherResponse = await fetch(weatherUrl);
+
   if (!weatherResponse.ok) {
     throw new Error(`Weather API failed with status: ${weatherResponse.status}`);
   }
 
   const weatherData = WeatherResponseSchema.parse(await weatherResponse.json());
-
   const condition = weatherCondition(weatherData.current.weather_code);
 
   return `Weather in ${location.name}, ${location.country}:
@@ -273,45 +229,29 @@ function weatherCondition(code: number): string {
   return conditions[code] ?? 'Unknown';
 }
 
-// =========================================================================
-// Helper Functions
-// =========================================================================
-
 function textResult(text: string): CallToolResult {
-  const textContent: TextContent = {
-    text: { tag: 'text', val: text },
-  };
-
-  const contentBlock: ContentBlock = {
-    tag: 'text',
-    val: textContent,
-  };
-
   return {
-    content: [contentBlock],
+    content: [{
+      tag: 'text',
+      val: {
+        text: { tag: 'text', val: text },
+      },
+    }],
     isError: false,
   };
 }
 
 function errorResult(message: string): CallToolResult {
-  const textContent: TextContent = {
-    text: { tag: 'text', val: message },
-  };
-
-  const contentBlock: ContentBlock = {
-    tag: 'text',
-    val: textContent,
-  };
-
   return {
-    content: [contentBlock],
+    content: [{
+      tag: 'text',
+      val: {
+        text: { tag: 'text', val: message },
+      },
+    }],
     isError: true,
   };
 }
-
-// =========================================================================
-// Export the capability interface
-// =========================================================================
 
 export const toolsCapability = {
   listTools,

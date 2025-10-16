@@ -45,6 +45,29 @@ jobs:
           cache-key: lint
           workspaces: . -> cli
 
+      - name: Install wkg
+        run: |
+          curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
+          chmod +x wkg
+          sudo mv wkg /usr/local/bin/
+
+      - name: Configure wkg registry
+        run: |
+          mkdir -p ~/.config/wasm-pkg
+          cat > ~/.config/wasm-pkg/config.toml <<EOF
+          [namespace_registries]
+          wasmcp = "ghcr.io"
+          EOF
+
+      - name: Fetch WIT dependencies
+        run: |
+          for crate in crates/*; do
+            if [ -d "$crate/wit" ]; then
+              echo "Fetching WIT deps for $(basename $crate)..."
+              cd "$crate" && wkg wit fetch && cd ../..
+            fi
+          done
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 

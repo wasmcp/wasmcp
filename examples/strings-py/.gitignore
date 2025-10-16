@@ -1,3 +1,5 @@
 __pycache__/
 venv/
+wit_world/
 *.pyc
+*.wasm
