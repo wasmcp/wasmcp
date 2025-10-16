@@ -14,7 +14,7 @@ wasmcp new time-tools --language python
 
 # Develop and build the component
 cd time-tools
-make
+make # Produces time-tools.wasm
 
 # Compose your tools with a Streamable HTTP transport component (default) to form an MCP server
 wasmcp compose time-tools.wasm -t http -o http-server.wasm
