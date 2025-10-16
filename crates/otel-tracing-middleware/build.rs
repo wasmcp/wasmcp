@@ -209,7 +209,17 @@ fn build_composition(
     )?;
     println!("   All middleware dependencies wired successfully");
 
-    // Step 4: Export the middleware's MCP and OTEL interfaces
+    // Step 4: Export SDK interfaces from the composition
+    // These make the SDK implementations available to downstream compositions
+    // and satisfy the type dependencies of trace-instrumentation
+    println!("   Exporting SDK interfaces from composition...");
+    graph.export(context_export, "wasi:otel-sdk/context@0.1.0-alpha.3")?;
+    graph.export(trace_export, "wasi:otel-sdk/trace@0.1.0-alpha.3")?;
+    graph.export(transport_export, "wasi:otel-sdk/transport@0.1.0-alpha.3")?;
+    graph.export(http_transport_export, "wasi:otel-sdk/http-transport@0.1.0-alpha.3")?;
+    graph.export(common_providers_export, "wasi:otel-providers/common-providers@0.1.0")?;
+
+    // Step 5: Export the middleware's MCP and OTEL interfaces
     // These will be wired by wasmcp compose at final composition time
     let incoming_handler_export = graph.alias_instance_export(
         middleware_inst,
