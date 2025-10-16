@@ -1,0 +1,6 @@
+package wasmcp:weather@0.1.0;
+
+world weather {
+    import wasi:http/outgoing-handler@0.2.3;
+    export wasmcp:mcp/tools-capability@0.4.0;
+}

@@ -1,0 +1,14 @@
+# Generated bindings
+gen/
+
+# Built artifacts
+*.wasm
+
+# Build logs
+*.log
+
+# Go dependencies
+go.sum
+
+# WIT package lock
+wkg.lock
