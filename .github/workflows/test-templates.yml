@@ -131,7 +131,7 @@ jobs:
       - name: Start HTTP server (background)
         run: |
           cd ci-test-${{ matrix.language }}
-          wasmtime serve -Scommon mcp-server.wasm &
+          wasmtime serve -Scli mcp-server.wasm &
           echo $! > /tmp/server.pid
           sleep 2
 

@@ -41,7 +41,7 @@ The CLI automatically detects component types and wraps them with appropriate mi
 
 ```bash
 # HTTP (default)
-wasmtime serve -Scommon server.wasm
+wasmtime serve -Scli server.wasm
 
 # Stdio
 wasmtime run server.wasm
@@ -118,8 +118,8 @@ See generated `README.md` files for language-specific details.
 Components must use matching wasmcp versions. Specify version when creating components and composing:
 
 ```bash
-wasmcp new my-component --language rust --version 0.3.1-alpha.52
-wasmcp compose component.wasm --version 0.3.1-alpha.52
+wasmcp new my-component --language rust --version 0.4.0
+wasmcp compose component.wasm --version 0.4.0
 ```
 
 ## See Also

@@ -205,7 +205,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
     println!("\n✅ Composed: {}", output.display());
     println!("\nTo run the server:");
     match transport.as_str() {
-        "http" => println!("  wasmtime serve -Scommon {}", output.display()),
+        "http" => println!("  wasmtime serve -Scli {}", output.display()),
         "stdio" => println!("  wasmtime run {}", output.display()),
         _ => println!("  wasmtime {}", output.display()),
     }
@@ -552,12 +552,12 @@ mod tests {
     #[test]
     fn test_package_naming() {
         assert_eq!(
-            interfaces::package("http-transport", "0.3.0"),
-            "wasmcp:http-transport@0.3.0"
+            interfaces::package("http-transport", "0.4.0"),
+            "wasmcp:http-transport@0.4.0"
         );
         assert_eq!(
-            interfaces::package("method-not-found", "0.3.0"),
-            "wasmcp:method-not-found@0.3.0"
+            interfaces::package("method-not-found", "0.4.0"),
+            "wasmcp:method-not-found@0.4.0"
         );
     }
 }
