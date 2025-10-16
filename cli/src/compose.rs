@@ -23,11 +23,15 @@
 //! specialized wiring logic - composition is simply plugging components together
 //! in sequence.
 
-use anyhow::{Context, Result};
+use crate::{config, pkg};
+use anyhow::{bail, Context, Result};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
-use crate::pkg;
+// For boxed async recursion
+use std::pin::Pin;
+use std::future::Future;
 
 /// WIT interface constants for MCP protocol
 mod interfaces {
@@ -107,11 +111,21 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         force,
     } = options;
 
+    // Resolve output path - use config's composed directory if output is relative
+    let output_path = if output.is_absolute() {
+        output
+    } else {
+        let composed_dir = config::get_composed_dir()?;
+        std::fs::create_dir_all(&composed_dir)
+            .context("Failed to create composed directory")?;
+        composed_dir.join(output)
+    };
+
     // Validate output file doesn't exist (unless force is set)
-    if output.exists() && !force {
+    if output_path.exists() && !force {
         anyhow::bail!(
             "Output file '{}' already exists. Use --force to overwrite.",
-            output.display()
+            output_path.display()
         );
     }
 
@@ -123,8 +137,11 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         );
     }
 
+    // Ensure wasmcp directories exist
+    config::ensure_dirs()?;
+
     // Create package client for downloading components
-    let cache_dir = deps_dir.join(".cache");
+    let cache_dir = config::get_cache_dir()?;
     let client = pkg::create_client(&cache_dir)
         .await
         .context("Failed to create package client")?;
@@ -199,28 +216,31 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
     .await?;
 
     // Write output file
-    std::fs::write(&output, bytes)
-        .context(format!("Failed to write output file: {}", output.display()))?;
+    std::fs::write(&output_path, bytes)
+        .context(format!("Failed to write output file: {}", output_path.display()))?;
 
-    println!("\n✅ Composed: {}", output.display());
+    println!("\n✅ Composed: {}", output_path.display());
     println!("\nTo run the server:");
     match transport.as_str() {
-        "http" => println!("  wasmtime serve -Scli {}", output.display()),
-        "stdio" => println!("  wasmtime run {}", output.display()),
-        _ => println!("  wasmtime {}", output.display()),
+        "http" => println!("  wasmtime serve -Scli {}", output_path.display()),
+        "stdio" => println!("  wasmtime run {}", output_path.display()),
+        _ => println!("  wasmtime {}", output_path.display()),
     }
 
     Ok(())
 }
 
-/// Resolve a component spec (path or package spec) to a local file path
+/// Resolve a component spec (alias, path, or package spec) to a local file path
 ///
-/// - If spec is a local path (contains /, \, or ends with .wasm), validates existence
-/// - Otherwise treats as package spec and downloads using wasm-pkg-client
+/// Resolution order:
+/// 1. Check if spec is an alias in config → recursively resolve target
+/// 2. Check if spec is a local path (contains /, \, or ends with .wasm) → validate existence
+/// 3. Treat as package spec → download from registry
 ///
 /// # Examples
 ///
 /// ```text
+/// calc                           → (alias) → wasmcp:calculator@0.1.0 → deps/...
 /// ./my-handler.wasm              → ./my-handler.wasm (if exists)
 /// /abs/path/handler.wasm         → /abs/path/handler.wasm (if exists)
 /// wasmcp:calculator@0.1.0        → deps/wasmcp_calculator@0.1.0.wasm
@@ -231,20 +251,49 @@ async fn resolve_component_spec(
     deps_dir: &Path,
     client: &wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>,
 ) -> Result<PathBuf> {
-    // Check if spec looks like a file path
-    if spec.contains('/') || spec.contains('\\') || spec.ends_with(".wasm") {
-        let path = PathBuf::from(spec);
-        if !path.exists() {
-            anyhow::bail!("Component not found: {}", spec);
-        }
-        return Ok(path);
-    }
+    resolve_component_spec_recursive(spec, deps_dir, client, &mut std::collections::HashSet::new()).await
+}
 
-    // Otherwise treat as package spec and download
-    println!("      Downloading {} from registry...", spec);
-    pkg::resolve_spec(spec, client, deps_dir)
-        .await
-        .context(format!("Failed to download component: {}", spec))
+/// Internal recursive resolver with cycle detection
+fn resolve_component_spec_recursive<'a>(
+    spec: &'a str,
+    deps_dir: &'a Path,
+    client: &'a wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>,
+    visited: &'a mut std::collections::HashSet<String>,
+) -> Pin<Box<dyn Future<Output = Result<PathBuf>> + 'a>> {
+    Box::pin(async move {
+        // Detect circular aliases
+        if visited.contains(spec) {
+            anyhow::bail!(
+                "Circular alias detected: {} → ... → {}",
+                visited.iter().next().unwrap(),
+                spec
+            );
+        }
+        visited.insert(spec.to_string());
+
+        // 1. Check if spec is an alias in config
+        let config = config::load_config()?;
+        if let Some(target) = config.components.get(spec) {
+            println!("      Resolved alias '{}' → '{}'", spec, target);
+            return resolve_component_spec_recursive(target, deps_dir, client, visited).await;
+        }
+
+        // 2. Check if spec looks like a file path
+        if spec.contains('/') || spec.contains('\\') || spec.ends_with(".wasm") {
+            let path = PathBuf::from(spec);
+            if !path.exists() {
+                anyhow::bail!("Component not found: {}", spec);
+            }
+            return Ok(path);
+        }
+
+        // 3. Otherwise treat as package spec and download
+        println!("      Downloading {} from registry...", spec);
+        pkg::resolve_spec(spec, client, deps_dir)
+            .await
+            .context(format!("Failed to download component: {}", spec))
+    })
 }
 
 /// Download required framework dependencies (transport, method-not-found, and tools-middleware)
@@ -560,4 +609,75 @@ mod tests {
             "wasmcp:method-not-found@0.4.0"
         );
     }
+}
+
+/// Resolve a profile with base inheritance
+///
+/// Recursively resolves the profile chain, merging components and settings.
+/// Base profile components come first, then the profile's own components.
+fn resolve_profile(
+    profile_name: &str,
+    cfg: &config::WasmcpConfig,
+    visited: &mut HashSet<String>,
+) -> Result<config::Profile> {
+    // Detect circular dependencies
+    if !visited.insert(profile_name.to_string()) {
+        bail!("Circular profile dependency detected: {}", profile_name);
+    }
+
+    let profile = cfg
+        .profiles
+        .get(profile_name)
+        .ok_or_else(|| anyhow::anyhow!("Profile '{}' not found", profile_name))?;
+
+    // If profile has a base, resolve it first
+    if let Some(base_name) = &profile.base {
+        let mut base = resolve_profile(base_name, cfg, visited)?;
+
+        // Merge: base components + profile components (order matters!)
+        base.components.extend(profile.components.clone());
+
+        // Profile settings override base settings
+        base.output = profile.output.clone();
+
+        Ok(base)
+    } else {
+        Ok(profile.clone())
+    }
+}
+
+/// Compose profiles and direct components into a single component list
+///
+/// Resolution order:
+/// 1. Each profile is resolved (with base inheritance) in order
+/// 2. All profile components are collected
+/// 3. Direct components from CLI are appended
+pub fn compose_profiles_and_components(
+    profile_names: &[String],
+    direct_components: &[String],
+) -> Result<(Vec<String>, Option<config::Profile>)> {
+    let cfg = config::load_config()?;
+    let mut all_components = Vec::new();
+    let mut merged_profile: Option<config::Profile> = None;
+
+    // Step 1: Resolve and merge all profiles
+    for name in profile_names {
+        let mut visited = HashSet::new();
+        let profile = resolve_profile(name, &cfg, &mut visited)?;
+
+        // Collect components
+        all_components.extend(profile.components.clone());
+
+        // Merge profile settings (last profile wins)
+        merged_profile = Some(profile);
+    }
+
+    // Step 2: Append direct component specs from CLI
+    all_components.extend(direct_components.iter().cloned());
+
+    if all_components.is_empty() {
+        bail!("No components specified in profiles or command line");
+    }
+
+    Ok((all_components, merged_profile))
 }

@@ -3,6 +3,7 @@
 //! Provides functionality to download WebAssembly components from registries
 //! without requiring an external wkg executable.
 
+use crate::config;
 use anyhow::{Context, Result};
 use futures_util::TryStreamExt;
 use std::path::{Path, PathBuf};
@@ -51,6 +52,8 @@ pub async fn create_wasmcp_config() -> Result<Config> {
 }
 
 /// Initialize a caching client for package downloads
+///
+/// Uses the centralized cache directory from config::paths
 pub async fn create_client(cache_dir: &Path) -> Result<CachingClient<FileCache>> {
     let config = create_wasmcp_config().await?;
     let cache = FileCache::new(cache_dir)
@@ -58,6 +61,12 @@ pub async fn create_client(cache_dir: &Path) -> Result<CachingClient<FileCache>>
         .context("Failed to create package cache")?;
     let client = Client::new(config);
     Ok(CachingClient::new(Some(client), cache))
+}
+
+/// Initialize a caching client using the default wasmcp cache directory
+pub async fn create_default_client() -> Result<CachingClient<FileCache>> {
+    let cache_dir = config::get_cache_dir()?;
+    create_client(&cache_dir).await
 }
 
 /// Download a package to the specified output path

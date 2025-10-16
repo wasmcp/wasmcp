@@ -1,0 +1,6 @@
+# CLI cargo configuration
+# The CLI is a native binary and should always build for the native target
+
+[build]
+# Force native target - do not build for WASM
+target = "aarch64-apple-darwin"
