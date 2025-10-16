@@ -1,0 +1,1 @@
+wasmcp-mcp = "wasmcp:mcp@{{wasmcp_version}}"

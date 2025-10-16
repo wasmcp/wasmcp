@@ -552,12 +552,12 @@ mod tests {
     #[test]
     fn test_package_naming() {
         assert_eq!(
-            interfaces::package("http-transport", "0.3.0"),
-            "wasmcp:http-transport@0.3.0"
+            interfaces::package("http-transport", "0.4.0"),
+            "wasmcp:http-transport@0.4.0"
         );
         assert_eq!(
-            interfaces::package("method-not-found", "0.3.0"),
-            "wasmcp:method-not-found@0.3.0"
+            interfaces::package("method-not-found", "0.4.0"),
+            "wasmcp:method-not-found@0.4.0"
         );
     }
 }

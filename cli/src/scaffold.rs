@@ -131,6 +131,8 @@ mod tests {
     #[test]
     fn test_templates_embedded() {
         // Verify that templates are embedded
-        assert!(TEMPLATES.get_dir("rust").is_some() || TEMPLATES.get_dir("python").is_some());
+        assert!(TEMPLATES.get_dir("rust").is_some());
+        assert!(TEMPLATES.get_dir("python").is_some());
+        assert!(TEMPLATES.get_dir("typescript").is_some());
     }
 }

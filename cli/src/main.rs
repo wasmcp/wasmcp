@@ -24,12 +24,12 @@ enum Command {
         /// Project name (e.g., my-server)
         name: String,
 
-        /// Programming language (rust or python; go and typescript coming soon)
+        /// Programming language
         #[arg(long, short = 'l', value_name = "LANG")]
         language: Language,
 
         /// wasmcp version to use for WIT dependencies
-        #[arg(long, default_value = "0.3.1-alpha.52")]
+        #[arg(long, default_value = "0.4.0")]
         version: String,
 
         /// Overwrite existing directory
@@ -72,7 +72,7 @@ enum Command {
         output: PathBuf,
 
         /// wasmcp version for framework dependencies
-        #[arg(long, default_value = "0.3.1-alpha.52")]
+        #[arg(long, default_value = "0.4.0")]
         version: String,
 
         /// Override transport component (path or package spec)
@@ -125,9 +125,9 @@ enum WitCommand {
 enum Language {
     Rust,
     Python,
-    // Go and TypeScript templates coming soon
+    TypeScript,
+    // Go template coming soon (blocked on wit-bindgen-go bug)
     // Go,
-    // TypeScript,
 }
 
 impl std::fmt::Display for Language {
@@ -135,6 +135,7 @@ impl std::fmt::Display for Language {
         match self {
             Language::Rust => write!(f, "rust"),
             Language::Python => write!(f, "python"),
+            Language::TypeScript => write!(f, "typescript"),
         }
     }
 }
