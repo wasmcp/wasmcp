@@ -14,15 +14,15 @@ wasmcp new time-tools --language python
 
 # Develop and build the component
 cd time-tools
-make # Produces time-tools.wasm
+make # produces time-tools.wasm
 
 # Compose your tools with a Streamable HTTP transport component (default) to form an MCP server
-wasmcp compose time-tools.wasm -t http -o http-server.wasm
+wasmcp compose time-tools.wasm -t http -o http-server.wasm # runs on 
 
 # Run
-wasmtime serve -Scli http-server.wasm
+wasmtime serve -Scli http-server.wasm # serves http://0.0.0.0:8080/ by default
 
-# Or with the stdio transport
+# Or compose the same tool components with a stdio transport
 wasmcp compose time-tools.wasm -t stdio -o stdio-server.wasm
 wasmtime run stdio-server.wasm
 ```
