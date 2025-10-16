@@ -27,7 +27,6 @@ concurrency:
 
 env:
   RUST_VERSION: "1.89"
-  CARGO_COMPONENT_VERSION: "0.21.1"
 
 jobs:
   lint:
@@ -40,14 +39,16 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           components: rustfmt,clippy
+          targets: wasm32-wasip2
           cache-key: lint
           workspaces: . -> cli
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Clippy (CLI only)
+        run: cd cli && cargo clippy --all-targets --all-features --target x86_64-unknown-linux-gnu -- -D warnings
+        # Note: Component clippy runs in build-components job which has WIT tooling
 
   build-cli:
     name: Build CLI
@@ -62,19 +63,19 @@ jobs:
           workspaces: cli
 
       - name: Build CLI
-        run: cd cli && cargo build --release
+        run: cd cli && cargo build --release --target x86_64-unknown-linux-gnu
         env:
           # Improve build times with parallel codegen
           CARGO_BUILD_JOBS: 4
 
       - name: Test CLI
-        run: cd cli && cargo test
+        run: cd cli && cargo test --target x86_64-unknown-linux-gnu
 
       - name: Upload CLI artifact
         uses: actions/upload-artifact@v4
         with:
           name: wasmcp-cli-linux
-          path: cli/target/release/wasmcp
+          path: cli/target/x86_64-unknown-linux-gnu/release/wasmcp
 
   build-components:
     name: Build Framework Components
@@ -87,21 +88,13 @@ jobs:
         with:
           targets: wasm32-wasip2
           cache-key: components
-          # Cache all component crates (8 framework components)
+          # Cache all component crates (5 framework components)
           workspaces: |
-            crates/error-writer
+            crates/http-client-notifications
             crates/http-transport
-            crates/initialize-handler
-            crates/initialize-writer
-            crates/request
-            crates/resources-writer
+            crates/method-not-found
             crates/stdio-transport
-            crates/tools-writer
-
-      - name: Install cargo-component
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-component@${{ env.CARGO_COMPONENT_VERSION }}
+            crates/tools-middleware
 
       - name: Install wkg
         run: |
@@ -117,24 +110,23 @@ jobs:
           wasmcp = "ghcr.io"
           EOF
 
-      - name: Build all components
-        run: cd crates && make
-
-      - name: Check component lockfile is up to date
+      - name: Fetch WIT dependencies
         run: |
-          cargo component update --dry-run 2>&1 | tee update-check.log
-          if grep -q "Updating" update-check.log; then
-            echo "❌ Cargo-component.lock is out of date!"
-            echo "Run 'cargo component update' and commit the changes."
-            exit 1
-          fi
-          echo "✅ Component lockfile is up to date"
+          for crate in crates/*; do
+            if [ -d "$crate/wit" ]; then
+              echo "Fetching WIT deps for $(basename $crate)..."
+              cd "$crate" && wkg wit fetch && cd ../..
+            fi
+          done
+
+      - name: Build all components
+        run: cargo build --release
 
       - name: Upload component artifacts
         uses: actions/upload-artifact@v4
         with:
           name: wasmcp-components
-          path: crates/*/target/wasm32-wasip2/release/*.wasm
+          path: target/wasm32-wasip2/release/*.wasm
 
   test-templates:
     name: Test templates (${{ matrix.language }})
@@ -142,7 +134,7 @@ jobs:
     needs: build-cli
     strategy:
       matrix:
-        language: [python, rust, typescript, go]
+        language: [python, rust]
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
@@ -180,24 +172,9 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install componentize-py
 
-      - name: Install language tooling (TypeScript)
-        if: matrix.language == 'typescript'
-        run: |
-          npm install -g @bytecodealliance/jco
-
-      - name: Install language tooling (Go)
-        if: matrix.language == 'go'
-        run: |
-          curl -fsSL https://github.com/tinygo-org/tinygo/releases/download/v0.39.0/tinygo_0.39.0_amd64.deb -o tinygo.deb
-          sudo dpkg -i tinygo.deb
-          curl -fsSL https://github.com/bytecodealliance/wasm-tools/releases/download/v1.239.0/wasm-tools-1.239.0-x86_64-linux.tar.gz | tar -xz
-          sudo mv wasm-tools-1.239.0-x86_64-linux/wasm-tools /usr/local/bin/
-          go install go.bytecodealliance.org/cmd/wit-bindgen-go@latest
-          echo "$HOME/go/bin" >> $GITHUB_PATH
-
       - name: Create test project from template
         run: |
-          wasmcp new ci-test-${{ matrix.language }} -t tools -l ${{ matrix.language }}
+          wasmcp new ci-test-${{ matrix.language }} --language ${{ matrix.language }}
 
       - name: Build component
         run: cd ci-test-${{ matrix.language }} && make
@@ -208,12 +185,11 @@ jobs:
           # Determine component path based on language
           if [ "${{ matrix.language }}" = "rust" ]; then
             COMPONENT="target/wasm32-wasip2/release/ci_test_${{ matrix.language }}.wasm"
-          elif [ "${{ matrix.language }}" = "go" ]; then
-            COMPONENT="target/ci_test_${{ matrix.language }}.wasm"
           else
-            COMPONENT="target/ci_test_${{ matrix.language }}.wasm"
+            # Python keeps hyphens in component names
+            COMPONENT="target/ci-test-${{ matrix.language }}.wasm"
           fi
-          wasmcp compose --tools $COMPONENT -o mcp-server.wasm
+          wasmcp compose $COMPONENT -o mcp-server.wasm
 
       - name: Compose stdio server
         run: |
@@ -221,12 +197,11 @@ jobs:
           # Determine component path based on language
           if [ "${{ matrix.language }}" = "rust" ]; then
             COMPONENT="target/wasm32-wasip2/release/ci_test_${{ matrix.language }}.wasm"
-          elif [ "${{ matrix.language }}" = "go" ]; then
-            COMPONENT="target/ci_test_${{ matrix.language }}.wasm"
           else
-            COMPONENT="target/ci_test_${{ matrix.language }}.wasm"
+            # Python keeps hyphens in component names
+            COMPONENT="target/ci-test-${{ matrix.language }}.wasm"
           fi
-          wasmcp compose --tools $COMPONENT --transport stdio -o mcp-server-stdio.wasm
+          wasmcp compose $COMPONENT --transport stdio -o mcp-server-stdio.wasm
 
       - name: Start HTTP server (background)
         run: |
@@ -238,17 +213,32 @@ jobs:
       - name: Test HTTP server with MCP Inspector
         run: |
           # Test tools/list
-          npx @modelcontextprotocol/inspector@0.16.8 --cli http://localhost:8080/mcp \
-            --method tools/list
+          tools_list=$(npx @modelcontextprotocol/inspector@0.16.8 --cli http://localhost:8080/mcp \
+            --method tools/list)
 
-          # Test tools/call with echo tool
-          response=$(npx @modelcontextprotocol/inspector@0.16.8 --cli http://localhost:8080/mcp \
-            --method tools/call \
-            --tool-name echo \
-            --tool-arg message="Hello CI")
+          # Verify tools are present (different per language)
+          if [ "${{ matrix.language }}" = "rust" ]; then
+            echo "$tools_list" | grep -q "sum"
+            echo "$tools_list" | grep -q "sub"
+          else
+            echo "$tools_list" | grep -q "reverse"
+            echo "$tools_list" | grep -q "uppercase"
+          fi
 
-          # Verify response contains expected text
-          echo "$response" | grep -q "Echo: Hello CI"
+          # Test tools/call
+          if [ "${{ matrix.language }}" = "rust" ]; then
+            response=$(npx @modelcontextprotocol/inspector@0.16.8 --cli http://localhost:8080/mcp \
+              --method tools/call \
+              --tool-name sum \
+              --tool-arg a=10 --tool-arg b=32)
+            echo "$response" | grep -q "42"
+          else
+            response=$(npx @modelcontextprotocol/inspector@0.16.8 --cli http://localhost:8080/mcp \
+              --method tools/call \
+              --tool-name reverse \
+              --tool-arg text="hello")
+            echo "$response" | grep -q "olleh"
+          fi
 
       - name: Stop HTTP server
         if: always()
@@ -262,14 +252,25 @@ jobs:
           cd ci-test-${{ matrix.language }}
 
           # Test tools/list
-          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+          tools_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
             --cli --transport stdio --method tools/list)
 
-          echo "$response" | grep -q "echo"
+          # Verify tools are present (different per language)
+          if [ "${{ matrix.language }}" = "rust" ]; then
+            echo "$tools_list" | grep -q "sum"
+            echo "$tools_list" | grep -q "sub"
+          else
+            echo "$tools_list" | grep -q "reverse"
+            echo "$tools_list" | grep -q "uppercase"
+          fi
 
-          # Test tools/call with echo tool
-          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
-            --cli --transport stdio --method tools/call --tool-name echo --tool-arg message="Hello Stdio CI")
-
-          # Verify response contains expected text
-          echo "$response" | grep -q "Echo: Hello Stdio CI"
+          # Test tools/call
+          if [ "${{ matrix.language }}" = "rust" ]; then
+            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+              --cli --transport stdio --method tools/call --tool-name sum --tool-arg a=10 --tool-arg b=32)
+            echo "$response" | grep -q "42"
+          else
+            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+              --cli --transport stdio --method tools/call --tool-name reverse --tool-arg text="hello")
+            echo "$response" | grep -q "olleh"
+          fi

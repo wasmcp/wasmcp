@@ -1,5 +1,0 @@
-package wasmcp:request;
-
-world request {
-    export wasmcp:mcp/request@0.3.0;
-}

@@ -1,234 +1,113 @@
+//! Component composition for MCP server pipelines
+//!
+//! This module provides functionality to compose MCP server components into
+//! a complete WebAssembly component using the Component Model's composition
+//! features via wac-graph.
+//!
+//! ## Architecture
+//!
+//! The MCP server architecture uses a universal middleware pattern where all
+//! components communicate through the `wasmcp:handler/server-handler` interface.
+//! This enables dynamic composition of arbitrary handlers into linear pipelines:
+//!
+//! ```text
+//! transport → handler₁ → handler₂ → ... → handlerₙ → method-not-found
+//! ```
+//!
+//! Each handler:
+//! - Imports `server-handler` (to delegate unknown requests downstream)
+//! - Exports `server-handler` (to handle requests from upstream)
+//! - Optionally handles specific MCP methods (tools, resources, prompts, etc.)
+//!
+//! This uniform interface eliminates the need for handler type detection or
+//! specialized wiring logic - composition is simply plugging components together
+//! in sequence.
+
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
 use crate::pkg;
 
-/// WIT interface and package name constants
+/// WIT interface constants for MCP protocol
 mod interfaces {
-    /// Base namespace for all wasmcp MCP interfaces
-    pub const NAMESPACE: &str = "wasmcp:mcp";
-
-    /// Package namespace for wasmcp framework components
-    pub const PKG_NAMESPACE: &str = "wasmcp";
-
-    /// WASI HTTP handler interface
+    /// WASI HTTP incoming-handler interface (HTTP transport export)
     pub const WASI_HTTP_HANDLER: &str = "wasi:http/incoming-handler@0.2.3";
 
-    /// WASI CLI run interface
+    /// WASI CLI run interface (stdio transport export)
     pub const WASI_CLI_RUN: &str = "wasi:cli/run@0.2.3";
 
-    /// Generate a versioned interface name
-    pub fn interface(name: &str, version: &str) -> String {
-        format!("{}/{}@{}", NAMESPACE, name, version)
+    /// Generate the server-handler interface name with version
+    pub fn server_handler(version: &str) -> String {
+        format!("wasmcp:mcp/server-handler@{}", version)
     }
 
-    /// Generate a versioned package name
+    /// Generate a versioned package name for wasmcp components
     pub fn package(name: &str, version: &str) -> String {
-        format!("{}:{}@{}", PKG_NAMESPACE, name, version)
-    }
-
-    /// Core MCP interfaces
-    pub mod core {
-        use super::interface;
-
-        pub fn request(version: &str) -> String {
-            interface("request", version)
-        }
-
-        pub fn incoming_handler(version: &str) -> String {
-            interface("incoming-handler", version)
-        }
-
-        pub fn error_result(version: &str) -> String {
-            interface("error-result", version)
-        }
-
-        pub fn initialize_result(version: &str) -> String {
-            interface("initialize-result", version)
-        }
-    }
-
-    /// Tools capability interfaces
-    pub mod tools {
-        use super::interface;
-
-        pub fn list_result(version: &str) -> String {
-            interface("tools-list-result", version)
-        }
-
-        pub fn call_content(version: &str) -> String {
-            interface("tools-call-content", version)
-        }
-
-        pub fn call_structured(version: &str) -> String {
-            interface("tools-call-structured", version)
-        }
-    }
-
-    /// Resources capability interfaces
-    pub mod resources {
-        use super::interface;
-
-        pub fn list_result(version: &str) -> String {
-            interface("resources-list-result", version)
-        }
-
-        pub fn read_result(version: &str) -> String {
-            interface("resources-read-result", version)
-        }
-
-        pub fn templates_list_result(version: &str) -> String {
-            interface("resource-templates-list-result", version)
-        }
-    }
-
-    /// Prompts capability interfaces
-    pub mod prompts {
-        use super::interface;
-
-        pub fn list_result(version: &str) -> String {
-            interface("prompts-list-result", version)
-        }
-
-        pub fn get_result(version: &str) -> String {
-            interface("prompts-get-result", version)
-        }
-    }
-
-    /// Completion capability interfaces
-    pub mod completion {
-        use super::interface;
-
-        pub fn complete_result(version: &str) -> String {
-            interface("completion-complete-result", version)
-        }
+        format!("wasmcp:{}@{}", name, version)
     }
 }
 
-/// Handler types supported by MCP
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum HandlerType {
-    Middleware,
-    Tools,
-    Resources,
-    Prompts,
-    Completion,
-}
-
-/// Component info: path and detected handler type
-#[derive(Debug, Clone)]
-struct ComponentInfo {
-    path: PathBuf,
-    handler_type: HandlerType,
-    name: String,
-}
-
-/// Override specs for framework components
-#[derive(Debug, Clone, Default)]
-pub struct ComponentOverrides {
-    pub request: Option<String>,
-    pub transport: Option<String>,
-    pub initialize_handler: Option<String>,
-    pub initialize_writer: Option<String>,
-    pub error_writer: Option<String>,
-    pub tools_writer: Option<String>,
-    pub resources_writer: Option<String>,
-    pub prompts_writer: Option<String>,
-    pub completion_writer: Option<String>,
-}
-
-impl std::fmt::Display for HandlerType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            HandlerType::Middleware => write!(f, "middleware"),
-            HandlerType::Tools => write!(f, "tools"),
-            HandlerType::Resources => write!(f, "resources"),
-            HandlerType::Prompts => write!(f, "prompts"),
-            HandlerType::Completion => write!(f, "completion"),
-        }
-    }
-}
-
-impl HandlerType {
-    /// Get the interface name for WIT (completion is singular, others are plural)
-    pub fn interface_name(&self) -> &str {
-        match self {
-            HandlerType::Middleware => "middleware",
-            HandlerType::Tools => "tools",
-            HandlerType::Resources => "resources",
-            HandlerType::Prompts => "prompts",
-            HandlerType::Completion => "completion",
-        }
-    }
-}
-
-/// Resolve a handler spec (path or package spec) to a local path
-///
-/// - If spec is a file path, validates it exists and returns it
-/// - If spec looks like a package spec (namespace:name[@version]), downloads it using pkg client
-async fn resolve_handler_spec(
-    spec: &str,
-    handler_type: HandlerType,
-    deps_dir: &Path,
-    client: &wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>,
-) -> Result<PathBuf> {
-    // Check if spec is a local path (contains / or \, or ends with .wasm)
-    if spec.contains('/') || spec.contains('\\') || spec.ends_with(".wasm") {
-        let path = PathBuf::from(spec);
-        if !path.exists() {
-            anyhow::bail!("Handler component not found: {}", spec);
-        }
-        return Ok(path);
-    }
-
-    // Otherwise, treat as package spec and download using pkg client
-    println!("      Downloading {} from registry...", spec);
-
-    let path = pkg::resolve_spec(spec, client, deps_dir)
-        .await
-        .context(format!("Failed to download handler: {}", spec))?;
-
-    // Verify it's the correct handler type
-    if let Ok(detected_type) = detect_handler_type_from_component(&path) {
-        if detected_type != handler_type {
-            anyhow::bail!(
-                "Downloaded component {} is type {}, expected {}",
-                spec,
-                detected_type,
-                handler_type
-            );
-        }
-    }
-
-    Ok(path)
-}
-
-/// Configuration options for the compose command
+/// Configuration options for component composition
 pub struct ComposeOptions {
-    pub handlers: Vec<(HandlerType, String)>,
+    /// Ordered list of middleware component specs (paths or package names)
+    pub components: Vec<String>,
+
+    /// Transport type: "http" or "stdio"
     pub transport: String,
+
+    /// Output path for the composed component
     pub output: PathBuf,
+
+    /// wasmcp version for transport components
     pub version: String,
+
+    /// Override transport component (path or package spec)
+    pub override_transport: Option<String>,
+
+    /// Override method-not-found component (path or package spec)
+    pub override_method_not_found: Option<String>,
+
+    /// Directory for downloaded dependencies
     pub deps_dir: PathBuf,
+
+    /// Whether to skip downloading dependencies (use existing files)
     pub skip_download: bool,
+
+    /// Whether to overwrite existing output file
     pub force: bool,
-    pub overrides: ComponentOverrides,
 }
 
-/// Main entry point for the compose command
+/// Compose MCP server components into a complete WASM component
+///
+/// This is the main entry point for the compose command. It:
+/// 1. Resolves all component specs (downloading if needed)
+/// 2. Downloads the appropriate transport component
+/// 3. Chains components using wac-graph: transport → components → method-not-found
+/// 4. Writes the composed component to the output path
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Output file exists and --force is not set
+/// - No components are specified
+/// - Component resolution fails (file not found, download error)
+/// - Component composition fails (invalid component, interface mismatch)
+/// - Output file cannot be written
 pub async fn compose(options: ComposeOptions) -> Result<()> {
     let ComposeOptions {
-        handlers,
+        components,
         transport,
         output,
         version,
+        override_transport,
+        override_method_not_found,
         deps_dir,
         skip_download,
         force,
-        overrides,
     } = options;
-    // Check if output already exists
+
+    // Validate output file doesn't exist (unless force is set)
     if output.exists() && !force {
         anyhow::bail!(
             "Output file '{}' already exists. Use --force to overwrite.",
@@ -236,11 +115,11 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         );
     }
 
-    // Require explicit handler specifications
-    if handlers.is_empty() {
+    // Require at least one component
+    if components.is_empty() {
         anyhow::bail!(
-            "No handlers specified. Use --tools, --resources, --prompts, --completion, or --middleware flags.\n\
-             Example: wasmcp compose --tools ./my-tools.wasm --resources ./my-resources.wasm"
+            "No components specified. Provide one or more component paths or package specs.\n\
+             Example: wasmcp compose my-handler.wasm namespace:other-handler@1.0.0"
         );
     }
 
@@ -250,577 +129,367 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         .await
         .context("Failed to create package client")?;
 
-    // Resolve handler specs to component paths
-    println!("🔍 Resolving handler components...");
-    let mut components = Vec::new();
+    // Resolve all component specs to local paths
+    println!("🔍 Resolving components...");
+    let mut component_paths = Vec::new();
 
-    for (i, (handler_type, spec)) in handlers.iter().enumerate() {
-        let path = resolve_handler_spec(spec, *handler_type, &deps_dir, &client).await?;
-        let base_name = path
+    for (i, spec) in components.iter().enumerate() {
+        let path = resolve_component_spec(spec, &deps_dir, &client).await?;
+        println!("   {}. {} → {}", i + 1, spec, path.display());
+        component_paths.push(path);
+    }
+
+    // Resolve transport component (override or default)
+    let transport_path = if let Some(override_spec) = override_transport {
+        println!("\n🔧 Using override transport: {}", override_spec);
+        resolve_component_spec(&override_spec, &deps_dir, &client).await?
+    } else {
+        // Download default transport if needed
+        if !skip_download {
+            println!("\n📦 Downloading framework dependencies...");
+            download_dependencies(&transport, &version, &deps_dir, &client).await?;
+        }
+        let transport_name = format!("{}-transport", transport);
+        get_dependency_path(&transport_name, &version, &deps_dir)?
+    };
+
+    // Resolve method-not-found component (override or default)
+    let method_not_found_path = if let Some(override_spec) = override_method_not_found {
+        println!("🔧 Using override method-not-found: {}", override_spec);
+        resolve_component_spec(&override_spec, &deps_dir, &client).await?
+    } else {
+        // Download default method-not-found if needed
+        if !skip_download {
+            // Only download if we haven't already (transport download includes it)
+            let method_not_found_pkg = interfaces::package("method-not-found", &version);
+            let filename = method_not_found_pkg.replace([':', '/'], "_") + ".wasm";
+            let path = deps_dir.join(&filename);
+            if !path.exists() {
+                download_dependencies(&transport, &version, &deps_dir, &client).await?;
+            }
+        }
+        get_dependency_path("method-not-found", &version, &deps_dir)?
+    };
+
+    // Auto-detect and wrap tools-capability components
+    println!("\n🔍 Detecting component types...");
+    let wrapped_components = wrap_tools_capabilities(component_paths, &deps_dir, &version).await?;
+
+    // Build the composition
+    println!("\n🔧 Composing MCP server pipeline...");
+    println!("   transport ({})", transport);
+    for (i, path) in wrapped_components.iter().enumerate() {
+        let name = path
             .file_stem()
             .and_then(|s| s.to_str())
-            .unwrap_or("handler");
-        let name = format!("{}-{}", base_name, i);
-        println!("   - {}: {}", handler_type, spec);
-        components.push(ComponentInfo {
-            path,
-            handler_type: *handler_type,
-            name,
-        });
+            .unwrap_or("component");
+        println!("   ↓");
+        println!("   {}. {}", i + 1, name);
     }
+    println!("   ↓");
+    println!("   method-not-found");
 
-    // Collect unique handler types for dependency download
-    let handler_types: Vec<HandlerType> = components
-        .iter()
-        .map(|c| c.handler_type)
-        .collect::<std::collections::HashSet<_>>()
-        .into_iter()
-        .collect();
-
-    // Download dependencies if needed
-    if !skip_download {
-        println!("\n📦 Downloading dependencies...");
-        download_dependencies(&handler_types, &transport, &version, &deps_dir, &client).await?;
-    } else {
-        println!("\n⏭️  Skipping dependency download");
-    }
-
-    // Build composition using wac-graph
-    println!("\n🔧 Composing MCP server...");
     let bytes = build_composition(
-        &components,
+        &transport_path,
+        &wrapped_components,
+        &method_not_found_path,
         &transport,
         &version,
-        &deps_dir,
-        &overrides,
-        &client,
     )
     .await?;
 
-    // Write output
+    // Write output file
     std::fs::write(&output, bytes)
         .context(format!("Failed to write output file: {}", output.display()))?;
 
     println!("\n✅ Composed: {}", output.display());
     println!("\nTo run the server:");
-    println!("  wasmtime serve -Scommon {}", output.display());
+    match transport.as_str() {
+        "http" => println!("  wasmtime serve -Scommon {}", output.display()),
+        "stdio" => println!("  wasmtime run {}", output.display()),
+        _ => println!("  wasmtime {}", output.display()),
+    }
 
     Ok(())
 }
 
-/// Detect handler type from a component file by inspecting its WIT
-fn detect_handler_type_from_component(component_path: &Path) -> Result<HandlerType> {
-    let bytes = std::fs::read(component_path).context(format!(
-        "Failed to read component: {}",
-        component_path.display()
-    ))?;
-
-    // Decode the component using wit-component
-    let decoded = wit_component::decode(&bytes).context("Failed to decode component")?;
-
-    // Extract the resolve from the decoded component
-    let resolve = match decoded {
-        wit_component::DecodedWasm::Component(resolve, _) => resolve,
-        wit_component::DecodedWasm::WitPackage(resolve, _) => resolve,
-    };
-
-    // Track what we find
-    let mut has_incoming_handler_import = false;
-    let mut has_incoming_handler_export = false;
-    let mut has_writer_import = false;
-
-    // Check all packages in the resolve for handler-specific imports
-    for (_, package) in &resolve.packages {
-        for (_, interface_id) in &package.interfaces {
-            let interface = &resolve.interfaces[*interface_id];
-            if let Some(name) = &interface.name {
-                if name.contains("tools-list-result")
-                    || name.contains("tools-call-content")
-                    || name.contains("tools-call-structured")
-                {
-                    return Ok(HandlerType::Tools);
-                } else if name.contains("resources-list-result")
-                    || name.contains("resources-read-result")
-                    || name.contains("resource-templates-list-result")
-                {
-                    return Ok(HandlerType::Resources);
-                } else if name.contains("prompts-list-result")
-                    || name.contains("prompts-get-result")
-                {
-                    return Ok(HandlerType::Prompts);
-                } else if name.contains("completion-complete-result") {
-                    return Ok(HandlerType::Completion);
-                }
-            }
+/// Resolve a component spec (path or package spec) to a local file path
+///
+/// - If spec is a local path (contains /, \, or ends with .wasm), validates existence
+/// - Otherwise treats as package spec and downloads using wasm-pkg-client
+///
+/// # Examples
+///
+/// ```text
+/// ./my-handler.wasm              → ./my-handler.wasm (if exists)
+/// /abs/path/handler.wasm         → /abs/path/handler.wasm (if exists)
+/// wasmcp:calculator@0.1.0        → deps/wasmcp_calculator@0.1.0.wasm
+/// namespace:name                 → deps/namespace_name@latest.wasm
+/// ```
+async fn resolve_component_spec(
+    spec: &str,
+    deps_dir: &Path,
+    client: &wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>,
+) -> Result<PathBuf> {
+    // Check if spec looks like a file path
+    if spec.contains('/') || spec.contains('\\') || spec.ends_with(".wasm") {
+        let path = PathBuf::from(spec);
+        if !path.exists() {
+            anyhow::bail!("Component not found: {}", spec);
         }
-
-        // Also check worlds
-        for (_, world_id) in &package.worlds {
-            let world = &resolve.worlds[*world_id];
-
-            // Check imports
-            for (key, _) in &world.imports {
-                let name = resolve.name_world_key(key);
-                if name.contains("tools-list-result")
-                    || name.contains("tools-call-content")
-                    || name.contains("tools-call-structured")
-                {
-                    return Ok(HandlerType::Tools);
-                } else if name.contains("resources-list-result")
-                    || name.contains("resources-read-result")
-                    || name.contains("resource-templates-list-result")
-                {
-                    return Ok(HandlerType::Resources);
-                } else if name.contains("prompts-list-result")
-                    || name.contains("prompts-get-result")
-                {
-                    return Ok(HandlerType::Prompts);
-                } else if name.contains("completion-complete-result") {
-                    return Ok(HandlerType::Completion);
-                } else if (name.contains("-result") && name.contains("tools"))
-                    || (name.contains("-result") && name.contains("resources"))
-                    || (name.contains("-result") && name.contains("prompts"))
-                    || (name.contains("-result") && name.contains("completion"))
-                {
-                    has_writer_import = true;
-                } else if name.contains("incoming-handler") {
-                    has_incoming_handler_import = true;
-                }
-            }
-
-            // Check exports
-            for (key, _) in &world.exports {
-                let name = resolve.name_world_key(key);
-                if name.contains("incoming-handler") {
-                    has_incoming_handler_export = true;
-                }
-            }
-        }
+        return Ok(path);
     }
 
-    // If it imports and exports incoming-handler but has no writer imports, it's middleware
-    if has_incoming_handler_import && has_incoming_handler_export && !has_writer_import {
-        return Ok(HandlerType::Middleware);
-    }
-
-    anyhow::bail!(
-        "Could not determine handler type from component: {}",
-        component_path.display()
-    )
+    // Otherwise treat as package spec and download
+    println!("      Downloading {} from registry...", spec);
+    pkg::resolve_spec(spec, client, deps_dir)
+        .await
+        .context(format!("Failed to download component: {}", spec))
 }
 
-/// Download dependencies using pkg client
+/// Download required framework dependencies (transport, method-not-found, and tools-middleware)
 async fn download_dependencies(
-    handler_types: &[HandlerType],
     transport: &str,
     version: &str,
     deps_dir: &Path,
     client: &wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>,
 ) -> Result<()> {
-    // Base dependencies needed by all handlers
-    let mut all_deps = vec![
-        interfaces::package("request", version),
-        interfaces::package("initialize-writer", version),
-        interfaces::package("initialize-handler", version),
-        interfaces::package(&format!("{}-transport", transport), version),
-        interfaces::package("error-writer", version),
-    ];
+    let transport_pkg = interfaces::package(&format!("{}-transport", transport), version);
+    let method_not_found_pkg = interfaces::package("method-not-found", version);
+    let tools_middleware_pkg = interfaces::package("tools-middleware", version);
 
-    // Add writer dependency for each handler type (skip middleware)
-    for handler_type in handler_types {
-        if *handler_type != HandlerType::Middleware {
-            let writer_dep = interfaces::package(
-                &format!("{}-writer", handler_type.interface_name()),
-                version,
-            );
-            all_deps.push(writer_dep);
-        }
-    }
+    let specs = vec![transport_pkg, method_not_found_pkg, tools_middleware_pkg];
 
-    // Download all dependencies in parallel
-    pkg::download_packages(client, &all_deps, deps_dir).await
+    pkg::download_packages(client, &specs, deps_dir).await
 }
 
-/// Helper to resolve a component path (either from override or deps/)
-async fn resolve_component_path(
-    name: &str,
-    override_spec: &Option<String>,
-    version: &str,
+/// Get the file path for a framework dependency
+///
+/// Framework dependencies are always stored as `wasmcp_{name}@{version}.wasm`
+fn get_dependency_path(name: &str, version: &str, deps_dir: &Path) -> Result<PathBuf> {
+    let filename = format!("wasmcp_{}@{}.wasm", name, version);
+    let path = deps_dir.join(&filename);
+
+    if !path.exists() {
+        anyhow::bail!(
+            "Dependency '{}' not found at {}. Run without --skip-download.",
+            name,
+            path.display()
+        );
+    }
+
+    Ok(path)
+}
+
+/// Auto-detect and wrap tools-capability components with tools-middleware
+///
+/// This function inspects each component to determine if it exports tools-capability.
+/// If so, it wraps the component with tools-middleware to convert it into a
+/// server-handler component that can be composed into the pipeline.
+async fn wrap_tools_capabilities(
+    component_paths: Vec<PathBuf>,
     deps_dir: &Path,
-    client: &wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>,
-) -> Result<PathBuf> {
-    if let Some(spec) = override_spec {
-        // Override provided - check if it's a local path
-        let path = PathBuf::from(spec);
-        if path.exists() {
-            return Ok(path);
-        }
+    version: &str,
+) -> Result<Vec<PathBuf>> {
+    let mut wrapped_paths = Vec::new();
+    let tools_cap_interface = format!("wasmcp:mcp/tools-capability@{}", version);
 
-        // Check if it looks like a package spec (contains :)
-        if spec.contains(':') {
-            // Download as package spec
-            println!("   Downloading override {}...", spec);
-            let downloaded_path = pkg::resolve_spec(spec, client, deps_dir)
-                .await
-                .with_context(|| format!("Failed to download override: {}", spec))?;
-            return Ok(downloaded_path);
-        }
+    for (i, path) in component_paths.iter().enumerate() {
+        let component_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("component");
 
-        // Assume it's in deps/ with transformed filename
-        let filename = spec.replace([':', '/'], "_");
-        let override_path = deps_dir.join(format!("{}.wasm", filename));
-        if override_path.exists() {
-            Ok(override_path)
+        // Check if this component exports tools-capability
+        if component_exports_interface(path, &tools_cap_interface)? {
+            println!("   {} is a tools-capability → wrapping with tools-middleware", component_name);
+
+            // Get tools-middleware path
+            let middleware_path = get_dependency_path("tools-middleware", version, deps_dir)?;
+
+            // Wrap the capability with middleware
+            let wrapped_bytes = wrap_with_tools_middleware(&middleware_path, path, version)?;
+
+            // Write wrapped component to temp file
+            let wrapped_path = deps_dir.join(format!(".wrapped-tools-{}.wasm", i));
+            std::fs::write(&wrapped_path, wrapped_bytes)
+                .context("Failed to write wrapped component")?;
+
+            wrapped_paths.push(wrapped_path);
         } else {
-            anyhow::bail!(
-                "Override component not found: {} (tried {} and {})",
-                spec,
-                path.display(),
-                override_path.display()
-            )
+            println!("   {} is a server-handler → using as-is", component_name);
+            wrapped_paths.push(path.clone());
         }
-    } else {
-        // Use default from deps/
-        let filename = format!("wasmcp_{}@{}.wasm", name, version);
-        let path = deps_dir.join(&filename);
-        if !path.exists() {
-            anyhow::bail!("Dependency not found: {}", path.display());
-        }
-        Ok(path)
     }
+
+    Ok(wrapped_paths)
 }
 
-/// Build the composition using wac-graph programmatically
-async fn build_composition(
-    components: &[ComponentInfo],
-    transport: &str,
+/// Check if a component exports a specific interface
+///
+/// This loads the component and inspects its exports to determine its type.
+fn component_exports_interface(path: &Path, interface: &str) -> Result<bool> {
+    use wasmparser::{Payload, Parser};
+
+    let bytes = std::fs::read(path)
+        .context(format!("Failed to read component: {}", path.display()))?;
+
+    // Parse the component to find exports
+    for payload in Parser::new(0).parse_all(&bytes) {
+        let payload = payload.context("Failed to parse component")?;
+
+        if let Payload::ComponentExportSection(exports) = payload {
+            for export in exports {
+                let export = export.context("Failed to parse export")?;
+                if export.name.0 == interface {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+
+    Ok(false)
+}
+
+/// Wrap a tools-capability component with tools-middleware
+///
+/// This composes: tools-middleware + tools-capability → wrapped component
+/// The wrapped component exports server-handler and can be used in the pipeline.
+fn wrap_with_tools_middleware(
+    middleware_path: &Path,
+    capability_path: &Path,
     version: &str,
-    deps_dir: &Path,
-    overrides: &ComponentOverrides,
-    client: &wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>,
 ) -> Result<Vec<u8>> {
     let mut graph = CompositionGraph::new();
 
-    // Helper to load a package from resolved path
-    let load_package = |graph: &mut CompositionGraph,
-                        name: &str,
-                        path: &Path|
-     -> Result<wac_graph::types::Package> {
-        wac_graph::types::Package::from_file(
-            &format!("wasmcp:{}", name),
-            None,
-            path,
-            graph.types_mut(),
-        )
-        .context(format!("Failed to load package: {}", name))
-    };
+    // Load both components
+    let middleware_pkg = load_package(&mut graph, "tools-middleware", middleware_path)?;
+    let capability_pkg = load_package(&mut graph, "tools-capability", capability_path)?;
 
-    println!("   Loading packages...");
+    // Register packages
+    let middleware_id = graph.register_package(middleware_pkg)?;
+    let capability_id = graph.register_package(capability_pkg)?;
 
-    // Load base packages with override support
-    let request_path =
-        resolve_component_path("request", &overrides.request, version, deps_dir, client).await?;
-    let request_package = load_package(&mut graph, "request", &request_path)?;
+    // Get interface names
+    let tools_cap_interface = format!("wasmcp:mcp/tools-capability@{}", version);
+    let server_handler_interface = interfaces::server_handler(version);
 
-    let init_writer_path = resolve_component_path(
-        "initialize-writer",
-        &overrides.initialize_writer,
-        version,
-        deps_dir,
-        client,
-    )
-    .await?;
-    let init_writer_package = load_package(&mut graph, "initialize-writer", &init_writer_path)?;
+    // Instantiate capability component
+    let capability_inst = graph.instantiate(capability_id);
 
-    let init_handler_path = resolve_component_path(
-        "initialize-handler",
-        &overrides.initialize_handler,
-        version,
-        deps_dir,
-        client,
-    )
-    .await?;
-    let init_handler_package = load_package(&mut graph, "initialize-handler", &init_handler_path)?;
+    // Get its tools-capability export
+    let tools_cap_export = graph
+        .alias_instance_export(capability_inst, &tools_cap_interface)
+        .context("Failed to get tools-capability export")?;
 
-    let transport_name = format!("{}-transport", transport);
-    let transport_path = resolve_component_path(
-        &transport_name,
-        &overrides.transport,
-        version,
-        deps_dir,
-        client,
-    )
-    .await?;
-    let transport_package = load_package(&mut graph, &transport_name, &transport_path)?;
+    // Instantiate middleware
+    let middleware_inst = graph.instantiate(middleware_id);
 
-    let error_writer_path = resolve_component_path(
-        "error-writer",
-        &overrides.error_writer,
-        version,
-        deps_dir,
-        client,
-    )
-    .await?;
-    let error_writer_package = load_package(&mut graph, "error-writer", &error_writer_path)?;
+    // Wire middleware's tools-capability import to the capability's export
+    graph
+        .set_instantiation_argument(middleware_inst, &tools_cap_interface, tools_cap_export)
+        .context("Failed to wire tools-capability")?;
 
-    // Load writer packages for each unique handler type (skip middleware)
-    let mut writer_packages = std::collections::HashMap::new();
-    for component in components {
-        let handler_type = component.handler_type;
-        // Middleware doesn't have a writer
-        if handler_type != HandlerType::Middleware
-            && !writer_packages.contains_key(&(handler_type as u8))
-        {
-            let writer_name = format!("{}-writer", handler_type.interface_name());
+    // Export the middleware's server-handler export
+    let server_handler_export = graph
+        .alias_instance_export(middleware_inst, &server_handler_interface)
+        .context("Failed to get server-handler export from middleware")?;
 
-            // Select appropriate override based on handler type
-            let override_spec = match handler_type {
-                HandlerType::Tools => &overrides.tools_writer,
-                HandlerType::Resources => &overrides.resources_writer,
-                HandlerType::Prompts => &overrides.prompts_writer,
-                HandlerType::Completion => &overrides.completion_writer,
-                HandlerType::Middleware => &None, // Never reached due to check above
-            };
+    graph
+        .export(server_handler_export, &server_handler_interface)
+        .context("Failed to export server-handler")?;
 
-            let writer_path =
-                resolve_component_path(&writer_name, override_spec, version, deps_dir, client)
-                    .await?;
-            let writer_package = load_package(&mut graph, &writer_name, &writer_path)?;
-            writer_packages.insert(handler_type as u8, (handler_type, writer_package));
-        }
-    }
+    // Encode the wrapped component
+    let bytes = graph
+        .encode(EncodeOptions::default())
+        .context("Failed to encode wrapped component")?;
 
-    // Load user components
+    Ok(bytes)
+}
+
+/// Build the component composition using wac-graph
+///
+/// The composition strategy is simple:
+/// 1. Instantiate method-not-found (terminal handler)
+/// 2. Instantiate each user component in reverse order, wiring to previous
+/// 3. Instantiate transport at the front, wiring to the chain
+/// 4. Export the transport's WASI interface (http or cli)
+///
+/// This creates the chain: transport → component₁ → ... → componentₙ → method-not-found
+///
+/// Each component's `server-handler` import is satisfied by the next component's
+/// `server-handler` export, creating a linear middleware pipeline.
+async fn build_composition(
+    transport_path: &Path,
+    component_paths: &[PathBuf],
+    method_not_found_path: &Path,
+    transport_type: &str,
+    version: &str,
+) -> Result<Vec<u8>> {
+    let mut graph = CompositionGraph::new();
+
+    // Load all components as packages
+    println!("   Loading components...");
+
+    let transport_pkg = load_package(&mut graph, "transport", transport_path)?;
+    let method_not_found_pkg = load_package(&mut graph, "method-not-found", method_not_found_path)?;
+
     let mut user_packages = Vec::new();
-    for component in components {
-        let user_package = wac_graph::types::Package::from_file(
-            &format!("wasmcp:{}", component.name),
-            None,
-            &component.path,
-            graph.types_mut(),
-        )?;
-        user_packages.push(user_package);
+    for (i, path) in component_paths.iter().enumerate() {
+        // Use index to ensure unique names even if components have same filename
+        let name = format!("component-{}", i);
+        let pkg = load_package(&mut graph, &name, path)?;
+        user_packages.push(pkg);
     }
 
-    println!("   Registering packages...");
-
-    // Register base packages
-    let request_pkg = graph.register_package(request_package)?;
-    let init_writer_pkg = graph.register_package(init_writer_package)?;
-    let init_handler_pkg = graph.register_package(init_handler_package)?;
-    let transport_pkg = graph.register_package(transport_package)?;
-    let error_writer_pkg = graph.register_package(error_writer_package)?;
-
-    // Register writer packages
-    let mut registered_writers = std::collections::HashMap::new();
-    for (key, (handler_type, package)) in writer_packages {
-        let pkg_id = graph.register_package(package)?;
-        registered_writers.insert(key, (handler_type, pkg_id));
-    }
-
-    // Register user packages
-    let mut registered_users = Vec::new();
-    for package in user_packages {
-        let pkg_id = graph.register_package(package)?;
-        registered_users.push(pkg_id);
-    }
-
+    // Register all packages with the graph
     println!("   Building composition graph...");
 
-    // Instantiate shared request component
-    let request_inst = graph.instantiate(request_pkg);
-    let request_export =
-        graph.alias_instance_export(request_inst, &interfaces::core::request(version))?;
+    let transport_pkg_id = graph.register_package(transport_pkg)?;
+    let method_not_found_pkg_id = graph.register_package(method_not_found_pkg)?;
 
-    // Instantiate initialize-writer
-    let init_writer_inst = graph.instantiate(init_writer_pkg);
-    let init_result_export = graph.alias_instance_export(
-        init_writer_inst,
-        &interfaces::core::initialize_result(version),
-    )?;
-
-    // Instantiate all handler writers and alias their result interface exports
-    let mut writer_instances = std::collections::HashMap::new();
-    for (key, (handler_type, pkg_id)) in registered_writers {
-        let inst = graph.instantiate(pkg_id);
-        writer_instances.insert(key, (handler_type, inst));
+    let mut user_pkg_ids = Vec::new();
+    for pkg in user_packages {
+        user_pkg_ids.push(graph.register_package(pkg)?);
     }
 
-    // Instantiate error-writer
-    let error_writer_inst = graph.instantiate(error_writer_pkg);
-    let error_result_export =
-        graph.alias_instance_export(error_writer_inst, &interfaces::core::error_result(version))?;
+    // Get the versioned server-handler interface name
+    let server_handler_interface = interfaces::server_handler(version);
 
-    // Instantiate initialize-handler (terminal handler)
-    let init_handler_inst = graph.instantiate(init_handler_pkg);
-    graph.set_instantiation_argument(
-        init_handler_inst,
-        &interfaces::core::request(version),
-        request_export,
-    )?;
-    graph.set_instantiation_argument(
-        init_handler_inst,
-        &interfaces::core::initialize_result(version),
-        init_result_export,
-    )?;
+    // Start with method-not-found as the terminal handler
+    let prev_inst = graph.instantiate(method_not_found_pkg_id);
 
-    let mut next_handler_export = graph.alias_instance_export(
-        init_handler_inst,
-        &interfaces::core::incoming_handler(version),
-    )?;
+    // Get the server-handler export from method-not-found
+    let mut next_handler_export = graph
+        .alias_instance_export(prev_inst, &server_handler_interface)
+        .context("Failed to get server-handler export from method-not-found")?;
 
-    // Chain user handlers in reverse order (so they get called in forward order)
-    // Chain: http → handler[0] → handler[1] → ... → init
-    for (component, pkg_id) in components.iter().zip(registered_users.iter()).rev() {
-        println!("   Wiring handler: {}", component.name);
+    // Chain user components in reverse order
+    // This ensures when called, the first component processes first
+    for (i, pkg_id) in user_pkg_ids.iter().enumerate().rev() {
+        let inst = graph.instantiate(*pkg_id);
 
-        let user_inst = graph.instantiate(*pkg_id);
+        // Wire this component's server-handler import to the previous component's export
+        graph
+            .set_instantiation_argument(inst, &server_handler_interface, next_handler_export)
+            .context(format!("Failed to wire component-{} import", i))?;
 
-        // Wire shared request
-        graph.set_instantiation_argument(
-            user_inst,
-            &interfaces::core::request(version),
-            request_export,
-        )?;
-
-        // Wire result interface imports (skip for middleware)
-        if component.handler_type != HandlerType::Middleware {
-            // All non-middleware handlers import error-result
-            graph.set_instantiation_argument(
-                user_inst,
-                &interfaces::core::error_result(version),
-                error_result_export,
-            )?;
-
-            // Wire handler-type-specific result interfaces
-            let (_, writer_inst) = writer_instances
-                .get(&(component.handler_type as u8))
-                .ok_or_else(|| anyhow::anyhow!("Writer not found for handler type"))?;
-
-            match component.handler_type {
-                HandlerType::Tools => {
-                    let tools_list = graph.alias_instance_export(
-                        *writer_inst,
-                        &interfaces::tools::list_result(version),
-                    )?;
-                    let tools_call_content = graph.alias_instance_export(
-                        *writer_inst,
-                        &interfaces::tools::call_content(version),
-                    )?;
-                    graph.set_instantiation_argument(
-                        user_inst,
-                        &interfaces::tools::list_result(version),
-                        tools_list,
-                    )?;
-                    graph.set_instantiation_argument(
-                        user_inst,
-                        &interfaces::tools::call_content(version),
-                        tools_call_content,
-                    )?;
-
-                    // tools-call-structured is optional (cargo-component may optimize it away if unused)
-                    if let Ok(tools_call_structured) = graph.alias_instance_export(
-                        *writer_inst,
-                        &interfaces::tools::call_structured(version),
-                    ) {
-                        let _ = graph.set_instantiation_argument(
-                            user_inst,
-                            &interfaces::tools::call_structured(version),
-                            tools_call_structured,
-                        );
-                    }
-                }
-                HandlerType::Resources => {
-                    let resources_list = graph.alias_instance_export(
-                        *writer_inst,
-                        &interfaces::resources::list_result(version),
-                    )?;
-                    let resources_read = graph.alias_instance_export(
-                        *writer_inst,
-                        &interfaces::resources::read_result(version),
-                    )?;
-                    let resource_templates = graph.alias_instance_export(
-                        *writer_inst,
-                        &interfaces::resources::templates_list_result(version),
-                    )?;
-                    graph.set_instantiation_argument(
-                        user_inst,
-                        &interfaces::resources::list_result(version),
-                        resources_list,
-                    )?;
-                    graph.set_instantiation_argument(
-                        user_inst,
-                        &interfaces::resources::read_result(version),
-                        resources_read,
-                    )?;
-                    graph.set_instantiation_argument(
-                        user_inst,
-                        &interfaces::resources::templates_list_result(version),
-                        resource_templates,
-                    )?;
-                }
-                HandlerType::Prompts => {
-                    let prompts_list = graph.alias_instance_export(
-                        *writer_inst,
-                        &interfaces::prompts::list_result(version),
-                    )?;
-                    let prompts_get = graph.alias_instance_export(
-                        *writer_inst,
-                        &interfaces::prompts::get_result(version),
-                    )?;
-                    graph.set_instantiation_argument(
-                        user_inst,
-                        &interfaces::prompts::list_result(version),
-                        prompts_list,
-                    )?;
-                    graph.set_instantiation_argument(
-                        user_inst,
-                        &interfaces::prompts::get_result(version),
-                        prompts_get,
-                    )?;
-                }
-                HandlerType::Completion => {
-                    let completion_result = graph.alias_instance_export(
-                        *writer_inst,
-                        &interfaces::completion::complete_result(version),
-                    )?;
-                    graph.set_instantiation_argument(
-                        user_inst,
-                        &interfaces::completion::complete_result(version),
-                        completion_result,
-                    )?;
-                }
-                HandlerType::Middleware => unreachable!(), // Already filtered out above
-            }
-        }
-
-        // Wire next handler in chain
-        graph.set_instantiation_argument(
-            user_inst,
-            &interfaces::core::incoming_handler(version),
-            next_handler_export,
-        )?;
-
-        // This handler's export becomes the next handler's input
-        next_handler_export =
-            graph.alias_instance_export(user_inst, &interfaces::core::incoming_handler(version))?;
+        // This component's export becomes the next input
+        next_handler_export = graph
+            .alias_instance_export(inst, &server_handler_interface)
+            .context(format!("Failed to get server-handler export from component-{}", i))?;
     }
 
-    // Instantiate transport at the front of the chain
-    let transport_inst = graph.instantiate(transport_pkg);
+    // Wire transport at the front of the chain
+    let transport_inst = graph.instantiate(transport_pkg_id);
     graph.set_instantiation_argument(
         transport_inst,
-        &interfaces::core::request(version),
-        request_export,
-    )?;
-    graph.set_instantiation_argument(
-        transport_inst,
-        &interfaces::core::incoming_handler(version),
+        &server_handler_interface,
         next_handler_export,
     )?;
 
-    // Export the appropriate transport interface based on transport type
-    match transport {
+    // Export the appropriate WASI interface based on transport type
+    match transport_type {
         "http" => {
             let http_handler =
                 graph.alias_instance_export(transport_inst, interfaces::WASI_HTTP_HANDLER)?;
@@ -830,11 +499,65 @@ async fn build_composition(
             let cli_run = graph.alias_instance_export(transport_inst, interfaces::WASI_CLI_RUN)?;
             graph.export(cli_run, interfaces::WASI_CLI_RUN)?;
         }
-        _ => anyhow::bail!("Unsupported transport type: {}", transport),
+        _ => anyhow::bail!("Unsupported transport type: {}", transport_type),
     }
 
+    // Encode the composition graph into a WebAssembly component
     println!("   Encoding component...");
-    let bytes = graph.encode(EncodeOptions::default())?;
+    let bytes = graph
+        .encode(EncodeOptions::default())
+        .context("Failed to encode composition")?;
 
     Ok(bytes)
+}
+
+/// Load a WebAssembly component as a package in the composition graph
+///
+/// This reads the component file and registers it with wac-graph's type system.
+fn load_package(
+    graph: &mut CompositionGraph,
+    name: &str,
+    path: &Path,
+) -> Result<wac_graph::types::Package> {
+    wac_graph::types::Package::from_file(
+        &format!("wasmcp:{}", name),
+        None,
+        path,
+        graph.types_mut(),
+    )
+    .context(format!(
+        "Failed to load component '{}' from {}",
+        name,
+        path.display()
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_interface_names() {
+        assert_eq!(
+            interfaces::server_handler("0.4.0"),
+            "wasmcp:mcp/server-handler@0.4.0"
+        );
+        assert_eq!(
+            interfaces::WASI_HTTP_HANDLER,
+            "wasi:http/incoming-handler@0.2.3"
+        );
+        assert_eq!(interfaces::WASI_CLI_RUN, "wasi:cli/run@0.2.3");
+    }
+
+    #[test]
+    fn test_package_naming() {
+        assert_eq!(
+            interfaces::package("http-transport", "0.3.0"),
+            "wasmcp:http-transport@0.3.0"
+        );
+        assert_eq!(
+            interfaces::package("method-not-found", "0.3.0"),
+            "wasmcp:method-not-found@0.3.0"
+        );
+    }
 }

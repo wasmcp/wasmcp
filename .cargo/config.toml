@@ -1,0 +1,23 @@
+[build]
+target = "wasm32-wasip2"
+
+[target.wasm32-wasip2]
+runner = [
+    "wasmtime",
+    "-C",
+    "cache=no",
+    "-W",
+    "component-model",
+    "-S",
+    "preview2",
+    "-S",
+    "cli",
+    "-S",
+    "config",
+]
+
+# To run tests, you must override the wasm32-wasip2 target.
+# Use: cargo test -p protocol --target <your-host-triple>
+#
+# Or run from the protocol crate directory where it will use host default:
+# cd crates/protocol && cargo test

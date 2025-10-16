@@ -14,7 +14,6 @@ on:
 
 env:
   RUST_VERSION: "1.89"
-  CARGO_COMPONENT_VERSION: "0.21.1"
   REGISTRY: ghcr.io
   REGISTRY_NAMESPACE: wasmcp
 
@@ -103,40 +102,13 @@ jobs:
 
           echo "✅ WIT package wasmcp:mcp@$WIT_VERSION exists"
 
-  build-and-publish-component:
-    name: Build ${{ matrix.component.name }}
+  build-and-publish-components:
+    name: Build and Publish All Components
     runs-on: ubuntu-latest
     needs: verify-wit-package
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        component:
-          - name: request
-            package: request
-            binary: request.wasm
-          - name: error-writer
-            package: error-writer
-            binary: error_writer.wasm
-          - name: initialize-writer
-            package: initialize-writer
-            binary: initialize_writer.wasm
-          - name: tools-writer
-            package: tools-writer
-            binary: tools_writer.wasm
-          - name: resources-writer
-            package: resources-writer
-            binary: resources_writer.wasm
-          - name: http-transport
-            package: http-transport
-            binary: http_transport.wasm
-          - name: stdio-transport
-            package: stdio-transport
-            binary: stdio_transport.wasm
-          - name: initialize-handler
-            package: initialize-handler
-            binary: initialize_handler.wasm
     steps:
       - uses: actions/checkout@v4
 
@@ -144,13 +116,13 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           targets: wasm32-wasip2
-          cache-key: release-${{ matrix.component.name }}
-          workspaces: crates/${{ matrix.component.name }}
-
-      - name: Install cargo-component
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-component@${{ env.CARGO_COMPONENT_VERSION }}
+          cache-key: release-components
+          workspaces: |
+            crates/http-client-notifications
+            crates/http-transport
+            crates/method-not-found
+            crates/stdio-transport
+            crates/tools-middleware
 
       - name: Install wkg
         run: |
@@ -170,28 +142,61 @@ jobs:
           password = "${{ secrets.GHCR_TOKEN }}"
           EOF
 
-      - name: Build component
+      - name: Fetch WIT dependencies
         run: |
-          cd crates/${{ matrix.component.name }}
-          cargo component build --release
-          echo "✅ Built ${{ matrix.component.name }}"
+          for crate in crates/*; do
+            if [ -d "$crate/wit" ]; then
+              echo "Fetching WIT deps for $(basename $crate)..."
+              cd "$crate" && wkg wit fetch && cd ../..
+            fi
+          done
 
-      - name: Publish component
+      - name: Build all components
         run: |
-          wkg publish --package 'wasmcp:${{ matrix.component.package }}@${{ inputs.version }}' \
-            target/wasm32-wasip1/release/${{ matrix.component.binary }}
-          echo "✅ Published wasmcp:${{ matrix.component.package }}@${{ inputs.version }}"
+          cargo build --release
+          echo "✅ Built all framework components"
+          ls -lh target/wasm32-wasip2/release/*.wasm
 
-      - name: Upload component artifact
+      - name: Publish http-client-notifications
+        run: |
+          wkg publish --package 'wasmcp:http-client-notifications@${{ inputs.version }}' \
+            target/wasm32-wasip2/release/http_client_notifications.wasm
+          echo "✅ Published wasmcp:http-client-notifications@${{ inputs.version }}"
+
+      - name: Publish http-transport
+        run: |
+          wkg publish --package 'wasmcp:http-transport@${{ inputs.version }}' \
+            target/wasm32-wasip2/release/http_transport.wasm
+          echo "✅ Published wasmcp:http-transport@${{ inputs.version }}"
+
+      - name: Publish method-not-found
+        run: |
+          wkg publish --package 'wasmcp:method-not-found@${{ inputs.version }}' \
+            target/wasm32-wasip2/release/method_not_found.wasm
+          echo "✅ Published wasmcp:method-not-found@${{ inputs.version }}"
+
+      - name: Publish stdio-transport
+        run: |
+          wkg publish --package 'wasmcp:stdio-transport@${{ inputs.version }}' \
+            target/wasm32-wasip2/release/stdio_transport.wasm
+          echo "✅ Published wasmcp:stdio-transport@${{ inputs.version }}"
+
+      - name: Publish tools-middleware
+        run: |
+          wkg publish --package 'wasmcp:tools-middleware@${{ inputs.version }}' \
+            target/wasm32-wasip2/release/tools_middleware.wasm
+          echo "✅ Published wasmcp:tools-middleware@${{ inputs.version }}"
+
+      - name: Upload all component artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.component.name }}-${{ inputs.version }}
-          path: target/wasm32-wasip1/release/${{ matrix.component.binary }}
+          name: wasmcp-components-${{ inputs.version }}
+          path: target/wasm32-wasip2/release/*.wasm
 
   generate-sbom-and-checksums:
     name: Generate SBOM and Checksums
     runs-on: ubuntu-latest
-    needs: build-and-publish-component
+    needs: build-and-publish-components
     steps:
       - uses: actions/checkout@v4
 
@@ -206,17 +211,16 @@ jobs:
         with:
           tool: cargo-cyclonedx
 
-      - name: Download all component artifacts
+      - name: Download component artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-          pattern: '*-${{ inputs.version }}'
+          name: wasmcp-components-${{ inputs.version }}
+          path: components
 
-      - name: Organize components for checksums
+      - name: Verify components
         run: |
-          mkdir -p components
-          find artifacts -name "*.wasm" -exec cp {} components/ \;
-          ls -la components/
+          echo "Downloaded components:"
+          ls -lh components/
 
       - name: Generate component SBOMs
         run: |
@@ -249,12 +253,6 @@ jobs:
           sha256sum *.wasm > checksums-components.txt
           mv checksums-components.txt ../
           echo "✅ Generated component checksums"
-
-      - name: Upload all components
-        uses: actions/upload-artifact@v4
-        with:
-          name: wasmcp-components-${{ inputs.version }}
-          path: components/*.wasm
 
       - name: Upload SBOMs and checksums
         uses: actions/upload-artifact@v4
@@ -297,16 +295,13 @@ jobs:
 
             ## Framework Components Released
 
-            This release includes 8 framework components published to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}`:
+            This release includes 5 framework components published to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}`:
 
-            - `wasmcp:request@${{ inputs.version }}`
-            - `wasmcp:error-writer@${{ inputs.version }}`
-            - `wasmcp:initialize-writer@${{ inputs.version }}`
-            - `wasmcp:tools-writer@${{ inputs.version }}`
-            - `wasmcp:resources-writer@${{ inputs.version }}`
+            - `wasmcp:http-client-notifications@${{ inputs.version }}`
             - `wasmcp:http-transport@${{ inputs.version }}`
+            - `wasmcp:method-not-found@${{ inputs.version }}`
             - `wasmcp:stdio-transport@${{ inputs.version }}`
-            - `wasmcp:initialize-handler@${{ inputs.version }}`
+            - `wasmcp:tools-middleware@${{ inputs.version }}`
 
             ## 🔒 Supply Chain Security
 
@@ -315,14 +310,11 @@ jobs:
             - **SHA256 checksums** for all component artifacts
 
             Each component has its own SBOM:
-            - `error-writer-sbom.{json,xml}`
+            - `http-client-notifications-sbom.{json,xml}`
             - `http-transport-sbom.{json,xml}`
-            - `initialize-handler-sbom.{json,xml}`
-            - `initialize-writer-sbom.{json,xml}`
-            - `request-sbom.{json,xml}`
-            - `resources-writer-sbom.{json,xml}`
+            - `method-not-found-sbom.{json,xml}`
             - `stdio-transport-sbom.{json,xml}`
-            - `tools-writer-sbom.{json,xml}`
+            - `tools-middleware-sbom.{json,xml}`
 
             ### Verifying Component Downloads
 
@@ -343,13 +335,13 @@ jobs:
   all-jobs-complete:
     name: All Jobs Complete
     runs-on: ubuntu-latest
-    needs: [verify-wit-package, build-and-publish-component, generate-sbom-and-checksums, create-release]
+    needs: [verify-wit-package, build-and-publish-components, generate-sbom-and-checksums, create-release]
     if: always()
     steps:
       - name: Check results
         run: |
           if [ "${{ needs.verify-wit-package.result }}" != "success" ] || \
-             [ "${{ needs.build-and-publish-component.result }}" != "success" ] || \
+             [ "${{ needs.build-and-publish-components.result }}" != "success" ] || \
              [ "${{ needs.generate-sbom-and-checksums.result }}" != "success" ] || \
              [ "${{ needs.create-release.result }}" != "success" ]; then
             echo "One or more jobs failed"

@@ -1,8 +1,0 @@
-# Go
-/gen/
-
-# Build artifacts
-/target/
-
-# WIT dependencies
-/wit/deps/
