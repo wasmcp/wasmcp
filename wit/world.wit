@@ -1,14 +1,14 @@
-/// wasmcp: WebAssembly-based Model Context Protocol implementation
+/// wasmcp: A WebAssembly Component Development Kit for the Model Context Protocol
 ///
 /// This package provides composable MCP server and client components using the
 /// WebAssembly Component Model. Components implement specific interfaces (handlers
 /// or capabilities) and are composed into linear pipelines at build time.
 ///
 /// Architecture:
-/// - **Handlers**: Full protocol adapters (server-handler, client-handler)
-/// - **Capabilities**: Focused business logic (tools-capability, prompts-capability)
-/// - **Middleware**: Automatic wrapping of capabilities into handlers
-/// - **Transports**: Entry points that route to handlers (HTTP, stdio)
+/// - Handlers: Full protocol adapters (server-handler, client-handler)
+/// - Capabilities: Focused business logic (tools-capability, prompts-capability)
+/// - Middleware: Automatic wrapping of capabilities into handlers
+/// - Transports: Entry points that route to handlers (HTTP, stdio)
 ///
 /// <https://modelcontextprotocol.io>
 package wasmcp:mcp@0.4.0;

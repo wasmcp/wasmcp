@@ -7,5 +7,5 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-wit-bindgen = "0.34"
+wit-bindgen = "0.46"
 serde_json = "1.0"
