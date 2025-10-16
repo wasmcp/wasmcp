@@ -1,4 +1,9 @@
-use crate::{pkg, HandlerType, Language};
+//! Project scaffolding for MCP server handler components
+//!
+//! This module provides functionality to generate new handler component projects
+//! from embedded templates. Templates are included at compile-time using include_dir.
+
+use crate::{pkg, Language};
 use anyhow::{Context, Result};
 use include_dir::{include_dir, Dir};
 use liquid::ParserBuilder;
@@ -8,10 +13,20 @@ use std::path::Path;
 // Embed templates at compile time
 static TEMPLATES: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/templates");
 
+/// Create a new MCP handler component project
+///
+/// This scaffolds a complete project with:
+/// - WIT interface definitions
+/// - Language-specific handler implementation template
+/// - Build configuration (Cargo.toml or equivalent)
+/// - Makefile for building
+/// - README with usage instructions
+///
+/// The generated handler uses the universal `server-handler` interface,
+/// making it composable with any other handler components.
 pub async fn create_project(
     output_dir: &Path,
     name: &str,
-    handler_type: HandlerType,
     language: Language,
     wasmcp_version: &str,
 ) -> Result<()> {
@@ -20,71 +35,37 @@ pub async fn create_project(
 
     // Create template context
     let package_name = name.replace('-', "_");
-    let world_name = if handler_type == HandlerType::Middleware {
-        "middleware".to_string()
-    } else {
-        format!("{}-handler", handler_type)
-    };
-    let interface_name = handler_type.interface_name();
-    let writer_interface = format!("write-{}-result", interface_name);
-    let writer_component = format!("{}-writer", interface_name);
 
-    let mut context = liquid::object!({
+    let context = liquid::object!({
         "project_name": name,
         "package_name": package_name,
-        "handler_type": handler_type.to_string(),
-        "handler_type_capitalized": capitalize_first(&handler_type.to_string()),
-        "world_name": world_name,
-        "writer_interface": writer_interface,
-        "writer_component": writer_component,
         "wasmcp_version": wasmcp_version,
         "language": language.to_string(),
     });
 
-    // Add language-specific context
-    match language {
-        Language::Go => {
-            context.insert(
-                "needs_wasi_cli".into(),
-                liquid::model::Value::Scalar(true.into()),
-            );
-            context.insert(
-                "generated_version_path".into(),
-                liquid::model::Value::Scalar("v0.3.0".into()),
-            );
-        }
-        _ => {
-            context.insert(
-                "needs_wasi_cli".into(),
-                liquid::model::Value::Scalar(false.into()),
-            );
-        }
-    }
-
     // Create liquid parser
     let parser = ParserBuilder::with_stdlib().build()?;
 
-    // Get template directory path
-    let template_path = get_template_path(language, handler_type);
-
-    // Get the embedded directory
+    // Get template directory for the language
+    let template_path = language.to_string();
     let template_dir = TEMPLATES
         .get_dir(&template_path)
-        .ok_or_else(|| anyhow::anyhow!("Template not found: {}", template_path))?;
+        .ok_or_else(|| anyhow::anyhow!("Template not found for language: {}", language))?;
 
     // Render the template directory
     render_embedded_dir(template_dir, output_dir, &parser, &context)?;
 
-    // Download WIT dependencies for all languages
+    // Download WIT dependencies
+    println!("📦 Fetching WIT dependencies...");
     pkg::fetch_wit_dependencies(output_dir, false).await?;
 
     Ok(())
 }
 
-fn get_template_path(language: Language, handler_type: HandlerType) -> String {
-    format!("{}/{}", language, handler_type)
-}
-
+/// Recursively render an embedded directory to the filesystem
+///
+/// This processes all files and subdirectories, applying liquid template
+/// rendering to each file using the provided context.
 fn render_embedded_dir(
     dir: &Dir,
     output_base: &Path,
@@ -97,16 +78,19 @@ fn render_embedded_dir(
             .path()
             .file_name()
             .ok_or_else(|| anyhow::anyhow!("Invalid file name"))?;
-        let content = file
-            .contents_utf8()
-            .ok_or_else(|| anyhow::anyhow!("File is not valid UTF-8: {:?}", file.path()))?;
+
+        let content = file.contents_utf8().ok_or_else(|| {
+            anyhow::anyhow!("File is not valid UTF-8: {}", file.path().display())
+        })?;
 
         // Render template
-        let rendered = parser
+        let template = parser
             .parse(content)
-            .context(format!("Failed to parse template: {:?}", file.path()))?
+            .context(format!("Failed to parse template: {}", file.path().display()))?;
+
+        let rendered = template
             .render(context)
-            .context(format!("Failed to render template: {:?}", file.path()))?;
+            .context(format!("Failed to render template: {}", file.path().display()))?;
 
         // Write output file
         let output_path = output_base.join(file_name);
@@ -114,26 +98,23 @@ fn render_embedded_dir(
             .context(format!("Failed to write file: {}", output_path.display()))?;
     }
 
-    // Process all subdirectories
+    // Process all subdirectories recursively
     for subdir in dir.dirs() {
         let subdir_name = subdir
             .path()
             .file_name()
             .ok_or_else(|| anyhow::anyhow!("Invalid directory name"))?;
+
         let output_subdir = output_base.join(subdir_name);
-        fs::create_dir_all(&output_subdir)?;
+        fs::create_dir_all(&output_subdir).context(format!(
+            "Failed to create directory: {}",
+            output_subdir.display()
+        ))?;
+
         render_embedded_dir(subdir, &output_subdir, parser, context)?;
     }
 
     Ok(())
-}
-
-fn capitalize_first(s: &str) -> String {
-    let mut chars = s.chars();
-    match chars.next() {
-        None => String::new(),
-        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-    }
 }
 
 #[cfg(test)]
@@ -141,9 +122,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_capitalize_first() {
-        assert_eq!(capitalize_first("tools"), "Tools");
-        assert_eq!(capitalize_first("resources"), "Resources");
-        assert_eq!(capitalize_first(""), "");
+    fn test_package_name_conversion() {
+        let name = "my-server";
+        let package_name = name.replace('-', "_");
+        assert_eq!(package_name, "my_server");
+    }
+
+    #[test]
+    fn test_templates_embedded() {
+        // Verify that templates are embedded
+        assert!(TEMPLATES.get_dir("rust").is_some() || TEMPLATES.get_dir("python").is_some());
     }
 }

@@ -1,0 +1,86 @@
+/// MCP capability interfaces for focused business logic
+///
+/// Capability interfaces provide a clean separation between MCP protocol handling
+/// and domain-specific business logic. Components implementing these interfaces focus
+/// solely on their functionality (tools, prompts, resources) without dealing with:
+/// - JSON-RPC protocol details
+/// - Request routing and delegation
+/// - Response merging across multiple providers
+/// - Error code mapping
+///
+/// Capability components are automatically wrapped by middleware at composition time,
+/// which handles all protocol concerns and integrates them into the server-handler pipeline.
+///
+/// Architecture:
+///   Client → Transport → [Middleware(Capability₁)] → [Middleware(Capability₂)] → ... → Response
+///
+/// <https://spec.modelcontextprotocol.io>
+
+/// Tools capability interface
+///
+/// Components implementing this interface provide MCP tools without dealing with
+/// protocol details. The tools-middleware component automatically:
+/// - Wraps this capability as a server-handler
+/// - Merges tools from multiple capabilities
+/// - Handles unknown tool calls by delegating downstream
+/// - Maps errors to appropriate MCP error codes
+///
+/// This interface focuses on two concerns:
+/// 1. Listing the tools this component provides
+/// 2. Executing tool calls (returning None for unrecognized tools)
+///
+/// <https://spec.modelcontextprotocol.io/specification/server/tools>
+@since(version = 0.4.0)
+interface tools-capability {
+    use protocol.{
+        client-context,
+        cursor,
+        list-tools-request,
+        list-tools-result,
+        call-tool-request,
+        call-tool-result,
+    };
+
+    /// List all tools provided by this capability
+    ///
+    /// This function returns the complete catalog of tools this component can execute.
+    /// The middleware will automatically merge these tools with tools from other
+    /// capability components in the pipeline.
+    ///
+    /// The request may include pagination parameters (cursor) which should be honored
+    /// if the component has a large number of tools.
+    ///
+    /// <https://spec.modelcontextprotocol.io/specification/server/tools#tools-list>
+    @since(version = 0.4.0)
+    list-tools: func(
+        /// The list request, potentially including pagination cursor
+        request: list-tools-request,
+        /// Client context for authorization/personalization
+        client: client-context,
+    ) -> list-tools-result;
+
+    /// Execute a tool call
+    ///
+    /// This function is called when a client invokes a tool. The component should:
+    /// 1. Check if the tool name matches one of its tools
+    /// 2. If yes, execute the tool and return Some(result)
+    /// 3. If no, return None to indicate this capability doesn't handle this tool
+    ///
+    /// Returning None allows the middleware to delegate the call to the next
+    /// capability in the pipeline. This enables automatic composition of multiple
+    /// tool providers without manual routing logic.
+    ///
+    /// The middleware handles all error cases:
+    /// - Tool not found (when all capabilities return None)
+    /// - Invalid arguments (component returns error in result)
+    /// - Execution failures (component returns error in result)
+    ///
+    /// <https://spec.modelcontextprotocol.io/specification/server/tools#tools-call>
+    @since(version = 0.4.0)
+    call-tool: func(
+        /// The tool invocation request with name and arguments
+        request: call-tool-request,
+        /// Client context for authorization/personalization
+        client: client-context,
+    ) -> option<call-tool-result>;
+}

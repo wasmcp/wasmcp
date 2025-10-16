@@ -81,3 +81,6 @@ Thumbs.db
 .yarn/install-state.gz
 .pnp.*
 tmp/
+
+# WIT deps
+**/wit/deps/**

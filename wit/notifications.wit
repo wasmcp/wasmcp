@@ -1,0 +1,177 @@
+use wasi:io/streams@0.2.3;
+
+/// Bidirectional notification interfaces
+///
+/// These interfaces provide convenience functions for sending MCP notifications
+/// over output streams. Notifications are one-way messages that don't expect responses.
+///
+/// There are two categories:
+/// - **Bidirectional notifications**: Shared by client and server (progress)
+/// - **Client notifications**: Server → Client only (logs, list changes, requests)
+///
+/// <https://spec.modelcontextprotocol.io/specification/basic/notifications>
+
+/// Bidirectional MCP notifications
+///
+/// Notifications that can be sent by both clients and servers. Currently this
+/// includes only progress notifications, which provide real-time updates on
+/// long-running operations.
+///
+/// <https://spec.modelcontextprotocol.io/specification/basic/utilities/progress>
+@since(version = 0.4.0)
+interface notifications {
+    use streams.{output-stream, stream-error};
+    use protocol.{progress-token, log-level};
+
+    /// Errors that can occur when sending notifications
+    @since(version = 0.4.0)
+    variant notification-error {
+        /// An I/O error occurred writing to the output stream
+        io(stream-error),
+        /// Failed to serialize the notification to JSON-RPC format
+        serialization(string),
+        /// An unexpected error occurred
+        unexpected(string),
+    }
+
+    /// Send a bidirectional `notifications/progress` notification
+    ///
+    /// Progress notifications inform the recipient about the status of long-running
+    /// operations. They include:
+    /// - token: Identifies which operation this progress is for
+    /// - progress: Current progress value
+    /// - total: Optional total value (for percentage calculation)
+    /// - message: Optional human-readable status message
+    ///
+    /// Progress notifications are advisory - recipients may ignore them without
+    /// affecting operation correctness.
+    ///
+    /// <https://spec.modelcontextprotocol.io/specification/basic/utilities/progress>
+    @since(version = 0.4.0)
+    progress: func(
+        /// Output stream to send the notification
+        output: borrow<output-stream>,
+        /// Token identifying the operation (from original request)
+        token: progress-token,
+        /// Current progress value
+        progress: f64,
+        /// Optional total value (for percentage: progress/total * 100)
+        total: option<f64>,
+        /// Optional human-readable status message
+        message: option<string>,
+    ) -> result<_, notification-error>;
+}
+
+/// Client-directed MCP notifications and requests
+///
+/// These interfaces are used by servers to send notifications and requests to clients.
+/// Unlike bidirectional notifications, these are server → client only.
+///
+/// Categories:
+/// - **Logging**: Send log messages to client's logging system
+/// - **List changes**: Notify when tools/prompts/resources are added/removed
+/// - **Subscriptions**: Push updates to subscribed resources/prompts
+/// - **Elicitation**: Request information from the client (roots, sampling)
+///
+/// <https://spec.modelcontextprotocol.io/specification/server/utilities/logging>
+@since(version = 0.4.0)
+interface client-notifications {
+    use streams.{output-stream};
+    use protocol.{
+        server-request,
+        progress-token,
+        log-level,
+        server-lists,
+        server-subscriptions,
+    };
+    use notifications.{notification-error};
+
+    /// Log a message to the client
+    ///
+    /// Servers can send log messages to clients for debugging, monitoring, or
+    /// informational purposes. The client determines how to display or store
+    /// these logs.
+    ///
+    /// Log levels:
+    /// - debug: Detailed diagnostic information
+    /// - info: General informational messages
+    /// - notice: Normal but significant events
+    /// - warning: Warning conditions
+    /// - error: Error conditions
+    /// - critical: Critical conditions
+    /// - alert: Action must be taken immediately
+    /// - emergency: System is unusable
+    ///
+    /// <https://spec.modelcontextprotocol.io/specification/server/utilities/logging>
+    @since(version = 0.4.0)
+    log: func(
+        /// Output stream to send the log message
+        output: borrow<output-stream>,
+        /// The log message content
+        message: string,
+        /// Severity level of the log message
+        level: log-level,
+        /// Optional logger name (for categorization)
+        logger: option<string>,
+    ) -> result<_, notification-error>;
+
+    /// Send a `notifications/*/list_changed` notification to the client
+    ///
+    /// When the server's list of tools, prompts, or resources changes (additions,
+    /// removals, or modifications), this notification informs the client to re-fetch
+    /// the affected list(s).
+    ///
+    /// The server-lists parameter indicates which lists changed. Clients should
+    /// call the corresponding list endpoints (tools/list, prompts/list, etc.) to
+    /// get the updated lists.
+    ///
+    /// <https://spec.modelcontextprotocol.io/specification/server/utilities/list_changed>
+    @since(version = 0.4.0)
+    list-changed: func(
+        /// Output stream to send the notification
+        output: borrow<output-stream>,
+        /// Indicates which lists changed (tools, prompts, resources)
+        changes: server-lists,
+    ) -> result<_, notification-error>;
+
+    /// Send a `notifications/*/updated` notification to the client
+    ///
+    /// For resources and prompts that support subscriptions, this notification
+    /// pushes updates to clients that have subscribed. The update includes the
+    /// new content so clients don't need to re-fetch.
+    ///
+    /// Only clients that explicitly subscribed to these resources/prompts will
+    /// receive the updates.
+    ///
+    /// <https://spec.modelcontextprotocol.io/specification/server/resources/updated>
+    @since(version = 0.4.0)
+    updated: func(
+        /// Output stream to send the notification
+        output: borrow<output-stream>,
+        /// The updated resource/prompt content
+        updates: server-subscriptions,
+    ) -> result<_, notification-error>;
+
+    /// Send a request to the client on the current SSE response stream
+    ///
+    /// Servers can request information from clients using the elicitation mechanism.
+    /// The request is sent on the HTTP SSE stream, but the client's JSON-RPC response
+    /// arrives as a new HTTP POST request.
+    ///
+    /// To await responses:
+    /// 1. Send the request using this function
+    /// 2. Use sessions interface to track pending requests
+    /// 3. Match incoming HTTP requests to pending elicitations
+    ///
+    /// Note: Client MCP/JSON-RPC responses arrive as new HTTP requests.
+    /// Use sessions to await client responses within a handler instance.
+    ///
+    /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
+    @since(version = 0.4.0)
+    request: func(
+        /// Output stream (SSE stream) to send the request
+        output: borrow<output-stream>,
+        /// The request to send to the client
+        request: server-request,
+    ) -> result<_, notification-error>;
+}

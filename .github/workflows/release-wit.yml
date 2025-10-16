@@ -103,9 +103,8 @@ jobs:
           echo "**Registry:** \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/mcp:${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. Update component lockfile: \`cargo component update\`" >> $GITHUB_STEP_SUMMARY
-          echo "2. Commit lockfile: \`git commit -am 'chore: update lockfile for WIT v${{ inputs.version }}'\`" >> $GITHUB_STEP_SUMMARY
-          echo "3. Run component/CLI release: Go to Actions → Release → Run workflow" >> $GITHUB_STEP_SUMMARY
+          echo "1. Components will automatically fetch the new WIT version during build" >> $GITHUB_STEP_SUMMARY
+          echo "2. Run component release: Go to Actions → Release Components → Run workflow" >> $GITHUB_STEP_SUMMARY
 
   create-release:
     name: Create GitHub Release
@@ -153,9 +152,8 @@ jobs:
 
             ## Next Steps
 
-            1. Update component lockfile: `cargo component update`
-            2. Commit lockfile: `git commit -am 'chore: update lockfile for WIT v${{ inputs.version }}'`
-            3. Run component/CLI release: Go to Actions → Release → Run workflow
+            1. Components will automatically fetch the new WIT version during build
+            2. Run component release: Go to Actions → Release Components → Run workflow
 
             **Full Changelog**: https://github.com/${{ github.repository }}/compare/wit-v${{ inputs.version }}
 
@@ -176,6 +174,6 @@ jobs:
           echo "✅ WIT package release v${{ inputs.version }} completed successfully!"
           echo ""
           echo "Next steps:"
-          echo "  1. Update component lockfile: cargo component update"
+          echo "  1. Components will automatically fetch the new WIT version during build"
           echo "  2. Release components with this WIT version"
           echo "  3. Update release notes at https://github.com/${{ github.repository }}/releases/tag/wit-v${{ inputs.version }}"

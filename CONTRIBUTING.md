@@ -9,11 +9,11 @@ Thanks for your interest in contributing!
 - **Propose design changes** via the RFC process.
 
 ## Development Setup
-1. Clone the repo.  
-2. Install Rust (latest stable) and `cargo-component`.  
-3. Install [wac](https://github.com/bytecodealliance/wac) and [wkg](https://github.com/bytecodealliance/wkg).  
-4. Run `cargo component build` to build components.  
-5. Run tests with `cargo test`.
+1. Clone the repo
+2. Install Rust (latest stable with `wasm32-wasip2` target)
+3. Install [Wasmtime](https://wasmtime.dev/)
+4. Build the CLI: `cd cli && cargo build --release`
+5. Run tests: `cargo test`
 
 ## Pull Requests
 - Small fixes: open a PR directly.  

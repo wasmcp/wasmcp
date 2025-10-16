@@ -1,0 +1,1183 @@
+from typing import TypeVar, Generic, Union, Optional, Protocol, Tuple, List, Any, Self
+from types import TracebackType
+from enum import Flag, Enum, auto
+from dataclasses import dataclass
+from abc import abstractmethod
+import weakref
+
+from ..types import Result, Ok, Err, Some
+from ..imports import streams
+
+
+@dataclass
+class TextData_Text:
+    value: str
+
+
+@dataclass
+class TextData_TextStream:
+    value: streams.InputStream
+
+
+TextData = Union[TextData_Text, TextData_TextStream]
+
+
+
+@dataclass
+class BlobData_Blob:
+    value: bytes
+
+
+@dataclass
+class BlobData_BlobStream:
+    value: streams.InputStream
+
+
+BlobData = Union[BlobData_Blob, BlobData_BlobStream]
+
+
+@dataclass
+class EmbeddedResourceOptions:
+    """
+    Options for embedded resources.
+    """
+    mime_type: Optional[str]
+    meta: Optional[str]
+
+@dataclass
+class TextResourceContents:
+    """
+    Text resource contents.
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#textresourcecontents>
+    """
+    uri: str
+    text: TextData
+    options: Optional[EmbeddedResourceOptions]
+
+@dataclass
+class BlobResourceContents:
+    """
+    Binary resource contents.
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#blobresourcecontents>
+    """
+    uri: str
+    blob: BlobData
+    options: Optional[EmbeddedResourceOptions]
+
+
+@dataclass
+class ResourceContents_Text:
+    value: TextResourceContents
+
+
+@dataclass
+class ResourceContents_Blob:
+    value: BlobResourceContents
+
+
+ResourceContents = Union[ResourceContents_Text, ResourceContents_Blob]
+
+
+class LogLevel(Enum):
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/logging#log-levels
+    """
+    DEBUG = 0
+    INFO = 1
+    NOTICE = 2
+    WARNING = 3
+    ERROR = 4
+    CRITICAL = 5
+    ALERT = 6
+    EMERGENCY = 7
+
+
+@dataclass
+class ProgressToken_String:
+    value: str
+
+
+@dataclass
+class ProgressToken_Integer:
+    value: int
+
+
+ProgressToken = Union[ProgressToken_String, ProgressToken_Integer]
+"""
+Progress tokens MUST be a string or integer value.
+
+<https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/progress#progress-flow>
+"""
+
+
+
+@dataclass
+class RequestId_Number:
+    value: int
+
+
+@dataclass
+class RequestId_String:
+    value: str
+
+
+RequestId = Union[RequestId_Number, RequestId_String]
+"""
+JSON-RPC request ID (string or number).
+<https://modelcontextprotocol.io/specification/2025-06-18/schema#requestid>
+"""
+
+
+class ProtocolVersion(Enum):
+    """
+    MCP protocol versions.
+    """
+    V20250618 = 0
+    V20250326 = 1
+    V20241105 = 2
+
+class ServerLists(Flag):
+    TOOLS = auto()
+    RESOURCES = auto()
+    PROMPTS = auto()
+
+class ServerSubscriptions(Flag):
+    RESOURCES = auto()
+
+@dataclass
+class ServerCapabilities:
+    completions: Optional[str]
+    experimental: Optional[List[Tuple[str, str]]]
+    logging: Optional[str]
+    list_changed: Optional[ServerLists]
+    subscriptions: Optional[ServerSubscriptions]
+
+class ClientLists(Flag):
+    ROOTS = auto()
+
+@dataclass
+class ClientCapabilities:
+    elicitation: Optional[str]
+    experimental: Optional[List[Tuple[str, str]]]
+    list_changed: Optional[ClientLists]
+    sampling: Optional[str]
+
+@dataclass
+class Implementation:
+    """
+    MCP implementation metadata.
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#implementation>
+    """
+    name: str
+    title: Optional[str]
+    version: str
+
+class Role(Enum):
+    """
+    Role in a conversation.
+    
+    Maps to the Role type in the MCP spec:
+    "The sender or recipient of messages and data in a conversation."
+    Valid values: "user" | "assistant"
+    
+    See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#role>
+    """
+    USER = 0
+    ASSISTANT = 1
+
+@dataclass
+class Annotations:
+    """
+    Optional annotations for the client.
+    
+    The client can use annotations to inform how objects are used or displayed.
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#annotations>
+    """
+    audience: Optional[List[Role]]
+    last_modified: Optional[str]
+    priority: Optional[float]
+
+@dataclass
+class ContentOptions:
+    """
+    Options for content blocks.
+    """
+    annotations: Optional[Annotations]
+    meta: Optional[str]
+
+@dataclass
+class ResourceLinkOptions:
+    """
+    Options for resource link content.
+    """
+    title: Optional[str]
+    description: Optional[str]
+    size: Optional[int]
+    mime_type: Optional[str]
+    annotations: Optional[Annotations]
+    meta: Optional[str]
+
+@dataclass
+class ResourceLinkContent:
+    """
+    A resource that the server is capable of reading, included in a prompt or tool call result.
+    
+    Note: resource links returned by tools are not guaranteed to appear in the results of resources/list requests.
+    
+    See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcelink>
+    """
+    uri: str
+    name: str
+    options: Optional[ResourceLinkOptions]
+
+@dataclass
+class Blob:
+    """
+    An image or audio provided to or from an LLM.
+    
+    See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#imagecontent>
+    """
+    data: BlobData
+    mime_type: str
+    options: Optional[ContentOptions]
+
+@dataclass
+class TextContent:
+    """
+    Text provided to or from an LLM.
+    
+    See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#textcontent>
+    """
+    text: TextData
+    options: Optional[ContentOptions]
+
+@dataclass
+class EmbeddedResourceContent:
+    """
+    Embedded resource with content options.
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#embeddedresource>
+    """
+    resource: ResourceContents
+    options: Optional[ContentOptions]
+
+
+@dataclass
+class ContentBlock_Text:
+    value: TextContent
+
+
+@dataclass
+class ContentBlock_Image:
+    value: Blob
+
+
+@dataclass
+class ContentBlock_Audio:
+    value: Blob
+
+
+@dataclass
+class ContentBlock_ResourceLink:
+    value: ResourceLinkContent
+
+
+@dataclass
+class ContentBlock_EmbeddedResource:
+    value: EmbeddedResourceContent
+
+
+ContentBlock = Union[ContentBlock_Text, ContentBlock_Image, ContentBlock_Audio, ContentBlock_ResourceLink, ContentBlock_EmbeddedResource]
+"""
+Content blocks that can be included in messages.
+
+See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
+"""
+
+
+@dataclass
+class PromptMessage:
+    """
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptmessage>
+    """
+    content: ContentBlock
+    role: Role
+
+@dataclass
+class ToolAnnotations:
+    """
+    Annotations for tool capabilities.
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
+    """
+    title: Optional[str]
+    read_only_hint: Optional[bool]
+    destructive_hint: Optional[bool]
+    idempotent_hint: Optional[bool]
+    open_world_hint: Optional[bool]
+
+@dataclass
+class ToolOptions:
+    """
+    Optional properties for tool definitions.
+    """
+    meta: Optional[str]
+    annotations: Optional[ToolAnnotations]
+    description: Optional[str]
+    output_schema: Optional[str]
+    title: Optional[str]
+
+@dataclass
+class NextCursorOptions:
+    """
+    Options for list-tools results.
+    """
+    meta: Optional[str]
+    next_cursor: Optional[str]
+
+@dataclass
+class Tool:
+    """
+    Tool definition.
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
+    """
+    name: str
+    input_schema: str
+    options: Optional[ToolOptions]
+
+@dataclass
+class ResourceOptions:
+    size: Optional[int]
+    title: Optional[str]
+    description: Optional[str]
+    mime_type: Optional[str]
+    annotations: Optional[Annotations]
+    meta: Optional[str]
+
+@dataclass
+class McpResource:
+    """
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#resource>
+    """
+    uri: str
+    name: str
+    options: Optional[ResourceOptions]
+
+@dataclass
+class MetaOptions:
+    meta: Optional[str]
+
+@dataclass
+class ResourceTemplateOptions:
+    description: Optional[str]
+    title: Optional[str]
+    mime_type: Optional[str]
+    annotations: Optional[Annotations]
+    meta: Optional[str]
+
+@dataclass
+class ResourceTemplate:
+    """
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplate>
+    """
+    uri_template: str
+    name: str
+    options: Optional[ResourceTemplateOptions]
+
+@dataclass
+class PromptArgument:
+    """
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptargument>
+    """
+    name: str
+    description: Optional[str]
+    required: Optional[bool]
+    title: Optional[str]
+
+@dataclass
+class PromptOptions:
+    meta: Optional[str]
+    arguments: Optional[List[PromptArgument]]
+    description: Optional[str]
+    title: Optional[str]
+
+@dataclass
+class Prompt:
+    """
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompt>
+    """
+    name: str
+    options: Optional[PromptOptions]
+
+@dataclass
+class DescriptionOptions:
+    meta: Optional[str]
+    description: Optional[str]
+
+class StringSchemaFormat(Enum):
+    URI = 0
+    EMAIL = 1
+    DATE = 2
+    DATE_TIME = 3
+
+@dataclass
+class StringSchema:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#stringschema
+    """
+    description: Optional[str]
+    format: Optional[StringSchemaFormat]
+    max_length: Optional[int]
+    min_length: Optional[int]
+    title: Optional[str]
+
+class NumberSchemaType(Enum):
+    NUMBER = 0
+    INTEGER = 1
+
+@dataclass
+class NumberSchema:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#numberschema
+    """
+    description: Optional[str]
+    maximum: Optional[float]
+    minimum: Optional[float]
+    title: Optional[str]
+    type: NumberSchemaType
+
+@dataclass
+class BooleanSchema:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#booleanschema
+    """
+    default: Optional[bool]
+    description: Optional[str]
+    title: Optional[str]
+
+@dataclass
+class EnumSchema:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#enumschema
+    """
+    description: Optional[str]
+    enum: List[str]
+    enum_names: Optional[List[str]]
+    title: Optional[str]
+
+
+@dataclass
+class PrimitiveSchemaDefinition_StringSchema:
+    value: StringSchema
+
+
+@dataclass
+class PrimitiveSchemaDefinition_NumberSchema:
+    value: NumberSchema
+
+
+@dataclass
+class PrimitiveSchemaDefinition_BooleanSchema:
+    value: BooleanSchema
+
+
+@dataclass
+class PrimitiveSchemaDefinition_EnumSchema:
+    value: EnumSchema
+
+
+PrimitiveSchemaDefinition = Union[PrimitiveSchemaDefinition_StringSchema, PrimitiveSchemaDefinition_NumberSchema, PrimitiveSchemaDefinition_BooleanSchema, PrimitiveSchemaDefinition_EnumSchema]
+
+
+@dataclass
+class RequestedSchema:
+    properties: List[Tuple[str, PrimitiveSchemaDefinition]]
+    required: Optional[List[str]]
+
+class ElicitResultAction(Enum):
+    ACCEPT = 0
+    DECLINE = 1
+    CANCEL = 2
+
+
+@dataclass
+class ElicitResultContent_String:
+    value: str
+
+
+@dataclass
+class ElicitResultContent_Number:
+    value: float
+
+
+@dataclass
+class ElicitResultContent_Boolean:
+    value: bool
+
+
+ElicitResultContent = Union[ElicitResultContent_String, ElicitResultContent_Number, ElicitResultContent_Boolean]
+
+
+@dataclass
+class InitializeRequest:
+    """
+    Initialize request parameters.
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
+    """
+    capabilities: ClientCapabilities
+    client_info: Implementation
+    protocol_version: ProtocolVersion
+
+@dataclass
+class InitializeResultOptions:
+    """
+    Options for initialization results.
+    """
+    instructions: Optional[str]
+    meta: Optional[str]
+
+@dataclass
+class InitializeResult:
+    """
+    Initialization result structure.
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializeresult>
+    """
+    meta: Optional[str]
+    server_info: Implementation
+    capabilities: ServerCapabilities
+    protocol_version: ProtocolVersion
+    options: Optional[InitializeResultOptions]
+
+@dataclass
+class ListToolsRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsrequest
+    """
+    cursor: Optional[str]
+
+@dataclass
+class ListToolsResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsresult
+    """
+    meta: Optional[str]
+    next_cursor: Optional[str]
+    tools: List[Tool]
+
+@dataclass
+class CallToolRequest:
+    """
+    <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
+    """
+    name: str
+    arguments: Optional[str]
+
+@dataclass
+class CallToolResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
+    """
+    meta: Optional[str]
+    content: List[ContentBlock]
+    is_error: Optional[bool]
+    structured_content: Optional[str]
+
+@dataclass
+class ListResourcesRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesrequest
+    """
+    cursor: Optional[str]
+
+@dataclass
+class ListResourcesResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesresult
+    """
+    meta: Optional[str]
+    next_cursor: Optional[str]
+    resources: List[McpResource]
+
+@dataclass
+class ReadResourceRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourcerequest
+    """
+    uri: str
+
+@dataclass
+class ReadResourceResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourceresult
+    """
+    meta: Optional[str]
+    contents: List[ResourceContents]
+
+@dataclass
+class ListResourceTemplatesRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesrequest
+    """
+    cursor: Optional[str]
+
+@dataclass
+class ListResourceTemplatesResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesresult
+    """
+    meta: Optional[str]
+    next_cursor: Optional[str]
+    resource_templates: List[ResourceTemplate]
+
+@dataclass
+class ListPromptsRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsrequest
+    """
+    cursor: Optional[str]
+
+@dataclass
+class ListPromptsResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsresult
+    """
+    meta: Optional[str]
+    next_cursor: Optional[str]
+    prompts: List[Prompt]
+
+@dataclass
+class GetPromptRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest
+    """
+    name: str
+    arguments: Optional[str]
+
+@dataclass
+class GetPromptResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptresult
+    """
+    meta: Optional[str]
+    description: Optional[str]
+    messages: List[PromptMessage]
+
+@dataclass
+class CompletionArgument:
+    """
+    Argument for completion requests.
+    """
+    name: str
+    value: str
+
+@dataclass
+class CompletionContext:
+    """
+    Context for completion requests.
+    """
+    arguments: Optional[str]
+
+@dataclass
+class CompletionPromptReference:
+    """
+    Reference to a prompt for completion.
+    """
+    name: str
+    title: Optional[str]
+
+
+@dataclass
+class CompletionReference_Prompt:
+    value: CompletionPromptReference
+
+
+@dataclass
+class CompletionReference_ResourceTemplate:
+    value: str
+
+
+CompletionReference = Union[CompletionReference_Prompt, CompletionReference_ResourceTemplate]
+"""
+Reference types for completions.
+"""
+
+
+@dataclass
+class CompleteRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#completerequest
+    """
+    argument: CompletionArgument
+    ref: CompletionReference
+    context: Optional[CompletionContext]
+
+@dataclass
+class CompleteResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#completeresult
+    """
+    meta: Optional[str]
+    has_more: Optional[bool]
+    total: Optional[int]
+    values: List[str]
+
+@dataclass
+class ElicitRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitrequest
+    """
+    message: str
+    requested_schema: RequestedSchema
+
+@dataclass
+class ElicitResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitresult
+    """
+    meta: Optional[str]
+    action: ElicitResultAction
+    content: Optional[List[Tuple[str, ElicitResultContent]]]
+
+@dataclass
+class ListRootsRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#listrootsrequest
+    """
+    meta: Optional[str]
+    progress_token: Optional[ProgressToken]
+
+@dataclass
+class Root:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#root
+    """
+    meta: Optional[str]
+    name: Optional[str]
+    uri: str
+
+@dataclass
+class ListRootsResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#listrootsresult
+    """
+    meta: Optional[str]
+    roots: List[Root]
+
+@dataclass
+class PingRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#pingrequest
+    """
+    meta: Optional[str]
+    progress_token: Optional[ProgressToken]
+    extras: List[Tuple[str, str]]
+
+class IncludeContext(Enum):
+    NONE = 0
+    THIS_SERVER = 1
+    ALL_SERVERS = 2
+
+class SamplingContent(Enum):
+    TEXT_CONTENT = 0
+    IMAGE_CONTENT = 1
+    AUDIO_CONTENT = 2
+
+@dataclass
+class SamplingMessage:
+    content: SamplingContent
+    role: Role
+
+@dataclass
+class ModelHint:
+    name: Optional[str]
+    extra: Optional[str]
+
+@dataclass
+class ModelPreferences:
+    cost_priority: Optional[float]
+    hints: Optional[List[ModelHint]]
+    intelligence_priority: Optional[float]
+    speed_priority: Optional[float]
+
+@dataclass
+class SamplingCreateMessageRequest:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#createmessagerequest
+    """
+    include_context: IncludeContext
+    max_tokens: int
+    messages: List[SamplingMessage]
+    metadata: Optional[str]
+    model_preferences: Optional[ModelPreferences]
+    stop_sequences: Optional[List[str]]
+    system_prompt: Optional[str]
+    temperature: Optional[float]
+
+@dataclass
+class SamplingCreateMessageResult:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#createmessageresult
+    """
+    meta: Optional[str]
+    content: SamplingContent
+    model: str
+    role: Role
+    stop_reason: Optional[str]
+    extra: Optional[str]
+
+
+@dataclass
+class ClientRequest_Initialize:
+    value: InitializeRequest
+
+
+@dataclass
+class ClientRequest_ToolsList:
+    value: ListToolsRequest
+
+
+@dataclass
+class ClientRequest_ToolsCall:
+    value: CallToolRequest
+
+
+@dataclass
+class ClientRequest_ResourcesList:
+    value: ListResourcesRequest
+
+
+@dataclass
+class ClientRequest_ResourcesRead:
+    value: ReadResourceRequest
+
+
+@dataclass
+class ClientRequest_ResourcesTemplatesList:
+    value: ListResourceTemplatesRequest
+
+
+@dataclass
+class ClientRequest_PromptsList:
+    value: ListPromptsRequest
+
+
+@dataclass
+class ClientRequest_PromptsGet:
+    value: GetPromptRequest
+
+
+@dataclass
+class ClientRequest_CompletionComplete:
+    value: CompleteRequest
+
+
+@dataclass
+class ClientRequest_LoggingSetLevel:
+    value: LogLevel
+
+
+@dataclass
+class ClientRequest_Ping:
+    value: PingRequest
+
+
+@dataclass
+class ClientRequest_ResourcesSubscribe:
+    value: str
+
+
+@dataclass
+class ClientRequest_ResourcesUnsubscribe:
+    value: str
+
+
+ClientRequest = Union[ClientRequest_Initialize, ClientRequest_ToolsList, ClientRequest_ToolsCall, ClientRequest_ResourcesList, ClientRequest_ResourcesRead, ClientRequest_ResourcesTemplatesList, ClientRequest_PromptsList, ClientRequest_PromptsGet, ClientRequest_CompletionComplete, ClientRequest_LoggingSetLevel, ClientRequest_Ping, ClientRequest_ResourcesSubscribe, ClientRequest_ResourcesUnsubscribe]
+
+
+
+@dataclass
+class ServerRequest_ElicitationCreate:
+    value: ElicitRequest
+
+
+@dataclass
+class ServerRequest_RootsList:
+    value: ListRootsRequest
+
+
+@dataclass
+class ServerRequest_SamplingCreateMessage:
+    value: SamplingCreateMessageRequest
+
+
+@dataclass
+class ServerRequest_Ping:
+    value: PingRequest
+
+
+ServerRequest = Union[ServerRequest_ElicitationCreate, ServerRequest_RootsList, ServerRequest_SamplingCreateMessage, ServerRequest_Ping]
+
+
+
+@dataclass
+class McpRequest_Server:
+    value: ServerRequest
+
+
+@dataclass
+class McpRequest_Client:
+    value: ClientRequest
+
+
+McpRequest = Union[McpRequest_Server, McpRequest_Client]
+
+
+
+@dataclass
+class ServerResponse_Initialize:
+    value: InitializeResult
+
+
+@dataclass
+class ServerResponse_ToolsList:
+    value: ListToolsResult
+
+
+@dataclass
+class ServerResponse_ToolsCall:
+    value: CallToolResult
+
+
+@dataclass
+class ServerResponse_ResourcesList:
+    value: ListResourcesResult
+
+
+@dataclass
+class ServerResponse_ResourcesRead:
+    value: ReadResourceResult
+
+
+@dataclass
+class ServerResponse_ResourcesTemplatesList:
+    value: ListResourceTemplatesResult
+
+
+@dataclass
+class ServerResponse_PromptsList:
+    value: ListPromptsResult
+
+
+@dataclass
+class ServerResponse_PromptsGet:
+    value: GetPromptResult
+
+
+@dataclass
+class ServerResponse_CompletionComplete:
+    value: CompleteResult
+
+
+ServerResponse = Union[ServerResponse_Initialize, ServerResponse_ToolsList, ServerResponse_ToolsCall, ServerResponse_ResourcesList, ServerResponse_ResourcesRead, ServerResponse_ResourcesTemplatesList, ServerResponse_PromptsList, ServerResponse_PromptsGet, ServerResponse_CompletionComplete]
+
+
+
+@dataclass
+class ClientResponse_ElicitationCreate:
+    value: ElicitResult
+
+
+@dataclass
+class ClientResponse_RootsList:
+    value: ListRootsResult
+
+
+@dataclass
+class ClientResponse_SamplingCreateMessage:
+    value: SamplingCreateMessageResult
+
+
+ClientResponse = Union[ClientResponse_ElicitationCreate, ClientResponse_RootsList, ClientResponse_SamplingCreateMessage]
+
+
+
+@dataclass
+class McpResponse_Server:
+    value: ServerResponse
+
+
+@dataclass
+class McpResponse_Client:
+    value: ClientResponse
+
+
+McpResponse = Union[McpResponse_Server, McpResponse_Client]
+
+
+@dataclass
+class LoggingMessageNotification:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#loggingmessagenotification
+    """
+    data: str
+    level: LogLevel
+    logger: Optional[str]
+
+@dataclass
+class CancelledNotification:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#cancellednotification
+    """
+    request_id: RequestId
+    reason: Optional[str]
+
+@dataclass
+class ProgressNotification:
+    """
+    https://modelcontextprotocol.io/specification/2025-06-18/schema#progressnotification
+    """
+    progress_token: ProgressToken
+    progress: float
+    total: Optional[float]
+    message: Optional[str]
+
+@dataclass
+class CommonNotification:
+    meta: Optional[str]
+    extras: Optional[str]
+
+
+@dataclass
+class ServerNotification_ToolsListChanged:
+    value: CommonNotification
+
+
+@dataclass
+class ServerNotification_ResourcesListChanged:
+    value: CommonNotification
+
+
+@dataclass
+class ServerNotification_PromptsListChanged:
+    value: CommonNotification
+
+
+@dataclass
+class ServerNotification_LoggingMessage:
+    value: LoggingMessageNotification
+
+
+@dataclass
+class ServerNotification_Cancelled:
+    value: CancelledNotification
+
+
+@dataclass
+class ServerNotification_Progress:
+    value: ProgressNotification
+
+
+ServerNotification = Union[ServerNotification_ToolsListChanged, ServerNotification_ResourcesListChanged, ServerNotification_PromptsListChanged, ServerNotification_LoggingMessage, ServerNotification_Cancelled, ServerNotification_Progress]
+
+
+
+@dataclass
+class ClientNotification_Initialized:
+    value: CommonNotification
+
+
+@dataclass
+class ClientNotification_RootsListChanged:
+    value: CommonNotification
+
+
+@dataclass
+class ClientNotification_Cancelled:
+    value: CancelledNotification
+
+
+@dataclass
+class ClientNotification_Progress:
+    value: ProgressNotification
+
+
+ClientNotification = Union[ClientNotification_Initialized, ClientNotification_RootsListChanged, ClientNotification_Cancelled, ClientNotification_Progress]
+
+
+
+@dataclass
+class McpNotification_Server:
+    value: ServerNotification
+
+
+@dataclass
+class McpNotification_Client:
+    value: ClientNotification
+
+
+McpNotification = Union[McpNotification_Server, McpNotification_Client]
+
+
+@dataclass
+class Error:
+    id: Optional[RequestId]
+    code: int
+    message: str
+    data: Optional[str]
+
+
+@dataclass
+class ErrorCode_ParseError:
+    value: Error
+
+
+@dataclass
+class ErrorCode_InvalidRequest:
+    value: Error
+
+
+@dataclass
+class ErrorCode_MethodNotFound:
+    value: Error
+
+
+@dataclass
+class ErrorCode_InvalidParams:
+    value: Error
+
+
+@dataclass
+class ErrorCode_InternalError:
+    value: Error
+
+
+@dataclass
+class ErrorCode_Server:
+    value: Error
+
+
+@dataclass
+class ErrorCode_JsonRpc:
+    value: Error
+
+
+@dataclass
+class ErrorCode_Mcp:
+    value: Error
+
+
+ErrorCode = Union[ErrorCode_ParseError, ErrorCode_InvalidRequest, ErrorCode_MethodNotFound, ErrorCode_InvalidParams, ErrorCode_InternalError, ErrorCode_Server, ErrorCode_JsonRpc, ErrorCode_Mcp]
+"""
+Standard JSON-RPC error codes.
+"""
+
+
+@dataclass
+class ClientContext:
+    identity_claims: Optional[str]
+    session_id: Optional[bytes]
+    output: Optional[streams.OutputStream]
+
+@dataclass
+class ServerContext:
+    output: Optional[streams.OutputStream]
+
+

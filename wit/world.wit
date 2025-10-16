@@ -1,91 +1,72 @@
-package wasmcp:mcp@0.3.0;
-
-// A WIT framework for composing Model Context Protocol servers as WebAssembly components.
-//
-// <https://modelcontextprotocol.io/specification/2025-06-18/schema>
-
-// Transport components terminate the transport layer protocol and forward the MCP request resource and output stream handle to the first handler in the chain.
-//
-// Middleware components intercept an MCP request resource. They can modify the request context before passing the resource to the next handler.
-//
-// Handler components process specific MCP methods and can forward the request resource to the next handler in the chain.
-//
-// The `initialize` method handler is the final handler in the chain. It processes the `initialize` MCP request using the server capabilities added to the request context by upstream handlers and middleware.
-
-/// Transport world for stdio-based MCP communication.
+/// wasmcp: WebAssembly-based Model Context Protocol implementation
 ///
-/// This world provides MCP server functionality over standard I/O,
-/// suitable for command-line tools and local process communication.
-@since(version = 0.3.0)
-world stdio-transport {
-    include wasi:cli/command@0.2.3;
-    import incoming-handler;
-}
-
-/// Transport world for HTTP-based MCP communication.
+/// This package provides composable MCP server and client components using the
+/// WebAssembly Component Model. Components implement specific interfaces (handlers
+/// or capabilities) and are composed into linear pipelines at build time.
 ///
-/// This world provides MCP server functionality over HTTP,
-/// suitable for network-based communication and web services.
-@since(version = 0.3.0)
-world http-transport {
-    include wasi:http/proxy@0.2.3;
-    import incoming-handler;
-}
-
-/// Handler world for MCP initialization.
+/// Architecture:
+/// - **Handlers**: Full protocol adapters (server-handler, client-handler)
+/// - **Capabilities**: Focused business logic (tools-capability, prompts-capability)
+/// - **Middleware**: Automatic wrapping of capabilities into handlers
+/// - **Transports**: Entry points that route to handlers (HTTP, stdio)
 ///
-/// Terminates the middleware chain by processing initialize requests
-/// using capabilities accumulated from upstream handlers.
-@since(version = 0.3.0)
-world initialize-handler {
-    import error-result;
-    import initialize-result;
-    export incoming-handler;
-}
+/// <https://modelcontextprotocol.io>
+package wasmcp:mcp@0.4.0;
 
-/// Middleware world for request interception.
+/// Server transport component world
 ///
-/// Both imports and exports the handler interface, enabling components
-/// to intercept requests before forwarding to the next handler.
-@since(version = 0.3.0)
-world middleware {
-    import incoming-handler;
-    export incoming-handler;
+/// Transport components provide the entry point for MCP servers, handling the
+/// underlying communication protocol (HTTP, stdio, etc.) and routing requests
+/// to the server-handler pipeline.
+///
+/// Transport components import server-handler to delegate MCP protocol logic.
+@since(version = 0.4.0)
+world server-transport {
+    /// Import the server-handler interface to delegate request processing
+    import server-handler;
 }
 
-/// Handler world for MCP tool operations.
-@since(version = 0.3.0)
-world tools-handler {
-    include middleware;
-    import error-result;
-    import tools-list-result;
-    import tools-call-content;
-    import tools-call-structured;
+/// Server middleware component world
+///
+/// Middleware components sit between transports and other handlers in the pipeline,
+/// providing cross-cutting concerns like:
+/// - Wrapping capability components (tools-capability → tools-middleware → server-handler)
+/// - Adding instrumentation, logging, or monitoring
+/// - Implementing request/response transformation
+///
+/// Middleware imports server-handler (to call downstream) and exports server-handler
+/// (to receive from upstream), forming a linear chain.
+@since(version = 0.4.0)
+world server-middleware {
+    /// Import to call the next handler in the pipeline
+    import server-handler;
+    /// Export to receive requests from the previous handler
+    export server-handler;
 }
 
-/// Handler world for MCP resource operations.
-@since(version = 0.3.0)
-world resources-handler {
-    include middleware;
-    import error-result;
-    import resources-list-result;
-    import resources-read-result;
-    import resource-templates-list-result;
+/// Client transport component world
+///
+/// Transport components provide the entry point for MCP clients, handling the
+/// underlying communication protocol and routing responses to the client-handler pipeline.
+///
+/// Transport components import client-handler to delegate MCP protocol logic.
+@since(version = 0.4.0)
+world client-transport {
+    /// Import the client-handler interface to delegate response processing
+    import client-handler;
 }
 
-/// Handler world for MCP prompt operations.
-@since(version = 0.3.0)
-world prompts-handler {
-    include middleware;
-    import error-result;
-    import prompts-list-result;
-    import prompts-get-result;
-}
-
-/// Handler world for MCP completion operations.
-@since(version = 0.3.0)
-world completion-handler {
-    include middleware;
-    import error-result;
-    import completion-complete-result;
+/// Client middleware component world
+///
+/// Middleware components sit between transports and other handlers in the client pipeline,
+/// providing cross-cutting concerns similar to server middleware.
+///
+/// Middleware imports client-handler (to call downstream) and exports client-handler
+/// (to receive from upstream), forming a linear chain.
+@since(version = 0.4.0)
+world client-middleware {
+    /// Import to call the next handler in the pipeline
+    import client-handler;
+    /// Export to receive requests from the previous handler
+    export client-handler;
 }

@@ -1,0 +1,4 @@
+# WIT dependencies for {{project_name}}
+
+[dependencies]
+"wasmcp:mcp" = "{{wasmcp_version}}"
