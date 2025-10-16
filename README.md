@@ -38,11 +38,6 @@ make
 wasmcp compose math-tools.wasm ../time-tools.wasm -o server.wasm
 ```
 
-The same tool components you built can be composed with different transports or middleware. For example, to run locally over stdio:
-```bash
-wasmcp compose math-tools.wasm ../time-tools.wasm -t stdio -o server.wasm
-```
-
 See [cli/README.md](cli/README.md) for detailed usage.
 
 ## Why?
