@@ -20,7 +20,7 @@ make setup && make build
 wasmcp compose target/my-handler.wasm -o server.wasm
 
 # Run
-wasmtime serve -Scommon server.wasm
+wasmtime serve -Scli server.wasm
 ```
 
 See [cli/README.md](cli/README.md) for detailed usage.

@@ -205,7 +205,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
     println!("\n✅ Composed: {}", output.display());
     println!("\nTo run the server:");
     match transport.as_str() {
-        "http" => println!("  wasmtime serve -Scommon {}", output.display()),
+        "http" => println!("  wasmtime serve -Scli {}", output.display()),
         "stdio" => println!("  wasmtime run {}", output.display()),
         _ => println!("  wasmtime {}", output.display()),
     }

@@ -41,7 +41,7 @@ The CLI automatically detects component types and wraps them with appropriate mi
 
 ```bash
 # HTTP (default)
-wasmtime serve -Scommon server.wasm
+wasmtime serve -Scli server.wasm
 
 # Stdio
 wasmtime run server.wasm

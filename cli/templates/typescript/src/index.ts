@@ -122,3 +122,8 @@ function errorResult(message: string): protocol.CallToolResult {
     meta: undefined,
   };
 }
+
+export const toolsCapability = {
+  listTools,
+  callTool,
+};

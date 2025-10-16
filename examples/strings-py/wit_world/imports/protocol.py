@@ -1,3 +1,18 @@
+"""
+Model Context Protocol (MCP) core types and messages
+
+This interface defines all MCP protocol types, including:
+- JSON-RPC message structures (requests, responses, notifications, errors)
+- Content types (text, images, audio, resources)
+- Server capabilities (tools, prompts, resources)
+- Client capabilities (sampling, roots, elicitation)
+- Session and context management
+
+These types form the foundation for MCP communication between clients and servers.
+They are used by both handler interfaces and capability interfaces.
+
+Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18>
+"""
 from typing import TypeVar, Generic, Union, Optional, Protocol, Tuple, List, Any, Self
 from types import TracebackType
 from enum import Flag, Enum, auto
@@ -20,6 +35,15 @@ class TextData_TextStream:
 
 
 TextData = Union[TextData_Text, TextData_TextStream]
+"""
+=========================================================================
+Streaming Data Types
+=========================================================================
+Text data that can be provided as a string or stream
+
+Streaming text is useful for large content that shouldn't be
+buffered entirely in memory.
+"""
 
 
 
@@ -34,12 +58,21 @@ class BlobData_BlobStream:
 
 
 BlobData = Union[BlobData_Blob, BlobData_BlobStream]
+"""
+Binary data that can be provided as bytes or stream
+
+Streaming blobs is useful for large binary content (images, audio, etc.)
+that shouldn't be buffered entirely in memory.
+"""
 
 
 @dataclass
 class EmbeddedResourceOptions:
     """
-    Options for embedded resources.
+    =========================================================================
+    Content Types and Options
+    =========================================================================
+    Options for embedded resources
     """
     mime_type: Optional[str]
     meta: Optional[str]
@@ -47,8 +80,9 @@ class EmbeddedResourceOptions:
 @dataclass
 class TextResourceContents:
     """
-    Text resource contents.
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#textresourcecontents>
+    Text resource contents
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#textresourcecontents>
     """
     uri: str
     text: TextData
@@ -57,8 +91,9 @@ class TextResourceContents:
 @dataclass
 class BlobResourceContents:
     """
-    Binary resource contents.
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#blobresourcecontents>
+    Binary resource contents
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#blobresourcecontents>
     """
     uri: str
     blob: BlobData
@@ -76,11 +111,19 @@ class ResourceContents_Blob:
 
 
 ResourceContents = Union[ResourceContents_Text, ResourceContents_Blob]
+"""
+Resource contents (text or binary)
+"""
 
 
 class LogLevel(Enum):
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/logging#log-levels
+    =========================================================================
+    Protocol Enumerations
+    =========================================================================
+    Log severity levels
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/server/utilities/logging#log-levels>
     """
     DEBUG = 0
     INFO = 1
@@ -104,9 +147,11 @@ class ProgressToken_Integer:
 
 ProgressToken = Union[ProgressToken_String, ProgressToken_Integer]
 """
-Progress tokens MUST be a string or integer value.
+Progress token for tracking long-running operations
 
-<https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/progress#progress-flow>
+Progress tokens MUST be either a string or integer value.
+
+Spec: <https://spec.modelcontextprotocol.io/specification/2025-03-26/basic/utilities/progress#progress-flow>
 """
 
 
@@ -123,40 +168,84 @@ class RequestId_String:
 
 RequestId = Union[RequestId_Number, RequestId_String]
 """
-JSON-RPC request ID (string or number).
-<https://modelcontextprotocol.io/specification/2025-06-18/schema#requestid>
+JSON-RPC request identifier
+
+Request IDs can be either strings or numbers as per JSON-RPC 2.0.
+
+Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#requestid>
 """
 
 
 class ProtocolVersion(Enum):
     """
-    MCP protocol versions.
+    MCP protocol version
+    
+    The protocol version determines which features and message types are available.
     """
     V20250618 = 0
     V20250326 = 1
     V20241105 = 2
 
 class ServerLists(Flag):
+    """
+    Server capability list change flags
+    
+    Used in notifications to indicate which server lists have changed.
+    """
     TOOLS = auto()
     RESOURCES = auto()
     PROMPTS = auto()
 
 class ServerSubscriptions(Flag):
+    """
+    Server subscription type flags
+    
+    Indicates which subscription types the server supports.
+    """
     RESOURCES = auto()
+
+class ClientLists(Flag):
+    """
+    Client capability list change flags
+    
+    Used in notifications to indicate which client lists have changed.
+    """
+    ROOTS = auto()
+
+class Role(Enum):
+    """
+    Role in a conversation
+    
+    Identifies whether a message is from the user or assistant.
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#role>
+    """
+    USER = 0
+    ASSISTANT = 1
 
 @dataclass
 class ServerCapabilities:
+    """
+    =========================================================================
+    Capability Structures
+    =========================================================================
+    Server capabilities advertised during initialization
+    
+    Indicates which optional features the server supports.
+    """
     completions: Optional[str]
     experimental: Optional[List[Tuple[str, str]]]
     logging: Optional[str]
     list_changed: Optional[ServerLists]
     subscriptions: Optional[ServerSubscriptions]
 
-class ClientLists(Flag):
-    ROOTS = auto()
-
 @dataclass
 class ClientCapabilities:
+    """
+    Client capabilities advertised during initialization
+    
+    Indicates which optional features the client supports.
+    """
     elicitation: Optional[str]
     experimental: Optional[List[Tuple[str, str]]]
     list_changed: Optional[ClientLists]
@@ -165,33 +254,25 @@ class ClientCapabilities:
 @dataclass
 class Implementation:
     """
-    MCP implementation metadata.
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#implementation>
+    MCP implementation metadata
+    
+    Identifies the server or client implementation.
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#implementation>
     """
     name: str
     title: Optional[str]
     version: str
 
-class Role(Enum):
-    """
-    Role in a conversation.
-    
-    Maps to the Role type in the MCP spec:
-    "The sender or recipient of messages and data in a conversation."
-    Valid values: "user" | "assistant"
-    
-    See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#role>
-    """
-    USER = 0
-    ASSISTANT = 1
-
 @dataclass
 class Annotations:
     """
-    Optional annotations for the client.
+    =========================================================================
+    Annotations
+    =========================================================================
+    Annotations that inform how clients use or display objects
     
-    The client can use annotations to inform how objects are used or displayed.
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#annotations>
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#annotations>
     """
     audience: Optional[List[Role]]
     last_modified: Optional[str]
@@ -200,7 +281,7 @@ class Annotations:
 @dataclass
 class ContentOptions:
     """
-    Options for content blocks.
+    Options for content blocks
     """
     annotations: Optional[Annotations]
     meta: Optional[str]
@@ -208,7 +289,7 @@ class ContentOptions:
 @dataclass
 class ResourceLinkOptions:
     """
-    Options for resource link content.
+    Options for resource link content
     """
     title: Optional[str]
     description: Optional[str]
@@ -220,11 +301,12 @@ class ResourceLinkOptions:
 @dataclass
 class ResourceLinkContent:
     """
-    A resource that the server is capable of reading, included in a prompt or tool call result.
+    A resource link included in a prompt or tool call result
     
-    Note: resource links returned by tools are not guaranteed to appear in the results of resources/list requests.
+    Resource links reference resources that the server can read. They may not
+    appear in resources/list responses.
     
-    See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcelink>
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#resourcelink>
     """
     uri: str
     name: str
@@ -233,9 +315,11 @@ class ResourceLinkContent:
 @dataclass
 class Blob:
     """
-    An image or audio provided to or from an LLM.
+    Binary content (image or audio) with MIME type
     
-    See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#imagecontent>
+    Used for images and audio provided to or from an LLM.
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#imagecontent>
     """
     data: BlobData
     mime_type: str
@@ -244,9 +328,9 @@ class Blob:
 @dataclass
 class TextContent:
     """
-    Text provided to or from an LLM.
+    Text content block
     
-    See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#textcontent>
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#textcontent>
     """
     text: TextData
     options: Optional[ContentOptions]
@@ -254,8 +338,9 @@ class TextContent:
 @dataclass
 class EmbeddedResourceContent:
     """
-    Embedded resource with content options.
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#embeddedresource>
+    Embedded resource with content options
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#embeddedresource>
     """
     resource: ResourceContents
     options: Optional[ContentOptions]
@@ -288,16 +373,18 @@ class ContentBlock_EmbeddedResource:
 
 ContentBlock = Union[ContentBlock_Text, ContentBlock_Image, ContentBlock_Audio, ContentBlock_ResourceLink, ContentBlock_EmbeddedResource]
 """
-Content blocks that can be included in messages.
+Content blocks that can be included in messages
 
-See: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
+Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
 """
 
 
 @dataclass
 class PromptMessage:
     """
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptmessage>
+    A message in a prompt with role and content
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#promptmessage>
     """
     content: ContentBlock
     role: Role
@@ -305,8 +392,9 @@ class PromptMessage:
 @dataclass
 class ToolAnnotations:
     """
-    Annotations for tool capabilities.
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
+    Tool-specific annotations
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
     """
     title: Optional[str]
     read_only_hint: Optional[bool]
@@ -317,7 +405,10 @@ class ToolAnnotations:
 @dataclass
 class ToolOptions:
     """
-    Optional properties for tool definitions.
+    =========================================================================
+    Tool Types
+    =========================================================================
+    Optional tool properties
     """
     meta: Optional[str]
     annotations: Optional[ToolAnnotations]
@@ -328,7 +419,7 @@ class ToolOptions:
 @dataclass
 class NextCursorOptions:
     """
-    Options for list-tools results.
+    Pagination options for list results
     """
     meta: Optional[str]
     next_cursor: Optional[str]
@@ -336,8 +427,9 @@ class NextCursorOptions:
 @dataclass
 class Tool:
     """
-    Tool definition.
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
+    Tool definition
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#tool>
     """
     name: str
     input_schema: str
@@ -345,6 +437,12 @@ class Tool:
 
 @dataclass
 class ResourceOptions:
+    """
+    =========================================================================
+    Resource Types
+    =========================================================================
+    Resource optional properties
+    """
     size: Optional[int]
     title: Optional[str]
     description: Optional[str]
@@ -355,7 +453,9 @@ class ResourceOptions:
 @dataclass
 class McpResource:
     """
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#resource>
+    Resource definition
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#resource>
     """
     uri: str
     name: str
@@ -363,10 +463,16 @@ class McpResource:
 
 @dataclass
 class MetaOptions:
+    """
+    Generic metadata options
+    """
     meta: Optional[str]
 
 @dataclass
 class ResourceTemplateOptions:
+    """
+    Resource template optional properties
+    """
     description: Optional[str]
     title: Optional[str]
     mime_type: Optional[str]
@@ -376,7 +482,9 @@ class ResourceTemplateOptions:
 @dataclass
 class ResourceTemplate:
     """
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplate>
+    Resource template with URI template pattern
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplate>
     """
     uri_template: str
     name: str
@@ -385,7 +493,12 @@ class ResourceTemplate:
 @dataclass
 class PromptArgument:
     """
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptargument>
+    =========================================================================
+    Prompt Types
+    =========================================================================
+    Prompt argument definition
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#promptargument>
     """
     name: str
     description: Optional[str]
@@ -394,6 +507,9 @@ class PromptArgument:
 
 @dataclass
 class PromptOptions:
+    """
+    Prompt optional properties
+    """
     meta: Optional[str]
     arguments: Optional[List[PromptArgument]]
     description: Optional[str]
@@ -402,17 +518,28 @@ class PromptOptions:
 @dataclass
 class Prompt:
     """
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompt>
+    Prompt definition
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#prompt>
     """
     name: str
     options: Optional[PromptOptions]
 
 @dataclass
 class DescriptionOptions:
+    """
+    Generic description options
+    """
     meta: Optional[str]
     description: Optional[str]
 
 class StringSchemaFormat(Enum):
+    """
+    =========================================================================
+    Schema Types (for Elicitation)
+    =========================================================================
+    String schema format constraints
+    """
     URI = 0
     EMAIL = 1
     DATE = 2
@@ -421,7 +548,9 @@ class StringSchemaFormat(Enum):
 @dataclass
 class StringSchema:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#stringschema
+    JSON Schema for string type
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#stringschema>
     """
     description: Optional[str]
     format: Optional[StringSchemaFormat]
@@ -430,13 +559,18 @@ class StringSchema:
     title: Optional[str]
 
 class NumberSchemaType(Enum):
+    """
+    Number schema type
+    """
     NUMBER = 0
     INTEGER = 1
 
 @dataclass
 class NumberSchema:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#numberschema
+    JSON Schema for number/integer type
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#numberschema>
     """
     description: Optional[str]
     maximum: Optional[float]
@@ -447,7 +581,9 @@ class NumberSchema:
 @dataclass
 class BooleanSchema:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#booleanschema
+    JSON Schema for boolean type
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#booleanschema>
     """
     default: Optional[bool]
     description: Optional[str]
@@ -456,7 +592,9 @@ class BooleanSchema:
 @dataclass
 class EnumSchema:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#enumschema
+    JSON Schema for enum type
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#enumschema>
     """
     description: Optional[str]
     enum: List[str]
@@ -485,14 +623,23 @@ class PrimitiveSchemaDefinition_EnumSchema:
 
 
 PrimitiveSchemaDefinition = Union[PrimitiveSchemaDefinition_StringSchema, PrimitiveSchemaDefinition_NumberSchema, PrimitiveSchemaDefinition_BooleanSchema, PrimitiveSchemaDefinition_EnumSchema]
+"""
+Primitive schema types
+"""
 
 
 @dataclass
 class RequestedSchema:
+    """
+    Schema requested from client during elicitation
+    """
     properties: List[Tuple[str, PrimitiveSchemaDefinition]]
     required: Optional[List[str]]
 
 class ElicitResultAction(Enum):
+    """
+    Elicitation result action
+    """
     ACCEPT = 0
     DECLINE = 1
     CANCEL = 2
@@ -514,13 +661,22 @@ class ElicitResultContent_Boolean:
 
 
 ElicitResultContent = Union[ElicitResultContent_String, ElicitResultContent_Number, ElicitResultContent_Boolean]
+"""
+Elicitation result content value
+"""
 
 
 @dataclass
 class InitializeRequest:
     """
-    Initialize request parameters.
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
+    =========================================================================
+    Request/Response Types: Initialize
+    =========================================================================
+    Initialize request parameters
+    
+    Sent by client to begin an MCP session.
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
     """
     capabilities: ClientCapabilities
     client_info: Implementation
@@ -529,7 +685,7 @@ class InitializeRequest:
 @dataclass
 class InitializeResultOptions:
     """
-    Options for initialization results.
+    Initialize result optional properties
     """
     instructions: Optional[str]
     meta: Optional[str]
@@ -537,8 +693,11 @@ class InitializeResultOptions:
 @dataclass
 class InitializeResult:
     """
-    Initialization result structure.
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializeresult>
+    Initialize result structure
+    
+    Returned by server in response to initialize request.
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#initializeresult>
     """
     meta: Optional[str]
     server_info: Implementation
@@ -549,14 +708,21 @@ class InitializeResult:
 @dataclass
 class ListToolsRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsrequest
+    =========================================================================
+    Request/Response Types: Tools
+    =========================================================================
+    List tools request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsrequest>
     """
     cursor: Optional[str]
 
 @dataclass
 class ListToolsResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsresult
+    List tools result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsresult>
     """
     meta: Optional[str]
     next_cursor: Optional[str]
@@ -565,7 +731,9 @@ class ListToolsResult:
 @dataclass
 class CallToolRequest:
     """
-    <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
+    Call tool request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
     """
     name: str
     arguments: Optional[str]
@@ -573,7 +741,9 @@ class CallToolRequest:
 @dataclass
 class CallToolResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
+    Call tool result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult>
     """
     meta: Optional[str]
     content: List[ContentBlock]
@@ -583,14 +753,21 @@ class CallToolResult:
 @dataclass
 class ListResourcesRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesrequest
+    =========================================================================
+    Request/Response Types: Resources
+    =========================================================================
+    List resources request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesrequest>
     """
     cursor: Optional[str]
 
 @dataclass
 class ListResourcesResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesresult
+    List resources result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesresult>
     """
     meta: Optional[str]
     next_cursor: Optional[str]
@@ -599,14 +776,18 @@ class ListResourcesResult:
 @dataclass
 class ReadResourceRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourcerequest
+    Read resource request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#readresourcerequest>
     """
     uri: str
 
 @dataclass
 class ReadResourceResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourceresult
+    Read resource result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#readresourceresult>
     """
     meta: Optional[str]
     contents: List[ResourceContents]
@@ -614,14 +795,18 @@ class ReadResourceResult:
 @dataclass
 class ListResourceTemplatesRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesrequest
+    List resource templates request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesrequest>
     """
     cursor: Optional[str]
 
 @dataclass
 class ListResourceTemplatesResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesresult
+    List resource templates result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesresult>
     """
     meta: Optional[str]
     next_cursor: Optional[str]
@@ -630,14 +815,21 @@ class ListResourceTemplatesResult:
 @dataclass
 class ListPromptsRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsrequest
+    =========================================================================
+    Request/Response Types: Prompts
+    =========================================================================
+    List prompts request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsrequest>
     """
     cursor: Optional[str]
 
 @dataclass
 class ListPromptsResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsresult
+    List prompts result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsresult>
     """
     meta: Optional[str]
     next_cursor: Optional[str]
@@ -646,7 +838,9 @@ class ListPromptsResult:
 @dataclass
 class GetPromptRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest
+    Get prompt request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest>
     """
     name: str
     arguments: Optional[str]
@@ -654,7 +848,9 @@ class GetPromptRequest:
 @dataclass
 class GetPromptResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptresult
+    Get prompt result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#getpromptresult>
     """
     meta: Optional[str]
     description: Optional[str]
@@ -663,7 +859,10 @@ class GetPromptResult:
 @dataclass
 class CompletionArgument:
     """
-    Argument for completion requests.
+    =========================================================================
+    Request/Response Types: Completion
+    =========================================================================
+    Completion argument
     """
     name: str
     value: str
@@ -671,14 +870,14 @@ class CompletionArgument:
 @dataclass
 class CompletionContext:
     """
-    Context for completion requests.
+    Completion context
     """
     arguments: Optional[str]
 
 @dataclass
 class CompletionPromptReference:
     """
-    Reference to a prompt for completion.
+    Prompt reference for completion
     """
     name: str
     title: Optional[str]
@@ -696,14 +895,16 @@ class CompletionReference_ResourceTemplate:
 
 CompletionReference = Union[CompletionReference_Prompt, CompletionReference_ResourceTemplate]
 """
-Reference types for completions.
+Reference types for completion
 """
 
 
 @dataclass
 class CompleteRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#completerequest
+    Complete request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#completerequest>
     """
     argument: CompletionArgument
     ref: CompletionReference
@@ -712,7 +913,9 @@ class CompleteRequest:
 @dataclass
 class CompleteResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#completeresult
+    Complete result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#completeresult>
     """
     meta: Optional[str]
     has_more: Optional[bool]
@@ -722,7 +925,12 @@ class CompleteResult:
 @dataclass
 class ElicitRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitrequest
+    =========================================================================
+    Request/Response Types: Elicitation
+    =========================================================================
+    Elicit request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#elicitrequest>
     """
     message: str
     requested_schema: RequestedSchema
@@ -730,7 +938,9 @@ class ElicitRequest:
 @dataclass
 class ElicitResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitresult
+    Elicit result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#elicitresult>
     """
     meta: Optional[str]
     action: ElicitResultAction
@@ -739,7 +949,12 @@ class ElicitResult:
 @dataclass
 class ListRootsRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#listrootsrequest
+    =========================================================================
+    Request/Response Types: Roots
+    =========================================================================
+    List roots request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#listrootsrequest>
     """
     meta: Optional[str]
     progress_token: Optional[ProgressToken]
@@ -747,7 +962,9 @@ class ListRootsRequest:
 @dataclass
 class Root:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#root
+    Root directory or file
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#root>
     """
     meta: Optional[str]
     name: Optional[str]
@@ -756,7 +973,9 @@ class Root:
 @dataclass
 class ListRootsResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#listrootsresult
+    List roots result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#listrootsresult>
     """
     meta: Optional[str]
     roots: List[Root]
@@ -764,34 +983,57 @@ class ListRootsResult:
 @dataclass
 class PingRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#pingrequest
+    =========================================================================
+    Request/Response Types: Ping
+    =========================================================================
+    Ping request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#pingrequest>
     """
     meta: Optional[str]
     progress_token: Optional[ProgressToken]
     extras: List[Tuple[str, str]]
 
 class IncludeContext(Enum):
+    """
+    =========================================================================
+    Request/Response Types: Sampling
+    =========================================================================
+    Context inclusion for sampling
+    """
     NONE = 0
     THIS_SERVER = 1
     ALL_SERVERS = 2
 
 class SamplingContent(Enum):
+    """
+    Sampling content type
+    """
     TEXT_CONTENT = 0
     IMAGE_CONTENT = 1
     AUDIO_CONTENT = 2
 
 @dataclass
 class SamplingMessage:
+    """
+    Message for sampling request
+    """
     content: SamplingContent
     role: Role
 
 @dataclass
 class ModelHint:
+    """
+    Model hint for sampling
+    """
     name: Optional[str]
     extra: Optional[str]
 
 @dataclass
 class ModelPreferences:
+    """
+    Model preferences for sampling
+    """
     cost_priority: Optional[float]
     hints: Optional[List[ModelHint]]
     intelligence_priority: Optional[float]
@@ -800,7 +1042,9 @@ class ModelPreferences:
 @dataclass
 class SamplingCreateMessageRequest:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#createmessagerequest
+    Sampling create message request
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#createmessagerequest>
     """
     include_context: IncludeContext
     max_tokens: int
@@ -814,7 +1058,9 @@ class SamplingCreateMessageRequest:
 @dataclass
 class SamplingCreateMessageResult:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#createmessageresult
+    Sampling create message result
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#createmessageresult>
     """
     meta: Optional[str]
     content: SamplingContent
@@ -890,6 +1136,12 @@ class ClientRequest_ResourcesUnsubscribe:
 
 
 ClientRequest = Union[ClientRequest_Initialize, ClientRequest_ToolsList, ClientRequest_ToolsCall, ClientRequest_ResourcesList, ClientRequest_ResourcesRead, ClientRequest_ResourcesTemplatesList, ClientRequest_PromptsList, ClientRequest_PromptsGet, ClientRequest_CompletionComplete, ClientRequest_LoggingSetLevel, ClientRequest_Ping, ClientRequest_ResourcesSubscribe, ClientRequest_ResourcesUnsubscribe]
+"""
+=========================================================================
+Request/Response Variants
+=========================================================================
+Client requests (sent to server)
+"""
 
 
 
@@ -914,6 +1166,9 @@ class ServerRequest_Ping:
 
 
 ServerRequest = Union[ServerRequest_ElicitationCreate, ServerRequest_RootsList, ServerRequest_SamplingCreateMessage, ServerRequest_Ping]
+"""
+Server requests (sent to client)
+"""
 
 
 
@@ -928,6 +1183,9 @@ class McpRequest_Client:
 
 
 McpRequest = Union[McpRequest_Server, McpRequest_Client]
+"""
+MCP request (client or server)
+"""
 
 
 
@@ -977,6 +1235,9 @@ class ServerResponse_CompletionComplete:
 
 
 ServerResponse = Union[ServerResponse_Initialize, ServerResponse_ToolsList, ServerResponse_ToolsCall, ServerResponse_ResourcesList, ServerResponse_ResourcesRead, ServerResponse_ResourcesTemplatesList, ServerResponse_PromptsList, ServerResponse_PromptsGet, ServerResponse_CompletionComplete]
+"""
+Server responses (to client requests)
+"""
 
 
 
@@ -996,6 +1257,9 @@ class ClientResponse_SamplingCreateMessage:
 
 
 ClientResponse = Union[ClientResponse_ElicitationCreate, ClientResponse_RootsList, ClientResponse_SamplingCreateMessage]
+"""
+Client responses (to server requests)
+"""
 
 
 
@@ -1010,12 +1274,20 @@ class McpResponse_Client:
 
 
 McpResponse = Union[McpResponse_Server, McpResponse_Client]
+"""
+MCP response (client or server)
+"""
 
 
 @dataclass
 class LoggingMessageNotification:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#loggingmessagenotification
+    =========================================================================
+    Notification Types
+    =========================================================================
+    Logging message notification
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#loggingmessagenotification>
     """
     data: str
     level: LogLevel
@@ -1024,7 +1296,9 @@ class LoggingMessageNotification:
 @dataclass
 class CancelledNotification:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#cancellednotification
+    Cancelled notification
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#cancellednotification>
     """
     request_id: RequestId
     reason: Optional[str]
@@ -1032,7 +1306,9 @@ class CancelledNotification:
 @dataclass
 class ProgressNotification:
     """
-    https://modelcontextprotocol.io/specification/2025-06-18/schema#progressnotification
+    Progress notification
+    
+    Spec: <https://spec.modelcontextprotocol.io/specification/2025-06-18/schema#progressnotification>
     """
     progress_token: ProgressToken
     progress: float
@@ -1041,6 +1317,9 @@ class ProgressNotification:
 
 @dataclass
 class CommonNotification:
+    """
+    Common notification fields
+    """
     meta: Optional[str]
     extras: Optional[str]
 
@@ -1076,6 +1355,9 @@ class ServerNotification_Progress:
 
 
 ServerNotification = Union[ServerNotification_ToolsListChanged, ServerNotification_ResourcesListChanged, ServerNotification_PromptsListChanged, ServerNotification_LoggingMessage, ServerNotification_Cancelled, ServerNotification_Progress]
+"""
+Server notifications (sent to client)
+"""
 
 
 
@@ -1100,6 +1382,9 @@ class ClientNotification_Progress:
 
 
 ClientNotification = Union[ClientNotification_Initialized, ClientNotification_RootsListChanged, ClientNotification_Cancelled, ClientNotification_Progress]
+"""
+Client notifications (sent to server)
+"""
 
 
 
@@ -1114,10 +1399,19 @@ class McpNotification_Client:
 
 
 McpNotification = Union[McpNotification_Server, McpNotification_Client]
+"""
+MCP notification (client or server)
+"""
 
 
 @dataclass
 class Error:
+    """
+    =========================================================================
+    Error Types
+    =========================================================================
+    Error structure
+    """
     id: Optional[RequestId]
     code: int
     message: str
@@ -1166,18 +1460,32 @@ class ErrorCode_Mcp:
 
 ErrorCode = Union[ErrorCode_ParseError, ErrorCode_InvalidRequest, ErrorCode_MethodNotFound, ErrorCode_InvalidParams, ErrorCode_InternalError, ErrorCode_Server, ErrorCode_JsonRpc, ErrorCode_Mcp]
 """
-Standard JSON-RPC error codes.
+Standard JSON-RPC error codes
 """
 
 
 @dataclass
 class ClientContext:
+    """
+    =========================================================================
+    Context Types
+    =========================================================================
+    Client context passed to server handlers
+    
+    Contains information about the requesting client for authorization
+    and personalization.
+    """
     identity_claims: Optional[str]
     session_id: Optional[bytes]
     output: Optional[streams.OutputStream]
 
 @dataclass
 class ServerContext:
+    """
+    Server context passed to client handlers
+    
+    Contains information about the server connection.
+    """
     output: Optional[streams.OutputStream]
 
 

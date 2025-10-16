@@ -21,7 +21,7 @@ The CLI automatically detects this is a tools-capability component and wraps it 
 
 ```bash
 # HTTP
-wasmtime serve -Scommon server.wasm
+wasmtime serve -Scli server.wasm
 
 # Stdio
 wasmcp compose target/{{project_name}}.wasm -t stdio -o server.wasm
