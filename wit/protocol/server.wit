@@ -1,0 +1,223 @@
+/// MCP server-side capability interfaces and request handling utilities.
+///
+/// This file defines:
+/// - Request option types for passing context between components
+/// - Capability interfaces (tools, resources, prompts, completions)
+///
+/// <https://spec.modelcontextprotocol.io>
+
+use wasi:io/streams@0.2.3;
+
+/// Server request handling utilities.
+///
+/// This interface provides types for passing request-scoped context and metadata
+/// between handler components. The options pattern enables flexible, extensible
+/// context passing without rigid record structures.
+interface server {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        session-id,
+        json,
+    };
+
+    /// Request option for passing context and metadata to capability handlers.
+    ///
+    /// This variant enables flexible context passing between transport, middleware,
+    /// and capability components. Each variant represents a different kind of
+    /// request-scoped data that may be useful for processing.
+    ///
+    /// Components can:
+    /// - Inspect options they understand
+    /// - Ignore options they don't need
+    /// - Pass through unknown options to downstream handlers
+    variant request-option {
+        /// Authentication/authorization claims.
+        ///
+        /// Contains parsed JWT claims, API key metadata, or other authentication
+        /// information extracted by the transport layer. Capability components can
+        /// use this for authorization decisions.
+        ///
+        /// Example: `{ "sub": "user123", "role": "admin" }`
+        claims(json),
+
+        /// Output stream for sending server-initiated notifications and requests.
+        ///
+        /// Borrowed reference to the client's response stream (typically HTTP SSE).
+        /// Capability components can use this to send:
+        /// - Progress notifications during long-running operations
+        /// - Log messages
+        /// - Server-initiated requests (elicitation)
+        ///
+        /// See: wasmcp:server/notifications interface for helper functions.
+        client-stream(borrow<output-stream>),
+
+        /// Arbitrary key-value pair.
+        ///
+        /// Enables passing custom metadata between components without schema changes.
+        /// Common uses:
+        /// - HTTP headers (e.g., ("x-request-id", "abc123"))
+        /// - Transport hints (e.g., ("transport", "sse"))
+        /// - Custom component metadata (e.g., ("tenant-id", "acme-corp"))
+        ///
+        /// Components can add application-specific metadata that downstream
+        /// handlers may find useful, without requiring protocol changes.
+        context(tuple<string, list<u8>>),
+
+        /// Active session identifier.
+        ///
+        /// Session ID for stateful request processing. When present, capability
+        /// components can use wasmcp:server/sessions interface to:
+        /// - Store persistent state across requests
+        /// - Track pending elicitation requests
+        /// - Manage session lifecycle
+        ///
+        /// See: wasmcp:server/sessions interface
+        session(session-id),
+    }
+
+    /// List of request options for passing context.
+    ///
+    /// Components receive this list from upstream handlers/transports and:
+    /// - Extract options they need (e.g., find `session` or `claims`)
+    /// - Ignore options they don't recognize
+    /// - Pass the full list downstream for other components
+    ///
+    /// This enables flexible context propagation without rigid schemas.
+    type request-options = list<request-option>;
+}
+
+/// Tools interface.
+///
+/// Export this interface to provide MCP tools functionality.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
+@since(version = 0.1.0)
+interface tools {
+    use mcp.{
+        cursor,
+        error-code,
+        list-tools-request,
+        list-tools-result,
+        call-tool-request,
+        call-tool-result,
+    };
+    use server.{
+        request-options,
+    };
+
+    /// List tools provided by this component.
+    @since(version = 0.1.0)
+    list-tools: func(
+        request: list-tools-request,
+        options: request-options,
+    ) -> result<list-tools-result, error-code>;
+
+    /// Execute a tool call. Return Err(method-not-found) for unrecognized tools.
+    @since(version = 0.1.0)
+    call-tool: func(
+        request: call-tool-request,
+        options: request-options,
+    ) -> result<call-tool-result, error-code>;
+}
+
+/// Resources interface.
+///
+/// Export this interface to provide MCP resources functionality.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
+@since(version = 0.1.0)
+interface resources {
+    use mcp.{
+        error-code,
+        list-resources-request,
+        list-resources-result,
+        read-resource-request,
+        read-resource-result,
+        list-resource-templates-request,
+        list-resource-templates-result,
+    };
+    use server.{
+        request-options,
+    };
+
+    /// List resources provided by this component.
+    @since(version = 0.1.0)
+    list-resources: func(
+        request: list-resources-request,
+        options: request-options,
+    ) -> result<list-resources-result, error-code>;
+
+    /// Read a resource by URI. Return Err(method-not-found) for unrecognized URIs.
+    @since(version = 0.1.0)
+    read-resource: func(
+        request: read-resource-request,
+        options: request-options,
+    ) -> result<read-resource-result, error-code>;
+
+    /// List resource templates (RFC 6570 URI templates).
+    @since(version = 0.1.0)
+    list-resource-templates: func(
+        request: list-resource-templates-request,
+        options: request-options,
+    ) -> result<list-resource-templates-result, error-code>;
+}
+
+/// Prompts interface.
+///
+/// Export this interface to provide MCP prompts functionality.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
+@since(version = 0.1.0)
+interface prompts {
+    use mcp.{
+        error-code,
+        list-prompts-request,
+        list-prompts-result,
+        get-prompt-request,
+        get-prompt-result,
+    };
+    use server.{
+        request-options,
+    };
+
+    /// List prompts provided by this component.
+    @since(version = 0.1.0)
+    list-prompts: func(
+        request: list-prompts-request,
+        options: request-options,
+    ) -> result<list-prompts-result, error-code>;
+
+    /// Get a prompt by name. Return Err(method-not-found) for unrecognized prompts.
+    @since(version = 0.1.0)
+    get-prompt: func(
+        request: get-prompt-request,
+        options: request-options,
+    ) -> result<get-prompt-result, error-code>;
+}
+
+/// Completions interface.
+///
+/// Export this interface to provide argument completions for prompts and resources.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
+@since(version = 0.1.0)
+interface completions {
+    use mcp.{
+        error-code,
+        complete-request,
+        complete-result,
+    };
+    use server.{
+        request-options,
+    };
+
+    /// Provide completion suggestions for prompt or resource arguments.
+    /// Return Err(method-not-found) for unsupported references.
+    @since(version = 0.1.0)
+    complete: func(
+        request: complete-request,
+        options: request-options,
+    ) -> result<complete-result, error-code>;
+}

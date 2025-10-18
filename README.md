@@ -17,7 +17,7 @@ cd time-tools
 make # produces time-tools.wasm
 
 # Compose your tools with a Streamable HTTP transport component (default) to form an MCP server
-wasmcp compose time-tools.wasm -t http -o http-server.wasm # runs on 
+wasmcp compose time-tools.wasm -t http -o http-server.wasm 
 
 # Run
 wasmtime serve -Scli http-server.wasm # serves http://0.0.0.0:8080/ by default
@@ -38,6 +38,20 @@ make
 wasmcp compose math-tools.wasm ../time-tools.wasm -o server.wasm
 ```
 
+## Installation
+
+**Download latest release:**
+
+See [releases](https://github.com/wasmcp/wasmcp/releases) for pre-built binaries.
+
+**Build from source:**
+```bash
+cargo install --git https://github.com/wasmcp/wasmcp
+```
+
+**Prerequisites:**
+- [Wasmtime](https://wasmtime.dev/) - WebAssembly runtime (required to run servers)
+
 See [cli/README.md](cli/README.md) for detailed usage.
 
 ## Why?
@@ -46,7 +60,7 @@ WebAssembly components are:
 - **Composable** - Combine compiled binaries like building blocks
 - **Sandboxed** - Isolated execution with explicit interfaces
 - **Distributable** - Push/pull components from OCI registries
-- **Lean** - Complete servers under 1MB
+- **Lean** - Complete servers can be under 1MB
 
 These qualities are a perfect match for MCP's [server design principals](https://modelcontextprotocol.io/specification/2025-06-18/architecture#design-principles).
 
@@ -57,10 +71,26 @@ These qualities are a perfect match for MCP's [server design principals](https:/
 
 ## Architecture
 
-All components implement the universal `wasmcp:mcp/server-handler` interface, forming a simple linear pipeline:
+Server features like tools, resources, prompts, and completions, are implemented by individual WebAssembly components that export the narrow, stable, spec-mapped WIT interfaces in [wit/protocol/server.wit](wit/protocol/server.wit).
+
+`wasmcp compose` wraps these components with published middleware components from [crates/](crates/) and composes them together behind a transport component as a complete middleware [chain of responsibility](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) that implements an MCP server. The chain terminates with [crates/method-not-found](crates/method-not-found), which returns errors for unhandled methods.
+
+Any of the published default wasmcp components can be swapped out for custom implementations during composition, enabling flexible server configurations.
 
 ```
-transport → component₁ → component₂ → ... → method-not-found
+Transport<Protocol>
+        ↓
+    Middleware₀
+        ↓
+    Middleware<Feature>₁
+        ↓
+    Middleware<Feature>₂
+        ↓
+       ...
+        ↓
+    Middlewareₙ
+        ↓
+    MethodNotFound
 ```
 
 Each component:
@@ -80,7 +110,7 @@ wasmcp compose calculator.wasm -o server.wasm
 wasmcp compose logger.wasm calculator.wasm weather.wasm -o server.wasm
 ```
 
-When a client requests `tools/list`, each component contributes its tools, creating a unified catalog automatically.
+When a client requests `tools/list`, each component that offers tools contributes their tools, creating a unified catalog automatically.
 
 ## Components
 
@@ -105,18 +135,6 @@ Published to [ghcr.io/wasmcp](https://github.com/orgs/wasmcp/packages):
 - **method-not-found** - Terminal handler for unhandled methods
 
 The CLI automatically downloads these when composing.
-
-## Installation
-
-**Download latest release:**
-
-See [releases](https://github.com/wasmcp/wasmcp/releases) for pre-built binaries.
-
-**Build from source:**
-```bash
-cd cli
-cargo build --release
-```
 
 **Prerequisites:**
 - [Wasmtime](https://wasmtime.dev/) - WebAssembly runtime (required to run servers)

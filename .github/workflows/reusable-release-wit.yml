@@ -1,10 +1,26 @@
-name: Release WIT Package
+name: Reusable WIT Package Release
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
+      package-name:
+        description: 'Package name (protocol, server, or client)'
+        required: true
+        type: string
       version:
-        description: 'WIT package version (e.g. 0.3.0 or 0.3.0)'
+        description: 'Package version (e.g. 0.1.0 or 0.1.0-alpha.1)'
+        required: true
+        type: string
+      wit-dir:
+        description: 'WIT directory path relative to repo root'
+        required: true
+        type: string
+      wkg-package:
+        description: 'Full wkg package identifier (e.g. wasmcp:protocol)'
+        required: true
+        type: string
+      tag-prefix:
+        description: 'Git tag prefix (e.g. protocol-v, server-v, client-v)'
         required: true
         type: string
 
@@ -29,7 +45,7 @@ jobs:
 
       - name: Check WIT package version matches
         run: |
-          wit_version=$(grep -oP 'package wasmcp:mcp@\K[^;]+' wit/world.wit)
+          wit_version=$(grep -oP 'package ${{ inputs.wkg-package }}@\K[^;]+' ${{ inputs.wit-dir }}/*.wit | head -1)
           if [ "$wit_version" != "${{ inputs.version }}" ]; then
             echo "Error: WIT package version ($wit_version) does not match release version (${{ inputs.version }})"
             exit 1
@@ -66,45 +82,48 @@ jobs:
       - name: Check if WIT package already exists
         id: check-wit
         run: |
-          if wkg get wasmcp:mcp@${{ inputs.version }} >/dev/null 2>&1; then
+          if wkg get ${{ inputs.wkg-package }}@${{ inputs.version }} >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️ WIT package wasmcp:mcp@${{ inputs.version }} already exists"
+            echo "⚠️ WIT package ${{ inputs.wkg-package }}@${{ inputs.version }} already exists"
             exit 1
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "📦 WIT package wasmcp:mcp@${{ inputs.version }} not found, will publish"
+            echo "📦 WIT package ${{ inputs.wkg-package }}@${{ inputs.version }} not found, will publish"
           fi
 
       - name: Build WIT package
         run: |
-          wkg wit build
-          echo "✅ Built WIT package: wasmcp:mcp@${{ inputs.version }}.wasm"
+          wkg wit build --wit-dir ${{ inputs.wit-dir }}
+          echo "✅ Built WIT package: ${{ inputs.wkg-package }}@${{ inputs.version }}.wasm"
 
       - name: Publish WIT package
         run: |
-          wkg publish wasmcp:mcp@${{ inputs.version }}.wasm
-          echo "✅ Published WIT package: wasmcp:mcp@${{ inputs.version }}"
+          wkg publish ${{ inputs.wkg-package }}@${{ inputs.version }}.wasm
+          echo "✅ Published WIT package: ${{ inputs.wkg-package }}@${{ inputs.version }}"
 
       - name: Rename WIT package for artifact upload
         run: |
-          mv "wasmcp:mcp@${{ inputs.version }}.wasm" "wasmcp_mcp@${{ inputs.version }}.wasm"
+          # Replace colons with underscores for filesystem compatibility
+          safe_name=$(echo "${{ inputs.wkg-package }}" | tr ':' '_')
+          mv "${{ inputs.wkg-package }}@${{ inputs.version }}.wasm" "${safe_name}@${{ inputs.version }}.wasm"
 
       - name: Upload WIT package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wit-package-${{ inputs.version }}
-          path: wasmcp_mcp@${{ inputs.version }}.wasm
+          name: wit-package-${{ inputs.package-name }}-${{ inputs.version }}
+          path: "*_*@${{ inputs.version }}.wasm"
 
       - name: Summary
         run: |
           echo "## 🎉 WIT Package Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Package:** \`wasmcp:mcp@${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Registry:** \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/mcp:${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** \`${{ inputs.wkg-package }}@${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ inputs.package-name }}:${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "1. Components will automatically fetch the new WIT version during build" >> $GITHUB_STEP_SUMMARY
-          echo "2. Run component release: Go to Actions → Release Components → Run workflow" >> $GITHUB_STEP_SUMMARY
+          echo "2. Release other WIT packages if needed (protocol, server, client)" >> $GITHUB_STEP_SUMMARY
+          echo "3. Release components once all WIT packages are published" >> $GITHUB_STEP_SUMMARY
 
   create-release:
     name: Create GitHub Release
@@ -118,7 +137,7 @@ jobs:
       - name: Download WIT package artifact
         uses: actions/download-artifact@v4
         with:
-          name: wit-package-${{ inputs.version }}
+          name: wit-package-${{ inputs.package-name }}-${{ inputs.version }}
           path: artifacts
 
       - name: Display structure of downloaded files
@@ -127,35 +146,36 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: wit-v${{ inputs.version }}
-          name: WIT v${{ inputs.version }}
+          tag_name: ${{ inputs.tag-prefix }}${{ inputs.version }}
+          name: ${{ inputs.package-name }} v${{ inputs.version }}
           draft: false
           prerelease: ${{ contains(inputs.version, '-') }}
           files: artifacts/*
           body: |
-            # WIT Package v${{ inputs.version }}
+            # WIT Package: ${{ inputs.package-name }} v${{ inputs.version }}
 
             ## WIT Interface Package
 
-            This release publishes the WIT interface definitions for wasmcp:mcp.
+            This release publishes the WIT interface definitions for `${{ inputs.wkg-package }}`.
 
-            **Package:** `wasmcp:mcp@${{ inputs.version }}`
-            **Registry:** `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/mcp:${{ inputs.version }}`
+            **Package:** `${{ inputs.wkg-package }}@${{ inputs.version }}`
+            **Registry:** `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ inputs.package-name }}:${{ inputs.version }}`
 
             ## Usage
 
             The WIT package is automatically downloaded by components during composition. You can also fetch it directly:
 
             ```bash
-            wkg get wasmcp:mcp@${{ inputs.version }}
+            wkg get ${{ inputs.wkg-package }}@${{ inputs.version }}
             ```
 
             ## Next Steps
 
             1. Components will automatically fetch the new WIT version during build
-            2. Run component release: Go to Actions → Release Components → Run workflow
+            2. Release other WIT packages if needed (protocol, server, client)
+            3. Release components once all WIT packages are published
 
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/wit-v${{ inputs.version }}
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ inputs.tag-prefix }}${{ inputs.version }}
 
   all-jobs-complete:
     name: All Jobs Complete
@@ -171,9 +191,10 @@ jobs:
             echo "One or more jobs failed"
             exit 1
           fi
-          echo "✅ WIT package release v${{ inputs.version }} completed successfully!"
+          echo "✅ WIT package release ${{ inputs.wkg-package }}@${{ inputs.version }} completed successfully!"
           echo ""
           echo "Next steps:"
           echo "  1. Components will automatically fetch the new WIT version during build"
-          echo "  2. Release components with this WIT version"
-          echo "  3. Update release notes at https://github.com/${{ github.repository }}/releases/tag/wit-v${{ inputs.version }}"
+          echo "  2. Release other WIT packages if needed (protocol, server, client)"
+          echo "  3. Release components once all WIT packages are published"
+          echo "  4. Update release notes at https://github.com/${{ github.repository }}/releases/tag/${{ inputs.tag-prefix }}${{ inputs.version }}"

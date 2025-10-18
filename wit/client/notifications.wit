@@ -1,0 +1,60 @@
+use wasi:io/streams@0.2.3;
+use wasmcp:protocol/mcp@0.1.0-alpha.2;
+
+/// Client-side MCP notifications
+///
+/// This interface provides convenience functions for clients to send MCP notifications
+/// to servers over output streams. Notifications are one-way messages that don't expect responses.
+///
+/// Currently clients can send:
+/// - **Progress**: Real-time updates on long-running operations initiated by the client
+///
+/// <https://spec.modelcontextprotocol.io/specification/basic/notifications>
+@since(version = 0.1.0-alpha.2)
+interface notifications {
+    use streams.{
+        output-stream,
+        stream-error,
+    };
+    use mcp.{
+        progress-token,
+    };
+
+    /// Errors that can occur when sending notifications
+    @since(version = 0.1.0-alpha.2)
+    variant notification-error {
+        /// An I/O error occurred writing to the output stream
+        io(stream-error),
+        /// Failed to serialize the notification to JSON-RPC format
+        serialization(string),
+        /// An unexpected error occurred
+        unexpected(string),
+    }
+
+    /// Send a `notifications/progress` notification
+    ///
+    /// Progress notifications inform the server about the status of long-running
+    /// operations initiated by the client. They include:
+    /// - token: Identifies which operation this progress is for
+    /// - progress: Current progress value
+    /// - total: Optional total value (for percentage calculation)
+    /// - message: Optional human-readable status message
+    ///
+    /// Progress notifications are advisory - servers may ignore them without
+    /// affecting operation correctness.
+    ///
+    /// <https://spec.modelcontextprotocol.io/specification/basic/utilities/progress>
+    @since(version = 0.1.0-alpha.2)
+    progress: func(
+        /// Output stream to send the notification
+        output: borrow<output-stream>,
+        /// Token identifying the operation (from original request)
+        token: progress-token,
+        /// Current progress value
+        progress: f64,
+        /// Optional total value (for percentage: progress/total * 100)
+        total: option<f64>,
+        /// Optional human-readable status message
+        message: option<string>,
+    ) -> result<_, notification-error>;
+}

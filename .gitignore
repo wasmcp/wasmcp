@@ -83,4 +83,4 @@ Thumbs.db
 tmp/
 
 # WIT deps
-**/wit/deps/**
+**/wit/**/deps/**
