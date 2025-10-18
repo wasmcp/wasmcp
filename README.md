@@ -71,7 +71,7 @@ These qualities are a perfect match for MCP's [server design principals](https:/
 
 ## Architecture
 
-Server features like tools, resources, prompts, and completions, are implemented by individual WebAssembly components that export the narrow, stable, spec-mapped WIT interfaces in [wit/protocol/server.wit](wit/protocol/server.wit).
+Server features like tools, resources, prompts, and completions, are implemented by individual WebAssembly components that export the narrow, spec-mapped WIT interfaces in [wit/protocol/mcp.wit](wit/protocol/mcp.wit).
 
 `wasmcp compose` wraps these components with published middleware components from [crates/](crates/) and composes them together behind a transport component as a complete middleware [chain of responsibility](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) that implements an MCP server. The chain terminates with [crates/method-not-found](crates/method-not-found), which returns errors for unhandled methods.
 

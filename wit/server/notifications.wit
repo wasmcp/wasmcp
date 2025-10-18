@@ -1,6 +1,3 @@
-use wasi:io/streams@0.2.3;
-use wasmcp:protocol/mcp@0.1.0-alpha.2;
-
 /// Server-side MCP notifications
 ///
 /// This interface provides convenience functions for servers to send MCP notifications
@@ -14,13 +11,13 @@ use wasmcp:protocol/mcp@0.1.0-alpha.2;
 /// - **Elicitation**: Request information from the client (roots, sampling)
 ///
 /// <https://spec.modelcontextprotocol.io/specification/basic/notifications>
-@since(version = 0.1.0-alpha.2)
+@since(version = 0.1.0-alpha.8)
 interface notifications {
-    use streams.{
+    use wasi:io/streams@0.2.3.{
         output-stream,
-        stream-error
+        stream-error,
     };
-    use mcp.{
+    use wasmcp:protocol/mcp@0.1.0-beta.1.{
         progress-token,
         log-level,
         server-request,
@@ -29,7 +26,7 @@ interface notifications {
     };
 
     /// Errors that can occur when sending notifications
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     variant notification-error {
         /// An I/O error occurred writing to the output stream
         io(stream-error),
@@ -52,7 +49,7 @@ interface notifications {
     /// affecting operation correctness.
     ///
     /// <https://spec.modelcontextprotocol.io/specification/basic/utilities/progress>
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     progress: func(
         /// Output stream to send the notification
         output: borrow<output-stream>,
@@ -83,7 +80,7 @@ interface notifications {
     /// - emergency: System is unusable
     ///
     /// <https://spec.modelcontextprotocol.io/specification/server/utilities/logging>
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     log: func(
         /// Output stream to send the log message
         output: borrow<output-stream>,
@@ -106,7 +103,7 @@ interface notifications {
     /// get the updated lists.
     ///
     /// <https://spec.modelcontextprotocol.io/specification/server/utilities/list_changed>
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     list-changed: func(
         /// Output stream to send the notification
         output: borrow<output-stream>,
@@ -124,7 +121,7 @@ interface notifications {
     /// receive the updates.
     ///
     /// <https://spec.modelcontextprotocol.io/specification/server/resources/updated>
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     updated: func(
         /// Output stream to send the notification
         output: borrow<output-stream>,
@@ -147,7 +144,7 @@ interface notifications {
     /// Use sessions to await client responses within a handler instance.
     ///
     /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     request: func(
         /// Output stream (SSE stream) to send the request
         output: borrow<output-stream>,

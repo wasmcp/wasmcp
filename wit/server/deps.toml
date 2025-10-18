@@ -1,0 +1,5 @@
+# WIT dependencies for wasmcp:server
+# Depends on local protocol package and wasi:keyvalue for sessions
+
+protocol = "../protocol"
+keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/refs/tags/v0.2.0-draft.tar.gz"

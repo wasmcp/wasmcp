@@ -1,15 +1,15 @@
 /// MCP client-side handler interface and composition worlds.
 ///
 /// <https://modelcontextprotocol.io>
-package wasmcp:client@0.1.0-alpha.2;
-
-use wasi:io/streams@0.2.3;
-use wasmcp:protocol/mcp@0.1.0-alpha.2;
+package wasmcp:client@0.1.0-beta.1;
 
 /// Client-side MCP message handler.
-@since(version = 0.1.0-alpha.2)
+@since(version = 0.1.0-alpha.8)
 interface handler {
-    use mcp.{
+    use wasi:io/streams@0.2.3.{
+        output-stream,
+    };
+    use wasmcp:protocol/mcp@0.1.0-beta.1.{
         error-code,
         request-id,
         client-response,
@@ -17,24 +17,21 @@ interface handler {
         server-response,
         server-notification,
     };
-    use streams.{
-        output-stream,
-    };
 
     /// Handle a server request.
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     handle-request: func(
         request: tuple<server-request, request-id>,
     ) -> result<client-response, error-code>;
 
     /// Handle a server response to a client-initiated request.
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     handle-response: func(
         response: result<tuple<server-response, request-id>, error-code>,
     );
 
     /// Handle a server notification.
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     handle-notification: func(
         notification: server-notification,
     );
@@ -43,7 +40,7 @@ interface handler {
 /// Client transport world.
 ///
 /// Import handler interface to delegate MCP message processing.
-@since(version = 0.1.0-alpha.2)
+@since(version = 0.1.0-alpha.8)
 world transport {
     import handler;
 }
@@ -51,7 +48,7 @@ world transport {
 /// Client middleware world.
 ///
 /// Import and export handler interface to enable composition.
-@since(version = 0.1.0-alpha.2)
+@since(version = 0.1.0-alpha.8)
 world middleware {
     import handler;
     export handler;
