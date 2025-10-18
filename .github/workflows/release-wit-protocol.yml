@@ -1,0 +1,21 @@
+name: Release WIT Protocol Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Protocol package version (e.g. 0.1.0 or 0.1.0-alpha.1)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Release Protocol Package
+    uses: ./.github/workflows/reusable-release-wit.yml
+    with:
+      package-name: protocol
+      version: ${{ inputs.version }}
+      wit-dir: wit/protocol
+      wkg-package: wasmcp:protocol
+      tag-prefix: protocol-v
+    secrets: inherit

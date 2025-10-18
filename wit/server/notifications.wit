@@ -1,30 +1,35 @@
 use wasi:io/streams@0.2.3;
+use wasmcp:protocol/mcp@0.1.0-alpha.2;
 
-/// Bidirectional notification interfaces
+/// Server-side MCP notifications
 ///
-/// These interfaces provide convenience functions for sending MCP notifications
-/// over output streams. Notifications are one-way messages that don't expect responses.
+/// This interface provides convenience functions for servers to send MCP notifications
+/// to clients over output streams. Notifications are one-way messages that don't expect responses.
 ///
-/// There are two categories:
-/// - **Bidirectional notifications**: Shared by client and server (progress)
-/// - **Client notifications**: Server → Client only (logs, list changes, requests)
+/// Categories:
+/// - **Progress**: Real-time updates on long-running operations
+/// - **Logging**: Send log messages to client's logging system
+/// - **List changes**: Notify when tools/prompts/resources are added/removed
+/// - **Subscriptions**: Push updates to subscribed resources/prompts
+/// - **Elicitation**: Request information from the client (roots, sampling)
 ///
 /// <https://spec.modelcontextprotocol.io/specification/basic/notifications>
-
-/// Bidirectional MCP notifications
-///
-/// Notifications that can be sent by both clients and servers. Currently this
-/// includes only progress notifications, which provide real-time updates on
-/// long-running operations.
-///
-/// <https://spec.modelcontextprotocol.io/specification/basic/utilities/progress>
-@since(version = 0.4.0)
+@since(version = 0.1.0-alpha.2)
 interface notifications {
-    use streams.{output-stream, stream-error};
-    use protocol.{progress-token, log-level};
+    use streams.{
+        output-stream,
+        stream-error
+    };
+    use mcp.{
+        progress-token,
+        log-level,
+        server-request,
+        server-lists,
+        server-subscriptions,
+    };
 
     /// Errors that can occur when sending notifications
-    @since(version = 0.4.0)
+    @since(version = 0.1.0-alpha.2)
     variant notification-error {
         /// An I/O error occurred writing to the output stream
         io(stream-error),
@@ -34,20 +39,20 @@ interface notifications {
         unexpected(string),
     }
 
-    /// Send a bidirectional `notifications/progress` notification
+    /// Send a `notifications/progress` notification
     ///
-    /// Progress notifications inform the recipient about the status of long-running
+    /// Progress notifications inform the client about the status of long-running
     /// operations. They include:
     /// - token: Identifies which operation this progress is for
     /// - progress: Current progress value
     /// - total: Optional total value (for percentage calculation)
     /// - message: Optional human-readable status message
     ///
-    /// Progress notifications are advisory - recipients may ignore them without
+    /// Progress notifications are advisory - clients may ignore them without
     /// affecting operation correctness.
     ///
     /// <https://spec.modelcontextprotocol.io/specification/basic/utilities/progress>
-    @since(version = 0.4.0)
+    @since(version = 0.1.0-alpha.2)
     progress: func(
         /// Output stream to send the notification
         output: borrow<output-stream>,
@@ -60,31 +65,6 @@ interface notifications {
         /// Optional human-readable status message
         message: option<string>,
     ) -> result<_, notification-error>;
-}
-
-/// Client-directed MCP notifications and requests
-///
-/// These interfaces are used by servers to send notifications and requests to clients.
-/// Unlike bidirectional notifications, these are server → client only.
-///
-/// Categories:
-/// - **Logging**: Send log messages to client's logging system
-/// - **List changes**: Notify when tools/prompts/resources are added/removed
-/// - **Subscriptions**: Push updates to subscribed resources/prompts
-/// - **Elicitation**: Request information from the client (roots, sampling)
-///
-/// <https://spec.modelcontextprotocol.io/specification/server/utilities/logging>
-@since(version = 0.4.0)
-interface client-notifications {
-    use streams.{output-stream};
-    use protocol.{
-        server-request,
-        progress-token,
-        log-level,
-        server-lists,
-        server-subscriptions,
-    };
-    use notifications.{notification-error};
 
     /// Log a message to the client
     ///
@@ -103,7 +83,7 @@ interface client-notifications {
     /// - emergency: System is unusable
     ///
     /// <https://spec.modelcontextprotocol.io/specification/server/utilities/logging>
-    @since(version = 0.4.0)
+    @since(version = 0.1.0-alpha.2)
     log: func(
         /// Output stream to send the log message
         output: borrow<output-stream>,
@@ -126,7 +106,7 @@ interface client-notifications {
     /// get the updated lists.
     ///
     /// <https://spec.modelcontextprotocol.io/specification/server/utilities/list_changed>
-    @since(version = 0.4.0)
+    @since(version = 0.1.0-alpha.2)
     list-changed: func(
         /// Output stream to send the notification
         output: borrow<output-stream>,
@@ -144,7 +124,7 @@ interface client-notifications {
     /// receive the updates.
     ///
     /// <https://spec.modelcontextprotocol.io/specification/server/resources/updated>
-    @since(version = 0.4.0)
+    @since(version = 0.1.0-alpha.2)
     updated: func(
         /// Output stream to send the notification
         output: borrow<output-stream>,
@@ -167,7 +147,7 @@ interface client-notifications {
     /// Use sessions to await client responses within a handler instance.
     ///
     /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
-    @since(version = 0.4.0)
+    @since(version = 0.1.0-alpha.2)
     request: func(
         /// Output stream (SSE stream) to send the request
         output: borrow<output-stream>,
