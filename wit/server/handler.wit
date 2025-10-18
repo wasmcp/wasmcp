@@ -1,16 +1,12 @@
 /// MCP server-side handler interface and composition worlds.
 ///
 /// <https://modelcontextprotocol.io>
-package wasmcp:server@0.1.0-alpha.2;
-
-use wasmcp:protocol/mcp@0.1.0-alpha.2;
-use wasmcp:protocol/server@0.1.0-alpha.2;
-
+package wasmcp:server@0.1.0-beta.1;
 
 /// Server-side MCP message handler.
-@since(version = 0.1.0-alpha.2)
+@since(version = 0.1.0-alpha.8)
 interface handler {
-    use mcp.{
+    use wasmcp:protocol/mcp@0.1.0-beta.1.{
         error-code,
         claims,
         session-id,
@@ -20,7 +16,7 @@ interface handler {
         client-response,
         client-notification,
     };
-    use server.{
+    use wasmcp:protocol/server@0.1.0-beta.1.{
         request-options,
     };
 
@@ -34,20 +30,20 @@ interface handler {
     /// - `options`: Context from transport (auth, session, streams, custom metadata)
     ///
     /// Returns the server response or an error code if processing fails.
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     handle-request: func(
         request: tuple<client-request, request-id>,
         options: request-options,
     ) -> result<server-response, error-code>;
 
     /// Handle a client response to a server-initiated request.
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     handle-response: func(
         response: result<tuple<client-response, request-id>, error-code>,
     );
 
     /// Handle a client notification.
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     handle-notification: func(
         notification: client-notification,
     );
@@ -56,7 +52,7 @@ interface handler {
 /// Server transport world.
 ///
 /// Import handler interface to delegate MCP message processing.
-@since(version = 0.1.0-alpha.2)
+@since(version = 0.1.0-alpha.8)
 world transport {
     import handler;
 }
@@ -64,7 +60,7 @@ world transport {
 /// Server middleware world.
 ///
 /// Import and export handler interface to enable composition.
-@since(version = 0.1.0-alpha.2)
+@since(version = 0.1.0-alpha.8)
 world middleware {
     import handler;
     export handler;

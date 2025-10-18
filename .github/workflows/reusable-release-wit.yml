@@ -45,7 +45,7 @@ jobs:
 
       - name: Check WIT package version matches
         run: |
-          wit_version=$(grep -oP 'package ${{ inputs.wkg-package }}@\K[^;]+' ${{ inputs.wit-dir }}/*.wit | head -1)
+          wit_version=$(grep -hE 'package ${{ inputs.wkg-package }}@' ${{ inputs.wit-dir }}/*.wit | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?' | head -1)
           if [ "$wit_version" != "${{ inputs.version }}" ]; then
             echo "Error: WIT package version ($wit_version) does not match release version (${{ inputs.version }})"
             exit 1
@@ -60,6 +60,12 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install wit-deps
+        run: |
+          curl -sSL https://github.com/bytecodealliance/wit-deps/releases/download/v0.5.0/wit-deps-x86_64-unknown-linux-musl -o wit-deps
+          chmod +x wit-deps
+          sudo mv wit-deps /usr/local/bin/
 
       - name: Install wkg
         run: |
@@ -79,6 +85,16 @@ jobs:
           password = "${{ secrets.GHCR_TOKEN }}"
           EOF
 
+      - name: Fetch WIT dependencies
+        run: |
+          # Fetch dependencies for the WIT package being released
+          if [ -f "${{ inputs.wit-dir }}/deps.toml" ]; then
+            echo "Fetching WIT deps for ${{ inputs.package-name }}..."
+            wit-deps -m "${{ inputs.wit-dir }}/deps.toml" -d "${{ inputs.wit-dir }}/deps" -l "${{ inputs.wit-dir }}/deps.lock"
+          else
+            echo "No deps.toml found for ${{ inputs.package-name }}, skipping dependency fetch"
+          fi
+
       - name: Check if WIT package already exists
         id: check-wit
         run: |
@@ -92,16 +108,19 @@ jobs:
           fi
 
       - name: Build WIT package
+        working-directory: ${{ inputs.wit-dir }}
         run: |
-          wkg wit build --wit-dir ${{ inputs.wit-dir }}
+          wkg wit build --wit-dir .
           echo "✅ Built WIT package: ${{ inputs.wkg-package }}@${{ inputs.version }}.wasm"
 
       - name: Publish WIT package
+        working-directory: ${{ inputs.wit-dir }}
         run: |
           wkg publish ${{ inputs.wkg-package }}@${{ inputs.version }}.wasm
           echo "✅ Published WIT package: ${{ inputs.wkg-package }}@${{ inputs.version }}"
 
       - name: Rename WIT package for artifact upload
+        working-directory: ${{ inputs.wit-dir }}
         run: |
           # Replace colons with underscores for filesystem compatibility
           safe_name=$(echo "${{ inputs.wkg-package }}" | tr ':' '_')
@@ -111,7 +130,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wit-package-${{ inputs.package-name }}-${{ inputs.version }}
-          path: "*_*@${{ inputs.version }}.wasm"
+          path: ${{ inputs.wit-dir }}/*_*@${{ inputs.version }}.wasm
 
       - name: Summary
         run: |

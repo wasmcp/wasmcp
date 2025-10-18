@@ -1,6 +1,3 @@
-use wasi:io/streams@0.2.3;
-use wasmcp:protocol/mcp@0.1.0-alpha.2;
-
 /// Client-side MCP notifications
 ///
 /// This interface provides convenience functions for clients to send MCP notifications
@@ -10,18 +7,18 @@ use wasmcp:protocol/mcp@0.1.0-alpha.2;
 /// - **Progress**: Real-time updates on long-running operations initiated by the client
 ///
 /// <https://spec.modelcontextprotocol.io/specification/basic/notifications>
-@since(version = 0.1.0-alpha.2)
+@since(version = 0.1.0-alpha.8)
 interface notifications {
-    use streams.{
+    use wasi:io/streams@0.2.3.{
         output-stream,
         stream-error,
     };
-    use mcp.{
+    use wasmcp:protocol/mcp@0.1.0-beta.1.{
         progress-token,
     };
 
     /// Errors that can occur when sending notifications
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     variant notification-error {
         /// An I/O error occurred writing to the output stream
         io(stream-error),
@@ -44,7 +41,7 @@ interface notifications {
     /// affecting operation correctness.
     ///
     /// <https://spec.modelcontextprotocol.io/specification/basic/utilities/progress>
-    @since(version = 0.1.0-alpha.2)
+    @since(version = 0.1.0-alpha.8)
     progress: func(
         /// Output stream to send the notification
         output: borrow<output-stream>,
