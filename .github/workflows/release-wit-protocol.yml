@@ -11,6 +11,9 @@ on:
 jobs:
   release:
     name: Release Protocol Package
+    permissions:
+      contents: write
+      packages: write
     uses: ./.github/workflows/reusable-release-wit.yml
     with:
       package-name: protocol

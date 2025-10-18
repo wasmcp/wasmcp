@@ -6,16 +6,14 @@
 ///
 /// <https://spec.modelcontextprotocol.io>
 
-use wasi:io/streams@0.2.3;
-
 /// Server request handling utilities.
 ///
 /// This interface provides types for passing request-scoped context and metadata
 /// between handler components. The options pattern enables flexible, extensible
 /// context passing without rigid record structures.
-@since(version = 0.1.0-alpha.3)
+@since(version = 0.1.0-alpha.8)
 interface server {
-    use streams.{
+    use wasi:io/streams@0.2.3.{
         output-stream,
     };
     use mcp.{
@@ -25,7 +23,7 @@ interface server {
     };
 
     /// Client identity information for authentication/authorization and sessions.
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     record client-identity {
         /// Authentication/authorization claims.
         ///
@@ -48,7 +46,7 @@ interface server {
     }
 
     /// Message context option for passing context and metadata to capability handlers.
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     variant message-context {
         /// Authentication/authorization identity.
         ///
@@ -78,7 +76,7 @@ interface server {
     /// - Extract options they need (e.g., find `session` or `claims`)
     /// - Ignore options they don't recognize
     /// - Pass the full list downstream for other components
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     type response-options = list<message-context>;
 
     /// List of notification options for passing context.
@@ -87,7 +85,7 @@ interface server {
     /// - Extract options they need (e.g., find `session` or `claims`)
     /// - Ignore options they don't recognize
     /// - Pass the full list downstream for other components
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     type notification-options = list<message-context>;
 
     /// Request option for passing context and metadata to capability handlers.
@@ -100,7 +98,7 @@ interface server {
     /// - Inspect options they understand
     /// - Ignore options they don't need
     /// - Pass through unknown options to downstream handlers
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     variant request-context {
         /// Authentication/authorization identity.
         ///
@@ -141,7 +139,7 @@ interface server {
     /// - Extract options they need (e.g., find `session` or `claims`)
     /// - Ignore options they don't recognize
     /// - Pass the full list downstream for other components
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     type request-options = list<request-context>;
 }
 
@@ -150,7 +148,7 @@ interface server {
 /// Export this interface to provide MCP tools functionality.
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
-@since(version = 0.1.0-alpha.3)
+@since(version = 0.1.0-alpha.8)
 interface tools {
     use mcp.{
         cursor,
@@ -165,14 +163,14 @@ interface tools {
     };
 
     /// List tools provided by this component.
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     list-tools: func(
         request: list-tools-request,
         options: request-options,
     ) -> result<list-tools-result, error-code>;
 
     /// Execute a tool call. Return Err(method-not-found) for unrecognized tools.
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     call-tool: func(
         request: call-tool-request,
         options: request-options,
@@ -184,7 +182,7 @@ interface tools {
 /// Export this interface to provide MCP resources functionality.
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
-@since(version = 0.1.0-alpha.3)
+@since(version = 0.1.0-alpha.8)
 interface resources {
     use mcp.{
         error-code,
@@ -200,21 +198,21 @@ interface resources {
     };
 
     /// List resources provided by this component.
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     list-resources: func(
         request: list-resources-request,
         options: request-options,
     ) -> result<list-resources-result, error-code>;
 
     /// Read a resource by URI. Return Err(method-not-found) for unrecognized URIs.
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     read-resource: func(
         request: read-resource-request,
         options: request-options,
     ) -> result<read-resource-result, error-code>;
 
     /// List resource templates (RFC 6570 URI templates).
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     list-resource-templates: func(
         request: list-resource-templates-request,
         options: request-options,
@@ -226,7 +224,7 @@ interface resources {
 /// Export this interface to provide MCP prompts functionality.
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
-@since(version = 0.1.0-alpha.3)
+@since(version = 0.1.0-alpha.8)
 interface prompts {
     use mcp.{
         error-code,
@@ -240,14 +238,14 @@ interface prompts {
     };
 
     /// List prompts provided by this component.
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     list-prompts: func(
         request: list-prompts-request,
         options: request-options,
     ) -> result<list-prompts-result, error-code>;
 
     /// Get a prompt by name. Return Err(method-not-found) for unrecognized prompts.
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     get-prompt: func(
         request: get-prompt-request,
         options: request-options,
@@ -259,7 +257,7 @@ interface prompts {
 /// Export this interface to provide argument completions for prompts and resources.
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
-@since(version = 0.1.0-alpha.3)
+@since(version = 0.1.0-alpha.8)
 interface completions {
     use mcp.{
         error-code,
@@ -272,7 +270,7 @@ interface completions {
 
     /// Provide completion suggestions for prompt or resource arguments.
     /// Return Err(method-not-found) for unsupported references.
-    @since(version = 0.1.0-alpha.3)
+    @since(version = 0.1.0-alpha.8)
     complete: func(
         request: complete-request,
         options: request-options,

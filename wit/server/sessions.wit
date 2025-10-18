@@ -1,9 +1,3 @@
-use wasi:io/streams@0.2.3;
-use wasi:io/poll@0.2.3;
-use wasi:keyvalue/store@0.2.0-draft;
-use wasmcp:protocol/mcp@0.1.0-alpha.2;
-
-
 /// MCP session management and related features
 ///
 /// This interface provides stateful session management for MCP servers, enabling:
@@ -16,26 +10,24 @@ use wasmcp:protocol/mcp@0.1.0-alpha.2;
 /// allowing servers to maintain state and context across interactions.
 ///
 /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/session>
-@since(version = 0.1.0-alpha.2)
 interface sessions {
-    use streams.{
+    use wasi:io/streams@0.2.3.{
         output-stream,
         stream-error,
     };
-    use poll.{
+    use wasi:io/poll@0.2.3.{
         pollable,
     };
-    use store.{
+    use wasi:keyvalue/store@0.2.0-draft.{
         bucket,
         error as store-error,
     };
-    use mcp.{
+    use wasmcp:protocol/mcp@0.1.0-beta.1.{
         elicit-request,
         elicit-result,
     };
 
     /// Errors that can occur during session operations
-    @unstable(feature = sessions)
     variant session-error {
         /// An I/O error occurred in communication with the client
         io(stream-error),
@@ -52,7 +44,6 @@ interface sessions {
     /// The elicit result is ready when the pollable indicates readiness.
     /// This enables async/await style operations where handlers can request
     /// information from clients and continue processing when the response arrives.
-    @unstable(feature = elicitation)
     resource future-elicit-result {
         /// Create a pollable to wait for the elicit result
         ///
@@ -82,7 +73,6 @@ interface sessions {
     /// 6. delete() - Remove session and all data
     ///
     /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/session>
-    @unstable(feature = sessions)
     resource session {
         /// Initialize a new session in the given bucket
         ///
@@ -173,7 +163,7 @@ interface sessions {
             elicitation: elicit-request,
         ) -> result<future-elicit-result, session-error>;
 
-        /// Idempotently terminate the session, optionally providing a reason
+        /// Terminate the session, optionally providing a reason
         ///
         /// Termination marks the session as ended but does NOT delete session data.
         /// Clients can detect termination and stop sending requests. Use delete()
