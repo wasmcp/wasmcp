@@ -50,7 +50,7 @@ pub async fn create_project(
     let template_path = language.to_string();
     let template_dir = TEMPLATES
         .get_dir(&template_path)
-        .ok_or_else(|| anyhow::anyhow!("Template not found for language: {}", language))?;
+        .ok_or_else(|| anyhow::anyhow!("template not found for language: '{}'", language))?;
 
     // Render the template directory
     render_embedded_dir(template_dir, output_dir, &parser, &context)?;
@@ -77,10 +77,10 @@ fn render_embedded_dir(
         let file_name = file
             .path()
             .file_name()
-            .ok_or_else(|| anyhow::anyhow!("Invalid file name"))?;
+            .ok_or_else(|| anyhow::anyhow!("invalid file name"))?;
 
         let content = file.contents_utf8().ok_or_else(|| {
-            anyhow::anyhow!("File is not valid UTF-8: {}", file.path().display())
+            anyhow::anyhow!("file is not valid UTF-8: '{}'", file.path().display())
         })?;
 
         // Render template
@@ -103,7 +103,7 @@ fn render_embedded_dir(
         let subdir_name = subdir
             .path()
             .file_name()
-            .ok_or_else(|| anyhow::anyhow!("Invalid directory name"))?;
+            .ok_or_else(|| anyhow::anyhow!("invalid directory name"))?;
 
         let output_subdir = output_base.join(subdir_name);
         fs::create_dir_all(&output_subdir).context(format!(

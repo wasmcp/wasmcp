@@ -24,20 +24,65 @@ wasmcp new my-strings --language python
 
 Generated projects include simple tool implementations demonstrating the capability pattern.
 
+### Component Registry
+
+Register aliases for frequently-used components:
+
+```bash
+# Register components with short names
+wasmcp registry component add calc ./calculator.wasm
+wasmcp registry component add strings wasmcp:string-tools@1.0.0
+
+# List registered components
+wasmcp registry component list
+
+# Remove a component alias
+wasmcp registry component remove calc
+```
+
+### Profiles
+
+Create reusable composition pipelines:
+
+```bash
+# Create a profile
+wasmcp registry profile add dev calc strings -o dev-server.wasm
+
+# Create profile with inheritance
+wasmcp registry profile add prod monitor -o prod.wasm -b dev
+
+# List profiles
+wasmcp registry profile list
+
+# Remove a profile
+wasmcp registry profile remove dev
+```
+
 ### Compose components into a server
 
 ```bash
-# Single component
+# Using file paths
 wasmcp compose component.wasm -o server.wasm
 
-# Multiple components (composed into linear pipeline)
-wasmcp compose math.wasm strings.wasm -o server.wasm
+# Using aliases
+wasmcp compose calc strings -o server.wasm
+
+# Using profiles
+wasmcp compose dev
+
+# Mix profiles and components (order preserved)
+wasmcp compose dev extra-component.wasm -o server.wasm
 
 # Stdio transport for local integration
 wasmcp compose component.wasm -t stdio -o server.wasm
+
+# Verbose output for debugging
+wasmcp compose calc strings -o server.wasm --verbose
 ```
 
 The CLI automatically detects component types and wraps them with appropriate middleware.
+
+**Resolution order:** Each spec is checked as profile → alias → path → registry package. Profiles expand in-place, preserving component order.
 
 ### Run the server
 
@@ -123,6 +168,60 @@ make  # Installs dependencies if needed, then builds the component
 - **TypeScript**: `dist/{project-name}.wasm`
 
 See generated `README.md` files for language-specific details.
+
+## Registry Configuration
+
+### Location
+
+Registry data is stored in:
+- **Configuration file**: `~/.config/wasmcp/config.toml` (XDG Base Directory compliant)
+- **Composed outputs**: `~/.config/wasmcp/composed/` (when profiles specify relative paths)
+- **Downloaded dependencies**: `~/.config/wasmcp/deps/`
+
+### Config File Format
+
+The configuration uses TOML format:
+
+```toml
+# Component aliases
+[components]
+calc = "/absolute/path/to/calculator.wasm"
+strings = "wasmcp:string-tools@1.0.0"
+weather = "calc"  # Aliases can reference other aliases
+
+# Profiles
+[profiles.dev]
+components = ["calc", "strings"]
+output = "dev-server.wasm"
+
+[profiles.prod]
+base = "dev"  # Inherit from dev profile
+components = ["monitor", "logger"]
+output = "prod-server.wasm"
+```
+
+### Validation
+
+The registry enforces:
+- **Unique names**: Component aliases and profile names cannot conflict
+- **No circular dependencies**: Detected in both alias chains and profile inheritance
+- **Valid identifiers**: Names must be alphanumeric with hyphens/underscores only
+- **Reserved names**: Cannot use CLI command names (compose, registry, etc.)
+
+### View Registry
+
+```bash
+# Show all registry information
+wasmcp registry info
+
+# Filter to components only
+wasmcp registry info --components
+wasmcp registry info -c
+
+# Filter to profiles only
+wasmcp registry info --profiles
+wasmcp registry info -p
+```
 
 ## Version Compatibility
 

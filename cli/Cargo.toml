@@ -34,6 +34,7 @@ wasm-pkg-common = "0.9"
 wasm-pkg-core = "0.9"
 futures-util = "0.3"
 serde_json = "1.0"
+toml = "0.8"
 
 [dev-dependencies]
 tempfile = "3"
