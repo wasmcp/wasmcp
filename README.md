@@ -17,7 +17,7 @@ cd time-tools
 make # produces time-tools.wasm
 
 # Compose your tools with a Streamable HTTP transport component (default) to form an MCP server
-wasmcp compose time-tools.wasm -t http -o http-server.wasm 
+wasmcp compose time-tools.wasm -t http -o http-server.wasm
 
 # Run
 wasmtime serve -Scli http-server.wasm # serves http://0.0.0.0:8080/ by default
@@ -36,6 +36,32 @@ make
 
 # Use the time-tools.wasm you built earlier
 wasmcp compose math-tools.wasm ../time-tools.wasm -o server.wasm
+```
+
+### Simplify with Component Aliases
+
+Register frequently-used components with short aliases:
+```bash
+# Register aliases for easier composition
+wasmcp registry component add time ../time-tools/time-tools.wasm
+wasmcp registry component add math math-tools.wasm
+
+# Now compose using short names
+wasmcp compose time math -o server.wasm
+```
+
+### Reusable Profiles
+
+Create profiles for common server configurations:
+```bash
+# Create a development profile
+wasmcp registry profile add dev time math -o dev-server.wasm
+
+# Compose your entire dev stack with one command
+wasmcp compose dev
+
+# Extend profiles with additional components
+wasmcp compose dev logger-tools.wasm -o debug-server.wasm
 ```
 
 ## Installation
@@ -111,6 +137,94 @@ wasmcp compose logger.wasm calculator.wasm weather.wasm -o server.wasm
 ```
 
 When a client requests `tools/list`, each component that offers tools contributes their tools, creating a unified catalog automatically.
+
+## Registry
+
+The registry system provides component aliases and profiles for simplified workflows.
+
+### Component Aliases
+
+Register short names for frequently-used components:
+
+```bash
+# Register local components
+wasmcp registry component add calc ./calculator.wasm
+wasmcp registry component add weather ./weather-tools.wasm
+
+# Register from registry
+wasmcp registry component add db wasmcp:database@1.0.0
+
+# Use in composition
+wasmcp compose calc weather -o server.wasm
+
+# List and manage
+wasmcp registry component list
+wasmcp registry component remove calc
+```
+
+**Aliases support:**
+- Local file paths (automatically canonicalized to absolute paths)
+- Registry package specs (e.g., `wasmcp:calculator@0.1.0`)
+- Alias chaining (aliases can reference other aliases)
+
+### Profiles
+
+Create reusable composition pipelines:
+
+```bash
+# Create a base profile
+wasmcp registry profile add base calc weather -o base.wasm
+
+# Create profile with inheritance
+wasmcp registry profile add prod logger monitor -o prod.wasm -b base
+
+# Use profiles in composition
+wasmcp compose base                    # Uses base profile's output path
+wasmcp compose prod extra-tool.wasm    # Extends prod profile
+
+# List and manage
+wasmcp registry profile list
+wasmcp registry profile remove base
+```
+
+**Profile features:**
+- Inheritance chains (profiles can extend base profiles)
+- Automatic output path resolution
+- Mix with direct components: `wasmcp compose my-profile extra-comp`
+
+### Unified Resolution
+
+Profiles and components work seamlessly together - just list what you want:
+
+```bash
+# Mix profiles and components freely
+wasmcp compose base-profile custom-tool weather-profile -o server.wasm
+
+# Order is preserved: base components → custom-tool → weather components
+```
+
+**Resolution order:**
+1. If spec matches a profile name → expand profile components in-place
+2. Otherwise resolve as component (alias → path → registry package)
+
+**Validation:**
+- Component aliases and profile names must be unique
+- Enforced at registration time with clear error messages
+- Circular dependencies detected in both aliases and profile inheritance
+
+### Registry Info
+
+View your registry configuration:
+
+```bash
+wasmcp registry info              # Show all
+wasmcp registry info --components # Filter to components
+wasmcp registry info --profiles   # Filter to profiles
+```
+
+### Configuration
+
+Registry data is stored in `~/.config/wasmcp/config.toml` (XDG Base Directory compliant).
 
 ## Components
 

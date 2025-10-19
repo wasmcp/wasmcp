@@ -3,6 +3,7 @@
 //! Provides functionality to download WebAssembly components from registries
 //! without requiring an external wkg executable.
 
+use crate::config;
 use anyhow::{Context, Result};
 use futures_util::TryStreamExt;
 use std::path::{Path, PathBuf};
@@ -28,7 +29,8 @@ pub async fn create_wasmcp_config() -> Result<Config> {
         .context("Failed to load wasm-pkg configuration")?;
 
     // Add wasmcp namespace mapping to ghcr.io OCI registry
-    let wasmcp_namespace = "wasmcp".parse().unwrap();
+    let wasmcp_namespace = "wasmcp".parse()
+        .expect("BUG: Failed to parse hardcoded 'wasmcp' namespace");
 
     // Create RegistryMetadata using serde_json deserialization
     let metadata: RegistryMetadata = serde_json::from_value(serde_json::json!({
@@ -37,12 +39,13 @@ pub async fn create_wasmcp_config() -> Result<Config> {
             "registry": "ghcr.io"
         }
     }))
-    .expect("Failed to create registry metadata");
+    .map_err(|e| anyhow::anyhow!("internal error creating registry metadata: {}", e))?;
 
     config.set_namespace_registry(
         wasmcp_namespace,
         RegistryMapping::Custom(CustomConfig {
-            registry: "ghcr.io".parse().unwrap(),
+            registry: "ghcr.io".parse()
+                .expect("BUG: Failed to parse hardcoded 'ghcr.io' registry"),
             metadata,
         }),
     );
@@ -51,6 +54,8 @@ pub async fn create_wasmcp_config() -> Result<Config> {
 }
 
 /// Initialize a caching client for package downloads
+///
+/// Uses the centralized cache directory from config::paths
 pub async fn create_client(cache_dir: &Path) -> Result<CachingClient<FileCache>> {
     let config = create_wasmcp_config().await?;
     let cache = FileCache::new(cache_dir)
@@ -58,6 +63,19 @@ pub async fn create_client(cache_dir: &Path) -> Result<CachingClient<FileCache>>
         .context("Failed to create package cache")?;
     let client = Client::new(config);
     Ok(CachingClient::new(Some(client), cache))
+}
+
+/// Initialize a caching client using the default wasmcp cache directory
+///
+/// This is a convenience wrapper around `create_client()` that uses the
+/// wasmcp-specific cache directory (~/.config/wasmcp/cache).
+///
+/// Note: Some operations (like WIT dependency management) use the global
+/// wasm-pkg cache (~/.cache/wasm-pkg) instead and should call `create_client()`
+/// directly with that path.
+pub async fn create_default_client() -> Result<CachingClient<FileCache>> {
+    let cache_dir = config::get_cache_dir()?;
+    create_client(&cache_dir).await
 }
 
 /// Download a package to the specified output path
@@ -134,13 +152,9 @@ pub async fn resolve_spec(
     client: &CachingClient<FileCache>,
     deps_dir: &Path,
 ) -> Result<PathBuf> {
-    // Check if spec is a local path
-    if spec.contains('/') || spec.contains('\\') || spec.ends_with(".wasm") {
-        let path = PathBuf::from(spec);
-        if !path.exists() {
-            anyhow::bail!("Component not found: {}", spec);
-        }
-        return Ok(path);
+    // Check if spec is a local path using centralized detection
+    if config::utils::is_path_spec(spec) {
+        return config::utils::canonicalize_path(spec);
     }
 
     // Otherwise, treat as package spec and download
@@ -185,7 +199,7 @@ pub async fn download_packages(
 
     future::try_join_all(downloads).await?;
 
-    println!("   ✅ All dependencies downloaded");
+    println!("   All dependencies downloaded");
     Ok(())
 }
 
@@ -254,7 +268,7 @@ pub async fn fetch_wit_dependencies(project_dir: &Path, update: bool) -> Result<
     // Restore original directory
     std::env::set_current_dir(original_dir)?;
 
-    println!("   ✅ WIT dependencies resolved");
+    println!("   WIT dependencies resolved");
 
     Ok(())
 }
