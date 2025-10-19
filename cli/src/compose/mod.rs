@@ -30,7 +30,7 @@ use crate::{config, pkg};
 
 // Public re-exports
 pub use self::dependencies::PackageClient;
-pub use self::profiles::{compose_profiles_and_components, expand_profile_specs};
+pub use self::profiles::expand_profile_specs;
 
 // Submodules
 pub mod dependencies;

@@ -22,7 +22,7 @@ fn cmd_with_temp_config() -> (Command, TempDir) {
 fn test_registry_help() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
-    cmd.args(&["registry", "--help"])
+    cmd.args(["registry", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("component"))
@@ -34,7 +34,7 @@ fn test_registry_help() {
 fn test_registry_component_help() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
-    cmd.args(&["registry", "component", "--help"])
+    cmd.args(["registry", "component", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("add"))
@@ -46,7 +46,7 @@ fn test_registry_component_help() {
 fn test_registry_profile_help() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
-    cmd.args(&["registry", "profile", "--help"])
+    cmd.args(["registry", "profile", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("add"))
@@ -58,7 +58,7 @@ fn test_registry_profile_help() {
 fn test_registry_component_add_requires_args() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
-    cmd.args(&["registry", "component", "add"])
+    cmd.args(["registry", "component", "add"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("required"));
@@ -68,7 +68,7 @@ fn test_registry_component_add_requires_args() {
 fn test_registry_component_add_requires_both_alias_and_spec() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
-    cmd.args(&["registry", "component", "add", "myalias"])
+    cmd.args(["registry", "component", "add", "myalias"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("required"));
@@ -78,7 +78,7 @@ fn test_registry_component_add_requires_both_alias_and_spec() {
 fn test_registry_profile_add_requires_args() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
-    cmd.args(&["registry", "profile", "add"])
+    cmd.args(["registry", "profile", "add"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("required"));
@@ -88,7 +88,7 @@ fn test_registry_profile_add_requires_args() {
 fn test_registry_profile_add_requires_output_flag() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
-    cmd.args(&["registry", "profile", "add", "myprofile", "comp1"])
+    cmd.args(["registry", "profile", "add", "myprofile", "comp1"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("required"))
@@ -99,7 +99,7 @@ fn test_registry_profile_add_requires_output_flag() {
 fn test_registry_info_with_no_config() {
     let (mut cmd, _temp_dir) = cmd_with_temp_config();
 
-    cmd.args(&["registry", "info"])
+    cmd.args(["registry", "info"])
         .assert()
         .success()
         .stdout(predicate::str::contains("wasmcp Registry Information"))
@@ -114,7 +114,7 @@ fn test_registry_info_with_no_config() {
 fn test_registry_info_components_filter() {
     let (mut cmd, _temp_dir) = cmd_with_temp_config();
 
-    cmd.args(&["registry", "info", "--components"])
+    cmd.args(["registry", "info", "--components"])
         .assert()
         .success()
         .stdout(predicate::str::contains("No components registered"))
@@ -129,7 +129,7 @@ fn test_registry_info_components_filter() {
 fn test_registry_info_profiles_filter() {
     let (mut cmd, _temp_dir) = cmd_with_temp_config();
 
-    cmd.args(&["registry", "info", "--profiles"])
+    cmd.args(["registry", "info", "--profiles"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Profiles:"))
@@ -142,7 +142,7 @@ fn test_registry_info_profiles_filter() {
 fn test_registry_info_filters_are_mutually_exclusive() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
-    cmd.args(&["registry", "info", "--components", "--profiles"])
+    cmd.args(["registry", "info", "--components", "--profiles"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("cannot be used with"));
@@ -152,7 +152,7 @@ fn test_registry_info_filters_are_mutually_exclusive() {
 fn test_registry_component_list_empty() {
     let (mut cmd, _temp_dir) = cmd_with_temp_config();
 
-    cmd.args(&["registry", "component", "list"])
+    cmd.args(["registry", "component", "list"])
         .assert()
         .success()
         .stdout(predicate::str::contains("No components registered"))
@@ -163,7 +163,7 @@ fn test_registry_component_list_empty() {
 fn test_registry_profile_list_empty() {
     let (mut cmd, _temp_dir) = cmd_with_temp_config();
 
-    cmd.args(&["registry", "profile", "list"])
+    cmd.args(["registry", "profile", "list"])
         .assert()
         .success()
         .stdout(predicate::str::contains("No profiles registered"))
@@ -175,7 +175,7 @@ fn test_old_register_command_does_not_exist() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
     // The old flat command should not work anymore
-    cmd.args(&["registry", "register"])
+    cmd.args(["registry", "register"])
         .assert()
         .failure();
 }
@@ -185,7 +185,7 @@ fn test_old_unregister_command_does_not_exist() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
     // The old flat command should not work anymore
-    cmd.args(&["registry", "unregister"])
+    cmd.args(["registry", "unregister"])
         .assert()
         .failure();
 }
@@ -195,7 +195,7 @@ fn test_old_profile_create_command_does_not_exist() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
     // The old dashed command should not work anymore
-    cmd.args(&["registry", "profile-create"])
+    cmd.args(["registry", "profile-create"])
         .assert()
         .failure();
 }
@@ -205,7 +205,7 @@ fn test_old_profile_delete_command_does_not_exist() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
     // The old dashed command should not work anymore
-    cmd.args(&["registry", "profile-delete"])
+    cmd.args(["registry", "profile-delete"])
         .assert()
         .failure();
 }
@@ -215,7 +215,7 @@ fn test_old_list_command_does_not_exist() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
     // The old separate list command should not work anymore
-    cmd.args(&["registry", "list"])
+    cmd.args(["registry", "list"])
         .assert()
         .failure();
 }
@@ -224,7 +224,7 @@ fn test_old_list_command_does_not_exist() {
 fn test_empty_state_shows_concrete_examples() {
     let (mut cmd, _temp_dir) = cmd_with_temp_config();
 
-    cmd.args(&["registry", "component", "list"])
+    cmd.args(["registry", "component", "list"])
         .assert()
         .success()
         // Check for concrete examples, not just templates
@@ -239,7 +239,7 @@ fn test_empty_state_shows_concrete_examples() {
 fn test_profile_empty_state_shows_concrete_examples() {
     let (mut cmd, _temp_dir) = cmd_with_temp_config();
 
-    cmd.args(&["registry", "profile", "list"])
+    cmd.args(["registry", "profile", "list"])
         .assert()
         .success()
         // Check for concrete examples with realistic names
@@ -254,7 +254,7 @@ fn test_profile_empty_state_shows_concrete_examples() {
 fn test_registry_info_short_flag_c() {
     let (mut cmd, _temp_dir) = cmd_with_temp_config();
 
-    cmd.args(&["registry", "info", "-c"])
+    cmd.args(["registry", "info", "-c"])
         .assert()
         .success()
         .stdout(predicate::str::contains("No components registered"));
@@ -264,7 +264,7 @@ fn test_registry_info_short_flag_c() {
 fn test_registry_info_short_flag_p() {
     let (mut cmd, _temp_dir) = cmd_with_temp_config();
 
-    cmd.args(&["registry", "info", "-p"])
+    cmd.args(["registry", "info", "-p"])
         .assert()
         .success()
         .stdout(predicate::str::contains("No profiles registered"));
@@ -274,7 +274,7 @@ fn test_registry_info_short_flag_p() {
 fn test_registry_info_short_flags_are_mutually_exclusive() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
-    cmd.args(&["registry", "info", "-c", "-p"])
+    cmd.args(["registry", "info", "-c", "-p"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("cannot be used with"));

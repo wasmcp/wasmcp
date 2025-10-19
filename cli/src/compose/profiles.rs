@@ -84,47 +84,6 @@ pub fn expand_profile_specs(specs: &[String]) -> Result<(Vec<String>, Option<con
     Ok((expanded, last_profile))
 }
 
-/// Compose profiles and direct components into a single component list
-///
-/// Resolution order:
-/// 1. Each profile is resolved (with base inheritance) in order
-/// 2. All profile components are collected
-/// 3. Direct components from CLI are appended
-///
-/// Profile settings behavior:
-/// - When multiple profiles are specified, the last profile's settings are used
-/// - This means the last profile's output path becomes the default (unless -o is provided)
-/// - Component lists are concatenated in order (all profiles are merged)
-pub fn compose_profiles_and_components(
-    profile_names: &[String],
-    direct_components: &[String],
-) -> Result<(Vec<String>, Option<config::Profile>)> {
-    let cfg = config::load_config()?;
-    let mut all_components = Vec::new();
-    let mut merged_profile: Option<config::Profile> = None;
-
-    // Step 1: Resolve and merge all profiles
-    for name in profile_names {
-        let mut visited = HashSet::new();
-        let profile = resolve_profile(name, &cfg, &mut visited)?;
-
-        // Collect components using iterator to avoid unnecessary intermediate clones
-        all_components.extend(profile.components.iter().cloned());
-
-        // Merge profile settings (last profile wins)
-        merged_profile = Some(profile);
-    }
-
-    // Step 2: Append direct component specs from CLI
-    all_components.extend(direct_components.iter().cloned());
-
-    if all_components.is_empty() {
-        bail!("no components specified in profiles or command line");
-    }
-
-    Ok((all_components, merged_profile))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -257,26 +216,4 @@ mod tests {
         assert_eq!(result.components, vec!["l1", "l2", "l3"]);
     }
 
-    #[test]
-    fn test_compose_profiles_and_components_no_profiles() {
-        let result = compose_profiles_and_components(
-            &[],
-            &["comp1".to_string(), "comp2".to_string()],
-        )
-        .unwrap();
-
-        assert_eq!(result.0, vec!["comp1", "comp2"]);
-        assert!(result.1.is_none());
-    }
-
-    #[test]
-    fn test_compose_profiles_and_components_empty() {
-        let result = compose_profiles_and_components(&[], &[]);
-
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("no components specified"));
-    }
 }
