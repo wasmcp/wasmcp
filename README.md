@@ -8,34 +8,30 @@ A [WebAssembly Component](https://component-model.bytecodealliance.org/) Develop
 
 ## Quick Start
 
-Author MCP tools in your favorite language
+Create and run your first MCP tool component:
 ```bash
+# Create a component in your favorite language
 wasmcp new time-tools --language python
+cd time-tools && make && cd ..
 
-# Develop and build the component
-cd time-tools
-make # produces time-tools.wasm
+# Register it with a short alias
+wasmcp registry component add time time-tools/time-tools.wasm
 
-# Compose your tools with a Streamable HTTP transport component (default) to form an MCP server
-wasmcp compose time-tools.wasm -t http -o http-server.wasm
-
-# Run
-wasmtime serve -Scli http-server.wasm # serves http://0.0.0.0:8080/ by default
-
-# Or compose the same tool components with a stdio transport
-wasmcp compose time-tools.wasm -t stdio -o stdio-server.wasm
-wasmtime run stdio-server.wasm
+# Compose into an MCP server and run
+wasmcp compose time -o server.wasm
+wasmtime serve -Scli server.wasm  # http://0.0.0.0:8080/mcp
 ```
 
-You can add any number of components together in sequence. If you include multiple tool components, the server will expose the combined set of tools automatically.
+Combine multiple tool components - they automatically merge into a unified catalog:
 ```bash
+# Create another component
 wasmcp new math-tools --language rust
+cd math-tools && make && cd ..
+wasmcp registry component add math math-tools/target/wasm32-wasip2/release/math_tools.wasm
 
-cd math-tools
-make
-
-# Use the time-tools.wasm you built earlier
-wasmcp compose math-tools.wasm ../time-tools.wasm -o server.wasm
+# Compose both together
+wasmcp compose time math -o combined-server.wasm
+wasmtime serve -Scli combined-server.wasm
 ```
 
 ## Installation
