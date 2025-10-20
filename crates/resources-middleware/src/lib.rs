@@ -19,8 +19,8 @@ mod bindings {
 use bindings::exports::wasmcp::server::handler::Guest;
 use bindings::wasi::io::streams::OutputStream;
 use bindings::wasmcp::protocol::mcp::*;
-use bindings::wasmcp::protocol::server_messages::Context;
 use bindings::wasmcp::protocol::resources as capability;
+use bindings::wasmcp::protocol::server_messages::Context;
 use bindings::wasmcp::server::handler as downstream;
 
 struct ResourcesMiddleware;

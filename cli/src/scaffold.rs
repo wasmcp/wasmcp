@@ -3,7 +3,7 @@
 //! This module provides functionality to generate new handler component projects
 //! from embedded templates. Templates are included at compile-time using include_dir.
 
-use crate::{pkg, Language};
+use crate::{pkg, Language, TemplateType};
 use anyhow::{Context, Result};
 use include_dir::{include_dir, Dir};
 use liquid::ParserBuilder;
@@ -28,6 +28,7 @@ pub async fn create_project(
     output_dir: &Path,
     name: &str,
     language: Language,
+    template_type: TemplateType,
     wasmcp_version: &str,
 ) -> Result<()> {
     // Create output directory
@@ -46,11 +47,15 @@ pub async fn create_project(
     // Create liquid parser
     let parser = ParserBuilder::with_stdlib().build()?;
 
-    // Get template directory for the language
-    let template_path = language.to_string();
-    let template_dir = TEMPLATES
-        .get_dir(&template_path)
-        .ok_or_else(|| anyhow::anyhow!("template not found for language: '{}'", language))?;
+    // Get template directory for the language and type
+    let template_path = format!("{}-{}", language, template_type);
+    let template_dir = TEMPLATES.get_dir(&template_path).ok_or_else(|| {
+        anyhow::anyhow!(
+            "template not found for language '{}' and type '{}'",
+            language,
+            template_type
+        )
+    })?;
 
     // Render the template directory
     render_embedded_dir(template_dir, output_dir, &parser, &context)?;
@@ -132,9 +137,14 @@ mod tests {
 
     #[test]
     fn test_templates_embedded() {
-        // Verify that templates are embedded
-        assert!(TEMPLATES.get_dir("rust").is_some());
-        assert!(TEMPLATES.get_dir("python").is_some());
-        assert!(TEMPLATES.get_dir("typescript").is_some());
+        // Verify that tools templates are embedded
+        assert!(TEMPLATES.get_dir("rust-tools").is_some());
+        assert!(TEMPLATES.get_dir("python-tools").is_some());
+        assert!(TEMPLATES.get_dir("typescript-tools").is_some());
+
+        // Verify that resources templates are embedded
+        assert!(TEMPLATES.get_dir("rust-resources").is_some());
+        assert!(TEMPLATES.get_dir("python-resources").is_some());
+        assert!(TEMPLATES.get_dir("typescript-resources").is_some());
     }
 }

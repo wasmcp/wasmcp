@@ -30,13 +30,18 @@ pub mod interfaces {
         format!("wasmcp:protocol/tools@{}", version)
     }
 
+    /// Generate the resources capability interface name with version
+    pub fn resources(version: &str) -> String {
+        format!("wasmcp:protocol/resources@{}", version)
+    }
+
     /// Generate a versioned package name for wasmcp components
     pub fn package(name: &str, version: &str) -> String {
         format!("wasmcp:{}@{}", name, version)
     }
 }
 
-/// Download required framework dependencies (transport, method-not-found, and tools-middleware)
+/// Download required framework dependencies (transport, method-not-found, tools-middleware, and resources-middleware)
 pub async fn download_dependencies(
     transport: &str,
     version: &str,
@@ -46,8 +51,14 @@ pub async fn download_dependencies(
     let transport_pkg = interfaces::package(&format!("{}-transport", transport), version);
     let method_not_found_pkg = interfaces::package("method-not-found", version);
     let tools_middleware_pkg = interfaces::package("tools-middleware", version);
+    let resources_middleware_pkg = interfaces::package("resources-middleware", version);
 
-    let specs = vec![transport_pkg, method_not_found_pkg, tools_middleware_pkg];
+    let specs = vec![
+        transport_pkg,
+        method_not_found_pkg,
+        tools_middleware_pkg,
+        resources_middleware_pkg,
+    ];
 
     pkg::download_packages(client, &specs, deps_dir).await
 }
