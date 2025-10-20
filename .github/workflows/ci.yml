@@ -45,26 +45,19 @@ jobs:
           cache-key: lint
           workspaces: . -> cli
 
-      - name: Install wkg
+      - name: Install wit-deps
         run: |
-          curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
-          chmod +x wkg
-          sudo mv wkg /usr/local/bin/
-
-      - name: Configure wkg registry
-        run: |
-          mkdir -p ~/.config/wasm-pkg
-          cat > ~/.config/wasm-pkg/config.toml <<EOF
-          [namespace_registries]
-          wasmcp = "ghcr.io"
-          EOF
+          curl -sSL https://github.com/bytecodealliance/wit-deps/releases/download/v0.5.0/wit-deps-x86_64-unknown-linux-musl -o wit-deps
+          chmod +x wit-deps
+          sudo mv wit-deps /usr/local/bin/
 
       - name: Fetch WIT dependencies
         run: |
+          set -e
           for crate in crates/*; do
             if [ -d "$crate/wit" ]; then
-              echo "Fetching WIT deps for $(basename $crate)..."
-              cd "$crate" && wkg wit fetch && cd ../..
+              echo "Fetching WIT deps for $crate..."
+              (cd "$crate" && wit-deps)
             fi
           done
 
@@ -115,32 +108,25 @@ jobs:
           cache-key: components
           # Cache all component crates (5 framework components)
           workspaces: |
-            crates/http-client-notifications
+            crates/http-notifications
             crates/http-transport
             crates/method-not-found
             crates/stdio-transport
             crates/tools-middleware
 
-      - name: Install wkg
+      - name: Install wit-deps
         run: |
-          curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
-          chmod +x wkg
-          sudo mv wkg /usr/local/bin/
-
-      - name: Configure wkg registry
-        run: |
-          mkdir -p ~/.config/wasm-pkg
-          cat > ~/.config/wasm-pkg/config.toml <<EOF
-          [namespace_registries]
-          wasmcp = "ghcr.io"
-          EOF
+          curl -sSL https://github.com/bytecodealliance/wit-deps/releases/download/v0.5.0/wit-deps-x86_64-unknown-linux-musl -o wit-deps
+          chmod +x wit-deps
+          sudo mv wit-deps /usr/local/bin/
 
       - name: Fetch WIT dependencies
         run: |
+          set -e
           for crate in crates/*; do
             if [ -d "$crate/wit" ]; then
-              echo "Fetching WIT deps for $(basename $crate)..."
-              cd "$crate" && wkg wit fetch && cd ../..
+              echo "Fetching WIT deps for $crate..."
+              (cd "$crate" && wit-deps)
             fi
           done
 
