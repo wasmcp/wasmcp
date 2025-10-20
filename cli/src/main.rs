@@ -148,8 +148,9 @@ enum Command {
 enum WitCommand {
     /// Fetch WIT dependencies for a project
     ///
-    /// This downloads all transitive WIT dependencies declared in your
-    /// wit/deps.toml file to wit/deps/, similar to `wkg wit fetch`.
+    /// This downloads all WIT dependencies declared in your wit/deps.toml
+    /// file to wit/deps/. Uses the embedded wit-deps library to fetch from
+    /// GitHub URLs or other sources.
     Fetch {
         /// Directory containing wit/ folder
         #[arg(long, default_value = ".")]

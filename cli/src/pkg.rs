@@ -207,7 +207,7 @@ pub async fn download_packages(
 
 /// Fetch WIT dependencies for a project
 ///
-/// This uses wit-deps to fetch dependencies from GitHub URLs specified in wit/deps.toml
+/// This uses wit-deps library to fetch dependencies from GitHub URLs specified in wit/deps.toml
 /// wit-deps correctly handles extracting WIT files from tarballs and creating the proper
 /// directory structure.
 ///
@@ -215,29 +215,21 @@ pub async fn download_packages(
 pub async fn fetch_wit_dependencies(project_dir: &Path, update: bool) -> Result<()> {
     println!("📦 Downloading WIT dependencies...");
 
-    let wit_dir = project_dir.join("wit");
+    let manifest_path = project_dir.join("wit/deps.toml");
+    let lock_path = project_dir.join("wit/deps.lock");
+    let deps_dir = project_dir.join("wit/deps");
 
-    // If update flag is set, remove existing deps to force re-fetch
-    if update {
-        let deps_lock = wit_dir.join("deps.lock");
-        if deps_lock.exists() {
-            tokio::fs::remove_file(&deps_lock)
-                .await
-                .context("Failed to remove deps.lock")?;
-        }
+    // If update flag is set, remove existing lock file to force re-fetch
+    if update && lock_path.exists() {
+        tokio::fs::remove_file(&lock_path)
+            .await
+            .context("Failed to remove deps.lock")?;
     }
 
-    // Run wit-deps command to fetch dependencies
-    let output = tokio::process::Command::new("wit-deps")
-        .current_dir(project_dir)
-        .output()
+    // Use wit-deps library to fetch dependencies
+    wit_deps::update_path(&manifest_path, &lock_path, &deps_dir)
         .await
-        .context("Failed to run wit-deps (is it installed?)")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("wit-deps failed: {}", stderr);
-    }
+        .context("Failed to fetch WIT dependencies")?;
 
     println!("   WIT dependencies resolved");
 
