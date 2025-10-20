@@ -112,7 +112,29 @@ jobs:
             # Python outputs to project root
             COMPONENT="ci-test-${{ matrix.language }}.wasm"
           fi
-          wasmcp compose $COMPONENT -o mcp-server.wasm
+
+          # Verify component exists
+          if [ ! -f "$COMPONENT" ]; then
+            echo "ERROR: Component not found: $COMPONENT"
+            ls -la target/wasm32-wasip2/release/ 2>/dev/null || true
+            ls -la dist/ 2>/dev/null || true
+            ls -la . 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Composing $COMPONENT into ./mcp-server.wasm..."
+          wasmcp compose $COMPONENT -o ./mcp-server.wasm || {
+            echo "ERROR: Composition failed"
+            exit 1
+          }
+
+          # Verify output was created
+          if [ ! -f "mcp-server.wasm" ]; then
+            echo "ERROR: mcp-server.wasm was not created"
+            exit 1
+          fi
+
+          echo "✓ Composed server: $(ls -lh mcp-server.wasm)"
 
       - name: Compose stdio server
         run: |
@@ -126,14 +148,38 @@ jobs:
             # Python outputs to project root
             COMPONENT="ci-test-${{ matrix.language }}.wasm"
           fi
-          wasmcp compose $COMPONENT --transport stdio -o mcp-server-stdio.wasm
+          wasmcp compose $COMPONENT --transport stdio -o ./mcp-server-stdio.wasm
 
       - name: Start HTTP server (background)
         run: |
           cd ci-test-${{ matrix.language }}
+          echo "Starting server..."
           wasmtime serve -Scli mcp-server.wasm &
-          echo $! > /tmp/server.pid
-          sleep 2
+          SERVER_PID=$!
+          echo $SERVER_PID > /tmp/server.pid
+          echo "Server PID: $SERVER_PID"
+
+          # Wait for server to start
+          sleep 3
+
+          # Check if process is still running
+          if ! kill -0 $SERVER_PID 2>/dev/null; then
+            echo "ERROR: Server process died"
+            exit 1
+          fi
+
+          # Try to connect to server
+          for i in {1..10}; do
+            if curl -s http://localhost:8080/ >/dev/null 2>&1; then
+              echo "✓ Server is responding"
+              exit 0
+            fi
+            echo "Waiting for server... ($i/10)"
+            sleep 1
+          done
+
+          echo "ERROR: Server not responding after 10 seconds"
+          exit 1
 
       - name: Test HTTP server with MCP Inspector
         run: |
