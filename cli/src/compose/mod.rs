@@ -352,14 +352,14 @@ fn validate_transport(transport: &str) -> Result<()> {
     Ok(())
 }
 
-/// Resolve output path - use config's composed directory if relative
+/// Resolve output path - make absolute if relative (using current working directory)
 fn resolve_output_path(output: &PathBuf) -> Result<PathBuf> {
     if output.is_absolute() {
         Ok(output.clone())
     } else {
-        let composed_dir = config::get_composed_dir()?;
-        std::fs::create_dir_all(&composed_dir).context("Failed to create composed directory")?;
-        Ok(composed_dir.join(output))
+        // Resolve relative paths against current working directory
+        let cwd = std::env::current_dir().context("Failed to get current working directory")?;
+        Ok(cwd.join(output))
     }
 }
 

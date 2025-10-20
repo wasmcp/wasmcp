@@ -97,8 +97,9 @@ enum Command {
 
         /// Output path for the composed server
         ///
-        /// If not specified, uses the profile's output setting (when using -p).
-        /// Otherwise defaults to "mcp-server.wasm".
+        /// Relative paths are resolved from the current working directory.
+        /// If not specified, uses the profile's output setting (saved in ~/.config/wasmcp/composed/).
+        /// Otherwise defaults to "mcp-server.wasm" in the current directory.
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
 
@@ -398,11 +399,17 @@ async fn main() -> Result<()> {
 
             // Determine output path: CLI flag > profile setting > default
             let final_output = match output {
-                Some(path) => path,
+                Some(path) => {
+                    // Explicit -o flag: use relative to current working directory
+                    path
+                }
                 None => {
                     if let Some(ref settings) = profile_settings {
-                        PathBuf::from(&settings.output)
+                        // Profile setting: use composed directory
+                        let composed_dir = config::get_composed_dir()?;
+                        composed_dir.join(&settings.output)
                     } else {
+                        // Default: use current working directory
                         PathBuf::from("mcp-server.wasm")
                     }
                 }
