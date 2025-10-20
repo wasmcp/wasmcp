@@ -315,6 +315,7 @@ impl std::fmt::Display for Language {
 enum TemplateType {
     Tools,
     Resources,
+    Prompts,
 }
 
 impl std::fmt::Display for TemplateType {
@@ -322,6 +323,7 @@ impl std::fmt::Display for TemplateType {
         match self {
             TemplateType::Tools => write!(f, "tools"),
             TemplateType::Resources => write!(f, "resources"),
+            TemplateType::Prompts => write!(f, "prompts"),
         }
     }
 }

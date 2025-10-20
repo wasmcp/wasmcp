@@ -27,6 +27,7 @@ pub async fn wrap_capabilities(
     let mut wrapped_paths = Vec::new();
     let tools_interface = dependencies::interfaces::tools(version);
     let resources_interface = dependencies::interfaces::resources(version);
+    let prompts_interface = dependencies::interfaces::prompts(version);
 
     for (i, path) in component_paths.into_iter().enumerate() {
         let component_name = path
@@ -83,6 +84,33 @@ pub async fn wrap_capabilities(
 
             let wrapped_path =
                 deps_dir.join(format!("{}resources-{}.wasm", WRAPPED_COMPONENT_PREFIX, i));
+            std::fs::write(&wrapped_path, wrapped_bytes)
+                .context("Failed to write wrapped component")?;
+
+            wrapped_paths.push(wrapped_path);
+        }
+        // Check for prompts capability
+        else if component_exports_interface(&path, &prompts_interface)? {
+            if verbose {
+                println!(
+                    "   {} is a prompts-capability → wrapping with prompts-middleware",
+                    component_name
+                );
+            }
+
+            let middleware_path =
+                dependencies::get_dependency_path("prompts-middleware", version, deps_dir)?;
+            let wrapped_bytes = wrap_with_middleware(
+                &middleware_path,
+                &path,
+                &prompts_interface,
+                "prompts-middleware",
+                "prompts-capability",
+                version,
+            )?;
+
+            let wrapped_path =
+                deps_dir.join(format!("{}prompts-{}.wasm", WRAPPED_COMPONENT_PREFIX, i));
             std::fs::write(&wrapped_path, wrapped_bytes)
                 .context("Failed to write wrapped component")?;
 

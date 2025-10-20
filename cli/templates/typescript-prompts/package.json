@@ -1,0 +1,22 @@
+{
+  "name": "{{project_name}}",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "types": "jco types wit --name {{project_name}} -o src/generated",
+    "bundle": "webpack",
+    "componentize": "jco componentize build/bundled.js -w wit -o dist/{{project_name}}.wasm --world-name {{project_name}}",
+    "build": "npm run types && npm run bundle && npm run componentize"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "^1.15.0",
+    "@types/node": "^22.10.2",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.7.2",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
+  }
+}
