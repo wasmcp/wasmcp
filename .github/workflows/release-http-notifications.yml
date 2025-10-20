@@ -1,0 +1,29 @@
+name: Release HTTP Client Notifications
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Component version (e.g. 0.1.0 or 0.1.0-beta.2)'
+        required: true
+        type: string
+      wit-version:
+        description: 'WIT package version (defaults to component version)'
+        required: false
+        type: string
+
+jobs:
+  release:
+    name: Release HTTP Client Notifications
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: http-client-notifications
+      component-crate: http-notifications
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:http-client-notifications
+      tag-prefix: http-client-notifications-v
+    secrets: inherit

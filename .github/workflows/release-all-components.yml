@@ -1,0 +1,214 @@
+name: Release All Components
+
+# This workflow triggers individual component release workflows.
+# Use this for coordinated releases of all framework components.
+#
+# For individual component releases or hotfixes, use the specific
+# component workflow (e.g., release-resources-middleware.yml)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Component version for all components (e.g. 0.1.0 or 0.1.0-beta.2)'
+        required: true
+        type: string
+      wit-version:
+        description: 'WIT package version (defaults to component version)'
+        required: false
+        type: string
+
+jobs:
+  validate:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate version format
+        run: |
+          if ! echo "${{ inputs.version }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'; then
+            echo "Error: Invalid version format: ${{ inputs.version }}"
+            echo "Expected: X.Y.Z or X.Y.Z-prerelease"
+            exit 1
+          fi
+          echo "✅ Version format is valid: ${{ inputs.version }}"
+
+  release-http-transport:
+    name: Release HTTP Transport
+    needs: validate
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: http-transport
+      component-crate: http-transport
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:http-transport
+      tag-prefix: http-transport-v
+    secrets: inherit
+
+  release-stdio-transport:
+    name: Release Stdio Transport
+    needs: validate
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: stdio-transport
+      component-crate: stdio-transport
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:stdio-transport
+      tag-prefix: stdio-transport-v
+    secrets: inherit
+
+  release-http-notifications:
+    name: Release HTTP Client Notifications
+    needs: validate
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: http-client-notifications
+      component-crate: http-notifications
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:http-client-notifications
+      tag-prefix: http-client-notifications-v
+    secrets: inherit
+
+  release-method-not-found:
+    name: Release Method Not Found
+    needs: validate
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: method-not-found
+      component-crate: method-not-found
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:method-not-found
+      tag-prefix: method-not-found-v
+    secrets: inherit
+
+  release-tools-middleware:
+    name: Release Tools Middleware
+    needs: validate
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: tools-middleware
+      component-crate: tools-middleware
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:tools-middleware
+      tag-prefix: tools-middleware-v
+    secrets: inherit
+
+  release-resources-middleware:
+    name: Release Resources Middleware
+    needs: validate
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: resources-middleware
+      component-crate: resources-middleware
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:resources-middleware
+      tag-prefix: resources-middleware-v
+    secrets: inherit
+
+  release-prompts-middleware:
+    name: Release Prompts Middleware
+    needs: validate
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: prompts-middleware
+      component-crate: prompts-middleware
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:prompts-middleware
+      tag-prefix: prompts-middleware-v
+    secrets: inherit
+
+  release-completions-middleware:
+    name: Release Completions Middleware
+    needs: validate
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: completions-middleware
+      component-crate: completions-middleware
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:completions-middleware
+      tag-prefix: completions-middleware-v
+    secrets: inherit
+
+  all-components-released:
+    name: All Components Released
+    runs-on: ubuntu-latest
+    needs:
+      - release-http-transport
+      - release-stdio-transport
+      - release-http-notifications
+      - release-method-not-found
+      - release-tools-middleware
+      - release-resources-middleware
+      - release-prompts-middleware
+      - release-completions-middleware
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.release-http-transport.result }}" != "success" ] || \
+             [ "${{ needs.release-stdio-transport.result }}" != "success" ] || \
+             [ "${{ needs.release-http-notifications.result }}" != "success" ] || \
+             [ "${{ needs.release-method-not-found.result }}" != "success" ] || \
+             [ "${{ needs.release-tools-middleware.result }}" != "success" ] || \
+             [ "${{ needs.release-resources-middleware.result }}" != "success" ] || \
+             [ "${{ needs.release-prompts-middleware.result }}" != "success" ] || \
+             [ "${{ needs.release-completions-middleware.result }}" != "success" ]; then
+            echo "❌ One or more component releases failed"
+            echo ""
+            echo "Check individual component workflow runs for details:"
+            echo "  - HTTP Transport: ${{ needs.release-http-transport.result }}"
+            echo "  - Stdio Transport: ${{ needs.release-stdio-transport.result }}"
+            echo "  - HTTP Client Notifications: ${{ needs.release-http-notifications.result }}"
+            echo "  - Method Not Found: ${{ needs.release-method-not-found.result }}"
+            echo "  - Tools Middleware: ${{ needs.release-tools-middleware.result }}"
+            echo "  - Resources Middleware: ${{ needs.release-resources-middleware.result }}"
+            echo "  - Prompts Middleware: ${{ needs.release-prompts-middleware.result }}"
+            echo "  - Completions Middleware: ${{ needs.release-completions-middleware.result }}"
+            exit 1
+          fi
+          echo "✅ All components released successfully at version ${{ inputs.version }}!"
+          echo ""
+          echo "Released components:"
+          echo "  - wasmcp:http-transport@${{ inputs.version }}"
+          echo "  - wasmcp:stdio-transport@${{ inputs.version }}"
+          echo "  - wasmcp:http-client-notifications@${{ inputs.version }}"
+          echo "  - wasmcp:method-not-found@${{ inputs.version }}"
+          echo "  - wasmcp:tools-middleware@${{ inputs.version }}"
+          echo "  - wasmcp:resources-middleware@${{ inputs.version }}"
+          echo "  - wasmcp:prompts-middleware@${{ inputs.version }}"
+          echo "  - wasmcp:completions-middleware@${{ inputs.version }}"
+          echo ""
+          echo "Next steps:"
+          echo "  1. Make packages public at https://github.com/orgs/wasmcp/packages"
+          echo "  2. Review individual release notes for each component"

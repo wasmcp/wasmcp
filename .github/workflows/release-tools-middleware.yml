@@ -1,0 +1,29 @@
+name: Release Tools Middleware
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Component version (e.g. 0.1.0 or 0.1.0-beta.2)'
+        required: true
+        type: string
+      wit-version:
+        description: 'WIT package version (defaults to component version)'
+        required: false
+        type: string
+
+jobs:
+  release:
+    name: Release Tools Middleware
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: tools-middleware
+      component-crate: tools-middleware
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:tools-middleware
+      tag-prefix: tools-middleware-v
+    secrets: inherit

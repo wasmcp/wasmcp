@@ -1,0 +1,29 @@
+name: Release Method Not Found
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Component version (e.g. 0.1.0 or 0.1.0-beta.2)'
+        required: true
+        type: string
+      wit-version:
+        description: 'WIT package version (defaults to component version)'
+        required: false
+        type: string
+
+jobs:
+  release:
+    name: Release Method Not Found
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: method-not-found
+      component-crate: method-not-found
+      version: ${{ inputs.version }}
+      wit-version: ${{ inputs.wit-version }}
+      wkg-package: wasmcp:method-not-found
+      tag-prefix: method-not-found-v
+    secrets: inherit
