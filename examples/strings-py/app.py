@@ -6,29 +6,19 @@ A tools capability that provides string manipulation operations.
 import json
 from typing import Optional
 from wit_world import exports
-from wit_world.imports.protocol import (
-    ClientContext,
-    ListToolsRequest,
-    ListToolsResult,
-    CallToolRequest,
-    CallToolResult,
-    Tool,
-    ToolOptions,
-    ContentBlock_Text,
-    TextContent,
-    TextData_Text,
-)
+from wit_world.imports import mcp, server_messages, streams
 
 
-class ToolsCapability(exports.ToolsCapability):
+class StringsTools(exports.Tools):
     def list_tools(
         self,
-        _request: ListToolsRequest,
-        _client: ClientContext,
-    ) -> ListToolsResult:
-        return ListToolsResult(
+        ctx: server_messages.Context,
+        request: mcp.ListToolsRequest,
+        client_stream: Optional[streams.OutputStream],
+    ) -> mcp.ListToolsResult:
+        return mcp.ListToolsResult(
             tools=[
-                Tool(
+                mcp.Tool(
                     name="reverse",
                     input_schema=json.dumps({
                         "type": "object",
@@ -39,7 +29,7 @@ class ToolsCapability(exports.ToolsCapability):
                     }),
                     options=None,
                 ),
-                Tool(
+                mcp.Tool(
                     name="slice",
                     input_schema=json.dumps({
                         "type": "object",
@@ -50,7 +40,7 @@ class ToolsCapability(exports.ToolsCapability):
                         },
                         "required": ["text", "start"]
                     }),
-                    options=ToolOptions(
+                    options=mcp.ToolOptions(
                         meta=None,
                         annotations=None,
                         description="Extract substring by start/end indices (Python slicing)",
@@ -65,9 +55,10 @@ class ToolsCapability(exports.ToolsCapability):
 
     def call_tool(
         self,
-        request: CallToolRequest,
-        _client: ClientContext,
-    ) -> Optional[CallToolResult]:
+        ctx: server_messages.Context,
+        request: mcp.CallToolRequest,
+        client_stream: Optional[streams.OutputStream],
+    ) -> Optional[mcp.CallToolResult]:
         if not request.arguments:
             return error_result("Missing tool arguments")
 
@@ -88,14 +79,14 @@ class ToolsCapability(exports.ToolsCapability):
             return None  # We don't handle this tool
 
 
-def reverse_string(text: str) -> CallToolResult:
+def reverse_string(text: str) -> mcp.CallToolResult:
     if not isinstance(text, str):
         return error_result("Missing or invalid parameter 'text'")
 
     return success_result(text[::-1])
 
 
-def slice_string(text: str, start: int, end: Optional[int]) -> CallToolResult:
+def slice_string(text: str, start: int, end: Optional[int]) -> mcp.CallToolResult:
     if not isinstance(text, str):
         return error_result("Missing or invalid parameter 'text'")
     if not isinstance(start, int):
@@ -107,10 +98,10 @@ def slice_string(text: str, start: int, end: Optional[int]) -> CallToolResult:
     return success_result(result)
 
 
-def success_result(text: str) -> CallToolResult:
-    return CallToolResult(
-        content=[ContentBlock_Text(TextContent(
-            text=TextData_Text(text),
+def success_result(text: str) -> mcp.CallToolResult:
+    return mcp.CallToolResult(
+        content=[mcp.ContentBlock_Text(mcp.TextContent(
+            text=mcp.TextData_Text(text),
             options=None,
         ))],
         is_error=None,
@@ -119,13 +110,17 @@ def success_result(text: str) -> CallToolResult:
     )
 
 
-def error_result(message: str) -> CallToolResult:
-    return CallToolResult(
-        content=[ContentBlock_Text(TextContent(
-            text=TextData_Text(message),
+def error_result(message: str) -> mcp.CallToolResult:
+    return mcp.CallToolResult(
+        content=[mcp.ContentBlock_Text(mcp.TextContent(
+            text=mcp.TextData_Text(message),
             options=None,
         ))],
         is_error=True,
         meta=None,
         structured_content=None,
     )
+
+
+# Export the Tools implementation
+Tools = StringsTools

@@ -1,5 +1,5 @@
 package wasmcp:strings@0.1.0;
 
 world strings {
-    export wasmcp:mcp/tools-capability@0.4.0;
+    export wasmcp:protocol/tools@0.1.0-beta.2;
 }

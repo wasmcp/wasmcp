@@ -28,9 +28,9 @@ use bindings::wasi::cli::stderr::get_stderr;
 use bindings::wasi::cli::stdin::get_stdin;
 use bindings::wasi::cli::stdout::get_stdout;
 use bindings::wasi::io::streams::{InputStream, OutputStream, StreamError};
-use bindings::wasmcp::mcp::protocol::ClientContext;
-use bindings::wasmcp::mcp::protocol::{ClientRequest, RequestId, ServerResponse};
-use bindings::wasmcp::mcp::server_handler::{handle_notification, handle_request, handle_response};
+use bindings::wasmcp::protocol::mcp::{ClientRequest, RequestId, ServerResponse};
+use bindings::wasmcp::protocol::server_messages::Context;
+use bindings::wasmcp::server::handler::{handle_notification, handle_request, handle_response};
 
 struct StdioTransport;
 
@@ -121,16 +121,15 @@ fn handle_json_rpc_request(
     // Parse client request from JSON
     let client_request = parser::parse_client_request(json_rpc)?;
 
-    // Create client context (stateless: no session, no claims)
-    // Pass output stream so handler can send notifications
-    let client = ClientContext {
-        identity_claims: None,
+    // Create context (stateless: no session, no claims)
+    let ctx = Context {
+        claims: None,
         session_id: None,
-        output: Some(&stdout), // Provide stream for notifications
+        data: vec![],
     };
 
     // Delegate to server-handler (may send notifications via output stream)
-    let result = handle_request(&request_id, &client_request, &client);
+    let result = handle_request(&ctx, (&client_request, &request_id), Some(&stdout));
 
     // Write final JSON-RPC response to stdout
     write_json_rpc_response(&stdout, request_id, result)?;
@@ -143,7 +142,7 @@ fn handle_initialize_request(
     request_id: RequestId,
     stdout: &OutputStream,
 ) -> Result<(), String> {
-    use bindings::wasmcp::mcp::protocol::{
+    use bindings::wasmcp::protocol::mcp::{
         ClientRequest, ListPromptsRequest, ListResourcesRequest, ListToolsRequest, ProtocolVersion,
     };
 
@@ -243,8 +242,8 @@ fn handle_set_level_request(request_id: RequestId, stdout: &OutputStream) -> Res
     write_chunked(stdout, json_str.as_bytes())
 }
 
-fn discover_capabilities() -> bindings::wasmcp::mcp::protocol::ServerCapabilities {
-    use bindings::wasmcp::mcp::protocol::{
+fn discover_capabilities() -> bindings::wasmcp::protocol::mcp::ServerCapabilities {
+    use bindings::wasmcp::protocol::mcp::{
         ClientRequest, CompleteRequest, CompletionArgument, CompletionPromptReference,
         CompletionReference, ListPromptsRequest, ListResourcesRequest, ListToolsRequest,
         ServerCapabilities, ServerLists, ServerResponse,
@@ -253,38 +252,33 @@ fn discover_capabilities() -> bindings::wasmcp::mcp::protocol::ServerCapabilitie
     // Try to discover what the downstream handler supports by calling list methods
     let mut list_flags = ServerLists::empty();
 
-    // Create a client with no output stream for discovery calls
-    let client = ClientContext {
-        identity_claims: None,
+    // Create context for discovery calls
+    let ctx = Context {
+        claims: None,
         session_id: None,
-        output: None, // No output stream needed for discovery
+        data: vec![],
     };
 
     // Try list-tools
-    if let Ok(_) = handle_request(
-        &RequestId::Number(0),
-        &ClientRequest::ToolsList(ListToolsRequest { cursor: None }),
-        &client,
-    ) {
+    let req = ClientRequest::ToolsList(ListToolsRequest { cursor: None });
+    let id = RequestId::Number(0);
+    if let Ok(_) = handle_request(&ctx, (&req, &id), None) {
         list_flags |= ServerLists::TOOLS;
     }
 
     // Try list-resources
-    if let Ok(_) = handle_request(
-        &RequestId::Number(1),
-        &ClientRequest::ResourcesList(ListResourcesRequest { cursor: None }),
-        &client,
-    ) {
+    let req = ClientRequest::ResourcesList(ListResourcesRequest { cursor: None });
+    let id = RequestId::Number(1);
+    if let Ok(_) = handle_request(&ctx, (&req, &id), None) {
         list_flags |= ServerLists::RESOURCES;
     }
 
     // Try list-prompts and use result to test completions
     let mut has_completions = false;
-    if let Ok(ServerResponse::PromptsList(prompts_result)) = handle_request(
-        &RequestId::Number(2),
-        &ClientRequest::PromptsList(ListPromptsRequest { cursor: None }),
-        &client,
-    ) {
+    let req = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
+    let id = RequestId::Number(2);
+    if let Ok(ServerResponse::PromptsList(prompts_result)) = handle_request(&ctx, (&req, &id), None)
+    {
         list_flags |= ServerLists::PROMPTS;
 
         // Try to discover completions support using a real prompt
@@ -309,13 +303,11 @@ fn discover_capabilities() -> bindings::wasmcp::mcp::protocol::ServerCapabilitie
                         };
 
                         // Test if completions are supported
-                        match handle_request(
-                            &RequestId::Number(3),
-                            &ClientRequest::CompletionComplete(completion_request),
-                            &client,
-                        ) {
+                        let req = ClientRequest::CompletionComplete(completion_request);
+                        let id = RequestId::Number(3);
+                        match handle_request(&ctx, (&req, &id), None) {
                             Ok(_) => has_completions = true,
-                            Err(bindings::wasmcp::mcp::protocol::ErrorCode::MethodNotFound(_)) => {
+                            Err(bindings::wasmcp::protocol::mcp::ErrorCode::MethodNotFound(_)) => {
                                 has_completions = false;
                             }
                             Err(_) => {
@@ -348,7 +340,7 @@ fn discover_capabilities() -> bindings::wasmcp::mcp::protocol::ServerCapabilitie
 }
 
 fn serialize_capabilities(
-    caps: &bindings::wasmcp::mcp::protocol::ServerCapabilities,
+    caps: &bindings::wasmcp::protocol::mcp::ServerCapabilities,
 ) -> serde_json::Value {
     let mut result = serde_json::Map::new();
 
@@ -362,12 +354,12 @@ fn serialize_capabilities(
 
     // Serialize list_changed capabilities - each capability type gets its own nested object
     if let Some(flags) = caps.list_changed {
-        if flags.contains(bindings::wasmcp::mcp::protocol::ServerLists::TOOLS) {
+        if flags.contains(bindings::wasmcp::protocol::mcp::ServerLists::TOOLS) {
             let mut tools_caps = serde_json::Map::new();
             tools_caps.insert("listChanged".to_string(), serde_json::json!(true));
             result.insert("tools".to_string(), serde_json::Value::Object(tools_caps));
         }
-        if flags.contains(bindings::wasmcp::mcp::protocol::ServerLists::RESOURCES) {
+        if flags.contains(bindings::wasmcp::protocol::mcp::ServerLists::RESOURCES) {
             let mut resources_caps = serde_json::Map::new();
             resources_caps.insert("listChanged".to_string(), serde_json::json!(true));
             result.insert(
@@ -375,7 +367,7 @@ fn serialize_capabilities(
                 serde_json::Value::Object(resources_caps),
             );
         }
-        if flags.contains(bindings::wasmcp::mcp::protocol::ServerLists::PROMPTS) {
+        if flags.contains(bindings::wasmcp::protocol::mcp::ServerLists::PROMPTS) {
             let mut prompts_caps = serde_json::Map::new();
             prompts_caps.insert("listChanged".to_string(), serde_json::json!(true));
             result.insert(
@@ -410,8 +402,15 @@ fn handle_json_rpc_notification(
     // Parse notification from JSON
     let notification = parser::parse_client_notification(json_rpc)?;
 
+    // Create context (stateless)
+    let ctx = Context {
+        claims: None,
+        session_id: None,
+        data: vec![],
+    };
+
     // Forward to server-handler (no response expected)
-    handle_notification(&notification);
+    handle_notification(&ctx, &notification);
 
     Ok(())
 }
@@ -421,18 +420,25 @@ fn handle_json_rpc_response(
     _stdout: OutputStream, // Takes ownership but unused
     _stderr: &OutputStream,
 ) -> Result<(), String> {
-    // Parse response ID (optional for responses)
-    let id = json_rpc
-        .get("id")
-        .and_then(|v| if v.is_null() { None } else { Some(v) })
-        .map(|v| parser::parse_request_id(v))
-        .transpose()?;
+    // Parse response ID (required for responses)
+    let id = json_rpc.get("id").ok_or("Missing id in response")?;
+    let request_id = parser::parse_request_id(id)?;
 
     // Parse client response from JSON
     let response_result = parser::parse_client_response(json_rpc)?;
 
+    // Create context (stateless)
+    let ctx = Context {
+        claims: None,
+        session_id: None,
+        data: vec![],
+    };
+
+    // Convert to Result<(ClientResponse, RequestId), ErrorCode>
+    let result_with_id = response_result.map(|resp| (resp, request_id));
+
     // Forward to server-handler (no response expected)
-    handle_response(id.as_ref(), response_result.as_ref());
+    handle_response(&ctx, result_with_id);
 
     Ok(())
 }
@@ -482,7 +488,7 @@ fn read_line(stdin: &InputStream) -> Result<Vec<u8>, String> {
 fn write_json_rpc_response(
     stdout: &OutputStream,
     request_id: RequestId,
-    result: Result<ServerResponse, bindings::wasmcp::mcp::protocol::ErrorCode>,
+    result: Result<ServerResponse, bindings::wasmcp::protocol::mcp::ErrorCode>,
 ) -> Result<(), String> {
     // Serialize to JSON-RPC
     let json_rpc =

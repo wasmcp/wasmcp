@@ -1,0 +1,4 @@
+# WIT dependencies for tools-middleware component
+
+protocol = "../../../wit/protocol"
+server = "../../../wit/server"

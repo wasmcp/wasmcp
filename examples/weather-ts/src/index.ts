@@ -11,9 +11,10 @@ import type {
   ListToolsResult,
   CallToolRequest,
   CallToolResult,
-  ClientContext,
   Tool,
-} from './generated/interfaces/wasmcp-mcp-protocol.js';
+} from './generated/interfaces/wasmcp-protocol-mcp.js';
+import type { Context } from './generated/interfaces/wasmcp-protocol-server-messages.js';
+import type { OutputStream } from './generated/interfaces/wasi-io-streams.js';
 
 // Tool input schemas
 const GetWeatherSchema = z.object({
@@ -31,8 +32,9 @@ type GetWeatherArgs = z.infer<typeof GetWeatherSchema>;
 type MultiWeatherArgs = z.infer<typeof MultiWeatherSchema>;
 
 function listTools(
+  _ctx: Context,
   _request: ListToolsRequest,
-  _client: ClientContext
+  _clientStream: OutputStream | null
 ): ListToolsResult {
   const tools: Tool[] = [
     {
@@ -65,16 +67,17 @@ function listTools(
 }
 
 async function callTool(
+  _ctx: Context,
   request: CallToolRequest,
-  _client: ClientContext
-): Promise<CallToolResult | undefined> {
+  _clientStream: OutputStream | null
+): Promise<CallToolResult | null> {
   switch (request.name) {
     case 'get_weather':
       return await handleGetWeather(request.arguments);
     case 'multi_weather':
       return await handleMultiWeather(request.arguments);
     default:
-      return undefined; // We don't handle this tool
+      return null; // We don't handle this tool
   }
 }
 
@@ -253,7 +256,7 @@ function errorResult(message: string): CallToolResult {
   };
 }
 
-export const toolsCapability = {
+export const tools = {
   listTools,
   callTool,
 };

@@ -1,0 +1,3 @@
+# WIT dependencies for method-not-found component
+
+server = "../../../wit/server"

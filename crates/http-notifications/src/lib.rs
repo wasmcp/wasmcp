@@ -7,15 +7,15 @@
 
 mod bindings {
     wit_bindgen::generate!({
-        world: "http-client-notifications",
+        world: "http-notifications",
         generate_all,
     });
 }
 
-use bindings::exports::wasmcp::mcp::client_notifications::Guest;
-use bindings::exports::wasmcp::mcp::notifications::NotificationError;
+use bindings::exports::wasmcp::server::notifications::Guest;
+use bindings::exports::wasmcp::server::notifications::NotificationError;
 use bindings::wasi::io::streams::{OutputStream, StreamError};
-use bindings::wasmcp::mcp::protocol::*;
+use bindings::wasmcp::protocol::mcp::*;
 
 struct HttpClientNotifications;
 
@@ -100,10 +100,7 @@ impl Guest for HttpClientNotifications {
 
         write_sse_event(output, &json_rpc)
     }
-}
 
-// Also implement the shared notifications::progress function
-impl bindings::exports::wasmcp::mcp::notifications::Guest for HttpClientNotifications {
     fn progress(
         output: &OutputStream,
         token: ProgressToken,
@@ -325,9 +322,11 @@ fn serialize_sampling_message(msg: &SamplingMessage) -> serde_json::Value {
             Role::Assistant => "assistant",
         },
         "content": match msg.content {
-            SamplingContent::TextContent => "text",
-            SamplingContent::ImageContent => "image",
-            SamplingContent::AudioContent => "audio",
+            ContentBlock::Text(_) => "text",
+            ContentBlock::Image(_) => "image",
+            ContentBlock::Audio(_) => "audio",
+            ContentBlock::ResourceLink(_) => "resource",
+            ContentBlock::EmbeddedResource(_) => "embedded-resource",
         }
     })
 }

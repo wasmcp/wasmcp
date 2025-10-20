@@ -1,0 +1,5 @@
+# WIT dependencies for http-notifications component
+
+io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.3.tar.gz"
+protocol = "../../../wit/protocol"
+server = "../../../wit/server"

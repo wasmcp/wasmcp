@@ -12,19 +12,29 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp::server_handler::Guest;
-use bindings::wasmcp::mcp::protocol::*;
+use bindings::exports::wasmcp::server::handler::Guest;
 
 struct MethodNotFoundHandler;
 
 impl Guest for MethodNotFoundHandler {
     fn handle_request(
-        id: RequestId,
-        request: ClientRequest,
-        _client: ClientContext,
-    ) -> Result<ServerResponse, ErrorCode> {
+        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        request: (
+            bindings::wasmcp::protocol::mcp::ClientRequest,
+            bindings::wasmcp::protocol::mcp::RequestId,
+        ),
+        _client_stream: Option<&bindings::wasi::io::streams::OutputStream>,
+    ) -> Result<
+        bindings::wasmcp::protocol::mcp::ServerResponse,
+        bindings::wasmcp::protocol::mcp::ErrorCode,
+    > {
+        use bindings::wasmcp::protocol::mcp::{ClientRequest, Error, ErrorCode};
+
+        let req = request.0;
+        let id = request.1;
+
         // Determine method name from request variant
-        let method = match request {
+        let method = match req {
             ClientRequest::Initialize(_) => "initialize",
             ClientRequest::ToolsList(_) => "tools/list",
             ClientRequest::ToolsCall(_) => "tools/call",
@@ -49,12 +59,24 @@ impl Guest for MethodNotFoundHandler {
         }))
     }
 
-    fn handle_notification(_notification: ClientNotification) {
+    fn handle_notification(
+        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _notification: bindings::wasmcp::protocol::mcp::ClientNotification,
+    ) {
         // Terminal handler - silently ignore notifications
         // No downstream to forward to, and notifications don't require responses
     }
 
-    fn handle_response(_id: Option<RequestId>, _response: Result<ClientResponse, ErrorCode>) {
+    fn handle_response(
+        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _response: Result<
+            (
+                bindings::wasmcp::protocol::mcp::ClientResponse,
+                bindings::wasmcp::protocol::mcp::RequestId,
+            ),
+            bindings::wasmcp::protocol::mcp::ErrorCode,
+        >,
+    ) {
         // Terminal handler - silently ignore responses
         // These are responses from client to server, not common in typical flows
     }

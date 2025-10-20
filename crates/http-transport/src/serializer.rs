@@ -3,7 +3,7 @@
 //! This module handles conversion from WIT types to JSON-RPC 2.0 format
 //! and SSE event formatting.
 
-use crate::bindings::wasmcp::mcp::protocol::{
+use crate::bindings::wasmcp::protocol::mcp::{
     Annotations, AudioContent, BlobData, CallToolResult, CompleteResult, ContentBlock, ErrorCode,
     GetPromptResult, ImageContent, Implementation, InitializeResult, ListPromptsResult,
     ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, McpResource, Prompt,
@@ -142,6 +142,7 @@ struct JsonResourceContent {
 enum JsonContentBlock {
     Text(JsonTextContent),
     Image(JsonImageContent),
+    Audio(JsonImageContent), // Audio has same structure as Image (data + mimeType)
     Resource(JsonResourceContent),
 }
 
@@ -334,7 +335,7 @@ fn protocol_version_to_string(version: &ProtocolVersion) -> String {
 }
 
 fn convert_server_capabilities(caps: &ServerCapabilities) -> JsonServerCapabilities {
-    use crate::bindings::wasmcp::mcp::protocol::{ServerLists, ServerSubscriptions};
+    use crate::bindings::wasmcp::protocol::mcp::{ServerLists, ServerSubscriptions};
 
     JsonServerCapabilities {
         completions: caps
@@ -659,7 +660,7 @@ fn convert_content_block(block: &ContentBlock) -> Result<JsonContentBlock, Strin
         }
         ContentBlock::Audio(audio_content) => {
             let data = convert_blob_data(&audio_content.data)?;
-            Ok(JsonContentBlock::Image(JsonImageContent {
+            Ok(JsonContentBlock::Audio(JsonImageContent {
                 data,
                 mime_type: audio_content.mime_type.clone(),
                 annotations: audio_content
@@ -676,7 +677,7 @@ fn convert_content_block(block: &ContentBlock) -> Result<JsonContentBlock, Strin
             mime_type: link.options.as_ref().and_then(|o| o.mime_type.clone()),
         })),
         ContentBlock::EmbeddedResource(embedded) => {
-            use crate::bindings::wasmcp::mcp::protocol::ResourceContents;
+            use crate::bindings::wasmcp::protocol::mcp::ResourceContents;
             match &embedded.resource {
                 ResourceContents::Text(text_res) => {
                     let text = convert_text_data(&text_res.text)?;
