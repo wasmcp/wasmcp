@@ -104,7 +104,7 @@ Components are built using the **capability pattern**, which separates business 
 - **Middleware components** (e.g., `tools-middleware`) handle MCP protocol translation and request delegation
 - **CLI auto-detection** inspects components and automatically wraps capabilities with their middleware
 
-This creates a clean separation of concerns where component authors focus on business logic, and the framework handles protocol complexity.
+This creates a separation of concerns where component authors focus on business logic, and the framework handles protocol complexity.
 
 ### Composition Pipeline
 
@@ -120,37 +120,9 @@ tools-middleware (wraps strings capability)
 method-not-found
 ```
 
-**Auto-detection in action:**
-1. CLI inspects each component's WIT exports using wasmparser
-2. Components exporting `wasmcp:mcp/tools-capability` are automatically wrapped with `tools-middleware`
-3. Wrapped components expose the universal `wasmcp:mcp/server-handler` interface
-4. All components form a uniform pipeline where requests flow downstream until handled
-
-**Benefits:**
-- **Simple composition**: Just list your components, no configuration needed
-- **Automatic merging**: Middleware handles tool catalog merging automatically
-- **Clean code**: Capability components have no delegation or merging logic
-- **Type safety**: WIT interfaces ensure correct wiring at composition time
-
-### Example: Tools Capability
-
-A tools capability component only implements two methods:
-
-```rust
-fn list_tools(request: ListToolsRequest, client: ClientContext) -> ListToolsResult {
-    // Return your tools
-}
-
-fn call_tool(request: CallToolRequest, client: ClientContext) -> Option<CallToolResult> {
-    // Return Some(result) if you handle this tool, None otherwise
-}
-```
-
-No protocol handling, no delegation, no merging. The middleware handles everything else.
-
 ## Building Components
 
-Generated projects include Makefiles that handle dependencies automatically:
+Scaffolded projects include Makefiles that handle dependencies automatically:
 
 ```bash
 cd my-component
@@ -239,7 +211,7 @@ wasmcp compose component.wasm --version 0.4.0
 
 ## See Also
 
-- [WIT Interface Reference](../wit/)
+- [WIT packages](../wit/)
 - [Example Implementations](../examples/)
 - [Component Model](https://github.com/WebAssembly/component-model)
-- [MCP Protocol](https://spec.modelcontextprotocol.io/)
+- [MCP](https://spec.modelcontextprotocol.io/)

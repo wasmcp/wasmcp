@@ -34,6 +34,10 @@ wasmcp compose time math -o combined-server.wasm
 wasmtime serve -Scli combined-server.wasm
 ```
 
+[Wasmtime](https://wasmtime.dev/) or another component-capable runtime is required to run servers.
+
+See [examples/](#examples) for simple references.
+
 ## Installation
 
 **Download latest release:**
@@ -110,7 +114,7 @@ When a client requests `tools/list`, each component that offers tools contribute
 
 ## Registry
 
-The registry system provides component aliases and profiles for simplified workflows.
+`wasmcp registry` allows for simple artifact aliases and reusable composition profiles.
 
 ### Component Aliases
 
@@ -131,11 +135,6 @@ wasmcp compose calc weather -o server.wasm
 wasmcp registry component list
 wasmcp registry component remove calc
 ```
-
-**Aliases support:**
-- Local file paths (automatically canonicalized to absolute paths)
-- Registry package specs (e.g., `wasmcp:calculator@0.1.0`)
-- Alias chaining (aliases can reference other aliases)
 
 ### Profiles
 
@@ -166,26 +165,6 @@ wasmcp registry profile list
 wasmcp registry profile remove dev
 ```
 
-### Unified Resolution
-
-Profiles and components work seamlessly together - just list what you want:
-
-```bash
-# Mix profiles and components freely
-wasmcp compose base-profile custom-tool weather-profile -o server.wasm
-
-# Order is preserved: base components → custom-tool → weather components
-```
-
-**Resolution order:**
-1. If spec matches a profile name → expand profile components in-place
-2. Otherwise resolve as component (alias → path → registry package)
-
-**Validation:**
-- Component aliases and profile names must be unique
-- Enforced at registration time with clear error messages
-- Circular dependencies detected in both aliases and profile inheritance
-
 ### Registry Info
 
 View your registry configuration:
@@ -198,7 +177,7 @@ wasmcp registry info --profiles   # Filter to profiles
 
 ### Configuration
 
-Registry data is stored in `~/.config/wasmcp/config.toml` (XDG Base Directory compliant).
+Registry data is stored in `~/.config/wasmcp/config.toml` ([XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/)).
 
 ## Components
 
@@ -223,16 +202,6 @@ Published to [ghcr.io/wasmcp](https://github.com/orgs/wasmcp/packages):
 - **method-not-found** - Terminal handler for unhandled methods
 
 The CLI automatically downloads these when composing.
-
-**Prerequisites:**
-- [Wasmtime](https://wasmtime.dev/) - WebAssembly runtime (required to run servers)
-
-## Examples
-
-See [examples/](examples/) directory for:
-- Multi-language compositions
-- Handler patterns
-- Integration examples
 
 ## License
 
