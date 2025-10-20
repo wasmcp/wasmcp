@@ -1,4 +1,7 @@
 # WIT dependencies for stdio-transport component
+# Note: Must list all transitive dependencies explicitly (wit-deps doesn't resolve them recursively)
 
 cli = "https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.3.tar.gz"
 server = "https://github.com/wasmcp/wasmcp/releases/download/server-v0.1.0-beta.2/wasmcp-server-0.1.0-beta.2-source.tar.gz"
+protocol = "https://github.com/wasmcp/wasmcp/releases/download/protocol-v0.1.0-beta.2/wasmcp-protocol-0.1.0-beta.2-source.tar.gz"
+io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.3.tar.gz"
