@@ -9,7 +9,8 @@ use std::path::{Path, PathBuf};
 use crate::pkg;
 
 /// Type alias for the package client used throughout composition
-pub type PackageClient = wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>;
+pub type PackageClient =
+    wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>;
 
 /// WIT interface constants for MCP protocol
 pub mod interfaces {
@@ -19,14 +20,14 @@ pub mod interfaces {
     /// WASI CLI run interface (stdio transport export)
     pub const WASI_CLI_RUN: &str = "wasi:cli/run@0.2.3";
 
-    /// Generate the server-handler interface name with version
+    /// Generate the server handler interface name with version
     pub fn server_handler(version: &str) -> String {
-        format!("wasmcp:mcp/server-handler@{}", version)
+        format!("wasmcp:server/handler@{}", version)
     }
 
-    /// Generate the tools-capability interface name with version
-    pub fn tools_capability(version: &str) -> String {
-        format!("wasmcp:mcp/tools-capability@{}", version)
+    /// Generate the tools capability interface name with version
+    pub fn tools(version: &str) -> String {
+        format!("wasmcp:protocol/tools@{}", version)
     }
 
     /// Generate a versioned package name for wasmcp components
@@ -76,36 +77,33 @@ mod tests {
     #[test]
     fn test_interface_naming_server_handler() {
         assert_eq!(
-            interfaces::server_handler("0.4.0"),
-            "wasmcp:mcp/server-handler@0.4.0"
+            interfaces::server_handler("0.1.0-beta.2"),
+            "wasmcp:server/handler@0.1.0-beta.2"
         );
         assert_eq!(
             interfaces::server_handler("1.0.0"),
-            "wasmcp:mcp/server-handler@1.0.0"
+            "wasmcp:server/handler@1.0.0"
         );
     }
 
     #[test]
-    fn test_interface_naming_tools_capability() {
+    fn test_interface_naming_tools() {
         assert_eq!(
-            interfaces::tools_capability("0.4.0"),
-            "wasmcp:mcp/tools-capability@0.4.0"
+            interfaces::tools("0.1.0-beta.2"),
+            "wasmcp:protocol/tools@0.1.0-beta.2"
         );
-        assert_eq!(
-            interfaces::tools_capability("1.0.0"),
-            "wasmcp:mcp/tools-capability@1.0.0"
-        );
+        assert_eq!(interfaces::tools("1.0.0"), "wasmcp:protocol/tools@1.0.0");
     }
 
     #[test]
     fn test_package_naming() {
         assert_eq!(
-            interfaces::package("http-transport", "0.4.0"),
-            "wasmcp:http-transport@0.4.0"
+            interfaces::package("http-transport", "0.1.0-beta.2"),
+            "wasmcp:http-transport@0.1.0-beta.2"
         );
         assert_eq!(
-            interfaces::package("method-not-found", "0.4.0"),
-            "wasmcp:method-not-found@0.4.0"
+            interfaces::package("method-not-found", "0.1.0-beta.2"),
+            "wasmcp:method-not-found@0.1.0-beta.2"
         );
         assert_eq!(
             interfaces::package("tools-middleware", "1.0.0"),
@@ -127,7 +125,7 @@ mod tests {
         use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();
-        let result = get_dependency_path("http-transport", "0.4.0", temp_dir.path());
+        let result = get_dependency_path("http-transport", "0.1.0-beta.2", temp_dir.path());
 
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
@@ -141,13 +139,13 @@ mod tests {
         use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();
-        let filename = "wasmcp_http-transport@0.4.0.wasm";
+        let filename = "wasmcp_http-transport@0.1.0-beta.2.wasm";
         let file_path = temp_dir.path().join(filename);
 
         // Create empty file
         std::fs::write(&file_path, b"").unwrap();
 
-        let result = get_dependency_path("http-transport", "0.4.0", temp_dir.path());
+        let result = get_dependency_path("http-transport", "0.1.0-beta.2", temp_dir.path());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), file_path);
     }

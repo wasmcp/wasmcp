@@ -140,10 +140,7 @@ fn build_middleware_chain(
         // This component's export becomes the next input
         next_handler_export = graph
             .alias_instance_export(inst, server_handler_interface)
-            .with_context(|| format!(
-                "Failed to get server-handler export from component-{}",
-                i
-            ))?;
+            .with_context(|| format!("Failed to get server-handler export from component-{}", i))?;
     }
 
     Ok(next_handler_export)
@@ -159,11 +156,7 @@ fn wire_transport(
 ) -> Result<()> {
     // Wire transport at the front of the chain
     let transport_inst = graph.instantiate(transport_id);
-    graph.set_instantiation_argument(
-        transport_inst,
-        server_handler_interface,
-        handler_export,
-    )?;
+    graph.set_instantiation_argument(transport_inst, server_handler_interface, handler_export)?;
 
     // Export the appropriate WASI interface based on transport type
     match transport_type {
@@ -175,10 +168,8 @@ fn wire_transport(
             graph.export(http_handler, dependencies::interfaces::WASI_HTTP_HANDLER)?;
         }
         "stdio" => {
-            let cli_run = graph.alias_instance_export(
-                transport_inst,
-                dependencies::interfaces::WASI_CLI_RUN,
-            )?;
+            let cli_run = graph
+                .alias_instance_export(transport_inst, dependencies::interfaces::WASI_CLI_RUN)?;
             graph.export(cli_run, dependencies::interfaces::WASI_CLI_RUN)?;
         }
         _ => anyhow::bail!("unsupported transport type: '{}'", transport_type),
@@ -195,15 +186,12 @@ pub fn load_package(
     name: &str,
     path: &Path,
 ) -> Result<wac_graph::types::Package> {
-    wac_graph::types::Package::from_file(
-        &format!("wasmcp:{}", name),
-        None,
-        path,
-        graph.types_mut(),
-    )
-    .with_context(|| format!(
-        "Failed to load component '{}' from {}",
-        name,
-        path.display()
-    ))
+    wac_graph::types::Package::from_file(&format!("wasmcp:{}", name), None, path, graph.types_mut())
+        .with_context(|| {
+            format!(
+                "Failed to load component '{}' from {}",
+                name,
+                path.display()
+            )
+        })
 }

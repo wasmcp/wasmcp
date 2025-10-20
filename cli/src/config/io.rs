@@ -22,8 +22,8 @@ pub fn load_config() -> Result<WasmcpConfig> {
     let content =
         fs::read_to_string(&path).context(format!("Failed to read config: {}", path.display()))?;
 
-    let config: WasmcpConfig = toml::from_str(&content)
-        .context(format!("Failed to parse config: {}", path.display()))?;
+    let config: WasmcpConfig =
+        toml::from_str(&content).context(format!("Failed to parse config: {}", path.display()))?;
 
     // Validate config after loading
     if let Err(errors) = config.validate() {
@@ -51,8 +51,10 @@ pub fn save_config(config: &WasmcpConfig) -> Result<()> {
 
     // Create parent directory
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .context(format!("Failed to create config directory: {}", parent.display()))?;
+        fs::create_dir_all(parent).context(format!(
+            "Failed to create config directory: {}",
+            parent.display()
+        ))?;
     }
 
     let content = toml::to_string_pretty(config).context("Failed to serialize config")?;
@@ -98,7 +100,10 @@ fn validate_identifier(name: &str, kind: &str) -> Result<()> {
     }
 
     // Check for valid identifier pattern
-    if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+    if !name
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+    {
         anyhow::bail!(
             "{} name '{}' must contain only alphanumeric characters, hyphens, or underscores",
             kind,
@@ -108,8 +113,18 @@ fn validate_identifier(name: &str, kind: &str) -> Result<()> {
 
     // Check for reserved names that could conflict with CLI commands or flags
     const RESERVED: &[&str] = &[
-        "help", "version", "new", "compose", "wit", "registry",
-        "component", "profile", "add", "remove", "list", "info"
+        "help",
+        "version",
+        "new",
+        "compose",
+        "wit",
+        "registry",
+        "component",
+        "profile",
+        "add",
+        "remove",
+        "list",
+        "info",
     ];
 
     if RESERVED.contains(&name) {
@@ -155,9 +170,7 @@ pub fn register_component(alias: &str, spec: &str) -> Result<()> {
             );
         }
 
-        config
-            .components
-            .insert(alias.to_string(), final_spec);
+        config.components.insert(alias.to_string(), final_spec);
         Ok(())
     })
 }
@@ -303,8 +316,18 @@ mod tests {
     #[test]
     fn test_validate_identifier_reserved_names() {
         let reserved = vec![
-            "help", "version", "new", "compose", "wit", "registry",
-            "component", "profile", "add", "remove", "list", "info"
+            "help",
+            "version",
+            "new",
+            "compose",
+            "wit",
+            "registry",
+            "component",
+            "profile",
+            "add",
+            "remove",
+            "list",
+            "info",
         ];
 
         for name in reserved {

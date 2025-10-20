@@ -84,13 +84,15 @@ fn render_embedded_dir(
         })?;
 
         // Render template
-        let template = parser
-            .parse(content)
-            .context(format!("Failed to parse template: {}", file.path().display()))?;
+        let template = parser.parse(content).context(format!(
+            "Failed to parse template: {}",
+            file.path().display()
+        ))?;
 
-        let rendered = template
-            .render(context)
-            .context(format!("Failed to render template: {}", file.path().display()))?;
+        let rendered = template.render(context).context(format!(
+            "Failed to render template: {}",
+            file.path().display()
+        ))?;
 
         // Write output file
         let output_path = output_base.join(file_name);

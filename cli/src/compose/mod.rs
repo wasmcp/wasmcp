@@ -94,7 +94,7 @@ pub struct ComposeOptions {
 /// # }
 /// ```
 #[derive(Debug, Clone)]
-#[allow(dead_code)]  // Public API - used by external consumers, not internally yet
+#[allow(dead_code)] // Public API - used by external consumers, not internally yet
 pub struct ComposeOptionsBuilder {
     components: Vec<String>,
     transport: String,
@@ -108,7 +108,7 @@ pub struct ComposeOptionsBuilder {
     verbose: bool,
 }
 
-#[allow(dead_code)]  // Public API - used by external consumers, not internally yet
+#[allow(dead_code)] // Public API - used by external consumers, not internally yet
 impl ComposeOptionsBuilder {
     /// Create a new builder with required components
     ///
@@ -272,7 +272,8 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
     if verbose {
         println!("Resolving components...");
     } else {
-        println!("Composing {} components ({} transport) → {}",
+        println!(
+            "Composing {} components ({} transport) → {}",
             components.len(),
             transport,
             output_path.display()
@@ -468,7 +469,9 @@ async fn resolve_framework_component(
         }
         resolution::resolve_component_spec(spec, deps_dir, client).await
     } else {
-        component.ensure_downloaded(version, deps_dir, client, skip_download, verbose).await?;
+        component
+            .ensure_downloaded(version, deps_dir, client, skip_download, verbose)
+            .await?;
         dependencies::get_dependency_path(&component.component_name(), version, deps_dir)
     }
 }
@@ -551,28 +554,29 @@ mod tests {
     #[test]
     fn test_interface_names() {
         assert_eq!(
-            dependencies::interfaces::server_handler("0.4.0"),
-            "wasmcp:mcp/server-handler@0.4.0"
+            dependencies::interfaces::server_handler("0.1.0-beta.2"),
+            "wasmcp:server/handler@0.1.0-beta.2"
+        );
+        assert_eq!(
+            dependencies::interfaces::tools("0.1.0-beta.2"),
+            "wasmcp:protocol/tools@0.1.0-beta.2"
         );
         assert_eq!(
             dependencies::interfaces::WASI_HTTP_HANDLER,
             "wasi:http/incoming-handler@0.2.3"
         );
-        assert_eq!(
-            dependencies::interfaces::WASI_CLI_RUN,
-            "wasi:cli/run@0.2.3"
-        );
+        assert_eq!(dependencies::interfaces::WASI_CLI_RUN, "wasi:cli/run@0.2.3");
     }
 
     #[test]
     fn test_package_naming() {
         assert_eq!(
-            dependencies::interfaces::package("http-transport", "0.4.0"),
-            "wasmcp:http-transport@0.4.0"
+            dependencies::interfaces::package("http-transport", "0.1.0-beta.2"),
+            "wasmcp:http-transport@0.1.0-beta.2"
         );
         assert_eq!(
-            dependencies::interfaces::package("method-not-found", "0.4.0"),
-            "wasmcp:method-not-found@0.4.0"
+            dependencies::interfaces::package("method-not-found", "0.1.0-beta.2"),
+            "wasmcp:method-not-found@0.1.0-beta.2"
         );
     }
 
@@ -656,8 +660,14 @@ mod tests {
             .unwrap();
 
         assert_eq!(options.version, "1.0.0");
-        assert_eq!(options.override_transport, Some("custom-transport.wasm".to_string()));
-        assert_eq!(options.override_method_not_found, Some("custom-mnf.wasm".to_string()));
+        assert_eq!(
+            options.override_transport,
+            Some("custom-transport.wasm".to_string())
+        );
+        assert_eq!(
+            options.override_method_not_found,
+            Some("custom-mnf.wasm".to_string())
+        );
     }
 
     #[test]

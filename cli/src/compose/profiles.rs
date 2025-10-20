@@ -130,10 +130,7 @@ mod tests {
         );
         profiles.insert(
             "derived".to_string(),
-            create_test_profile(
-                vec!["derived1".to_string()],
-                Some("base".to_string()),
-            ),
+            create_test_profile(vec!["derived1".to_string()], Some("base".to_string())),
         );
         let cfg = create_test_config(profiles);
 
@@ -215,5 +212,4 @@ mod tests {
         // Components should be ordered: l1, l2, l3
         assert_eq!(result.components, vec!["l1", "l2", "l3"]);
     }
-
 }

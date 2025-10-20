@@ -175,9 +175,7 @@ fn test_old_register_command_does_not_exist() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
     // The old flat command should not work anymore
-    cmd.args(["registry", "register"])
-        .assert()
-        .failure();
+    cmd.args(["registry", "register"]).assert().failure();
 }
 
 #[test]
@@ -185,9 +183,7 @@ fn test_old_unregister_command_does_not_exist() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
     // The old flat command should not work anymore
-    cmd.args(["registry", "unregister"])
-        .assert()
-        .failure();
+    cmd.args(["registry", "unregister"]).assert().failure();
 }
 
 #[test]
@@ -195,9 +191,7 @@ fn test_old_profile_create_command_does_not_exist() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
     // The old dashed command should not work anymore
-    cmd.args(["registry", "profile-create"])
-        .assert()
-        .failure();
+    cmd.args(["registry", "profile-create"]).assert().failure();
 }
 
 #[test]
@@ -205,9 +199,7 @@ fn test_old_profile_delete_command_does_not_exist() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
     // The old dashed command should not work anymore
-    cmd.args(["registry", "profile-delete"])
-        .assert()
-        .failure();
+    cmd.args(["registry", "profile-delete"]).assert().failure();
 }
 
 #[test]
@@ -215,9 +207,7 @@ fn test_old_list_command_does_not_exist() {
     let mut cmd = Command::cargo_bin("wasmcp").unwrap();
 
     // The old separate list command should not work anymore
-    cmd.args(["registry", "list"])
-        .assert()
-        .failure();
+    cmd.args(["registry", "list"]).assert().failure();
 }
 
 #[test]

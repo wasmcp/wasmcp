@@ -12,7 +12,7 @@ import type {
   CallToolResult,
   ClientContext,
   Tool,
-} from './generated/interfaces/wasmcp-mcp-protocol.js';
+} from './generated/interfaces/wasmcp-protocol-features.js';
 
 // Tool input schemas
 const ExampleToolSchema = z.object({
