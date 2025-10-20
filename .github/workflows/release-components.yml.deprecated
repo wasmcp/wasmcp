@@ -145,6 +145,7 @@ jobs:
             crates/method-not-found
             crates/stdio-transport
             crates/tools-middleware
+            crates/resources-middleware
 
       - name: Install wit-deps
         run: |
@@ -217,6 +218,12 @@ jobs:
           wkg publish --package 'wasmcp:tools-middleware@${{ inputs.version }}' \
             target/wasm32-wasip2/release/tools_middleware.wasm
           echo "✅ Published wasmcp:tools-middleware@${{ inputs.version }}"
+
+      - name: Publish resources-middleware
+        run: |
+          wkg publish --package 'wasmcp:resources-middleware@${{ inputs.version }}' \
+            target/wasm32-wasip2/release/resources_middleware.wasm
+          echo "✅ Published wasmcp:resources-middleware@${{ inputs.version }}"
 
       - name: Upload all component artifacts
         uses: actions/upload-artifact@v4
@@ -326,13 +333,14 @@ jobs:
 
             ## Framework Components Released
 
-            This release includes 5 framework components published to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}`:
+            This release includes 6 framework components published to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}`:
 
             - `wasmcp:http-client-notifications@${{ inputs.version }}`
             - `wasmcp:http-transport@${{ inputs.version }}`
             - `wasmcp:method-not-found@${{ inputs.version }}`
             - `wasmcp:stdio-transport@${{ inputs.version }}`
             - `wasmcp:tools-middleware@${{ inputs.version }}`
+            - `wasmcp:resources-middleware@${{ inputs.version }}`
 
             ## 🔒 Supply Chain Security
 
@@ -346,6 +354,7 @@ jobs:
             - `method-not-found-sbom.{json,xml}`
             - `stdio-transport-sbom.{json,xml}`
             - `tools-middleware-sbom.{json,xml}`
+            - `resources-middleware-sbom.{json,xml}`
 
             ### Verifying Component Downloads
 
