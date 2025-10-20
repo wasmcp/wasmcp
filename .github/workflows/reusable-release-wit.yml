@@ -129,18 +129,16 @@ jobs:
       - name: Create WIT source tarball for wit-deps
         run: |
           # Create a tarball with WIT files at wit/ in the root for wit-deps compatibility
-          # Important: Exclude wit/deps/ directory so wit-deps can fetch transitive dependencies itself
-          mkdir -p /tmp/wit-source/wit
+          # Include wit/deps/ with all transitive dependencies resolved (following WASI pattern)
+          mkdir -p /tmp/wit-source
 
-          # Copy WIT source files, excluding the deps directory
-          cd ${{ inputs.wit-dir }}
-          find . -maxdepth 1 -type f -name "*.wit" -exec cp {} /tmp/wit-source/wit/ \;
-          [ -f deps.toml ] && cp deps.toml /tmp/wit-source/wit/
+          # Copy entire WIT directory including resolved deps
+          cp -r ${{ inputs.wit-dir }} /tmp/wit-source/wit
 
           cd /tmp/wit-source
           tar -czf wasmcp-${{ inputs.package-name }}-${{ inputs.version }}-source.tar.gz wit/
           mv wasmcp-${{ inputs.package-name }}-${{ inputs.version }}-source.tar.gz ${{ github.workspace }}/${{ inputs.wit-dir }}/
-          echo "✅ Created source tarball for wit-deps"
+          echo "✅ Created source tarball with resolved dependencies for wit-deps"
 
       - name: Upload WIT package artifact
         uses: actions/upload-artifact@v4
