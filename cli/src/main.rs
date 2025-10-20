@@ -35,7 +35,7 @@ enum Command {
         language: Language,
 
         /// wasmcp version to use for WIT dependencies
-        #[arg(long, default_value = "0.4.0")]
+        #[arg(long, default_value = "0.1.0-beta.2")]
         version: String,
 
         /// Overwrite existing directory
@@ -97,13 +97,14 @@ enum Command {
 
         /// Output path for the composed server
         ///
-        /// If not specified, uses the profile's output setting (when using -p).
-        /// Otherwise defaults to "mcp-server.wasm".
+        /// Relative paths are resolved from the current working directory.
+        /// If not specified, uses the profile's output setting (saved in ~/.config/wasmcp/composed/).
+        /// Otherwise defaults to "mcp-server.wasm" in the current directory.
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
 
         /// wasmcp version for framework dependencies
-        #[arg(long, default_value = "0.4.0")]
+        #[arg(long, default_value = "0.1.0-beta.2")]
         version: String,
 
         /// Override transport component (path or package spec)
@@ -148,8 +149,9 @@ enum Command {
 enum WitCommand {
     /// Fetch WIT dependencies for a project
     ///
-    /// This downloads all transitive WIT dependencies declared in your
-    /// wit/deps.toml file to wit/deps/, similar to `wkg wit fetch`.
+    /// This downloads all WIT dependencies declared in your wit/deps.toml
+    /// file to wit/deps/. Uses the embedded wit-deps library to fetch from
+    /// GitHub URLs or other sources.
     Fetch {
         /// Directory containing wit/ folder
         #[arg(long, default_value = ".")]
@@ -397,11 +399,17 @@ async fn main() -> Result<()> {
 
             // Determine output path: CLI flag > profile setting > default
             let final_output = match output {
-                Some(path) => path,
+                Some(path) => {
+                    // Explicit -o flag: use relative to current working directory
+                    path
+                }
                 None => {
                     if let Some(ref settings) = profile_settings {
-                        PathBuf::from(&settings.output)
+                        // Profile setting: use composed directory
+                        let composed_dir = config::get_composed_dir()?;
+                        composed_dir.join(&settings.output)
                     } else {
+                        // Default: use current working directory
                         PathBuf::from("mcp-server.wasm")
                     }
                 }
@@ -475,14 +483,13 @@ async fn main() -> Result<()> {
                 }
 
                 ComponentCommand::List => {
-                    let cfg = config::load_config()
-                        .context("Failed to load config")?;
+                    let cfg = config::load_config().context("Failed to load config")?;
 
                     print_components_list(&cfg);
 
                     Ok(())
                 }
-            }
+            },
 
             RegistryCommand::Profile { command } => match command {
                 ProfileCommand::Add {
@@ -497,30 +504,27 @@ async fn main() -> Result<()> {
                         output,
                     };
 
-                    config::create_profile(&name, profile)
-                        .context("Failed to create profile")?;
+                    config::create_profile(&name, profile).context("Failed to create profile")?;
 
                     println!("✅ Created profile: {}", name);
                     Ok(())
                 }
 
                 ProfileCommand::Remove { name } => {
-                    config::delete_profile(&name)
-                        .context("Failed to delete profile")?;
+                    config::delete_profile(&name).context("Failed to delete profile")?;
 
                     println!("✅ Deleted profile: {}", name);
                     Ok(())
                 }
 
                 ProfileCommand::List => {
-                    let cfg = config::load_config()
-                        .context("Failed to load config")?;
+                    let cfg = config::load_config().context("Failed to load config")?;
 
                     print_profiles_list(&cfg);
 
                     Ok(())
                 }
-            }
+            },
 
             RegistryCommand::Info {
                 components,
@@ -541,8 +545,7 @@ async fn main() -> Result<()> {
                 println!("Output directory: {}", composed_dir.display());
 
                 // Load config and show everything
-                let cfg = config::load_config()
-                    .context("Failed to load config")?;
+                let cfg = config::load_config().context("Failed to load config")?;
 
                 println!();
                 println!("Statistics:");
@@ -551,7 +554,7 @@ async fn main() -> Result<()> {
 
                 // Determine what to show based on flags
                 let show_components = !profiles; // Show components unless --profiles is set
-                let show_profiles = !components;  // Show profiles unless --components is set
+                let show_profiles = !components; // Show profiles unless --components is set
 
                 // Show components section
                 if show_components {
@@ -580,7 +583,9 @@ fn print_components_list(cfg: &config::WasmcpConfig) {
         println!("  wasmcp registry component add calc wasmcp:calculator@0.1.0");
         println!();
         println!("  # From a local file:");
-        println!("  wasmcp registry component add myhandler ./target/wasm32-wasip2/release/handler.wasm");
+        println!(
+            "  wasmcp registry component add myhandler ./target/wasm32-wasip2/release/handler.wasm"
+        );
         println!();
         println!("  # From another alias:");
         println!("  wasmcp registry component add prod-calc calc");

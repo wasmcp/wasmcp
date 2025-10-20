@@ -94,7 +94,12 @@ fn resolve_component_spec_recursive<'a>(
             match config::utils::canonicalize_path(spec) {
                 Ok(path) => return Ok(path),
                 Err(e) => {
-                    anyhow::bail!(format_resolution_error("component not found", spec, visited, e));
+                    anyhow::bail!(format_resolution_error(
+                        "component not found",
+                        spec,
+                        visited,
+                        e
+                    ));
                 }
             }
         }
@@ -103,6 +108,13 @@ fn resolve_component_spec_recursive<'a>(
         println!("      Downloading {} from registry...", spec);
         pkg::resolve_spec(spec, client, deps_dir)
             .await
-            .map_err(|e| anyhow::anyhow!(format_resolution_error("failed to download component", spec, visited, e)))
+            .map_err(|e| {
+                anyhow::anyhow!(format_resolution_error(
+                    "failed to download component",
+                    spec,
+                    visited,
+                    e
+                ))
+            })
     })
 }

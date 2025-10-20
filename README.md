@@ -8,60 +8,30 @@ A [WebAssembly Component](https://component-model.bytecodealliance.org/) Develop
 
 ## Quick Start
 
-Author MCP tools in your favorite language
+Create and run your first MCP tool component:
 ```bash
+# Create a component in your favorite language
 wasmcp new time-tools --language python
+cd time-tools && make && cd ..
 
-# Develop and build the component
-cd time-tools
-make # produces time-tools.wasm
+# Register it with a short alias
+wasmcp registry component add time time-tools/time-tools.wasm
 
-# Compose your tools with a Streamable HTTP transport component (default) to form an MCP server
-wasmcp compose time-tools.wasm -t http -o http-server.wasm
-
-# Run
-wasmtime serve -Scli http-server.wasm # serves http://0.0.0.0:8080/ by default
-
-# Or compose the same tool components with a stdio transport
-wasmcp compose time-tools.wasm -t stdio -o stdio-server.wasm
-wasmtime run stdio-server.wasm
+# Compose into an MCP server and run
+wasmcp compose time -o server.wasm
+wasmtime serve -Scli server.wasm  # http://0.0.0.0:8080/mcp
 ```
 
-You can add any number of components together in sequence. If you include multiple tool components, the server will expose the combined set of tools automatically.
+Combine multiple tool components - they automatically merge into a unified catalog:
 ```bash
+# Create another component
 wasmcp new math-tools --language rust
+cd math-tools && make && cd ..
+wasmcp registry component add math math-tools/target/wasm32-wasip2/release/math_tools.wasm
 
-cd math-tools
-make
-
-# Use the time-tools.wasm you built earlier
-wasmcp compose math-tools.wasm ../time-tools.wasm -o server.wasm
-```
-
-### Simplify with Component Aliases
-
-Register frequently-used components with short aliases:
-```bash
-# Register aliases for easier composition
-wasmcp registry component add time ../time-tools/time-tools.wasm
-wasmcp registry component add math math-tools.wasm
-
-# Now compose using short names
-wasmcp compose time math -o server.wasm
-```
-
-### Reusable Profiles
-
-Create profiles for common server configurations:
-```bash
-# Create a development profile
-wasmcp registry profile add dev time math -o dev-server.wasm
-
-# Compose your entire dev stack with one command
-wasmcp compose dev
-
-# Extend profiles with additional components
-wasmcp compose dev logger-tools.wasm -o debug-server.wasm
+# Compose both together
+wasmcp compose time math -o combined-server.wasm
+wasmtime serve -Scli combined-server.wasm
 ```
 
 ## Installation
@@ -169,28 +139,32 @@ wasmcp registry component remove calc
 
 ### Profiles
 
-Create reusable composition pipelines:
+Save a list of components to compose together:
 
 ```bash
-# Create a base profile
-wasmcp registry profile add base calc weather -o base.wasm
+# Save: dev = calc + weather
+wasmcp registry profile add dev calc weather -o dev.wasm
 
-# Create profile with inheritance
-wasmcp registry profile add prod logger monitor -o prod.wasm -b base
+# Later, rebuild the same server
+wasmcp compose dev
+# Creates: ~/.config/wasmcp/composed/dev.wasm
 
-# Use profiles in composition
-wasmcp compose base                    # Uses base profile's output path
-wasmcp compose prod extra-tool.wasm    # Extends prod profile
-
-# List and manage
-wasmcp registry profile list
-wasmcp registry profile remove base
+# Or specify a different output location
+wasmcp compose dev -o ./my-server.wasm
+# Creates: ./my-server.wasm
 ```
 
-**Profile features:**
-- Inheritance chains (profiles can extend base profiles)
-- Automatic output path resolution
-- Mix with direct components: `wasmcp compose my-profile extra-comp`
+Profiles can inherit from other profiles:
+```bash
+wasmcp registry profile add prod logger monitor -o prod.wasm -b dev
+# prod = calc + weather + logger + monitor
+```
+
+List and remove:
+```bash
+wasmcp registry profile list
+wasmcp registry profile remove dev
+```
 
 ### Unified Resolution
 

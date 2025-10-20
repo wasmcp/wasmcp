@@ -25,7 +25,7 @@ pub async fn wrap_tools_capabilities(
     verbose: bool,
 ) -> Result<Vec<PathBuf>> {
     let mut wrapped_paths = Vec::new();
-    let tools_cap_interface = dependencies::interfaces::tools_capability(version);
+    let tools_interface = dependencies::interfaces::tools(version);
 
     for (i, path) in component_paths.into_iter().enumerate() {
         let component_name = path
@@ -34,13 +34,17 @@ pub async fn wrap_tools_capabilities(
             .unwrap_or("component");
 
         // Check if this component exports tools-capability
-        if component_exports_interface(&path, &tools_cap_interface)? {
+        if component_exports_interface(&path, &tools_interface)? {
             if verbose {
-                println!("   {} is a tools-capability → wrapping with tools-middleware", component_name);
+                println!(
+                    "   {} is a tools-capability → wrapping with tools-middleware",
+                    component_name
+                );
             }
 
             // Get tools-middleware path
-            let middleware_path = dependencies::get_dependency_path("tools-middleware", version, deps_dir)?;
+            let middleware_path =
+                dependencies::get_dependency_path("tools-middleware", version, deps_dir)?;
 
             // Wrap the capability with middleware
             let wrapped_bytes = wrap_with_tools_middleware(&middleware_path, &path, version)?;
@@ -66,7 +70,7 @@ pub async fn wrap_tools_capabilities(
 ///
 /// This loads the component and inspects its exports to determine its type.
 fn component_exports_interface(path: &Path, interface: &str) -> Result<bool> {
-    use wasmparser::{Payload, Parser};
+    use wasmparser::{Parser, Payload};
 
     let bytes = std::fs::read(path)
         .with_context(|| format!("Failed to read component: {}", path.display()))?;
@@ -100,32 +104,34 @@ fn wrap_with_tools_middleware(
     let mut graph = CompositionGraph::new();
 
     // Load both components
-    let middleware_pkg = super::graph::load_package(&mut graph, "tools-middleware", middleware_path)?;
-    let capability_pkg = super::graph::load_package(&mut graph, "tools-capability", capability_path)?;
+    let middleware_pkg =
+        super::graph::load_package(&mut graph, "tools-middleware", middleware_path)?;
+    let capability_pkg =
+        super::graph::load_package(&mut graph, "tools-capability", capability_path)?;
 
     // Register packages
     let middleware_id = graph.register_package(middleware_pkg)?;
     let capability_id = graph.register_package(capability_pkg)?;
 
     // Get interface names
-    let tools_cap_interface = dependencies::interfaces::tools_capability(version);
+    let tools_interface = dependencies::interfaces::tools(version);
     let server_handler_interface = dependencies::interfaces::server_handler(version);
 
     // Instantiate capability component
     let capability_inst = graph.instantiate(capability_id);
 
-    // Get its tools-capability export
-    let tools_cap_export = graph
-        .alias_instance_export(capability_inst, &tools_cap_interface)
-        .context("Failed to get tools-capability export")?;
+    // Get its tools export
+    let tools_export = graph
+        .alias_instance_export(capability_inst, &tools_interface)
+        .context("Failed to get tools export")?;
 
     // Instantiate middleware
     let middleware_inst = graph.instantiate(middleware_id);
 
-    // Wire middleware's tools-capability import to the capability's export
+    // Wire middleware's tools import to the capability's export
     graph
-        .set_instantiation_argument(middleware_inst, &tools_cap_interface, tools_cap_export)
-        .context("Failed to wire tools-capability")?;
+        .set_instantiation_argument(middleware_inst, &tools_interface, tools_export)
+        .context("Failed to wire tools interface")?;
 
     // Export the middleware's server-handler export
     let server_handler_export = graph

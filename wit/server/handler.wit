@@ -1,12 +1,15 @@
 /// MCP server-side handler interface and composition worlds.
 ///
 /// <https://modelcontextprotocol.io>
-package wasmcp:server@0.1.0-beta.1;
+package wasmcp:server@0.1.0-beta.2;
 
 /// Server-side MCP message handler.
 @since(version = 0.1.0-alpha.8)
 interface handler {
-    use wasmcp:protocol/mcp@0.1.0-beta.1.{
+    use wasi:io/streams@0.2.3.{
+        output-stream,
+    };
+    use wasmcp:protocol/mcp@0.1.0-beta.2.{
         error-code,
         claims,
         session-id,
@@ -16,10 +19,9 @@ interface handler {
         client-response,
         client-notification,
     };
-    use wasmcp:protocol/server@0.1.0-beta.1.{
-        request-options,
+    use wasmcp:protocol/server-messages@0.1.0-beta.2.{
+        context,
     };
-
 
     /// Handle a client request.
     ///
@@ -32,19 +34,22 @@ interface handler {
     /// Returns the server response or an error code if processing fails.
     @since(version = 0.1.0-alpha.8)
     handle-request: func(
+        ctx: context,
         request: tuple<client-request, request-id>,
-        options: request-options,
+        client-stream: option<borrow<output-stream>>,
     ) -> result<server-response, error-code>;
 
     /// Handle a client response to a server-initiated request.
     @since(version = 0.1.0-alpha.8)
     handle-response: func(
+        ctx: context,
         response: result<tuple<client-response, request-id>, error-code>,
     );
 
     /// Handle a client notification.
     @since(version = 0.1.0-alpha.8)
     handle-notification: func(
+        ctx: context,
         notification: client-notification,
     );
 }

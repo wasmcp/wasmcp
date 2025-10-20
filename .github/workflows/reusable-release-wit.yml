@@ -126,11 +126,27 @@ jobs:
           safe_name=$(echo "${{ inputs.wkg-package }}" | tr ':' '_')
           mv "${{ inputs.wkg-package }}@${{ inputs.version }}.wasm" "${safe_name}@${{ inputs.version }}.wasm"
 
+      - name: Create WIT source tarball for wit-deps
+        run: |
+          # Create a tarball with WIT files at wit/ in the root for wit-deps compatibility
+          # Include wit/deps/ with all transitive dependencies resolved (following WASI pattern)
+          mkdir -p /tmp/wit-source
+
+          # Copy entire WIT directory including resolved deps
+          cp -r ${{ inputs.wit-dir }} /tmp/wit-source/wit
+
+          cd /tmp/wit-source
+          tar -czf wasmcp-${{ inputs.package-name }}-${{ inputs.version }}-source.tar.gz wit/
+          mv wasmcp-${{ inputs.package-name }}-${{ inputs.version }}-source.tar.gz ${{ github.workspace }}/${{ inputs.wit-dir }}/
+          echo "✅ Created source tarball with resolved dependencies for wit-deps"
+
       - name: Upload WIT package artifact
         uses: actions/upload-artifact@v4
         with:
           name: wit-package-${{ inputs.package-name }}-${{ inputs.version }}
-          path: ${{ inputs.wit-dir }}/*_*@${{ inputs.version }}.wasm
+          path: |
+            ${{ inputs.wit-dir }}/*_*@${{ inputs.version }}.wasm
+            ${{ inputs.wit-dir }}/*-source.tar.gz
 
       - name: Summary
         run: |
@@ -182,10 +198,20 @@ jobs:
 
             ## Usage
 
-            The WIT package is automatically downloaded by components during composition. You can also fetch it directly:
+            ### With wkg (component composition)
+
+            The WIT package is automatically downloaded by components during composition:
 
             ```bash
             wkg get ${{ inputs.wkg-package }}@${{ inputs.version }}
+            ```
+
+            ### With wit-deps (development dependencies)
+
+            Use the source tarball in your `wit/deps.toml`:
+
+            ```toml
+            ${{ inputs.package-name }} = "https://github.com/${{ github.repository }}/releases/download/${{ inputs.tag-prefix }}${{ inputs.version }}/wasmcp-${{ inputs.package-name }}-${{ inputs.version }}-source.tar.gz"
             ```
 
             ## Next Steps

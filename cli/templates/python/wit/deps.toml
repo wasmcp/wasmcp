@@ -1,4 +1,5 @@
 # WIT dependencies for {{project_name}}
+# Note: Must list all transitive dependencies explicitly (wit-deps doesn't resolve them recursively)
 
-[dependencies]
-"wasmcp:mcp" = "{{wasmcp_version}}"
+protocol = "https://github.com/wasmcp/wasmcp/releases/download/protocol-v{{wasmcp_version}}/wasmcp-protocol-{{wasmcp_version}}-source.tar.gz"
+io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.3.tar.gz"

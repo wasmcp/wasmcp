@@ -23,16 +23,16 @@ mod serializer;
 mod stream_reader;
 
 use bindings::exports::wasi::http::incoming_handler::Guest;
+use bindings::wasi::cli::environment::get_environment;
 use bindings::wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
 use bindings::wasi::io::streams::OutputStream;
-// use bindings::wasi::config::runtime as config;
-use bindings::wasmcp::mcp::protocol::ClientContext;
-use bindings::wasmcp::mcp::protocol::{
+use bindings::wasmcp::protocol::mcp::{
     ClientNotification, ClientRequest, ClientResponse, RequestId, ServerResponse,
 };
-use bindings::wasmcp::mcp::server_handler::{handle_notification, handle_request, handle_response};
+use bindings::wasmcp::protocol::server_messages::Context;
+use bindings::wasmcp::server::handler::{handle_notification, handle_request, handle_response};
 
 struct HttpTransport;
 
@@ -53,7 +53,7 @@ impl Guest for HttpTransport {
 
 fn handle_http_request(request: IncomingRequest) -> Result<OutgoingResponse, String> {
     // 1. Validate Origin header (DNS rebinding protection)
-    // validate_origin(&request)?;
+    validate_origin(&request)?;
 
     // 2. Validate MCP-Protocol-Version header (if present)
     validate_protocol_version(&request)?;
@@ -158,16 +158,15 @@ fn handle_json_rpc_request(
     let body = response.body().map_err(|_| "Failed to get response body")?;
     let output_stream = body.write().map_err(|_| "Failed to get output stream")?;
 
-    // Create client context (stateless: no session, no claims)
-    // Pass output stream so handler can send notifications
-    let client = ClientContext {
-        identity_claims: None,
+    // Create context (stateless: no session, no claims)
+    let ctx = Context {
+        claims: None,
         session_id: None,
-        output: Some(&output_stream), // Provide stream for notifications
+        data: vec![],
     };
 
     // Delegate to server-handler (may send notifications via output stream)
-    let result = handle_request(&request_id, &client_request, &client);
+    let result = handle_request(&ctx, (&client_request, &request_id), Some(&output_stream));
 
     // Write final JSON-RPC response to SSE stream
     write_sse_response(&output_stream, request_id, result)?;
@@ -185,7 +184,7 @@ fn handle_initialize_request(
     json_rpc: &serde_json::Value,
     request_id: RequestId,
 ) -> Result<OutgoingResponse, String> {
-    use bindings::wasmcp::mcp::protocol::{
+    use bindings::wasmcp::protocol::mcp::{
         ClientCapabilities, Implementation, InitializeRequest, InitializeResult, ProtocolVersion,
         ServerCapabilities,
     };
@@ -336,8 +335,8 @@ fn handle_set_level_request(request_id: RequestId) -> Result<OutgoingResponse, S
     Ok(response)
 }
 
-fn discover_capabilities() -> bindings::wasmcp::mcp::protocol::ServerCapabilities {
-    use bindings::wasmcp::mcp::protocol::{
+fn discover_capabilities() -> bindings::wasmcp::protocol::mcp::ServerCapabilities {
+    use bindings::wasmcp::protocol::mcp::{
         ClientRequest, CompleteRequest, CompletionArgument, CompletionPromptReference,
         CompletionReference, ListPromptsRequest, ListResourcesRequest, ListToolsRequest,
         ServerCapabilities, ServerLists, ServerResponse,
@@ -347,38 +346,33 @@ fn discover_capabilities() -> bindings::wasmcp::mcp::protocol::ServerCapabilitie
     // With optional output stream, we can pass None for discovery calls
     let mut list_flags = ServerLists::empty();
 
-    // Create a client with no output stream for discovery calls
-    let client = ClientContext {
-        identity_claims: None,
+    // Create a context for discovery calls
+    let ctx = Context {
+        claims: None,
         session_id: None,
-        output: None, // No output stream needed for discovery
+        data: vec![],
     };
 
     // Try list-tools
-    if let Ok(_) = handle_request(
-        &RequestId::Number(0),
-        &ClientRequest::ToolsList(ListToolsRequest { cursor: None }),
-        &client,
-    ) {
+    let req = ClientRequest::ToolsList(ListToolsRequest { cursor: None });
+    let id = RequestId::Number(0);
+    if let Ok(_) = handle_request(&ctx, (&req, &id), None) {
         list_flags |= ServerLists::TOOLS;
     }
 
     // Try list-resources
-    if let Ok(_) = handle_request(
-        &RequestId::Number(1),
-        &ClientRequest::ResourcesList(ListResourcesRequest { cursor: None }),
-        &client,
-    ) {
+    let req = ClientRequest::ResourcesList(ListResourcesRequest { cursor: None });
+    let id = RequestId::Number(1);
+    if let Ok(_) = handle_request(&ctx, (&req, &id), None) {
         list_flags |= ServerLists::RESOURCES;
     }
 
     // Try list-prompts and use result to test completions
     let mut has_completions = false;
-    if let Ok(ServerResponse::PromptsList(prompts_result)) = handle_request(
-        &RequestId::Number(2),
-        &ClientRequest::PromptsList(ListPromptsRequest { cursor: None }),
-        &client,
-    ) {
+    let req = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
+    let id = RequestId::Number(2);
+    if let Ok(ServerResponse::PromptsList(prompts_result)) = handle_request(&ctx, (&req, &id), None)
+    {
         list_flags |= ServerLists::PROMPTS;
 
         // Try to discover completions support using a real prompt
@@ -403,13 +397,11 @@ fn discover_capabilities() -> bindings::wasmcp::mcp::protocol::ServerCapabilitie
                         };
 
                         // Test if completions are supported
-                        match handle_request(
-                            &RequestId::Number(3),
-                            &ClientRequest::CompletionComplete(completion_request),
-                            &client,
-                        ) {
+                        let req = ClientRequest::CompletionComplete(completion_request);
+                        let id = RequestId::Number(3);
+                        match handle_request(&ctx, (&req, &id), None) {
                             Ok(_) => has_completions = true,
-                            Err(bindings::wasmcp::mcp::protocol::ErrorCode::MethodNotFound(_)) => {
+                            Err(bindings::wasmcp::protocol::mcp::ErrorCode::MethodNotFound(_)) => {
                                 has_completions = false;
                             }
                             Err(_) => {
@@ -442,7 +434,7 @@ fn discover_capabilities() -> bindings::wasmcp::mcp::protocol::ServerCapabilitie
 }
 
 fn serialize_capabilities(
-    caps: &bindings::wasmcp::mcp::protocol::ServerCapabilities,
+    caps: &bindings::wasmcp::protocol::mcp::ServerCapabilities,
 ) -> serde_json::Value {
     let mut result = serde_json::Map::new();
 
@@ -456,12 +448,12 @@ fn serialize_capabilities(
 
     // Serialize list_changed capabilities - each capability type gets its own nested object
     if let Some(flags) = caps.list_changed {
-        if flags.contains(bindings::wasmcp::mcp::protocol::ServerLists::TOOLS) {
+        if flags.contains(bindings::wasmcp::protocol::mcp::ServerLists::TOOLS) {
             let mut tools_caps = serde_json::Map::new();
             tools_caps.insert("listChanged".to_string(), serde_json::json!(true));
             result.insert("tools".to_string(), serde_json::Value::Object(tools_caps));
         }
-        if flags.contains(bindings::wasmcp::mcp::protocol::ServerLists::RESOURCES) {
+        if flags.contains(bindings::wasmcp::protocol::mcp::ServerLists::RESOURCES) {
             let mut resources_caps = serde_json::Map::new();
             resources_caps.insert("listChanged".to_string(), serde_json::json!(true));
             result.insert(
@@ -469,7 +461,7 @@ fn serialize_capabilities(
                 serde_json::Value::Object(resources_caps),
             );
         }
-        if flags.contains(bindings::wasmcp::mcp::protocol::ServerLists::PROMPTS) {
+        if flags.contains(bindings::wasmcp::protocol::mcp::ServerLists::PROMPTS) {
             let mut prompts_caps = serde_json::Map::new();
             prompts_caps.insert("listChanged".to_string(), serde_json::json!(true));
             result.insert(
@@ -523,8 +515,15 @@ fn handle_json_rpc_notification(json_rpc: &serde_json::Value) -> Result<Outgoing
     // Parse notification from JSON
     let notification = parser::parse_client_notification(json_rpc)?;
 
+    // Create context (stateless)
+    let ctx = Context {
+        claims: None,
+        session_id: None,
+        data: vec![],
+    };
+
     // Forward to server-handler (no response expected)
-    handle_notification(&notification);
+    handle_notification(&ctx, &notification);
 
     // Return 202 Accepted
     let response = OutgoingResponse::new(Fields::new());
@@ -535,18 +534,25 @@ fn handle_json_rpc_notification(json_rpc: &serde_json::Value) -> Result<Outgoing
 }
 
 fn handle_json_rpc_response(json_rpc: &serde_json::Value) -> Result<OutgoingResponse, String> {
-    // Parse response ID (optional for responses)
-    let id = json_rpc
-        .get("id")
-        .and_then(|v| if v.is_null() { None } else { Some(v) })
-        .map(|v| parser::parse_request_id(v))
-        .transpose()?;
+    // Parse response ID (required for responses)
+    let id = json_rpc.get("id").ok_or("Missing id in response")?;
+    let request_id = parser::parse_request_id(id)?;
 
     // Parse client response from JSON
     let response_result = parser::parse_client_response(json_rpc)?;
 
+    // Create context (stateless)
+    let ctx = Context {
+        claims: None,
+        session_id: None,
+        data: vec![],
+    };
+
+    // Convert to Result<(ClientResponse, RequestId), ErrorCode>
+    let result_with_id = response_result.map(|resp| (resp, request_id));
+
     // Forward to server-handler (no response expected)
-    handle_response(id.as_ref(), response_result.as_ref());
+    handle_response(&ctx, result_with_id);
 
     // Return 202 Accepted
     let response = OutgoingResponse::new(Fields::new());
@@ -607,78 +613,99 @@ fn validate_protocol_version(request: &IncomingRequest) -> Result<(), String> {
     }
 }
 
-// fn validate_origin(request: &IncomingRequest) -> Result<(), String> {
-//     // Per MCP spec: Servers MUST validate the Origin header to prevent DNS rebinding attacks
-//     // https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#security-warning
+/// Validate Origin header to prevent DNS rebinding attacks
+///
+/// Per MCP spec: Servers MUST validate the Origin header to prevent DNS rebinding attacks
+/// https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#security-warning
+///
+/// Configuration via environment variables:
+/// - MCP_ALLOWED_ORIGINS: Comma-separated list of allowed origins (e.g., "http://localhost:3000,https://app.example.com")
+///   - Special value "*" allows all origins (INSECURE - only for development)
+/// - MCP_REQUIRE_ORIGIN: "true" to require Origin header, "false" to allow missing Origin (default: false)
+///
+/// Default behavior: If MCP_ALLOWED_ORIGINS is not set, only localhost origins are allowed.
+fn validate_origin(request: &IncomingRequest) -> Result<(), String> {
+    // Get the Origin header
+    let headers = request.headers();
+    let origin_values = headers.get(&"origin".to_string());
 
-//     // Get the Origin header
-//     let headers = request.headers();
-//     let origin_values = headers.get(&"origin".to_string());
+    // Get environment variables
+    let env_vars = get_environment();
+    let require_origin = env_vars
+        .iter()
+        .find(|(k, _)| k == "MCP_REQUIRE_ORIGIN")
+        .map(|(_, v)| v.as_str())
+        .unwrap_or("false");
 
-//     // If no Origin header, reject (browsers always send Origin for cross-origin requests)
-//     let origin = if origin_values.is_empty() {
-//         // No Origin header - could be same-origin or non-browser client
-//         // Check config to see if we require Origin
-//         match config::get("require-origin") {
-//             Ok(Some(val)) if val == "true" => {
-//                 return Err("Origin header required".to_string());
-//             }
-//             _ => return Ok(()), // Allow if not configured to require
-//         }
-//     } else {
-//         // Take first Origin value and decode
-//         String::from_utf8(origin_values[0].clone())
-//             .map_err(|_| "Invalid Origin header encoding".to_string())?
-//     };
+    let allowed_origins = env_vars
+        .iter()
+        .find(|(k, _)| k == "MCP_ALLOWED_ORIGINS")
+        .map(|(_, v)| v.as_str());
 
-//     // Check allowed origins from config
-//     match config::get("allowed-origins") {
-//         Ok(Some(allowed)) => {
-//             // allowed-origins is comma-separated list
-//             let allowed_list: Vec<&str> = allowed.split(',').map(|s| s.trim()).collect();
+    // If no Origin header, check if we require it
+    let origin = if origin_values.is_empty() {
+        if require_origin == "true" {
+            return Err("Origin header required but not provided".to_string());
+        }
+        // No Origin header but not required - allow (non-browser clients)
+        return Ok(());
+    } else {
+        // Take first Origin value and decode
+        String::from_utf8(origin_values[0].clone())
+            .map_err(|_| "Invalid Origin header encoding".to_string())?
+    };
 
-//             // Special case: "*" means allow all
-//             if allowed_list.contains(&"*") {
-//                 return Ok(());
-//             }
+    // Check allowed origins
+    match allowed_origins {
+        Some(allowed) => {
+            // Comma-separated list of allowed origins
+            let allowed_list: Vec<&str> = allowed.split(',').map(|s| s.trim()).collect();
 
-//             // Check if origin is in allowed list
-//             if allowed_list.contains(&origin.as_str()) {
-//                 Ok(())
-//             } else {
-//                 Err(format!("Origin '{}' not in allowed list", origin))
-//             }
-//         }
-//         Ok(None) => {
-//             // No config - default to localhost only
-//             validate_localhost_origin(&origin)
-//         }
-//         Err(e) => {
-//             // Config error - fail safe by rejecting
-//             Err(format!("Config error: {:?}", e))
-//         }
-//     }
-// }
+            // Special case: "*" means allow all (INSECURE - development only)
+            if allowed_list.contains(&"*") {
+                return Ok(());
+            }
 
-// fn validate_localhost_origin(origin: &str) -> Result<(), String> {
-//     // Default behavior: only allow localhost origins
-//     let localhost_patterns = [
-//         "http://localhost",
-//         "https://localhost",
-//         "http://127.0.0.1",
-//         "https://127.0.0.1",
-//         "http://[::1]",
-//         "https://[::1]",
-//     ];
+            // Check if origin is in allowed list
+            if allowed_list.contains(&origin.as_str()) {
+                Ok(())
+            } else {
+                Err(format!(
+                    "Origin '{}' not in allowed list. Set MCP_ALLOWED_ORIGINS environment variable.",
+                    origin
+                ))
+            }
+        }
+        None => {
+            // No configuration - default to localhost only for security
+            validate_localhost_origin(&origin)
+        }
+    }
+}
 
-//     for pattern in &localhost_patterns {
-//         if origin.starts_with(pattern) {
-//             return Ok(());
-//         }
-//     }
+/// Validate that origin is a localhost origin (default secure behavior)
+fn validate_localhost_origin(origin: &str) -> Result<(), String> {
+    let localhost_patterns = [
+        "http://localhost",
+        "https://localhost",
+        "http://127.0.0.1",
+        "https://127.0.0.1",
+        "http://[::1]",
+        "https://[::1]",
+    ];
 
-//     Err(format!("Origin '{}' not allowed (localhost-only default)", origin))
-// }
+    for pattern in &localhost_patterns {
+        if origin.starts_with(pattern) {
+            return Ok(());
+        }
+    }
+
+    Err(format!(
+        "Origin '{}' not allowed. By default, only localhost origins are permitted. \
+        Set MCP_ALLOWED_ORIGINS environment variable to allow other origins.",
+        origin
+    ))
+}
 
 fn read_request_body(body: bindings::wasi::http::types::IncomingBody) -> Result<Vec<u8>, String> {
     use bindings::wasi::io::streams::StreamError;
@@ -719,7 +746,7 @@ fn parse_client_request(json_rpc: &serde_json::Value) -> Result<ClientRequest, S
 fn write_sse_response(
     output_stream: &OutputStream,
     request_id: RequestId,
-    result: Result<ServerResponse, bindings::wasmcp::mcp::protocol::ErrorCode>,
+    result: Result<ServerResponse, bindings::wasmcp::protocol::mcp::ErrorCode>,
 ) -> Result<(), String> {
     use bindings::wasi::io::streams::StreamError;
 

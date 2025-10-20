@@ -10,9 +10,10 @@ import type {
   ListToolsResult,
   CallToolRequest,
   CallToolResult,
-  ClientContext,
   Tool,
-} from './generated/interfaces/wasmcp-mcp-protocol.js';
+} from './generated/interfaces/wasmcp-protocol-mcp.js';
+import type { Context } from './generated/interfaces/wasmcp-protocol-server-messages.js';
+import type { OutputStream } from './generated/interfaces/wasi-io-streams.js';
 
 // Tool input schemas
 const ExampleToolSchema = z.object({
@@ -22,8 +23,9 @@ const ExampleToolSchema = z.object({
 type ExampleToolArgs = z.infer<typeof ExampleToolSchema>;
 
 function listTools(
+  _ctx: Context,
   _request: ListToolsRequest,
-  _client: ClientContext
+  _clientStream: OutputStream | null
 ): ListToolsResult {
   const tools: Tool[] = [
     {
@@ -39,19 +41,20 @@ function listTools(
   return { tools };
 }
 
-function callTool(
+async function callTool(
+  _ctx: Context,
   request: CallToolRequest,
-  _client: ClientContext
-): CallToolResult | undefined {
+  _clientStream: OutputStream | null
+): Promise<CallToolResult | null> {
   switch (request.name) {
     case 'example-tool':
-      return handleExampleTool(request.arguments);
+      return await handleExampleTool(request.arguments);
     default:
-      return undefined; // We don't handle this tool
+      return null; // We don't handle this tool
   }
 }
 
-function handleExampleTool(args?: string): CallToolResult {
+async function handleExampleTool(args?: string): Promise<CallToolResult> {
   try {
     if (!args) {
       return errorResult('Arguments are required');
@@ -97,7 +100,7 @@ function errorResult(message: string): CallToolResult {
   };
 }
 
-export const toolsCapability = {
+export const tools = {
   listTools,
   callTool,
 };

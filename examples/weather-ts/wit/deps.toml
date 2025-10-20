@@ -1,0 +1,4 @@
+# WIT dependencies for weather example
+
+http = "https://github.com/WebAssembly/wasi-http/archive/refs/tags/v0.2.3.tar.gz"
+protocol = "../../../wit/protocol"

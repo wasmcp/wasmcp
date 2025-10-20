@@ -3,7 +3,7 @@
 //! This module handles parsing JSON-RPC requests into WIT types.
 //! Serde handles validation automatically.
 
-use crate::bindings::wasmcp::mcp::protocol::{
+use crate::bindings::wasmcp::protocol::mcp::{
     CallToolRequest, ClientCapabilities, ClientRequest, CompleteRequest, CompletionArgument,
     CompletionContext, CompletionPromptReference, CompletionReference, GetPromptRequest,
     Implementation, InitializeRequest, ListPromptsRequest, ListResourceTemplatesRequest,
@@ -84,7 +84,7 @@ fn parse_protocol_version(s: &str) -> Result<ProtocolVersion, String> {
 }
 
 fn convert_client_capabilities(caps: JsonClientCapabilities) -> ClientCapabilities {
-    use crate::bindings::wasmcp::mcp::protocol::ClientLists;
+    use crate::bindings::wasmcp::protocol::mcp::ClientLists;
 
     ClientCapabilities {
         elicitation: caps
@@ -346,7 +346,7 @@ fn parse_set_log_level_request(params: Option<&Value>) -> Result<ClientRequest, 
 }
 
 fn parse_ping_request(params: Option<&Value>) -> Result<ClientRequest, String> {
-    use crate::bindings::wasmcp::mcp::protocol::{PingRequest, ProgressToken};
+    use crate::bindings::wasmcp::protocol::mcp::{PingRequest, ProgressToken};
 
     let ping_request = if let Some(p) = params {
         let progress_token = p.get("progressToken").and_then(|pt| {
@@ -418,8 +418,8 @@ fn parse_resource_unsubscribe_request(params: Option<&Value>) -> Result<ClientRe
 /// Parse a JSON-RPC notification into a ClientNotification
 pub fn parse_client_notification(
     json: &Value,
-) -> Result<crate::bindings::wasmcp::mcp::protocol::ClientNotification, String> {
-    use crate::bindings::wasmcp::mcp::protocol::{
+) -> Result<crate::bindings::wasmcp::protocol::mcp::ClientNotification, String> {
+    use crate::bindings::wasmcp::protocol::mcp::{
         CancelledNotification, ClientNotification, CommonNotification, ProgressNotification,
         ProgressToken,
     };
@@ -499,8 +499,8 @@ pub fn parse_client_notification(
 /// Parse common notification fields (meta and extras)
 fn parse_common_notification(
     params: Option<&Value>,
-) -> Result<crate::bindings::wasmcp::mcp::protocol::CommonNotification, String> {
-    use crate::bindings::wasmcp::mcp::protocol::CommonNotification;
+) -> Result<crate::bindings::wasmcp::protocol::mcp::CommonNotification, String> {
+    use crate::bindings::wasmcp::protocol::mcp::CommonNotification;
 
     if let Some(p) = params {
         let meta = p.get("_meta").and_then(|m| serde_json::to_string(m).ok());
@@ -521,12 +521,12 @@ pub fn parse_client_response(
     json: &Value,
 ) -> Result<
     Result<
-        crate::bindings::wasmcp::mcp::protocol::ClientResponse,
-        crate::bindings::wasmcp::mcp::protocol::ErrorCode,
+        crate::bindings::wasmcp::protocol::mcp::ClientResponse,
+        crate::bindings::wasmcp::protocol::mcp::ErrorCode,
     >,
     String,
 > {
-    use crate::bindings::wasmcp::mcp::protocol::{ClientResponse, Error, ErrorCode};
+    use crate::bindings::wasmcp::protocol::mcp::{ClientResponse, Error, ErrorCode};
 
     // Check if it's an error response
     if let Some(error_obj) = json.get("error") {
@@ -602,8 +602,8 @@ pub fn parse_client_response(
 
 fn parse_elicit_result(
     result: &Value,
-) -> Result<crate::bindings::wasmcp::mcp::protocol::ElicitResult, String> {
-    use crate::bindings::wasmcp::mcp::protocol::{
+) -> Result<crate::bindings::wasmcp::protocol::mcp::ElicitResult, String> {
+    use crate::bindings::wasmcp::protocol::mcp::{
         ElicitResult, ElicitResultAction, ElicitResultContent,
     };
 
@@ -653,8 +653,8 @@ fn parse_elicit_result(
 
 fn parse_list_roots_result(
     result: &Value,
-) -> Result<crate::bindings::wasmcp::mcp::protocol::ListRootsResult, String> {
-    use crate::bindings::wasmcp::mcp::protocol::{ListRootsResult, Root};
+) -> Result<crate::bindings::wasmcp::protocol::mcp::ListRootsResult, String> {
+    use crate::bindings::wasmcp::protocol::mcp::{ListRootsResult, Root};
 
     let meta = result
         .get("_meta")
@@ -692,27 +692,19 @@ fn parse_list_roots_result(
 
 fn parse_sampling_create_message_result(
     result: &Value,
-) -> Result<crate::bindings::wasmcp::mcp::protocol::SamplingCreateMessageResult, String> {
-    use crate::bindings::wasmcp::mcp::protocol::{
-        Role, SamplingContent, SamplingCreateMessageResult,
-    };
+) -> Result<crate::bindings::wasmcp::protocol::mcp::SamplingCreateMessageResult, String> {
+    use crate::bindings::wasmcp::protocol::mcp::{Role, SamplingCreateMessageResult};
 
     let meta = result
         .get("_meta")
         .and_then(|m| serde_json::to_string(m).ok());
 
-    // Parse content - it should be an enum value
-    let content_str = result
+    // Parse content - it's a ContentBlock object
+    let content_obj = result
         .get("content")
-        .and_then(|c| c.as_str())
-        .ok_or("Missing or invalid 'content' in sampling result")?;
+        .ok_or("Missing 'content' in sampling result")?;
 
-    let content = match content_str {
-        "text-content" => SamplingContent::TextContent,
-        "image-content" => SamplingContent::ImageContent,
-        "audio-content" => SamplingContent::AudioContent,
-        _ => return Err(format!("Invalid sampling content type: {}", content_str)),
-    };
+    let content = parse_content_block(content_obj)?;
 
     let model = result
         .get("model")
@@ -747,6 +739,187 @@ fn parse_sampling_create_message_result(
         role,
         stop_reason,
         extra,
+    })
+}
+
+/// Parse a ContentBlock from sampling response JSON
+///
+/// Sampling responses contain LLM-generated content (text, image, audio)
+/// and do not include streams or resource references.
+///
+/// Runtime constraints enforced:
+/// - Only handles inline text/image/audio
+/// - Streams: Not supported (LLMs return complete content; streaming is protocol-level)
+/// - Resource links: Not supported (LLMs generate content, not references)
+///
+/// See: `sampling-create-message-result.content` in mcp.wit for rationale
+fn parse_content_block(
+    content: &Value,
+) -> Result<crate::bindings::wasmcp::protocol::mcp::ContentBlock, String> {
+    use crate::bindings::wasmcp::protocol::mcp::{
+        Blob, BlobData, ContentBlock, ContentOptions, TextContent, TextData,
+    };
+
+    let content_type = content
+        .get("type")
+        .and_then(|t| t.as_str())
+        .ok_or("Missing 'type' in content block")?;
+
+    match content_type {
+        "text" => {
+            // Defensive: Check for textStream (not supported in sampling)
+            if content.get("textStream").is_some() {
+                return Err(
+                    "Text streams not supported in sampling responses. \
+                     Sampling protocol handles streaming at the message level, not within content blocks."
+                        .to_string(),
+                );
+            }
+
+            let text = content
+                .get("text")
+                .and_then(|t| t.as_str())
+                .ok_or("Missing 'text' field in text content block")?
+                .to_string();
+
+            let options = parse_content_options(content)?;
+
+            Ok(ContentBlock::Text(TextContent {
+                text: TextData::Text(text),
+                options,
+            }))
+        }
+        "image" => {
+            // Defensive: Check for blobStream (not supported in sampling)
+            if content.get("blobStream").is_some() {
+                return Err("Image streams not supported in sampling responses. \
+                     LLMs return complete generated images, not streams."
+                    .to_string());
+            }
+
+            let data_b64 = content
+                .get("data")
+                .and_then(|d| d.as_str())
+                .ok_or("Missing 'data' field in image content block")?;
+
+            let mime_type = content
+                .get("mimeType")
+                .and_then(|m| m.as_str())
+                .ok_or("Missing 'mimeType' field in image content block")?
+                .to_string();
+
+            // Decode base64 data
+            let data = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, data_b64)
+                .map_err(|e| format!("Invalid base64 in image data: {}", e))?;
+
+            let options = parse_content_options(content)?;
+
+            Ok(ContentBlock::Image(Blob {
+                data: BlobData::Blob(data),
+                mime_type,
+                options,
+            }))
+        }
+        "audio" => {
+            // Defensive: Check for blobStream (not supported in sampling)
+            if content.get("blobStream").is_some() {
+                return Err("Audio streams not supported in sampling responses. \
+                     LLMs return complete generated audio, not streams."
+                    .to_string());
+            }
+
+            let data_b64 = content
+                .get("data")
+                .and_then(|d| d.as_str())
+                .ok_or("Missing 'data' field in audio content block")?;
+
+            let mime_type = content
+                .get("mimeType")
+                .and_then(|m| m.as_str())
+                .ok_or("Missing 'mimeType' field in audio content block")?
+                .to_string();
+
+            // Decode base64 data
+            let data = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, data_b64)
+                .map_err(|e| format!("Invalid base64 in audio data: {}", e))?;
+
+            let options = parse_content_options(content)?;
+
+            Ok(ContentBlock::Audio(Blob {
+                data: BlobData::Blob(data),
+                mime_type,
+                options,
+            }))
+        }
+        "resource" => Err(
+            "Resource content blocks not expected in sampling responses. \
+             LLMs generate new content, not resource references. \
+             Resource links are for prompt messages sent to LLMs, not sampling results."
+                .to_string(),
+        ),
+        _ => Err(format!(
+            "Unsupported content block type for sampling: '{}'. \
+             Expected 'text', 'image', or 'audio'.",
+            content_type
+        )),
+    }
+}
+
+/// Parse optional content-options from a content block JSON object
+fn parse_content_options(
+    content: &Value,
+) -> Result<Option<crate::bindings::wasmcp::protocol::mcp::ContentOptions>, String> {
+    use crate::bindings::wasmcp::protocol::mcp::ContentOptions;
+
+    let meta = content
+        .get("_meta")
+        .and_then(|m| serde_json::to_string(m).ok());
+
+    let annotations = content
+        .get("annotations")
+        .map(|a| parse_annotations(a))
+        .transpose()?;
+
+    if meta.is_some() || annotations.is_some() {
+        Ok(Some(ContentOptions { annotations, meta }))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Parse annotations from JSON
+fn parse_annotations(
+    annot: &Value,
+) -> Result<crate::bindings::wasmcp::protocol::mcp::Annotations, String> {
+    use crate::bindings::wasmcp::protocol::mcp::{Annotations, Role};
+
+    let audience = annot
+        .get("audience")
+        .and_then(|a| a.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| {
+                    v.as_str().and_then(|s| match s {
+                        "user" => Some(Role::User),
+                        "assistant" => Some(Role::Assistant),
+                        _ => None,
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .filter(|v| !v.is_empty());
+
+    let last_modified = annot
+        .get("lastModified")
+        .and_then(|m| m.as_str())
+        .map(String::from);
+
+    let priority = annot.get("priority").and_then(|p| p.as_f64());
+
+    Ok(Annotations {
+        audience,
+        last_modified,
+        priority,
     })
 }
 

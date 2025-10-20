@@ -77,7 +77,10 @@ mod tests {
         // Should be under the system config directory (platform-specific)
         let parent = dir.parent().unwrap();
         let config_dir = dirs::config_dir().unwrap();
-        assert_eq!(parent, config_dir, "wasmcp dir should be directly under system config directory");
+        assert_eq!(
+            parent, config_dir,
+            "wasmcp dir should be directly under system config directory"
+        );
     }
 
     #[test]

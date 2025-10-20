@@ -17,7 +17,7 @@ interface notifications {
         output-stream,
         stream-error,
     };
-    use wasmcp:protocol/mcp@0.1.0-beta.1.{
+    use wasmcp:protocol/mcp@0.1.0-beta.2.{
         progress-token,
         log-level,
         server-request,

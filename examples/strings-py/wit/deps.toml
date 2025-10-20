@@ -1,0 +1,3 @@
+# WIT dependencies for strings example
+
+protocol = "../../../wit/protocol"

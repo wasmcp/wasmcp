@@ -12,10 +12,10 @@ version = "0.2.3"
 digest = "sha256:8f97d837e1f856a225422869d5c34752204d1befb5a04d0cd80541aec17a20c1"
 
 [[packages]]
-name = "wasmcp:mcp"
+name = "wasmcp:server"
 registry = "ghcr.io"
 
 [[packages.versions]]
-requirement = "=0.4.0"
-version = "0.4.0"
-digest = "sha256:11928826e487d8b3b1c726cc0887846dab669fc584fa3a5a92e7f0caebf03080"
+requirement = "=0.1.0-beta.2"
+version = "0.1.0-beta.2"
+digest = "sha256:4666ab12fa9f970debc7d6426549d56e64a537ec51e5e564b207aa2dafd44783"
