@@ -175,8 +175,13 @@ See generated `README.md` files for language-specific details.
 
 Registry data is stored in:
 - **Configuration file**: `~/.config/wasmcp/config.toml` (XDG Base Directory compliant)
-- **Composed outputs**: `~/.config/wasmcp/composed/` (when profiles specify relative paths)
+- **Composed outputs**: `~/.config/wasmcp/composed/` (when using profiles without `-o` override)
 - **Downloaded dependencies**: `~/.config/wasmcp/deps/`
+
+**Output Path Behavior:**
+- Explicit `-o` flag: Always uses current working directory (or absolute path if provided)
+- Profile without `-o`: Uses `~/.config/wasmcp/composed/{profile-output}`
+- No profile, no `-o`: Uses current working directory (`mcp-server.wasm`)
 
 ### Config File Format
 

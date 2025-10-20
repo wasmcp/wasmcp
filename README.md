@@ -38,32 +38,6 @@ make
 wasmcp compose math-tools.wasm ../time-tools.wasm -o server.wasm
 ```
 
-### Simplify with Component Aliases
-
-Register frequently-used components with short aliases:
-```bash
-# Register aliases for easier composition
-wasmcp registry component add time ../time-tools/time-tools.wasm
-wasmcp registry component add math math-tools.wasm
-
-# Now compose using short names
-wasmcp compose time math -o server.wasm
-```
-
-### Reusable Profiles
-
-Create profiles for common server configurations:
-```bash
-# Create a development profile
-wasmcp registry profile add dev time math -o dev-server.wasm
-
-# Compose your entire dev stack with one command
-wasmcp compose dev
-
-# Extend profiles with additional components
-wasmcp compose dev logger-tools.wasm -o debug-server.wasm
-```
-
 ## Installation
 
 **Download latest release:**
@@ -169,28 +143,32 @@ wasmcp registry component remove calc
 
 ### Profiles
 
-Create reusable composition pipelines:
+Save a list of components to compose together:
 
 ```bash
-# Create a base profile
-wasmcp registry profile add base calc weather -o base.wasm
+# Save: dev = calc + weather
+wasmcp registry profile add dev calc weather -o dev.wasm
 
-# Create profile with inheritance
-wasmcp registry profile add prod logger monitor -o prod.wasm -b base
+# Later, rebuild the same server
+wasmcp compose dev
+# Creates: ~/.config/wasmcp/composed/dev.wasm
 
-# Use profiles in composition
-wasmcp compose base                    # Uses base profile's output path
-wasmcp compose prod extra-tool.wasm    # Extends prod profile
-
-# List and manage
-wasmcp registry profile list
-wasmcp registry profile remove base
+# Or specify a different output location
+wasmcp compose dev -o ./my-server.wasm
+# Creates: ./my-server.wasm
 ```
 
-**Profile features:**
-- Inheritance chains (profiles can extend base profiles)
-- Automatic output path resolution
-- Mix with direct components: `wasmcp compose my-profile extra-comp`
+Profiles can inherit from other profiles:
+```bash
+wasmcp registry profile add prod logger monitor -o prod.wasm -b dev
+# prod = calc + weather + logger + monitor
+```
+
+List and remove:
+```bash
+wasmcp registry profile list
+wasmcp registry profile remove dev
+```
 
 ### Unified Resolution
 
