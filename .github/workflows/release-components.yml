@@ -1,5 +1,16 @@
 name: Release Components
 
+# This workflow builds and publishes framework components.
+#
+# IMPORTANT: Components depend on WIT source tarballs created by the WIT release workflows.
+# Before running this workflow, ensure the required WIT packages have been released:
+#   1. Run "Release WIT Protocol Package" workflow
+#   2. Run "Release WIT Server Package" workflow
+#   3. Wait for both workflows to complete and publish source tarballs
+#   4. Then run this workflow
+#
+# The source tarballs are fetched by wit-deps during the build process.
+
 on:
   workflow_dispatch:
     inputs:
@@ -68,65 +79,50 @@ jobs:
           echo "Will use WIT packages: wasmcp:protocol@$WIT_VERSION and wasmcp:server@$WIT_VERSION"
 
   verify-wit-package:
-    name: Verify WIT Package
+    name: Verify WIT Source Tarballs
     runs-on: ubuntu-latest
     needs: validate
     permissions:
       contents: read
-      packages: read
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install wkg
-        run: |
-          curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
-          chmod +x wkg
-          sudo mv wkg /usr/local/bin/
-
-      - name: Configure wkg registry
-        run: |
-          mkdir -p ~/.config/wasm-pkg
-          cat > ~/.config/wasm-pkg/config.toml <<EOF
-          [namespace_registries]
-          wasmcp = "ghcr.io"
-
-          [registry."ghcr.io".oci.auth]
-          username = "${{ github.actor }}"
-          password = "${{ secrets.GHCR_TOKEN }}"
-          EOF
-
-      - name: Verify WIT packages exist
+      - name: Verify WIT source tarballs exist
         run: |
           WIT_VERSION="${{ needs.validate.outputs.wit_version }}"
 
-          echo "Checking for required WIT packages at version $WIT_VERSION..."
+          echo "Checking for required WIT source tarballs at version $WIT_VERSION..."
 
-          # Check protocol package
-          if ! wkg get wasmcp:protocol@$WIT_VERSION >/dev/null 2>&1; then
-            echo "❌ Error: WIT package wasmcp:protocol@$WIT_VERSION not found!"
+          # Check protocol source tarball
+          protocol_url="https://github.com/${{ github.repository }}/releases/download/protocol-v${WIT_VERSION}/wasmcp-protocol-${WIT_VERSION}-source.tar.gz"
+          if ! curl --fail --silent --head "$protocol_url" >/dev/null; then
+            echo "❌ Error: Protocol WIT source tarball not found at:"
+            echo "   $protocol_url"
             echo ""
             echo "Please publish the protocol WIT package first:"
             echo "  1. Go to Actions → Release WIT Protocol Package"
             echo "  2. Run workflow with version: $WIT_VERSION"
-            echo "  3. Wait for completion"
+            echo "  3. Wait for completion and source tarball upload"
             exit 1
           fi
-          echo "✅ WIT package wasmcp:protocol@$WIT_VERSION exists"
+          echo "✅ Protocol source tarball exists: wasmcp-protocol-${WIT_VERSION}-source.tar.gz"
 
-          # Check server package
-          if ! wkg get wasmcp:server@$WIT_VERSION >/dev/null 2>&1; then
-            echo "❌ Error: WIT package wasmcp:server@$WIT_VERSION not found!"
+          # Check server source tarball
+          server_url="https://github.com/${{ github.repository }}/releases/download/server-v${WIT_VERSION}/wasmcp-server-${WIT_VERSION}-source.tar.gz"
+          if ! curl --fail --silent --head "$server_url" >/dev/null; then
+            echo "❌ Error: Server WIT source tarball not found at:"
+            echo "   $server_url"
             echo ""
             echo "Please publish the server WIT package first:"
             echo "  1. Go to Actions → Release WIT Server Package"
             echo "  2. Run workflow with version: $WIT_VERSION"
-            echo "  3. Wait for completion"
+            echo "  3. Wait for completion and source tarball upload"
             exit 1
           fi
-          echo "✅ WIT package wasmcp:server@$WIT_VERSION exists"
+          echo "✅ Server source tarball exists: wasmcp-server-${WIT_VERSION}-source.tar.gz"
 
           echo ""
-          echo "✅ All required WIT packages are available"
+          echo "✅ All required WIT source tarballs are available"
 
   build-and-publish-components:
     name: Build and Publish All Components
@@ -144,7 +140,7 @@ jobs:
           targets: wasm32-wasip2
           cache-key: release-components
           workspaces: |
-            crates/http-client-notifications
+            crates/http-notifications
             crates/http-transport
             crates/method-not-found
             crates/stdio-transport
@@ -176,6 +172,7 @@ jobs:
 
       - name: Fetch WIT dependencies
         run: |
+          # Fetch GitHub URL-based WIT dependencies for each crate using wit-deps
           for crate in crates/*; do
             if [ -d "$crate/wit" ] && [ -f "$crate/wit/deps.toml" ]; then
               echo "Fetching WIT deps for $(basename $crate)..."

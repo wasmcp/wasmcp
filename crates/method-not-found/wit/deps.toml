@@ -1,3 +1,3 @@
 # WIT dependencies for method-not-found component
 
-server = "../../../wit/server"
+server = "https://github.com/wasmcp/wasmcp/releases/download/server-v0.1.0-beta.2/wasmcp-server-0.1.0-beta.2-source.tar.gz"
