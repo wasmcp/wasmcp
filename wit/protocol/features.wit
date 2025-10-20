@@ -1,0 +1,203 @@
+/// MCP server-side capability interfaces and request handling utilities.
+///
+/// This file defines:
+/// - Request option types for passing context between components
+/// - Capability interfaces (tools, resources, prompts, completions)
+///
+/// <https://spec.modelcontextprotocol.io>
+
+/// Server request handling utilities.
+///
+/// This interface provides types for passing request-scoped context and metadata
+/// between handler components. The options pattern enables flexible, extensible
+/// context passing without rigid record structures.
+@since(version = 0.1.0-alpha.8)
+interface server-messages {
+    use wasi:io/streams@0.2.3.{
+        output-stream,
+    };
+    use mcp.{
+        claims,
+        session-id,
+        json,
+    };
+
+    /// Client identity information for authentication/authorization and sessions.
+    @since(version = 0.1.0-alpha.8)
+    record context {
+        /// Authentication/authorization claims.
+        ///
+        /// Contains parsed JWT claims, API key metadata, or other authentication
+        /// information extracted by the transport layer. Capability components can
+        /// use this for authorization decisions.
+        ///
+        /// Example: `{ "sub": "user123", "role": "admin" }`
+        claims: option<claims>,
+        /// Active session identifier.
+        ///
+        /// Session ID for stateful request processing. When present, capability
+        /// components can use wasmcp:server/sessions interface to:
+        /// - Store persistent state across requests
+        /// - Track pending elicitation requests
+        /// - Manage session lifecycle
+        ///
+        /// See: wasmcp:server/sessions interface
+        session-id: option<session-id>,
+        /// Arbitrary key-value metadata.
+        data: list<tuple<string, list<u8>>>,
+    }
+}
+
+/// Tools interface.
+///
+/// Export this interface to provide MCP tools functionality.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
+@since(version = 0.1.0-alpha.8)
+interface tools {
+    use wasi:io/streams@0.2.3.{
+        output-stream,
+    };
+    use mcp.{
+        cursor,
+        error-code,
+        list-tools-request,
+        list-tools-result,
+        call-tool-request,
+        call-tool-result,
+    };
+    use server-messages.{
+        context,
+    };
+
+    /// List tools provided by this component.
+    @since(version = 0.1.0-alpha.8)
+    list-tools: func(
+        ctx: context,
+        request: list-tools-request,
+        client-stream: option<borrow<output-stream>>,
+    ) -> result<list-tools-result, error-code>;
+
+    /// Execute a tool call. Return none for unrecognized tools.
+    @since(version = 0.1.0-alpha.8)
+    call-tool: func(
+        ctx: context,
+        request: call-tool-request,
+        client-stream: option<borrow<output-stream>>,
+    ) -> option<call-tool-result>;
+}
+
+/// Resources interface.
+///
+/// Export this interface to provide MCP resources functionality.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
+@since(version = 0.1.0-alpha.8)
+interface resources {
+    use wasi:io/streams@0.2.3.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        list-resources-request,
+        list-resources-result,
+        read-resource-request,
+        read-resource-result,
+        list-resource-templates-request,
+        list-resource-templates-result,
+    };
+    use server-messages.{
+        context,
+    };
+
+    /// List resources provided by this component.
+    @since(version = 0.1.0-alpha.8)
+    list-resources: func(
+        ctx: context,
+        request: list-resources-request,
+        client-stream: option<borrow<output-stream>>,
+    ) -> result<list-resources-result, error-code>;
+
+    /// Read a resource by URI. Return none for unrecognized URIs.
+    @since(version = 0.1.0-alpha.8)
+    read-resource: func(
+        ctx: context,
+        request: read-resource-request,
+        client-stream: option<borrow<output-stream>>,
+    ) -> option<read-resource-result>;
+
+    /// List resource templates (RFC 6570 URI templates).
+    @since(version = 0.1.0-alpha.8)
+    list-resource-templates: func(
+        ctx: context,
+        request: list-resource-templates-request,
+        client-stream: option<borrow<output-stream>>,
+    ) -> result<list-resource-templates-result, error-code>;
+}
+
+/// Prompts interface.
+///
+/// Export this interface to provide MCP prompts functionality.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
+@since(version = 0.1.0-alpha.8)
+interface prompts {
+    use wasi:io/streams@0.2.3.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        list-prompts-request,
+        list-prompts-result,
+        get-prompt-request,
+        get-prompt-result,
+    };
+    use server-messages.{
+        context,
+    };
+
+    /// List prompts provided by this component.
+    @since(version = 0.1.0-alpha.8)
+    list-prompts: func(
+        ctx: context,
+        request: list-prompts-request,
+        client-stream: option<borrow<output-stream>>,
+    ) -> result<list-prompts-result, error-code>;
+
+    /// Get a prompt by name. Return none for unrecognized prompts.
+    @since(version = 0.1.0-alpha.8)
+    get-prompt: func(
+        ctx: context,
+        request: get-prompt-request,
+        client-stream: option<borrow<output-stream>>,
+    ) -> option<get-prompt-result>;
+}
+
+/// Completions interface.
+///
+/// Export this interface to provide argument completions for prompts and resources.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
+@since(version = 0.1.0-alpha.8)
+interface completions {
+    use wasi:io/streams@0.2.3.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        complete-request,
+        complete-result,
+    };
+    use server-messages.{
+        context,
+    };
+
+    /// Provide completion suggestions for prompt or resource arguments.
+    /// Return none for unsupported references.
+    @since(version = 0.1.0-alpha.8)
+    complete: func(
+        ctx: context,
+        request: complete-request,
+        client-stream: option<borrow<output-stream>>,
+    ) -> option<complete-result>;
+}

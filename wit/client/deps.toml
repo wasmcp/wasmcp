@@ -1,4 +1,0 @@
-# WIT dependencies for wasmcp:client
-# Depends on local protocol package
-
-protocol = "../protocol"
