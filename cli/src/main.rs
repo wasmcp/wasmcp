@@ -34,6 +34,10 @@ enum Command {
         #[arg(long, short = 'l', value_name = "LANG")]
         language: Language,
 
+        /// Template type (tools or resources)
+        #[arg(long, short = 't', value_name = "TYPE", default_value = "tools")]
+        template_type: TemplateType,
+
         /// wasmcp version to use for WIT dependencies
         #[arg(long, default_value = "0.1.0-beta.2")]
         version: String,
@@ -306,6 +310,22 @@ impl std::fmt::Display for Language {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, ValueEnum)]
+#[value(rename_all = "lowercase")]
+enum TemplateType {
+    Tools,
+    Resources,
+}
+
+impl std::fmt::Display for TemplateType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TemplateType::Tools => write!(f, "tools"),
+            TemplateType::Resources => write!(f, "resources"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, ValueEnum)]
 #[value(rename_all = "lowercase")]
 enum Transport {
@@ -330,6 +350,7 @@ async fn main() -> Result<()> {
         Command::New {
             name,
             language,
+            template_type,
             version,
             force,
             output,
@@ -353,16 +374,23 @@ async fn main() -> Result<()> {
             }
 
             // Scaffold the project
-            scaffold::create_project(&output_dir, &name, language, &version)
+            scaffold::create_project(&output_dir, &name, language, template_type, &version)
                 .await
                 .context("Failed to create project")?;
 
-            println!("Created {} handler in {}", language, name);
+            println!(
+                "Created {} {} component in {}",
+                language, template_type, name
+            );
 
             // Determine the output path based on language
+            // Note: Rust converts hyphens to underscores in output filenames
             let component_path = match language {
                 Language::Python => format!("{}.wasm", name),
-                Language::Rust => format!("target/wasm32-wasip2/release/{}.wasm", name),
+                Language::Rust => {
+                    let rust_name = name.replace('-', "_");
+                    format!("target/wasm32-wasip2/release/{}.wasm", rust_name)
+                }
                 Language::TypeScript => format!("dist/{}.wasm", name),
             };
 

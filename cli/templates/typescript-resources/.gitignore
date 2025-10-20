@@ -1,0 +1,17 @@
+# Node modules
+node_modules/
+
+# Generated TypeScript bindings
+src/generated/
+
+# Build artifacts
+build/
+dist/
+target/
+*.wasm
+
+# Dependencies
+package-lock.json
+
+# WIT package lock
+wkg.lock

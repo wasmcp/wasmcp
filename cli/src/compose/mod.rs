@@ -306,12 +306,12 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
     )
     .await?;
 
-    // Auto-detect and wrap tools-capability components
+    // Auto-detect and wrap capability components (tools, resources, etc.)
     if verbose {
         println!("\nDetecting component types...");
     }
     let wrapped_components =
-        wrapping::wrap_tools_capabilities(component_paths, &deps_dir, &version, verbose).await?;
+        wrapping::wrap_capabilities(component_paths, &deps_dir, &version, verbose).await?;
 
     // Print composition pipeline (only in verbose mode)
     if verbose {
