@@ -13,6 +13,7 @@
 @since(version = 0.1.0-beta.3)
 interface notifications {
     use wasi:io/streams@0.2.3.{
+        output-stream,
         stream-error,
     };
     use wasmcp:protocol/mcp@0.1.0-beta.3.{
@@ -47,6 +48,10 @@ interface notifications {
     /// notification fails to send, the component should continue processing.
     @since(version = 0.1.0-beta.3)
     resource notification-channel {
+        finish: static func(channel: notification-channel) -> output-stream;
+
+        constructor(output: output-stream);
+
         /// Send a progress notification for long-running operations.
         ///
         /// Progress notifications inform the client about the status of operations
