@@ -1,4 +1,4 @@
-package wasmcp:protocol@0.1.0-beta.2;
+package wasmcp:protocol@0.1.0-beta.3;
 
 /// Model Context Protocol (MCP) types and messages.
 ///
