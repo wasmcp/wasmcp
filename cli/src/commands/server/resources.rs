@@ -1,92 +1,87 @@
-use rmcp::model::*;
 use rmcp::ErrorData as McpError;
-use std::path::PathBuf;
-use crate::config::WasmcpConfig;
+use rmcp::model::*;
+use std::path::Path;
+
+const GITHUB_RAW_BASE: &str = "https://raw.githubusercontent.com/wasmcp/wasmcp/main";
 
 pub struct WasmcpResources;
 
 impl WasmcpResources {
-    pub fn list_all(project_root: &PathBuf) -> Result<ListResourcesResult, McpError> {
-        let mut resources = vec![
-            // Documentation resources
-            RawResource::new(
-                "wasmcp://docs/readme",
-                "wasmcp Project README",
-            )
-            .no_annotation(),
-
+    pub fn list_all(_project_root: &Path) -> Result<ListResourcesResult, McpError> {
+        let resources = vec![
+            // Documentation resources from GitHub
             RawResource {
-                uri: "wasmcp://docs/cli-reference".into(),
-                name: "CLI Command Reference".into(),
+                uri: "wasmcp://docs/readme".into(),
+                name: "wasmcp Project README".into(),
                 mime_type: Some("text/markdown".into()),
                 title: None,
-                description: None,
+                description: Some("Main project README from GitHub".into()),
                 size: None,
                 icons: None,
             }
             .no_annotation(),
-
+            RawResource {
+                uri: "wasmcp://docs/getting-started".into(),
+                name: "Getting Started Guide".into(),
+                mime_type: Some("text/markdown".into()),
+                title: None,
+                description: Some("Getting started with wasmcp".into()),
+                size: None,
+                icons: None,
+            }
+            .no_annotation(),
             RawResource {
                 uri: "wasmcp://docs/wit-protocol".into(),
                 name: "WIT Protocol Specification".into(),
                 mime_type: Some("text/plain".into()),
                 title: None,
-                description: None,
+                description: Some("MCP WIT interface definitions".into()),
                 size: None,
                 icons: None,
             }
             .no_annotation(),
-
-            // Registry resources
+            RawResource {
+                uri: "wasmcp://docs/examples".into(),
+                name: "Examples Overview".into(),
+                mime_type: Some("text/markdown".into()),
+                title: None,
+                description: Some("Overview of example components".into()),
+                size: None,
+                icons: None,
+            }
+            .no_annotation(),
+            // Registry resources (local config)
             RawResource {
                 uri: "wasmcp://registry/components".into(),
                 name: "Registry Component Aliases".into(),
                 mime_type: Some("application/json".into()),
                 title: None,
-                description: None,
+                description: Some("Component aliases from local wasmcp config".into()),
                 size: None,
                 icons: None,
             }
             .no_annotation(),
-
             RawResource {
                 uri: "wasmcp://registry/profiles".into(),
                 name: "Registry Composition Profiles".into(),
                 mime_type: Some("application/json".into()),
                 title: None,
-                description: None,
+                description: Some("Composition profiles from local wasmcp config".into()),
                 size: None,
                 icons: None,
             }
             .no_annotation(),
-
             RawResource {
                 uri: "wasmcp://registry/config".into(),
                 name: "Full Registry Configuration".into(),
                 mime_type: Some("application/toml".into()),
                 title: None,
-                description: None,
+                description: Some("Complete wasmcp.toml configuration".into()),
                 size: None,
                 icons: None,
             }
             .no_annotation(),
         ];
-
-        // Add example resources if examples directory exists
-        if project_root.join("examples").exists() {
-            resources.push(
-                RawResource {
-                    uri: "wasmcp://docs/examples/calculator".into(),
-                    name: "Calculator Example (Rust)".into(),
-                    mime_type: Some("text/markdown".into()),
-                    title: None,
-                    description: None,
-                    size: None,
-                    icons: None,
-                }
-                .no_annotation()
-            );
-        }
 
         Ok(ListResourcesResult {
             resources,
@@ -94,189 +89,124 @@ impl WasmcpResources {
         })
     }
 
-    pub fn read(
+    pub async fn read(
+        client: &reqwest::Client,
         uri: &str,
-        project_root: &PathBuf,
-        config: &WasmcpConfig,
+        _project_root: &Path,
     ) -> Result<ReadResourceResult, McpError> {
-        let contents = match uri {
-            // Documentation
-            "wasmcp://docs/readme" => {
-                Self::read_readme(project_root)?
-            }
-            "wasmcp://docs/cli-reference" => {
-                Self::generate_cli_reference()?
+        match uri {
+            // Documentation from GitHub
+            "wasmcp://docs/readme" => Self::fetch_github_file(client, "README.md").await,
+            "wasmcp://docs/getting-started" => {
+                Self::fetch_github_file(client, "docs/getting-started.md").await
             }
             "wasmcp://docs/wit-protocol" => {
-                Self::read_wit_protocol(project_root)?
+                Self::fetch_github_file(client, "wit/protocol/mcp.wit").await
             }
-            "wasmcp://docs/examples/calculator" => {
-                Self::read_example_docs(project_root, "calculator-rs")?
-            }
+            "wasmcp://docs/examples" => Self::fetch_github_file(client, "examples/README.md").await,
 
-            // Registry
-            "wasmcp://registry/components" => {
-                Self::format_registry_components(config)?
-            }
-            "wasmcp://registry/profiles" => {
-                Self::format_registry_profiles(config)?
-            }
-            "wasmcp://registry/config" => {
-                Self::read_registry_config(config)?
-            }
+            // Registry resources (local config - always read fresh from disk)
+            "wasmcp://registry/components" => Self::read_components(),
+            "wasmcp://registry/profiles" => Self::read_profiles(),
+            "wasmcp://registry/config" => Self::read_config_toml().await,
 
-            _ => {
-                return Err(McpError::resource_not_found(
-                    format!("Unknown resource URI: {}", uri),
-                    None
-                ));
-            }
-        };
-
-        Ok(ReadResourceResult {
-            contents: vec![ResourceContents::text(contents, uri)],
-        })
+            _ => Err(McpError::resource_not_found(uri.to_string(), None)),
+        }
     }
 
-    fn read_readme(project_root: &PathBuf) -> Result<String, McpError> {
-        let readme_path = project_root.join("README.md");
-        std::fs::read_to_string(&readme_path)
-            .map_err(|e| McpError::internal_error(
-                format!("Failed to read README at {}: {}", readme_path.display(), e),
-                None
-            ))
-    }
+    async fn fetch_github_file(
+        client: &reqwest::Client,
+        path: &str,
+    ) -> Result<ReadResourceResult, McpError> {
+        let url = format!("{}/{}", GITHUB_RAW_BASE, path);
 
-    fn generate_cli_reference() -> Result<String, McpError> {
-        // Generate CLI reference documentation
-        let mut output = String::from("# wasmcp CLI Reference\n\n");
+        let response = client.get(&url).send().await.map_err(|e| {
+            McpError::internal_error(
+                format!("Failed to fetch from GitHub: {}", e),
+                Some(serde_json::json!({
+                    "url": url,
+                    "path": path,
+                    "error": e.to_string(),
+                })),
+            )
+        })?;
 
-        output.push_str("## Commands\n\n");
-
-        output.push_str("### `wasmcp new`\n");
-        output.push_str("Create a new MCP server handler component.\n\n");
-        output.push_str("**Options:**\n");
-        output.push_str("- `--language, -l <LANG>` - Programming language (rust, python, typescript)\n");
-        output.push_str("- `--template-type, -t <TYPE>` - Template type (tools, resources, prompts)\n");
-        output.push_str("- `--version` - wasmcp version to use for WIT dependencies\n");
-        output.push_str("- `--force` - Overwrite existing directory\n");
-        output.push_str("- `--output, -o <PATH>` - Output directory\n\n");
-
-        output.push_str("### `wasmcp compose`\n");
-        output.push_str("Compose handler components into a complete MCP server.\n\n");
-        output.push_str("**Options:**\n");
-        output.push_str("- `--profile, -p <NAME>` - Profile name from registry\n");
-        output.push_str("- `--transport, -t <TYPE>` - Transport type (http, stdio)\n");
-        output.push_str("- `--output, -o <PATH>` - Output path for composed server\n");
-        output.push_str("- `--version` - wasmcp version for framework dependencies\n");
-        output.push_str("- `--override-transport <SPEC>` - Override transport component\n");
-        output.push_str("- `--override-method-not-found <SPEC>` - Override method-not-found component\n");
-        output.push_str("- `--deps-dir <DIR>` - Directory for dependency components\n");
-        output.push_str("- `--skip-download` - Skip downloading dependencies\n");
-        output.push_str("- `--force` - Overwrite existing output file\n");
-        output.push_str("- `--verbose, -v` - Enable verbose output\n\n");
-
-        output.push_str("### `wasmcp wit fetch`\n");
-        output.push_str("Fetch WIT dependencies for a project.\n\n");
-        output.push_str("**Options:**\n");
-        output.push_str("- `--dir <DIR>` - Directory containing wit/ folder (default: .)\n");
-        output.push_str("- `--update` - Update dependencies to latest compatible versions\n\n");
-
-        output.push_str("### `wasmcp registry component`\n");
-        output.push_str("Manage component aliases.\n\n");
-        output.push_str("**Subcommands:**\n");
-        output.push_str("- `add <ALIAS> <SPEC>` - Register a component alias\n");
-        output.push_str("- `remove <ALIAS>` - Unregister a component alias\n");
-        output.push_str("- `list` - List registered component aliases\n\n");
-
-        output.push_str("### `wasmcp registry profile`\n");
-        output.push_str("Manage compose profiles.\n\n");
-        output.push_str("**Subcommands:**\n");
-        output.push_str("- `add <NAME> <COMPONENTS...> -o <OUTPUT>` - Create a new profile\n");
-        output.push_str("- `remove <NAME>` - Delete a profile\n");
-        output.push_str("- `list` - List all profiles\n\n");
-
-        output.push_str("### `wasmcp registry info`\n");
-        output.push_str("Show registry information, components, and profiles.\n\n");
-        output.push_str("**Options:**\n");
-        output.push_str("- `--components, -c` - Show only component aliases\n");
-        output.push_str("- `--profiles, -p` - Show only profiles\n\n");
-
-        output.push_str("### `wasmcp server`\n");
-        output.push_str("Run MCP server for AI-assisted wasmcp development.\n\n");
-        output.push_str("**Options:**\n");
-        output.push_str("- `--port <PORT>` - Port for HTTP server (uses stdio if not specified)\n");
-        output.push_str("- `--verbose, -v` - Enable verbose logging\n\n");
-
-        Ok(output)
-    }
-
-    fn read_wit_protocol(project_root: &PathBuf) -> Result<String, McpError> {
-        let wit_path = project_root.join("wit/protocol/mcp.wit");
-        std::fs::read_to_string(&wit_path)
-            .map_err(|e| McpError::internal_error(
-                format!("Failed to read WIT at {}: {}", wit_path.display(), e),
-                None
-            ))
-    }
-
-    fn read_example_docs(project_root: &PathBuf, example_name: &str) -> Result<String, McpError> {
-        let example_path = project_root.join("examples").join(example_name);
-
-        if !example_path.exists() {
-            return Err(McpError::resource_not_found(
-                format!("Example '{}' not found", example_name),
-                None
+        if !response.status().is_success() {
+            return Err(McpError::internal_error(
+                format!("GitHub returned status {}: {}", response.status(), url),
+                Some(serde_json::json!({
+                    "url": url,
+                    "status_code": response.status().as_u16(),
+                    "status": response.status().to_string(),
+                })),
             ));
         }
 
-        let mut output = format!("# {} Example\n\n", example_name);
+        let content = response.text().await.map_err(|e| {
+            McpError::internal_error(
+                format!("Failed to read response: {}", e),
+                Some(serde_json::json!({
+                    "url": url,
+                    "error": e.to_string(),
+                })),
+            )
+        })?;
 
-        // Try to read README
-        let readme_path = example_path.join("README.md");
-        if readme_path.exists() {
-            if let Ok(readme) = std::fs::read_to_string(&readme_path) {
-                output.push_str(&readme);
-                output.push_str("\n\n");
-            }
-        }
+        let uri_str = format!("wasmcp://docs/{}", path.replace('/', "-"));
 
-        // List source files
-        output.push_str("## Source Files\n\n");
-        if let Ok(entries) = std::fs::read_dir(&example_path.join("src")) {
-            for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str() {
-                    if name.ends_with(".rs") || name.ends_with(".py") || name.ends_with(".ts") {
-                        output.push_str(&format!("- {}\n", name));
-                    }
-                }
-            }
-        }
-
-        Ok(output)
+        Ok(ReadResourceResult {
+            contents: vec![ResourceContents::text(content, uri_str)],
+        })
     }
 
-    fn format_registry_components(config: &WasmcpConfig) -> Result<String, McpError> {
-        serde_json::to_string_pretty(&config.components)
-            .map_err(|e| McpError::internal_error(
-                format!("Failed to serialize components: {}", e),
-                None
-            ))
+    fn read_components() -> Result<ReadResourceResult, McpError> {
+        // Load fresh config from disk
+        let config = crate::config::load_config()
+            .map_err(|e| McpError::internal_error(format!("Failed to load config: {}", e), None))?;
+
+        let components_json = serde_json::to_string_pretty(&config.components).map_err(|e| {
+            McpError::internal_error(format!("Failed to serialize components: {}", e), None)
+        })?;
+
+        Ok(ReadResourceResult {
+            contents: vec![ResourceContents::text(
+                components_json,
+                "wasmcp://registry/components".to_string(),
+            )],
+        })
     }
 
-    fn format_registry_profiles(config: &WasmcpConfig) -> Result<String, McpError> {
-        serde_json::to_string_pretty(&config.profiles)
-            .map_err(|e| McpError::internal_error(
-                format!("Failed to serialize profiles: {}", e),
-                None
-            ))
+    fn read_profiles() -> Result<ReadResourceResult, McpError> {
+        // Load fresh config from disk
+        let config = crate::config::load_config()
+            .map_err(|e| McpError::internal_error(format!("Failed to load config: {}", e), None))?;
+
+        let profiles_json = serde_json::to_string_pretty(&config.profiles).map_err(|e| {
+            McpError::internal_error(format!("Failed to serialize profiles: {}", e), None)
+        })?;
+
+        Ok(ReadResourceResult {
+            contents: vec![ResourceContents::text(
+                profiles_json,
+                "wasmcp://registry/profiles".to_string(),
+            )],
+        })
     }
 
-    fn read_registry_config(config: &WasmcpConfig) -> Result<String, McpError> {
-        toml::to_string_pretty(&config)
-            .map_err(|e| McpError::internal_error(
-                format!("Failed to serialize config: {}", e),
-                None
-            ))
+    async fn read_config_toml() -> Result<ReadResourceResult, McpError> {
+        let config_path = crate::config::get_config_path().map_err(|e| {
+            McpError::internal_error(format!("Failed to get config path: {}", e), None)
+        })?;
+
+        let config_content = tokio::fs::read_to_string(&config_path).await.map_err(|e| {
+            McpError::internal_error(format!("Failed to read config file: {}", e), None)
+        })?;
+
+        Ok(ReadResourceResult {
+            contents: vec![ResourceContents::text(
+                config_content,
+                "wasmcp://registry/config".to_string(),
+            )],
+        })
     }
 }

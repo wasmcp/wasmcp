@@ -1,28 +1,31 @@
 use anyhow::Result;
+use rmcp::ErrorData as McpError;
 use rmcp::model::*;
 use rmcp::service::{RequestContext, RoleServer};
 use rmcp::transport::stdio;
-use rmcp::ErrorData as McpError;
 use rmcp::{ServerHandler, ServiceExt};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use super::resources::WasmcpResources;
 use super::tools::*;
-use crate::config::{load_config, WasmcpConfig};
+use schemars::{JsonSchema, schema_for};
 
 #[derive(Clone)]
 pub struct WasmcpServer {
-    config: WasmcpConfig,
+    http_client: reqwest::Client,
     project_root: PathBuf,
 }
 
 impl WasmcpServer {
     pub fn new(project_root: PathBuf) -> Result<Self> {
-        let config = load_config()?;
+        let http_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .map_err(|e| anyhow::anyhow!("Failed to create HTTP client: {}", e))?;
 
         Ok(Self {
-            config,
+            http_client,
             project_root,
         })
     }
@@ -64,7 +67,7 @@ impl ServerHandler for WasmcpServer {
         request: ReadResourceRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<ReadResourceResult, McpError> {
-        WasmcpResources::read(&request.uri, &self.project_root, &self.config)
+        WasmcpResources::read(&self.http_client, &request.uri, &self.project_root).await
     }
 
     async fn list_tools(
@@ -72,86 +75,19 @@ impl ServerHandler for WasmcpServer {
         _request: Option<PaginatedRequestParam>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
-        let schema_compose = serde_json::json!({
-            "type": "object",
-            "properties": {
-                "components": {
-                    "type": "array",
-                    "items": { "type": "string" },
-                    "description": "Components to compose (profiles, aliases, or paths)"
-                },
-                "output": {
-                    "type": "string",
-                    "description": "Output file path"
-                },
-                "transport": {
-                    "type": "string",
-                    "description": "Transport type (http or stdio)"
-                }
-            },
-            "required": ["components"]
-        });
-
-        let schema_list = serde_json::json!({
-            "type": "object",
-            "properties": {
-                "target": {
-                    "type": "string",
-                    "description": "What to list (components, profiles, or all)",
-                    "default": "all"
-                }
-            }
-        });
-
-        let schema_add_component = serde_json::json!({
-            "type": "object",
-            "properties": {
-                "alias": {
-                    "type": "string",
-                    "description": "Component alias name"
-                },
-                "spec": {
-                    "type": "string",
-                    "description": "Component path or reference"
-                }
-            },
-            "required": ["alias", "spec"]
-        });
-
-        let schema_add_profile = serde_json::json!({
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Profile name"
-                },
-                "components": {
-                    "type": "array",
-                    "items": { "type": "string" },
-                    "description": "Components in profile"
-                },
-                "output": {
-                    "type": "string",
-                    "description": "Output path"
-                }
-            },
-            "required": ["name", "components"]
-        });
-
-        let schema_remove = serde_json::json!({
-            "type": "object",
-            "properties": {
-                "kind": {
-                    "type": "string",
-                    "description": "Type to remove (component or profile)"
-                },
-                "name": {
-                    "type": "string",
-                    "description": "Name to remove"
-                }
-            },
-            "required": ["kind", "name"]
-        });
+        // Helper to convert schemars Schema to serde_json::Value with error handling
+        fn to_schema<T: JsonSchema>()
+        -> Result<Arc<serde_json::Map<String, serde_json::Value>>, McpError> {
+            let schema = schema_for!(T);
+            let json_value = serde_json::to_value(schema).map_err(|e| {
+                McpError::internal_error(format!("Failed to serialize schema: {}", e), None)
+            })?;
+            let object = json_value
+                .as_object()
+                .ok_or_else(|| McpError::internal_error("Schema is not a JSON object", None))?
+                .clone();
+            Ok(Arc::new(object))
+        }
 
         Ok(ListToolsResult {
             tools: vec![
@@ -159,7 +95,7 @@ impl ServerHandler for WasmcpServer {
                     name: "compose".into(),
                     title: None,
                     description: Some("Compose WASM components into an MCP server".into()),
-                    input_schema: Arc::new(serde_json::from_value(schema_compose).unwrap()),
+                    input_schema: to_schema::<ComposeArgs>()?,
                     output_schema: None,
                     annotations: None,
                     icons: None,
@@ -168,7 +104,7 @@ impl ServerHandler for WasmcpServer {
                     name: "registry_list".into(),
                     title: None,
                     description: Some("List registry components, profiles, and aliases".into()),
-                    input_schema: Arc::new(serde_json::from_value(schema_list).unwrap()),
+                    input_schema: to_schema::<RegistryListArgs>()?,
                     output_schema: None,
                     annotations: None,
                     icons: None,
@@ -177,7 +113,7 @@ impl ServerHandler for WasmcpServer {
                     name: "registry_add_component".into(),
                     title: None,
                     description: Some("Add a component alias to the registry".into()),
-                    input_schema: Arc::new(serde_json::from_value(schema_add_component).unwrap()),
+                    input_schema: to_schema::<AddComponentArgs>()?,
                     output_schema: None,
                     annotations: None,
                     icons: None,
@@ -186,7 +122,7 @@ impl ServerHandler for WasmcpServer {
                     name: "registry_add_profile".into(),
                     title: None,
                     description: Some("Add or update a composition profile".into()),
-                    input_schema: Arc::new(serde_json::from_value(schema_add_profile).unwrap()),
+                    input_schema: to_schema::<AddProfileArgs>()?,
                     output_schema: None,
                     annotations: None,
                     icons: None,
@@ -195,7 +131,7 @@ impl ServerHandler for WasmcpServer {
                     name: "registry_remove".into(),
                     title: None,
                     description: Some("Remove a component alias or profile".into()),
-                    input_schema: Arc::new(serde_json::from_value(schema_remove).unwrap()),
+                    input_schema: to_schema::<RemoveArgs>()?,
                     output_schema: None,
                     annotations: None,
                     icons: None,
@@ -214,28 +150,33 @@ impl ServerHandler for WasmcpServer {
 
         match request.name.as_ref() {
             "compose" => {
-                let args: ComposeArgs = serde_json::from_value(args_value)
-                    .map_err(|e| McpError::invalid_params(format!("Invalid arguments: {}", e), None))?;
+                let args: ComposeArgs = serde_json::from_value(args_value).map_err(|e| {
+                    McpError::invalid_params(format!("Invalid arguments: {}", e), None)
+                })?;
                 compose_tool(args).await
             }
             "registry_list" => {
-                let args: RegistryListArgs = serde_json::from_value(args_value)
-                    .map_err(|e| McpError::invalid_params(format!("Invalid arguments: {}", e), None))?;
-                registry_list_tool(&self.config, args).await
+                let args: RegistryListArgs = serde_json::from_value(args_value).map_err(|e| {
+                    McpError::invalid_params(format!("Invalid arguments: {}", e), None)
+                })?;
+                registry_list_tool(args).await
             }
             "registry_add_component" => {
-                let args: AddComponentArgs = serde_json::from_value(args_value)
-                    .map_err(|e| McpError::invalid_params(format!("Invalid arguments: {}", e), None))?;
+                let args: AddComponentArgs = serde_json::from_value(args_value).map_err(|e| {
+                    McpError::invalid_params(format!("Invalid arguments: {}", e), None)
+                })?;
                 registry_add_component_tool(args).await
             }
             "registry_add_profile" => {
-                let args: AddProfileArgs = serde_json::from_value(args_value)
-                    .map_err(|e| McpError::invalid_params(format!("Invalid arguments: {}", e), None))?;
+                let args: AddProfileArgs = serde_json::from_value(args_value).map_err(|e| {
+                    McpError::invalid_params(format!("Invalid arguments: {}", e), None)
+                })?;
                 registry_add_profile_tool(args).await
             }
             "registry_remove" => {
-                let args: RemoveArgs = serde_json::from_value(args_value)
-                    .map_err(|e| McpError::invalid_params(format!("Invalid arguments: {}", e), None))?;
+                let args: RemoveArgs = serde_json::from_value(args_value).map_err(|e| {
+                    McpError::invalid_params(format!("Invalid arguments: {}", e), None)
+                })?;
                 registry_remove_tool(args).await
             }
             _ => Err(McpError::method_not_found::<CallToolRequestMethod>()),

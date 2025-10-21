@@ -33,8 +33,9 @@ pub async fn resolve_component_spec(
     spec: &str,
     deps_dir: &Path,
     client: &PackageClient,
+    verbose: bool,
 ) -> Result<PathBuf> {
-    resolve_component_spec_recursive(spec, deps_dir, client, &mut HashSet::new()).await
+    resolve_component_spec_recursive(spec, deps_dir, client, &mut HashSet::new(), verbose).await
 }
 
 /// Format a resolution error with optional chain context
@@ -68,6 +69,7 @@ fn resolve_component_spec_recursive<'a>(
     deps_dir: &'a Path,
     client: &'a PackageClient,
     visited: &'a mut HashSet<String>,
+    verbose: bool,
 ) -> Pin<Box<dyn Future<Output = Result<PathBuf>> + 'a>> {
     Box::pin(async move {
         // Detect circular aliases
@@ -84,8 +86,11 @@ fn resolve_component_spec_recursive<'a>(
         // 1. Check if spec is an alias in config
         let config = config::load_config()?;
         if let Some(target) = config.components.get(spec) {
-            println!("      Resolved alias '{}' → '{}'", spec, target);
-            return resolve_component_spec_recursive(target, deps_dir, client, visited).await;
+            if verbose {
+                println!("      Resolved alias '{}' → '{}'", spec, target);
+            }
+            return resolve_component_spec_recursive(target, deps_dir, client, visited, verbose)
+                .await;
         }
 
         // 2. Check if spec looks like a file path

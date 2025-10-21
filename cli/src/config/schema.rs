@@ -153,10 +153,12 @@ mod tests {
         config.components.insert("a".to_string(), "b".to_string());
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .iter()
-            .any(|e| e.contains("Circular alias dependency")));
+        assert!(
+            result
+                .unwrap_err()
+                .iter()
+                .any(|e| e.contains("Circular alias dependency"))
+        );
     }
 
     #[test]

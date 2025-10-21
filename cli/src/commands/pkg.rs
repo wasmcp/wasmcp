@@ -9,8 +9,8 @@ use futures_util::TryStreamExt;
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 use wasm_pkg_client::{
-    caching::{CachingClient, FileCache},
     Client,
+    caching::{CachingClient, FileCache},
 };
 use wasm_pkg_common::{
     config::{Config, CustomConfig, RegistryMapping},

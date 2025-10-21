@@ -371,6 +371,22 @@ fn validate_output_file(output_path: &Path, force: bool) -> Result<()> {
             output_path.display()
         );
     }
+
+    // Check parent directory is writable
+    if let Some(parent) = output_path.parent() {
+        if parent.exists() {
+            let metadata = std::fs::metadata(parent).context(format!(
+                "failed to read directory metadata for '{}'",
+                parent.display()
+            ))?;
+            if metadata.permissions().readonly() {
+                anyhow::bail!("output directory '{}' is not writable", parent.display());
+            }
+        } else {
+            anyhow::bail!("output directory '{}' does not exist", parent.display());
+        }
+    }
+
     Ok(())
 }
 
@@ -384,7 +400,7 @@ async fn resolve_user_components(
     let mut paths = Vec::new();
 
     for (i, spec) in specs.iter().enumerate() {
-        let path = resolution::resolve_component_spec(spec, deps_dir, client).await?;
+        let path = resolution::resolve_component_spec(spec, deps_dir, client, verbose).await?;
         if verbose {
             println!("   {}. {} → {}", i + 1, spec, path.display());
         }
@@ -467,7 +483,7 @@ async fn resolve_framework_component(
         if verbose {
             println!("\nUsing override {}: {}", component.display_name(), spec);
         }
-        resolution::resolve_component_spec(spec, deps_dir, client).await
+        resolution::resolve_component_spec(spec, deps_dir, client, verbose).await
     } else {
         component
             .ensure_downloaded(version, deps_dir, client, skip_download, verbose)
@@ -549,17 +565,18 @@ fn print_success_message(output_path: &Path, transport: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::DEFAULT_WASMCP_VERSION;
     use tempfile::TempDir;
 
     #[test]
     fn test_interface_names() {
         assert_eq!(
-            dependencies::interfaces::server_handler("0.1.0-beta.2"),
-            "wasmcp:server/handler@0.1.0-beta.2"
+            dependencies::interfaces::server_handler(DEFAULT_WASMCP_VERSION),
+            format!("wasmcp:server/handler@{}", DEFAULT_WASMCP_VERSION).as_str()
         );
         assert_eq!(
-            dependencies::interfaces::tools("0.1.0-beta.2"),
-            "wasmcp:protocol/tools@0.1.0-beta.2"
+            dependencies::interfaces::tools(DEFAULT_WASMCP_VERSION),
+            format!("wasmcp:protocol/tools@{}", DEFAULT_WASMCP_VERSION).as_str()
         );
         assert_eq!(
             dependencies::interfaces::WASI_HTTP_HANDLER,
@@ -571,12 +588,12 @@ mod tests {
     #[test]
     fn test_package_naming() {
         assert_eq!(
-            dependencies::interfaces::package("http-transport", "0.1.0-beta.2"),
-            "wasmcp:http-transport@0.1.0-beta.2"
+            dependencies::interfaces::package("http-transport", DEFAULT_WASMCP_VERSION),
+            format!("wasmcp:http-transport@{}", DEFAULT_WASMCP_VERSION).as_str()
         );
         assert_eq!(
-            dependencies::interfaces::package("method-not-found", "0.1.0-beta.2"),
-            "wasmcp:method-not-found@0.1.0-beta.2"
+            dependencies::interfaces::package("method-not-found", DEFAULT_WASMCP_VERSION),
+            format!("wasmcp:method-not-found@{}", DEFAULT_WASMCP_VERSION).as_str()
         );
     }
 

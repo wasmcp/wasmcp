@@ -306,10 +306,12 @@ mod tests {
                 "Expected '{}' to be invalid, but it was accepted",
                 name
             );
-            assert!(result
-                .unwrap_err()
-                .to_string()
-                .contains("must contain only alphanumeric"));
+            assert!(
+                result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("must contain only alphanumeric")
+            );
         }
     }
 

@@ -11,7 +11,8 @@ name: CI
 # Jobs:
 #   1. lint: Format and clippy checks on workspace root
 #   2. build-cli: Build wasmcp CLI binary (native x86_64-linux)
-#   3. build-components: Build framework components (wasm32-wasip2)
+#   3. security-audit: Check dependencies for known vulnerabilities
+#   4. build-components: Build framework components (wasm32-wasip2)
 #
 # Note: Template tests are in a separate workflow (test-templates.yml) that only
 # runs when cli/ files change
@@ -65,7 +66,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy (CLI only)
-        run: cd cli && cargo clippy --all-targets --all-features --target x86_64-unknown-linux-gnu -- -D warnings
+        run: cd cli && cargo clippy --all-targets --target x86_64-unknown-linux-gnu -- -D warnings
         # Note: Component clippy runs in build-components job which has WIT tooling
 
   build-cli:
@@ -94,6 +95,23 @@ jobs:
         with:
           name: wasmcp-cli-linux
           path: cli/target/x86_64-unknown-linux-gnu/release/wasmcp
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: audit
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run security audit
+        run: cargo audit
 
   build-components:
     name: Build Framework Components

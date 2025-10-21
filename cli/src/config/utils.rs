@@ -260,10 +260,12 @@ mod tests {
         // Non-existent path should error
         let result = canonicalize_path("/this/path/definitely/does/not/exist.wasm");
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("does not exist or cannot be resolved"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("does not exist or cannot be resolved")
+        );
     }
 
     #[test]

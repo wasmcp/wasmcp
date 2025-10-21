@@ -1,9 +1,8 @@
-use rmcp::model::*;
 use rmcp::ErrorData as McpError;
+use rmcp::model::*;
 use schemars::JsonSchema;
 use serde::Deserialize;
-use std::process::Command;
-use crate::config::WasmcpConfig;
+use tokio::process::Command;
 
 // Tool parameter types
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -135,30 +134,44 @@ pub async fn compose_tool(args: ComposeArgs) -> Result<CallToolResult, McpError>
         cmd.arg("--override-method-not-found").arg(override_mnf);
     }
 
-    let output = cmd.output()
-        .map_err(|e| McpError::internal_error(
+    let output = cmd.output().await.map_err(|e| {
+        McpError::internal_error(
             format!("Failed to execute compose: {}", e),
-            None
-        ))?;
+            Some(serde_json::json!({
+                "error": e.to_string(),
+                "command": "wasmcp compose",
+                "components": args.components,
+            })),
+        )
+    })?;
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
-        Ok(CallToolResult::success(vec![
-            Content::text(format!("✓ Composition successful\n\n{}", stdout))
-        ]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "✓ Composition successful\n\n{}",
+            stdout
+        ))]))
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
         Err(McpError::internal_error(
             format!("Composition failed: {}", stderr),
-            None
+            Some(serde_json::json!({
+                "exit_code": output.status.code(),
+                "stderr": stderr.to_string(),
+                "stdout": stdout.to_string(),
+                "components": args.components,
+                "output": args.output,
+            })),
         ))
     }
 }
 
-pub async fn registry_list_tool(
-    config: &WasmcpConfig,
-    args: RegistryListArgs,
-) -> Result<CallToolResult, McpError> {
+pub async fn registry_list_tool(args: RegistryListArgs) -> Result<CallToolResult, McpError> {
+    // Load fresh config from disk
+    let config = crate::config::load_config()
+        .map_err(|e| McpError::internal_error(format!("Failed to load config: {}", e), None))?;
+
     let mut output = String::new();
 
     match args.target.as_str() {
@@ -173,7 +186,7 @@ pub async fn registry_list_tool(
                     output.push_str(&format!("- `{}` → {}\n", name, spec));
                 }
             }
-            output.push_str("\n");
+            output.push('\n');
         }
         _ => {}
     }
@@ -192,7 +205,10 @@ pub async fn registry_list_tool(
                     if let Some(base) = &profile.base {
                         output.push_str(&format!("  Base: {}\n", base));
                     }
-                    output.push_str(&format!("  Components: {}\n", profile.components.join(", ")));
+                    output.push_str(&format!(
+                        "  Components: {}\n",
+                        profile.components.join(", ")
+                    ));
                     output.push_str(&format!("  Output: {}\n\n", profile.output));
                 }
             }
@@ -209,27 +225,39 @@ pub async fn registry_add_component_tool(
     let output = Command::new("wasmcp")
         .args(["registry", "component", "add", &args.alias, &args.spec])
         .output()
-        .map_err(|e| McpError::internal_error(
-            format!("Failed to add component: {}", e),
-            None
-        ))?;
+        .await
+        .map_err(|e| {
+            McpError::internal_error(
+                format!("Failed to execute registry component add: {}", e),
+                Some(serde_json::json!({
+                    "error": e.to_string(),
+                    "command": "wasmcp registry component add",
+                    "alias": args.alias,
+                    "spec": args.spec,
+                })),
+            )
+        })?;
 
     if output.status.success() {
-        Ok(CallToolResult::success(vec![
-            Content::text(format!("✓ Added component alias: {} → {}", args.alias, args.spec))
-        ]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "✓ Added component alias: {} → {}",
+            args.alias, args.spec
+        ))]))
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(McpError::internal_error(
             format!("Failed to add component: {}", stderr),
-            None
+            Some(serde_json::json!({
+                "exit_code": output.status.code(),
+                "stderr": stderr.to_string(),
+                "alias": args.alias,
+                "spec": args.spec,
+            })),
         ))
     }
 }
 
-pub async fn registry_add_profile_tool(
-    args: AddProfileArgs,
-) -> Result<CallToolResult, McpError> {
+pub async fn registry_add_profile_tool(args: AddProfileArgs) -> Result<CallToolResult, McpError> {
     let mut cmd = Command::new("wasmcp");
     cmd.args(["registry", "profile", "add", &args.name]);
 
@@ -243,25 +271,38 @@ pub async fn registry_add_profile_tool(
         // Default output required
         return Err(McpError::invalid_params(
             "Output path is required for profile creation",
-            None
+            None,
         ));
     }
 
-    let output = cmd.output()
-        .map_err(|e| McpError::internal_error(
-            format!("Failed to add profile: {}", e),
-            None
-        ))?;
+    let output = cmd.output().await.map_err(|e| {
+        McpError::internal_error(
+            format!("Failed to execute registry profile add: {}", e),
+            Some(serde_json::json!({
+                "error": e.to_string(),
+                "command": "wasmcp registry profile add",
+                "profile_name": args.name,
+                "components": args.components,
+            })),
+        )
+    })?;
 
     if output.status.success() {
-        Ok(CallToolResult::success(vec![
-            Content::text(format!("✓ Added profile: {}", args.name))
-        ]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "✓ Added profile: {}",
+            args.name
+        ))]))
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(McpError::internal_error(
             format!("Failed to add profile: {}", stderr),
-            None
+            Some(serde_json::json!({
+                "exit_code": output.status.code(),
+                "stderr": stderr.to_string(),
+                "profile_name": args.name,
+                "components": args.components,
+                "output": args.output,
+            })),
         ))
     }
 }
@@ -270,20 +311,34 @@ pub async fn registry_remove_tool(args: RemoveArgs) -> Result<CallToolResult, Mc
     let output = Command::new("wasmcp")
         .args(["registry", &args.kind, "remove", &args.name])
         .output()
-        .map_err(|e| McpError::internal_error(
-            format!("Failed to remove: {}", e),
-            None
-        ))?;
+        .await
+        .map_err(|e| {
+            McpError::internal_error(
+                format!("Failed to execute registry remove: {}", e),
+                Some(serde_json::json!({
+                    "error": e.to_string(),
+                    "command": "wasmcp registry remove",
+                    "kind": args.kind,
+                    "name": args.name,
+                })),
+            )
+        })?;
 
     if output.status.success() {
-        Ok(CallToolResult::success(vec![
-            Content::text(format!("✓ Removed {} '{}'", args.kind, args.name))
-        ]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "✓ Removed {} '{}'",
+            args.kind, args.name
+        ))]))
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(McpError::internal_error(
             format!("Failed to remove: {}", stderr),
-            None
+            Some(serde_json::json!({
+                "exit_code": output.status.code(),
+                "stderr": stderr.to_string(),
+                "kind": args.kind,
+                "name": args.name,
+            })),
         ))
     }
 }
