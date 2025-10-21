@@ -118,6 +118,8 @@ use std::path::PathBuf;
 /// # Examples
 ///
 /// ```
+/// use wasmcp::config::utils::is_path_spec;
+///
 /// assert!(is_path_spec("./handler.wasm"));
 /// assert!(is_path_spec("../target/handler.wasm"));
 /// assert!(is_path_spec("/abs/path/handler.wasm"));
@@ -159,6 +161,8 @@ pub fn is_path_spec(spec: &str) -> bool {
 /// # Examples
 ///
 /// ```
+/// use wasmcp::config::utils::is_registry_spec;
+///
 /// assert!(is_registry_spec("wasmcp:calculator@0.1.0"));
 /// assert!(is_registry_spec("namespace:name"));
 /// assert!(!is_registry_spec("./handler.wasm"));

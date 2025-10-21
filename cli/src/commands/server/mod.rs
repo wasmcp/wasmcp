@@ -5,7 +5,7 @@ mod tools;
 pub use r#impl::start_server;
 
 // Export WasmcpServer for testing
-#[allow(unused_imports)]  // Used in integration tests
+#[allow(unused_imports)] // Used in integration tests
 pub use r#impl::WasmcpServer;
 
 use anyhow::Result;

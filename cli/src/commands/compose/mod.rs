@@ -81,7 +81,7 @@ pub struct ComposeOptions {
 /// # Examples
 ///
 /// ```rust
-/// use wasmcp::compose::ComposeOptionsBuilder;
+/// use wasmcp::commands::compose::ComposeOptionsBuilder;
 /// use std::path::PathBuf;
 ///
 /// # fn example() -> anyhow::Result<()> {
