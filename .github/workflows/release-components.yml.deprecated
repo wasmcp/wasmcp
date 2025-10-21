@@ -189,11 +189,11 @@ jobs:
           echo "✅ Built all framework components"
           ls -lh target/wasm32-wasip2/release/*.wasm
 
-      - name: Publish http-client-notifications
+      - name: Publish http-notifications
         run: |
-          wkg publish --package 'wasmcp:http-client-notifications@${{ inputs.version }}' \
+          wkg publish --package 'wasmcp:http-notifications@${{ inputs.version }}' \
             target/wasm32-wasip2/release/http_client_notifications.wasm
-          echo "✅ Published wasmcp:http-client-notifications@${{ inputs.version }}"
+          echo "✅ Published wasmcp:http-notifications@${{ inputs.version }}"
 
       - name: Publish http-transport
         run: |
@@ -335,7 +335,7 @@ jobs:
 
             This release includes 6 framework components published to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}`:
 
-            - `wasmcp:http-client-notifications@${{ inputs.version }}`
+            - `wasmcp:http-notifications@${{ inputs.version }}`
             - `wasmcp:http-transport@${{ inputs.version }}`
             - `wasmcp:method-not-found@${{ inputs.version }}`
             - `wasmcp:stdio-transport@${{ inputs.version }}`
@@ -349,7 +349,7 @@ jobs:
             - **SHA256 checksums** for all component artifacts
 
             Each component has its own SBOM:
-            - `http-client-notifications-sbom.{json,xml}`
+            - `http-notifications-sbom.{json,xml}`
             - `http-transport-sbom.{json,xml}`
             - `method-not-found-sbom.{json,xml}`
             - `stdio-transport-sbom.{json,xml}`
