@@ -22,7 +22,7 @@ interface sessions {
         bucket,
         error as store-error,
     };
-    use wasmcp:protocol/mcp@0.1.0-beta.2.{
+    use wasmcp:protocol/mcp@0.1.0-beta.3.{
         elicit-request,
         elicit-result,
     };

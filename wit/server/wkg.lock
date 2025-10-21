@@ -25,6 +25,6 @@ name = "wasmcp:protocol"
 registry = "ghcr.io"
 
 [[packages.versions]]
-requirement = "=0.1.0-beta.2"
-version = "0.1.0-beta.2"
-digest = "sha256:93d50a736fd3219e83c72ca63f3990fd3d660a36119c905ce659a09cd053c8b5"
+requirement = "=0.1.0-beta.3"
+version = "0.1.0-beta.3"
+digest = "sha256:a68bdcdd7be90f901ecec34735e5ea9856d62560a675199eb3652d862b1913e9"

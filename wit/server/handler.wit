@@ -9,7 +9,7 @@ interface handler {
     use notifications.{
         notification-channel,
     };
-    use wasmcp:protocol/mcp@0.1.0-beta.2.{
+    use wasmcp:protocol/mcp@0.1.0-beta.3.{
         error-code,
         claims,
         session-id,
@@ -19,7 +19,7 @@ interface handler {
         client-response,
         client-notification,
     };
-    use wasmcp:protocol/server-messages@0.1.0-beta.2.{
+    use server-messages.{
         context,
     };
 

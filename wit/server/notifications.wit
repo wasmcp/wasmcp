@@ -1,4 +1,4 @@
-/// Server-side MCP notification channel resource
+/// MCP notification channel resource
 ///
 /// This resource encapsulates the ability to send notifications to MCP clients.
 /// It abstracts the underlying transport mechanism (SSE, stdio, WebSocket, etc.)
@@ -15,7 +15,7 @@ interface notifications {
     use wasi:io/streams@0.2.3.{
         stream-error,
     };
-    use wasmcp:protocol/mcp@0.1.0-beta.2.{
+    use wasmcp:protocol/mcp@0.1.0-beta.3.{
         progress-token,
         log-level,
         server-request,
