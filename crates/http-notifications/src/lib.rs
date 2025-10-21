@@ -1,6 +1,6 @@
 //! HTTP/SSE Client Notifications Implementation
 //!
-//! Implements client-notifications functions for Server-Sent Events (SSE) transport.
+//! Implements notification-channel resource for Server-Sent Events (SSE) transport.
 //! Writes JSON-RPC notifications as SSE events to the provided output stream.
 
 #![allow(warnings)]
@@ -12,97 +12,29 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::server::notifications::Guest;
-use bindings::exports::wasmcp::server::notifications::NotificationError;
+use bindings::exports::wasmcp::server::notifications::{
+    Guest, GuestNotificationChannel, NotificationChannel, NotificationError,
+};
 use bindings::wasi::io::streams::{OutputStream, StreamError};
 use bindings::wasmcp::protocol::mcp::*;
 
-struct HttpClientNotifications;
+/// HTTP notification channel implementation that writes SSE events
+struct HttpNotificationChannel {
+    output: OutputStream,
+}
 
-impl Guest for HttpClientNotifications {
-    fn log(
-        output: &OutputStream,
-        message: String,
-        level: LogLevel,
-        logger: Option<String>,
-    ) -> Result<(), NotificationError> {
-        let notification = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": "notifications/message",
-            "params": {
-                "level": log_level_to_string(&level),
-                "logger": logger,
-                "data": message,
-            }
-        });
-
-        write_sse_event(output, &notification)
+impl GuestNotificationChannel for HttpNotificationChannel {
+    fn new(output: OutputStream) -> Self {
+        HttpNotificationChannel { output }
     }
 
-    fn list_changed(output: &OutputStream, changes: ServerLists) -> Result<(), NotificationError> {
-        // Send separate notification for each changed list type
-        if changes.contains(ServerLists::TOOLS) {
-            let notification = serde_json::json!({
-                "jsonrpc": "2.0",
-                "method": "notifications/tools/list_changed"
-            });
-            write_sse_event(output, &notification)?;
-        }
-
-        if changes.contains(ServerLists::RESOURCES) {
-            let notification = serde_json::json!({
-                "jsonrpc": "2.0",
-                "method": "notifications/resources/list_changed"
-            });
-            write_sse_event(output, &notification)?;
-        }
-
-        if changes.contains(ServerLists::PROMPTS) {
-            let notification = serde_json::json!({
-                "jsonrpc": "2.0",
-                "method": "notifications/prompts/list_changed"
-            });
-            write_sse_event(output, &notification)?;
-        }
-
-        Ok(())
-    }
-
-    fn updated(
-        output: &OutputStream,
-        updates: ServerSubscriptions,
-    ) -> Result<(), NotificationError> {
-        if updates.contains(ServerSubscriptions::RESOURCES) {
-            let notification = serde_json::json!({
-                "jsonrpc": "2.0",
-                "method": "notifications/resources/updated"
-            });
-            write_sse_event(output, &notification)?;
-        }
-
-        Ok(())
-    }
-
-    fn request(output: &OutputStream, request: ServerRequest) -> Result<(), NotificationError> {
-        // Generate a unique request ID for server-initiated requests
-        use std::sync::atomic::{AtomicI64, Ordering};
-        static REQUEST_COUNTER: AtomicI64 = AtomicI64::new(1);
-        let request_id = REQUEST_COUNTER.fetch_add(1, Ordering::SeqCst);
-
-        let (method, params) = serialize_server_request(&request);
-
-        let json_rpc = serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "method": method,
-            "params": params
-        });
-
-        write_sse_event(output, &json_rpc)
+    fn finish(channel: NotificationChannel) -> OutputStream {
+        let this: HttpNotificationChannel = channel.into_inner();
+        this.output
     }
 
     fn progress(
-        output: &OutputStream,
+        &self,
         token: ProgressToken,
         progress: f64,
         total: Option<f64>,
@@ -131,8 +63,92 @@ impl Guest for HttpClientNotifications {
             "params": params
         });
 
-        write_sse_event(output, &notification)
+        write_sse_event(&self.output, &notification)
     }
+
+    fn log(
+        &self,
+        message: String,
+        level: LogLevel,
+        logger: Option<String>,
+    ) -> Result<(), NotificationError> {
+        let notification = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "notifications/message",
+            "params": {
+                "level": log_level_to_string(&level),
+                "logger": logger,
+                "data": message,
+            }
+        });
+
+        write_sse_event(&self.output, &notification)
+    }
+
+    fn list_changed(&self, changes: ServerLists) -> Result<(), NotificationError> {
+        // Send separate notification for each changed list type
+        if changes.contains(ServerLists::TOOLS) {
+            let notification = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "notifications/tools/list_changed"
+            });
+            write_sse_event(&self.output, &notification)?;
+        }
+
+        if changes.contains(ServerLists::RESOURCES) {
+            let notification = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "notifications/resources/list_changed"
+            });
+            write_sse_event(&self.output, &notification)?;
+        }
+
+        if changes.contains(ServerLists::PROMPTS) {
+            let notification = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "notifications/prompts/list_changed"
+            });
+            write_sse_event(&self.output, &notification)?;
+        }
+
+        Ok(())
+    }
+
+    fn updated(&self, updates: ServerSubscriptions) -> Result<(), NotificationError> {
+        if updates.contains(ServerSubscriptions::RESOURCES) {
+            let notification = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "notifications/resources/updated"
+            });
+            write_sse_event(&self.output, &notification)?;
+        }
+
+        Ok(())
+    }
+
+    fn request(&self, request: ServerRequest) -> Result<(), NotificationError> {
+        // Generate a unique request ID for server-initiated requests
+        use std::sync::atomic::{AtomicI64, Ordering};
+        static REQUEST_COUNTER: AtomicI64 = AtomicI64::new(1);
+        let request_id = REQUEST_COUNTER.fetch_add(1, Ordering::SeqCst);
+
+        let (method, params) = serialize_server_request(&request);
+
+        let json_rpc = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "method": method,
+            "params": params
+        });
+
+        write_sse_event(&self.output, &json_rpc)
+    }
+}
+
+struct HttpClientNotifications;
+
+impl Guest for HttpClientNotifications {
+    type NotificationChannel = HttpNotificationChannel;
 }
 
 // Helper functions

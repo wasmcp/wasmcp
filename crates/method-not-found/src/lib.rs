@@ -12,22 +12,18 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::server::handler::Guest;
+use bindings::exports::wasmcp::server::handler::{Guest, NotificationChannel};
+use bindings::wasmcp::server::server_messages::Context;
+use bindings::wasmcp::protocol::mcp::{ClientRequest, RequestId, ServerResponse, ErrorCode};
 
 struct MethodNotFoundHandler;
 
 impl Guest for MethodNotFoundHandler {
     fn handle_request(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
-        request: (
-            bindings::wasmcp::protocol::mcp::ClientRequest,
-            bindings::wasmcp::protocol::mcp::RequestId,
-        ),
-        _client_stream: Option<&bindings::wasi::io::streams::OutputStream>,
-    ) -> Result<
-        bindings::wasmcp::protocol::mcp::ServerResponse,
-        bindings::wasmcp::protocol::mcp::ErrorCode,
-    > {
+        _ctx: Context,
+        request: (ClientRequest, RequestId),
+        _channel: Option<&NotificationChannel>,
+    ) -> Result<ServerResponse, ErrorCode> {
         use bindings::wasmcp::protocol::mcp::{ClientRequest, Error, ErrorCode};
 
         let req = request.0;
@@ -60,7 +56,7 @@ impl Guest for MethodNotFoundHandler {
     }
 
     fn handle_notification(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: Context,
         _notification: bindings::wasmcp::protocol::mcp::ClientNotification,
     ) {
         // Terminal handler - silently ignore notifications
@@ -68,13 +64,13 @@ impl Guest for MethodNotFoundHandler {
     }
 
     fn handle_response(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: Context,
         _response: Result<
             (
                 bindings::wasmcp::protocol::mcp::ClientResponse,
                 bindings::wasmcp::protocol::mcp::RequestId,
             ),
-            bindings::wasmcp::protocol::mcp::ErrorCode,
+            ErrorCode,
         >,
     ) {
         // Terminal handler - silently ignore responses

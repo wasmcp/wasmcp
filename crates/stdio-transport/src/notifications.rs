@@ -24,10 +24,10 @@ impl GuestNotificationChannel for StdioNotificationChannel {
         StdioNotificationChannel {}
     }
 
-    fn finish(channel: Self) -> OutputStream {
+    fn finish(channel: NotificationChannel) -> OutputStream {
         // Return a null stream since we don't actually use it
         // In a real implementation, this would return the original stream
-        drop(channel);
+        let _this: StdioNotificationChannel = channel.into_inner();
         // This is a hack - we create a new stderr stream as placeholder
         // The proper implementation would store and return the original stream
         crate::bindings::wasi::cli::stderr::get_stderr()
