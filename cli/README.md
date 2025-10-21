@@ -134,10 +134,19 @@ The MCP server exposes the following tools:
 The server provides read-only access to:
 
 **Documentation** (fetched from GitHub):
-- `wasmcp://docs/readme` - Project README
-- `wasmcp://docs/getting-started` - Getting started guide
-- `wasmcp://docs/wit-protocol` - WIT interface definitions
-- `wasmcp://docs/examples` - Examples overview
+- `wasmcp://docs/readme` - Project overview and quick start
+- `wasmcp://docs/getting-started` - Step-by-step tutorial for first component
+- `wasmcp://docs/cli` - Detailed CLI command documentation
+- `wasmcp://docs/architecture` - Component model and composition pipeline
+- `wasmcp://docs/examples` - Example components overview and learning path
+- `wasmcp://docs/wit-interfaces` - Complete WIT interface documentation
+
+**WIT Interfaces** (fetched from GitHub):
+- `wasmcp://wit/protocol/mcp` - MCP protocol type definitions
+- `wasmcp://wit/protocol/features` - Capability interfaces (tools, resources, prompts)
+- `wasmcp://wit/server/handler` - Core handler interface for middleware
+- `wasmcp://wit/server/sessions` - Session management interfaces
+- `wasmcp://wit/server/notifications` - Notification interfaces
 
 **Registry** (from local configuration):
 - `wasmcp://registry/components` - Component aliases (JSON)

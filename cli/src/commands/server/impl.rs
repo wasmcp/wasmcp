@@ -62,6 +62,14 @@ impl ServerHandler for WasmcpServer {
         WasmcpResources::list_all(&self.project_root)
     }
 
+    async fn list_resource_templates(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourceTemplatesResult, McpError> {
+        WasmcpResources::list_templates()
+    }
+
     async fn read_resource(
         &self,
         request: ReadResourceRequestParam,
