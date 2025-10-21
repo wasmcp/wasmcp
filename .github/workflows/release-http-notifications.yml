@@ -1,4 +1,4 @@
-name: Release HTTP Client Notifications
+name: Release HTTP Notifications
 
 on:
   workflow_dispatch:
@@ -14,13 +14,13 @@ on:
 
 jobs:
   release:
-    name: Release HTTP Client Notifications
+    name: Release HTTP Notifications
     permissions:
       contents: write
       packages: write
     uses: ./.github/workflows/reusable-release-component.yml
     with:
-      component-name: http-client-notifications
+      component-name: http-notifications
       component-crate: http-notifications
       version: ${{ inputs.version }}
       wit-version: ${{ inputs.wit-version }}
