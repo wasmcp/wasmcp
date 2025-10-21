@@ -1,6 +1,6 @@
 package wasmcp:prompts-middleware@0.1.0;
 
 world prompts-middleware {
-    include wasmcp:server/middleware@0.1.0-beta.2;
-    import wasmcp:protocol/prompts@0.1.0-beta.2;
+    include wasmcp:server/middleware@0.1.0-beta.4;
+    import wasmcp:server/prompts@0.1.0-beta.4;
 }

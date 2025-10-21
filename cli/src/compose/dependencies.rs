@@ -40,6 +40,11 @@ pub mod interfaces {
         format!("wasmcp:protocol/prompts@{}", version)
     }
 
+    /// Generate the notifications interface name with version
+    pub fn notifications(version: &str) -> String {
+        format!("wasmcp:server/notifications@{}", version)
+    }
+
     /// Generate a versioned package name for wasmcp components
     pub fn package(name: &str, version: &str) -> String {
         format!("wasmcp:{}@{}", name, version)

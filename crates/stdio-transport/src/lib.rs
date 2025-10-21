@@ -22,14 +22,17 @@ mod bindings {
 mod parser;
 mod serializer;
 mod stream_reader;
+mod notifications;
 
 use bindings::exports::wasi::cli::run::Guest;
+use notifications::StdioNotificationChannel;
+
 use bindings::wasi::cli::stderr::get_stderr;
 use bindings::wasi::cli::stdin::get_stdin;
 use bindings::wasi::cli::stdout::get_stdout;
 use bindings::wasi::io::streams::{InputStream, OutputStream, StreamError};
 use bindings::wasmcp::protocol::mcp::{ClientRequest, RequestId, ServerResponse};
-use bindings::wasmcp::protocol::server_messages::Context;
+use bindings::wasmcp::server::server_messages::Context;
 use bindings::wasmcp::server::handler::{handle_notification, handle_request, handle_response};
 
 struct StdioTransport;
@@ -128,8 +131,8 @@ fn handle_json_rpc_request(
         data: vec![],
     };
 
-    // Delegate to server-handler (may send notifications via output stream)
-    let result = handle_request(&ctx, (&client_request, &request_id), Some(&stdout));
+    // Delegate to server-handler (no notifications support in stdio transport)
+    let result = handle_request(&ctx, (&client_request, &request_id), None);
 
     // Write final JSON-RPC response to stdout
     write_json_rpc_response(&stdout, request_id, result)?;
@@ -530,4 +533,17 @@ fn write_stderr(stderr: &OutputStream, message: &str) -> Result<(), String> {
     write_chunked(stderr, message.as_bytes())
 }
 
-bindings::export!(StdioTransport with_types_in bindings);
+// Export both the run interface and notifications
+struct Component;
+
+impl bindings::exports::wasi::cli::run::Guest for Component {
+    fn run() -> Result<(), ()> {
+        StdioTransport::run()
+    }
+}
+
+impl bindings::exports::wasmcp::server::notifications::Guest for Component {
+    type NotificationChannel = StdioNotificationChannel;
+}
+
+bindings::export!(Component with_types_in bindings);

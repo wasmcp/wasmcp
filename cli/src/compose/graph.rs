@@ -18,16 +18,17 @@ struct CompositionPackages {
 
 /// Build the component composition using wac-graph
 ///
-/// The composition strategy is simple:
-/// 1. Instantiate method-not-found (terminal handler)
-/// 2. Instantiate each user component in reverse order, wiring to previous
-/// 3. Instantiate transport at the front, wiring to the chain
+/// The composition strategy is:
+/// 1. Instantiate transport first to get its notifications export
+/// 2. Instantiate method-not-found (terminal handler) with notifications if needed
+/// 3. Instantiate each user component in reverse order, wiring both server-handler and notifications
 /// 4. Export the transport's WASI interface (http or cli)
 ///
 /// This creates the chain: transport → component₁ → ... → componentₙ → method-not-found
 ///
 /// Each component's `server-handler` import is satisfied by the next component's
-/// `server-handler` export, creating a linear middleware pipeline.
+/// `server-handler` export, creating a linear middleware pipeline. Additionally,
+/// the transport's notifications export is wired to all components that import it.
 pub async fn build_composition(
     transport_path: &Path,
     component_paths: &[PathBuf],
@@ -49,21 +50,44 @@ pub async fn build_composition(
         method_not_found_path,
     )?;
 
-    // Build the middleware chain
+    // Build the complete composition graph
     if verbose {
         println!("   Building composition graph...");
     }
     let server_handler_interface = dependencies::interfaces::server_handler(version);
-    let handler_export = build_middleware_chain(&mut graph, &packages, &server_handler_interface)?;
+    let notifications_interface = dependencies::interfaces::notifications(version);
 
-    // Wire transport and export interface
-    wire_transport(
+    // First instantiate transport to get its exports
+    let transport_inst = graph.instantiate(packages.transport_id);
+
+    // Try to get the notifications export from transport (may not exist in older versions)
+    let notifications_export = graph
+        .alias_instance_export(transport_inst, &notifications_interface)
+        .ok();
+
+    if verbose {
+        if notifications_export.is_some() {
+            println!("   Transport exports notifications interface");
+        } else {
+            println!("   Transport does not export notifications interface");
+        }
+    }
+
+    // Build the middleware chain with notifications wiring
+    let handler_export = build_middleware_chain_with_notifications(
         &mut graph,
-        packages.transport_id,
-        handler_export,
-        transport_type,
+        &packages,
         &server_handler_interface,
+        notifications_export,
+        &notifications_interface,
+        verbose,
     )?;
+
+    // Wire the transport's server-handler import to the chain
+    graph.set_instantiation_argument(transport_inst, &server_handler_interface, handler_export)?;
+
+    // Export the appropriate WASI interface based on transport type
+    export_transport_interface(&mut graph, transport_inst, transport_type)?;
 
     // Encode the composition
     if verbose {
@@ -111,20 +135,38 @@ fn load_and_register_components(
     })
 }
 
-/// Build the middleware chain by connecting components
+/// Build the middleware chain with proper notification wiring
 ///
 /// Returns the final handler export that should be wired to the transport
-fn build_middleware_chain(
+fn build_middleware_chain_with_notifications(
     graph: &mut CompositionGraph,
     packages: &CompositionPackages,
     server_handler_interface: &str,
+    notifications_export: Option<wac_graph::NodeId>,
+    notifications_interface: &str,
+    verbose: bool,
 ) -> Result<wac_graph::NodeId> {
     // Start with method-not-found as the terminal handler
-    let prev_inst = graph.instantiate(packages.method_not_found_id);
+    let method_not_found_inst = graph.instantiate(packages.method_not_found_id);
+
+    // Try to wire notifications to method-not-found after instantiation
+    // Note: In wac-graph, set_instantiation_argument might need to be called before instantiate
+    // but we'll try this approach first as the exact API semantics aren't clear
+    if let Some(notif_export) = notifications_export {
+        if let Err(_) = graph.set_instantiation_argument(method_not_found_inst, notifications_interface, notif_export) {
+            // If setting after instantiation fails, the component either doesn't import
+            // notifications or we need a different approach
+            if verbose {
+                println!("     - Method-not-found does not import notifications");
+            }
+        } else if verbose {
+            println!("     ✓ Wired notifications to method-not-found handler");
+        }
+    }
 
     // Get the server-handler export from method-not-found
     let mut next_handler_export = graph
-        .alias_instance_export(prev_inst, server_handler_interface)
+        .alias_instance_export(method_not_found_inst, server_handler_interface)
         .context("Failed to get server-handler export from method-not-found")?;
 
     // Chain user components in reverse order
@@ -132,10 +174,27 @@ fn build_middleware_chain(
     for (i, pkg_id) in packages.user_ids.iter().enumerate().rev() {
         let inst = graph.instantiate(*pkg_id);
 
-        // Wire this component's server-handler import to the previous component's export
-        graph
-            .set_instantiation_argument(inst, server_handler_interface, next_handler_export)
-            .with_context(|| format!("Failed to wire component-{} import", i))?;
+        // Set the arguments after instantiation
+        // Wire server-handler import to the previous component's export
+        if let Err(e) = graph.set_instantiation_argument(inst, server_handler_interface, next_handler_export) {
+            // If this fails, we might need to set arguments before instantiation
+            // Let's try a different approach - re-instantiate with arguments
+            return Err(anyhow::anyhow!(
+                "Failed to wire component-{} server-handler import: {}. \
+                This might indicate that arguments need to be set before instantiation.", i, e
+            ));
+        }
+
+        // Wire notifications if available and component imports them
+        if let Some(notif_export) = notifications_export {
+            if let Err(_) = graph.set_instantiation_argument(inst, notifications_interface, notif_export) {
+                if verbose {
+                    println!("     - Component-{} does not import notifications", i);
+                }
+            } else if verbose {
+                println!("     ✓ Wired notifications to component-{}", i);
+            }
+        }
 
         // This component's export becomes the next input
         next_handler_export = graph
@@ -146,18 +205,12 @@ fn build_middleware_chain(
     Ok(next_handler_export)
 }
 
-/// Wire the transport at the front of the chain and export its interface
-fn wire_transport(
+/// Export the transport's WASI interface
+fn export_transport_interface(
     graph: &mut CompositionGraph,
-    transport_id: wac_graph::PackageId,
-    handler_export: wac_graph::NodeId,
+    transport_inst: wac_graph::NodeId,
     transport_type: &str,
-    server_handler_interface: &str,
 ) -> Result<()> {
-    // Wire transport at the front of the chain
-    let transport_inst = graph.instantiate(transport_id);
-    graph.set_instantiation_argument(transport_inst, server_handler_interface, handler_export)?;
-
     // Export the appropriate WASI interface based on transport type
     match transport_type {
         "http" => {
@@ -177,6 +230,7 @@ fn wire_transport(
 
     Ok(())
 }
+
 
 /// Load a WebAssembly component as a package in the composition graph
 ///

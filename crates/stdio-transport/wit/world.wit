@@ -2,5 +2,7 @@ package wasmcp:stdio-transport@0.1.0;
 
 world stdio-transport {
     include wasi:cli/command@0.2.3;
-    include wasmcp:server/transport@0.1.0-beta.2;
+    include wasmcp:server/transport@0.1.0-beta.4;
+    // Export notifications interface to provide the notification-channel resource
+    export wasmcp:server/notifications@0.1.0-beta.4;
 }

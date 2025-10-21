@@ -1,0 +1,5 @@
+Error: component imports instance `wasmcp:server/notifications@0.1.0-beta.2`, but a matching implementation was not found in the linker
+
+Caused by:
+    0: instance export `log` has the wrong type
+    1: function implementation is missing

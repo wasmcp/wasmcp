@@ -1,6 +1,8 @@
 //! Calculator Tools Capability Provider
 //!
 //! A tools capability that provides basic calculator operations.
+//! This example demonstrates how to use MCP notifications to send
+//! logs and progress updates back to the client.
 
 mod bindings {
     wit_bindgen::generate!({
@@ -9,18 +11,27 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::protocol::tools::Guest;
+use bindings::exports::wasmcp::server::tools::Guest;
 use bindings::wasmcp::protocol::mcp::*;
-use bindings::wasi::io::streams::OutputStream;
+use bindings::wasmcp::server::notifications::{NotificationChannel, LogLevel};
 
 struct Calculator;
 
 impl Guest for Calculator {
     fn list_tools(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: bindings::wasmcp::server::server_messages::Context,
         _request: ListToolsRequest,
-        _client_stream: Option<&OutputStream>,
+        channel: Option<&NotificationChannel>,
     ) -> Result<ListToolsResult, ErrorCode> {
+        // Send a debug log when tools are being listed
+        if let Some(ch) = channel {
+            let _ = ch.log(
+                "Listing available calculator tools",
+                LogLevel::Debug,
+                Some("calculator"),
+            );
+        }
+
         Ok(ListToolsResult {
             tools: vec![
                 Tool {
@@ -62,28 +73,114 @@ impl Guest for Calculator {
     }
 
     fn call_tool(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: bindings::wasmcp::server::server_messages::Context,
         request: CallToolRequest,
-        _client_stream: Option<&OutputStream>,
+        channel: Option<&NotificationChannel>,
     ) -> Option<CallToolResult> {
-        match request.name.as_str() {
-            "add" => Some(execute_operation(&request.arguments, |a, b| a + b)),
-            "subtract" => Some(execute_operation(&request.arguments, |a, b| a - b)),
-            _ => None, // We don't handle this tool
+        // Send a log notification when starting a calculation
+        if let Some(ch) = channel {
+            let _ = ch.log(
+                &format!("Starting {} calculation", request.name),
+                LogLevel::Info,
+                Some("calculator"),
+            );
         }
+
+        let result = match request.name.as_str() {
+            "add" => Some(execute_operation(
+                &request.arguments,
+                |a, b| a + b,
+                "add",
+                channel,
+            )),
+            "subtract" => Some(execute_operation(
+                &request.arguments,
+                |a, b| a - b,
+                "subtract",
+                channel,
+            )),
+            _ => {
+                // Log when we receive an unknown tool request
+                if let Some(ch) = channel {
+                    let _ = ch.log(
+                        &format!("Unknown tool requested: {}", request.name),
+                        LogLevel::Warning,
+                        Some("calculator"),
+                    );
+                }
+                None // We don't handle this tool
+            }
+        };
+
+        // Send completion log if we handled the request
+        if result.is_some() {
+            if let Some(ch) = channel {
+                let _ = ch.log(
+                    &format!("Completed {} calculation", request.name),
+                    LogLevel::Debug,
+                    Some("calculator"),
+                );
+            }
+        }
+
+        result
     }
 }
 
-fn execute_operation<F>(arguments: &Option<String>, op: F) -> CallToolResult
+fn execute_operation<F>(
+    arguments: &Option<String>,
+    op: F,
+    operation_name: &str,
+    channel: Option<&NotificationChannel>,
+) -> CallToolResult
 where
     F: FnOnce(f64, f64) -> f64,
 {
     match parse_args(arguments) {
         Ok((a, b)) => {
+            // Send debug log with the actual calculation being performed
+            if let Some(ch) = channel {
+                let expression = match operation_name {
+                    "add" => format!("{} + {}", a, b),
+                    "subtract" => format!("{} - {}", a, b),
+                    _ => format!("{}({}, {})", operation_name, a, b),
+                };
+                let _ = ch.log(
+                    &format!("Calculating: {}", expression),
+                    LogLevel::Debug,
+                    Some("calculator"),
+                );
+            }
+
             let result = op(a, b);
+
+            // Send info log with the result
+            if let Some(ch) = channel {
+                let expression = match operation_name {
+                    "add" => format!("{} + {} = {}", a, b, result),
+                    "subtract" => format!("{} - {} = {}", a, b, result),
+                    _ => format!("{}({}, {}) = {}", operation_name, a, b, result),
+                };
+                let _ = ch.log(
+                    &format!("Result: {}", expression),
+                    LogLevel::Info,
+                    Some("calculator"),
+                );
+            }
+
             success_result(result.to_string())
         }
-        Err(msg) => error_result(msg),
+        Err(msg) => {
+            // Send error log when calculation fails
+            if let Some(ch) = channel {
+                let _ = ch.log(
+                    &format!("Calculation error: {}", msg),
+                    LogLevel::Error,
+                    Some("calculator"),
+                );
+            }
+            error_result(msg)
+        }
     }
 }
 

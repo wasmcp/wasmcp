@@ -17,10 +17,10 @@ mod bindings {
 }
 
 use bindings::exports::wasmcp::server::handler::Guest;
-use bindings::wasi::io::streams::OutputStream;
+use bindings::wasmcp::server::notifications::NotificationChannel;
 use bindings::wasmcp::protocol::mcp::*;
-use bindings::wasmcp::protocol::resources as capability;
-use bindings::wasmcp::protocol::server_messages::Context;
+use bindings::wasmcp::server::resources as capability;
+use bindings::wasmcp::server::server_messages::Context;
 use bindings::wasmcp::server::handler as downstream;
 
 struct ResourcesMiddleware;
@@ -29,22 +29,22 @@ impl Guest for ResourcesMiddleware {
     fn handle_request(
         ctx: Context,
         request: (ClientRequest, RequestId),
-        client_stream: Option<&OutputStream>,
+        channel: Option<&NotificationChannel>,
     ) -> Result<ServerResponse, ErrorCode> {
         let (req, id) = request;
         match req {
             ClientRequest::ResourcesList(list_req) => {
-                handle_resources_list(list_req, id, &ctx, client_stream)
+                handle_resources_list(list_req, id, &ctx, channel)
             }
             ClientRequest::ResourcesRead(read_req) => {
-                handle_resources_read(read_req, id, &ctx, client_stream)
+                handle_resources_read(read_req, id, &ctx, channel)
             }
             ClientRequest::ResourcesTemplatesList(templates_req) => {
-                handle_templates_list(templates_req, id, &ctx, client_stream)
+                handle_templates_list(templates_req, id, &ctx, channel)
             }
             _ => {
                 // Delegate all other requests to downstream handler
-                downstream::handle_request(&ctx, (&req, &id), client_stream)
+                downstream::handle_request(&ctx, (&req, &id), channel)
             }
         }
     }
@@ -64,12 +64,12 @@ fn handle_resources_list(
     req: ListResourcesRequest,
     id: RequestId,
     ctx: &Context,
-    client_stream: Option<&OutputStream>,
+    channel: Option<&NotificationChannel>,
 ) -> Result<ServerResponse, ErrorCode> {
     use bindings::wasmcp::protocol::mcp::ListResourcesResult;
 
     // Try to get resources from our capability
-    let our_result = match capability::list_resources(ctx, &req, client_stream) {
+    let our_result = match capability::list_resources(ctx, &req, channel) {
         Ok(result) => Some(result),
         Err(ErrorCode::MethodNotFound(_)) => {
             // Capability doesn't implement resources interface - skip it
@@ -84,7 +84,7 @@ fn handle_resources_list(
 
     // Try to get downstream resources
     let downstream_req = ClientRequest::ResourcesList(req.clone());
-    match downstream::handle_request(ctx, (&downstream_req, &id), client_stream) {
+    match downstream::handle_request(ctx, (&downstream_req, &id), channel) {
         Ok(ServerResponse::ResourcesList(downstream_result)) => {
             // Merge our resources with downstream resources
             match our_result {
@@ -154,10 +154,10 @@ fn handle_resources_read(
     req: ReadResourceRequest,
     id: RequestId,
     ctx: &Context,
-    client_stream: Option<&OutputStream>,
+    channel: Option<&NotificationChannel>,
 ) -> Result<ServerResponse, ErrorCode> {
     // Try reading from our capability first
-    match capability::read_resource(ctx, &req, client_stream) {
+    match capability::read_resource(ctx, &req, channel) {
         Some(result) => {
             // Capability handled it - return the result
             Ok(ServerResponse::ResourcesRead(result))
@@ -165,7 +165,7 @@ fn handle_resources_read(
         None => {
             // Capability doesn't handle this URI - try downstream
             let downstream_req = ClientRequest::ResourcesRead(req.clone());
-            match downstream::handle_request(ctx, (&downstream_req, &id), client_stream) {
+            match downstream::handle_request(ctx, (&downstream_req, &id), channel) {
                 Ok(response) => Ok(response),
                 Err(ErrorCode::MethodNotFound(_)) => {
                     // Downstream also doesn't handle it - return InvalidParams
@@ -187,12 +187,12 @@ fn handle_templates_list(
     req: ListResourceTemplatesRequest,
     id: RequestId,
     ctx: &Context,
-    client_stream: Option<&OutputStream>,
+    channel: Option<&NotificationChannel>,
 ) -> Result<ServerResponse, ErrorCode> {
     use bindings::wasmcp::protocol::mcp::ListResourceTemplatesResult;
 
     // Try to get templates from our capability
-    let our_result = match capability::list_resource_templates(ctx, &req, client_stream) {
+    let our_result = match capability::list_resource_templates(ctx, &req, channel) {
         Ok(result) => Some(result),
         Err(ErrorCode::MethodNotFound(_)) => {
             // Capability doesn't implement templates - skip it
@@ -206,7 +206,7 @@ fn handle_templates_list(
 
     // Try to get downstream templates
     let downstream_req = ClientRequest::ResourcesTemplatesList(req.clone());
-    match downstream::handle_request(ctx, (&downstream_req, &id), client_stream) {
+    match downstream::handle_request(ctx, (&downstream_req, &id), channel) {
         Ok(ServerResponse::ResourcesTemplatesList(downstream_result)) => {
             // Merge our templates with downstream templates
             match our_result {

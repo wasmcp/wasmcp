@@ -1,3 +1,4 @@
 # WIT dependencies for calculator example
 
 protocol = "../../../wit/protocol"
+server = "../../../wit/server"

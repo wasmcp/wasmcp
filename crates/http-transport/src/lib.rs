@@ -31,7 +31,7 @@ use bindings::wasi::io::streams::OutputStream;
 use bindings::wasmcp::protocol::mcp::{
     ClientNotification, ClientRequest, ClientResponse, RequestId, ServerResponse,
 };
-use bindings::wasmcp::protocol::server_messages::Context;
+use bindings::wasmcp::server::server_messages::Context;
 use bindings::wasmcp::server::handler::{handle_notification, handle_request, handle_response};
 
 struct HttpTransport;
@@ -165,8 +165,14 @@ fn handle_json_rpc_request(
         data: vec![],
     };
 
-    // Delegate to server-handler (may send notifications via output stream)
-    let result = handle_request(&ctx, (&client_request, &request_id), Some(&output_stream));
+    // Create notification channel that owns the stream
+    let channel = bindings::wasmcp::server::notifications::NotificationChannel::new(output_stream);
+
+    // Delegate to server-handler (may send notifications via channel)
+    let result = handle_request(&ctx, (&client_request, &request_id), Some(&channel));
+
+    // Get the stream back from the channel to write the final response
+    let output_stream = bindings::wasmcp::server::notifications::NotificationChannel::finish(channel);
 
     // Write final JSON-RPC response to SSE stream
     write_sse_response(&output_stream, request_id, result)?;
@@ -831,6 +837,170 @@ fn create_method_not_allowed_response() -> Result<OutgoingResponse, String> {
         .set_status_code(405)
         .map_err(|_| "Failed to set status")?;
     Ok(response)
+}
+
+// Notification channel implementation for SSE transport
+use bindings::exports::wasmcp::server::notifications::{
+    Guest as NotificationsGuest, GuestNotificationChannel, NotificationChannel, NotificationError,
+};
+use std::cell::RefCell;
+
+impl bindings::exports::wasmcp::server::notifications::Guest for HttpTransport {
+    type NotificationChannel = SseNotificationChannel;
+}
+
+/// SSE-based notification channel implementation
+struct SseNotificationChannel {
+    stream: RefCell<Option<OutputStream>>,
+}
+
+impl GuestNotificationChannel for SseNotificationChannel {
+    fn new(output: OutputStream) -> Self {
+        SseNotificationChannel {
+            stream: RefCell::new(Some(output)),
+        }
+    }
+
+    fn finish(channel: NotificationChannel) -> OutputStream {
+        // Extract the inner implementation and take the stream
+        channel.into_inner::<Self>()
+            .stream.borrow_mut()
+            .take()
+            .expect("Stream already taken from notification channel")
+    }
+
+    fn progress(
+        &self,
+        token: bindings::wasmcp::protocol::mcp::ProgressToken,
+        progress: f64,
+        total: Option<f64>,
+        message: Option<String>,
+    ) -> Result<(), NotificationError> {
+        // ProgressToken can be either a string or an integer
+        use bindings::wasmcp::protocol::mcp::ProgressToken;
+        let token_json = match token {
+            ProgressToken::String(s) => serde_json::Value::String(s),
+            ProgressToken::Integer(i) => serde_json::Value::Number(i.into()),
+        };
+        let params = serde_json::json!({
+            "progressToken": token_json,
+            "progress": progress,
+            "total": total,
+            "message": message,
+        });
+        self.write_sse_notification("notifications/progress", params)
+    }
+
+    fn log(
+        &self,
+        message: String,
+        level: bindings::wasmcp::protocol::mcp::LogLevel,
+        logger: Option<String>,
+    ) -> Result<(), NotificationError> {
+        use bindings::wasmcp::protocol::mcp::LogLevel;
+
+        let level_str = match level {
+            LogLevel::Debug => "debug",
+            LogLevel::Info => "info",
+            LogLevel::Notice => "notice",
+            LogLevel::Warning => "warning",
+            LogLevel::Error => "error",
+            LogLevel::Critical => "critical",
+            LogLevel::Alert => "alert",
+            LogLevel::Emergency => "emergency",
+        };
+
+        let params = serde_json::json!({
+            "level": level_str,
+            "message": message,
+            "logger": logger,
+        });
+        self.write_sse_notification("notifications/log", params)
+    }
+
+    fn list_changed(
+        &self,
+        changes: bindings::wasmcp::protocol::mcp::ServerLists,
+    ) -> Result<(), NotificationError> {
+        use bindings::wasmcp::protocol::mcp::ServerLists;
+
+        let mut changed_lists = Vec::new();
+        if changes.contains(ServerLists::TOOLS) {
+            changed_lists.push("tools");
+        }
+        if changes.contains(ServerLists::RESOURCES) {
+            changed_lists.push("resources");
+        }
+        if changes.contains(ServerLists::PROMPTS) {
+            changed_lists.push("prompts");
+        }
+
+        let params = serde_json::json!({
+            "changedLists": changed_lists,
+        });
+        self.write_sse_notification("notifications/list_changed", params)
+    }
+
+    fn updated(
+        &self,
+        updates: bindings::wasmcp::protocol::mcp::ServerSubscriptions,
+    ) -> Result<(), NotificationError> {
+        // TODO: Implement proper serialization for ServerSubscriptions
+        let params = serde_json::json!({
+            "updates": serde_json::Value::Null,
+        });
+        self.write_sse_notification("notifications/updated", params)
+    }
+
+    fn request(
+        &self,
+        request: bindings::wasmcp::protocol::mcp::ServerRequest,
+    ) -> Result<(), NotificationError> {
+        // TODO: Implement proper serialization for ServerRequest
+        let params = serde_json::json!({
+            "request": serde_json::Value::Null,
+        });
+        self.write_sse_notification("notifications/request", params)
+    }
+}
+
+impl SseNotificationChannel {
+    fn write_sse_notification(&self, notification_type: &str, params: serde_json::Value) -> Result<(), NotificationError> {
+        let stream_ref = self.stream.borrow();
+        let stream = stream_ref
+            .as_ref()
+            .ok_or(NotificationError::ChannelClosed)?;
+
+        // Create JSON-RPC notification
+        let notification = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": notification_type,
+            "params": params,
+        });
+
+        // Format as SSE event
+        let json_str = serde_json::to_string(&notification)
+            .map_err(|e| NotificationError::Serialization(e.to_string()))?;
+        let event_data = format!("data: {}\n\n", json_str);
+
+        // Write to stream with chunking
+        let bytes = event_data.as_bytes();
+        let mut offset = 0;
+        const MAX_WRITE: usize = 4096;
+
+        while offset < bytes.len() {
+            let chunk_size = (bytes.len() - offset).min(MAX_WRITE);
+            let chunk = &bytes[offset..offset + chunk_size];
+
+            stream
+                .blocking_write_and_flush(chunk)
+                .map_err(|e| NotificationError::Io(e))?;
+
+            offset += chunk_size;
+        }
+
+        Ok(())
+    }
 }
 
 bindings::export!(HttpTransport with_types_in bindings);

@@ -1,5 +1,5 @@
 package wasmcp:http-notifications@0.1.0;
 
 world http-notifications {
-    export wasmcp:server/notifications@0.1.0-beta.2;
+    export wasmcp:server/notifications@0.1.0-beta.4;
 }

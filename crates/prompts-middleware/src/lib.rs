@@ -17,10 +17,10 @@ mod bindings {
 }
 
 use bindings::exports::wasmcp::server::handler::Guest;
-use bindings::wasi::io::streams::OutputStream;
+use bindings::wasmcp::server::notifications::NotificationChannel;
 use bindings::wasmcp::protocol::mcp::*;
-use bindings::wasmcp::protocol::prompts as capability;
-use bindings::wasmcp::protocol::server_messages::Context;
+use bindings::wasmcp::server::prompts as capability;
+use bindings::wasmcp::server::server_messages::Context;
 use bindings::wasmcp::server::handler as downstream;
 
 struct PromptsMiddleware;
@@ -29,19 +29,19 @@ impl Guest for PromptsMiddleware {
     fn handle_request(
         ctx: Context,
         request: (ClientRequest, RequestId),
-        client_stream: Option<&OutputStream>,
+        channel: Option<&NotificationChannel>,
     ) -> Result<ServerResponse, ErrorCode> {
         let (req, id) = request;
         match req {
             ClientRequest::PromptsList(list_req) => {
-                handle_prompts_list(list_req, id, &ctx, client_stream)
+                handle_prompts_list(list_req, id, &ctx, channel)
             }
             ClientRequest::PromptsGet(get_req) => {
-                handle_prompt_get(get_req, id, &ctx, client_stream)
+                handle_prompt_get(get_req, id, &ctx, channel)
             }
             _ => {
                 // Delegate all other requests to downstream handler
-                downstream::handle_request(&ctx, (&req, &id), client_stream)
+                downstream::handle_request(&ctx, (&req, &id), channel)
             }
         }
     }
@@ -61,12 +61,12 @@ fn handle_prompts_list(
     req: ListPromptsRequest,
     id: RequestId,
     ctx: &Context,
-    client_stream: Option<&OutputStream>,
+    channel: Option<&NotificationChannel>,
 ) -> Result<ServerResponse, ErrorCode> {
     use bindings::wasmcp::protocol::mcp::ListPromptsResult;
 
     // Try to get prompts from our capability
-    let our_result = match capability::list_prompts(ctx, &req, client_stream) {
+    let our_result = match capability::list_prompts(ctx, &req, channel) {
         Ok(result) => Some(result),
         Err(ErrorCode::MethodNotFound(_)) => {
             // Capability doesn't implement prompts interface - skip it
@@ -81,7 +81,7 @@ fn handle_prompts_list(
 
     // Try to get downstream prompts
     let downstream_req = ClientRequest::PromptsList(req.clone());
-    match downstream::handle_request(ctx, (&downstream_req, &id), client_stream) {
+    match downstream::handle_request(ctx, (&downstream_req, &id), channel) {
         Ok(ServerResponse::PromptsList(downstream_result)) => {
             // Merge our prompts with downstream prompts
             match our_result {
@@ -151,10 +151,10 @@ fn handle_prompt_get(
     req: GetPromptRequest,
     id: RequestId,
     ctx: &Context,
-    client_stream: Option<&OutputStream>,
+    channel: Option<&NotificationChannel>,
 ) -> Result<ServerResponse, ErrorCode> {
     // Try getting from our capability first
-    match capability::get_prompt(ctx, &req, client_stream) {
+    match capability::get_prompt(ctx, &req, channel) {
         Some(result) => {
             // Capability handled it - return the result
             Ok(ServerResponse::PromptsGet(result))
@@ -162,7 +162,7 @@ fn handle_prompt_get(
         None => {
             // Capability doesn't handle this prompt - try downstream
             let downstream_req = ClientRequest::PromptsGet(req.clone());
-            match downstream::handle_request(ctx, (&downstream_req, &id), client_stream) {
+            match downstream::handle_request(ctx, (&downstream_req, &id), channel) {
                 Ok(response) => Ok(response),
                 Err(ErrorCode::MethodNotFound(_)) => {
                     // Downstream also doesn't handle it - return InvalidParams

@@ -17,11 +17,11 @@ mod bindings {
 }
 
 use bindings::exports::wasmcp::server::handler::Guest;
-use bindings::wasi::io::streams::OutputStream;
 use bindings::wasmcp::protocol::mcp::*;
-use bindings::wasmcp::protocol::server_messages::Context;
-use bindings::wasmcp::protocol::tools as capability;
+use bindings::wasmcp::server::server_messages::Context;
+use bindings::wasmcp::server::tools as capability;
 use bindings::wasmcp::server::handler as downstream;
+use bindings::wasmcp::server::notifications::NotificationChannel;
 
 struct ToolsMiddleware;
 
@@ -29,19 +29,19 @@ impl Guest for ToolsMiddleware {
     fn handle_request(
         ctx: Context,
         request: (ClientRequest, RequestId),
-        client_stream: Option<&OutputStream>,
+        channel: Option<&NotificationChannel>,
     ) -> Result<ServerResponse, ErrorCode> {
         let (req, id) = request;
         match req {
             ClientRequest::ToolsList(list_req) => {
-                handle_tools_list(list_req, id, &ctx, client_stream)
+                handle_tools_list(list_req, id, &ctx, channel)
             }
             ClientRequest::ToolsCall(call_req) => {
-                handle_tools_call(call_req, id, &ctx, client_stream)
+                handle_tools_call(call_req, id, &ctx, channel)
             }
             _ => {
                 // Delegate all other requests to downstream handler
-                downstream::handle_request(&ctx, (&req, &id), client_stream)
+                downstream::handle_request(&ctx, (&req, &id), channel)
             }
         }
     }
@@ -61,12 +61,12 @@ fn handle_tools_list(
     req: ListToolsRequest,
     id: RequestId,
     ctx: &Context,
-    client_stream: Option<&OutputStream>,
+    channel: Option<&NotificationChannel>,
 ) -> Result<ServerResponse, ErrorCode> {
     use bindings::wasmcp::protocol::mcp::ListToolsResult;
 
     // Try to get tools from our capability
-    let our_result = match capability::list_tools(ctx, &req, client_stream) {
+    let our_result = match capability::list_tools(ctx, &req, channel) {
         Ok(result) => Some(result),
         Err(ErrorCode::MethodNotFound(_)) => {
             // Capability doesn't implement tools interface - skip it
@@ -81,7 +81,7 @@ fn handle_tools_list(
 
     // Try to get downstream tools
     let downstream_req = ClientRequest::ToolsList(req.clone());
-    match downstream::handle_request(ctx, (&downstream_req, &id), client_stream) {
+    match downstream::handle_request(ctx, (&downstream_req, &id), channel) {
         Ok(ServerResponse::ToolsList(downstream_result)) => {
             // Merge our tools with downstream tools
             match our_result {
@@ -151,10 +151,10 @@ fn handle_tools_call(
     req: CallToolRequest,
     id: RequestId,
     ctx: &Context,
-    client_stream: Option<&OutputStream>,
+    channel: Option<&NotificationChannel>,
 ) -> Result<ServerResponse, ErrorCode> {
     // Try calling our capability first
-    match capability::call_tool(ctx, &req, client_stream) {
+    match capability::call_tool(ctx, &req, channel) {
         Some(result) => {
             // Capability handled it - return the result
             Ok(ServerResponse::ToolsCall(result))
@@ -162,7 +162,7 @@ fn handle_tools_call(
         None => {
             // Capability doesn't handle this tool - try downstream
             let downstream_req = ClientRequest::ToolsCall(req.clone());
-            match downstream::handle_request(ctx, (&downstream_req, &id), client_stream) {
+            match downstream::handle_request(ctx, (&downstream_req, &id), channel) {
                 Ok(response) => Ok(response),
                 Err(ErrorCode::MethodNotFound(_)) => {
                     // Downstream also doesn't handle it - return InvalidParams
