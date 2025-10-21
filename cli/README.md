@@ -73,11 +73,20 @@ wasmcp compose dev
 # Mix profiles and components (order preserved)
 wasmcp compose dev extra-component.wasm -o server.wasm
 
-# Stdio transport for local integration
+# Transport options
 wasmcp compose component.wasm -t stdio -o server.wasm
+wasmcp compose component.wasm -t http -o server.wasm
+
+# Force overwrite existing output
+wasmcp compose calc strings -o server.wasm --force
 
 # Verbose output for debugging
 wasmcp compose calc strings -o server.wasm --verbose
+
+# Advanced options
+wasmcp compose calc --deps-dir ./my-deps --skip-download
+wasmcp compose calc --override-transport custom-transport.wasm
+wasmcp compose calc --override-method-not-found custom-handler.wasm
 ```
 
 The CLI automatically detects component types and wraps them with appropriate middleware.
@@ -92,6 +101,76 @@ wasmtime serve -Scli server.wasm
 
 # Stdio
 wasmtime run server.wasm
+```
+
+### MCP Server for AI-Assisted Development
+
+The CLI includes a Model Context Protocol (MCP) server that provides AI assistants with tools and resources for wasmcp development.
+
+#### Start the MCP server
+
+```bash
+# HTTP server on default port 8085
+wasmcp mcp serve
+
+# Custom port
+wasmcp mcp serve --port 9000
+
+# Stdio transport for local integration
+wasmcp mcp serve --stdio
+
+# Enable verbose logging
+wasmcp mcp serve -v
+```
+
+#### Available Tools
+
+The MCP server exposes the following tools:
+
+- **compose** - Compose components into MCP servers with all CLI options (force, verbose, version, deps-dir, skip-download, override options)
+
+#### Available Resources
+
+The server provides read-only access to:
+
+**Documentation** (fetched from GitHub):
+- `wasmcp://docs/readme` - Project README
+- `wasmcp://docs/getting-started` - Getting started guide
+- `wasmcp://docs/wit-protocol` - WIT interface definitions
+- `wasmcp://docs/examples` - Examples overview
+
+**Registry** (from local configuration):
+- `wasmcp://registry/components` - Component aliases (JSON)
+- `wasmcp://registry/profiles` - Composition profiles (JSON)
+- `wasmcp://registry/config` - Full wasmcp.toml configuration
+
+#### Integration
+
+Configure MCP clients to connect to the server:
+
+**Claude Desktop** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "wasmcp": {
+      "command": "wasmcp",
+      "args": ["mcp", "serve", "--stdio"]
+    }
+  }
+}
+```
+
+**HTTP Client**:
+```bash
+curl -X POST http://localhost:8085/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
+```
+
+The MCP server feature is enabled by default. To build without it:
+
+```bash
+cargo build --no-default-features
 ```
 
 ## Architecture

@@ -1,7 +1,7 @@
 [package]
 name = "wasmcp"
 version = "0.4.1"
-edition = "2021"
+edition = "2024"
 rust-version = "1.89"
 authors = ["wasmcp contributors"]
 description = "CLI for scaffolding Model Context Protocol servers as WebAssembly components"
@@ -12,6 +12,10 @@ categories = ["command-line-utilities", "development-tools", "wasm"]
 
 # CLI is a standalone workspace (not part of parent workspace)
 [workspace]
+
+[lib]
+name = "wasmcp"
+path = "src/lib.rs"
 
 [[bin]]
 name = "wasmcp"
@@ -36,6 +40,14 @@ wit-deps = "0.5"
 futures-util = "0.3"
 serde_json = "1.0"
 toml = "0.8"
+
+# MCP server support (always enabled)
+rmcp = { version = "0.8.2", features = ["server", "transport-io", "transport-streamable-http-server", "macros"] }
+schemars = { version = "1.0", features = ["preserve_order"] }
+tracing-subscriber = "0.3"
+axum = "0.8"
+tokio-util = "0.7"
+reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
 
 [dev-dependencies]
 tempfile = "3"

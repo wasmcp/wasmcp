@@ -1,11 +1,14 @@
-mod compose;
+mod commands;
 mod config;
-mod pkg;
-mod scaffold;
+mod types;
 
 use anyhow::{Context, Result};
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::PathBuf;
+use types::{Language, TemplateType, Transport};
+
+// Re-export the default version constant
+use wasmcp::DEFAULT_WASMCP_VERSION;
 
 /// Get the default deps directory from config, or fall back to a relative path
 fn default_deps_dir() -> PathBuf {
@@ -39,7 +42,7 @@ enum Command {
         template_type: TemplateType,
 
         /// wasmcp version to use for WIT dependencies
-        #[arg(long, default_value = "0.1.0-beta.2")]
+        #[arg(long, default_value_t = DEFAULT_WASMCP_VERSION.to_string())]
         version: String,
 
         /// Overwrite existing directory
@@ -108,7 +111,7 @@ enum Command {
         output: Option<PathBuf>,
 
         /// wasmcp version for framework dependencies
-        #[arg(long, default_value = "0.1.0-beta.2")]
+        #[arg(long, default_value_t = DEFAULT_WASMCP_VERSION.to_string())]
         version: String,
 
         /// Override transport component (path or package spec)
@@ -147,6 +150,18 @@ enum Command {
         #[command(subcommand)]
         command: RegistryCommand,
     },
+
+    /// Model Context Protocol (MCP) server commands
+    Mcp {
+        #[command(subcommand)]
+        command: McpCommand,
+    },
+}
+
+#[derive(Parser)]
+enum McpCommand {
+    /// Run MCP server for AI-assisted wasmcp development
+    Serve(commands::server::ServerArgs),
 }
 
 #[derive(Parser)]
@@ -290,59 +305,7 @@ enum ProfileCommand {
     List,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, ValueEnum)]
-#[value(rename_all = "lowercase")]
-enum Language {
-    Rust,
-    Python,
-    TypeScript,
-    // Go template coming soon (blocked on wit-bindgen-go bug)
-    // Go,
-}
-
-impl std::fmt::Display for Language {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Language::Rust => write!(f, "rust"),
-            Language::Python => write!(f, "python"),
-            Language::TypeScript => write!(f, "typescript"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, ValueEnum)]
-#[value(rename_all = "lowercase")]
-enum TemplateType {
-    Tools,
-    Resources,
-    Prompts,
-}
-
-impl std::fmt::Display for TemplateType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TemplateType::Tools => write!(f, "tools"),
-            TemplateType::Resources => write!(f, "resources"),
-            TemplateType::Prompts => write!(f, "prompts"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-#[value(rename_all = "lowercase")]
-enum Transport {
-    Http,
-    Stdio,
-}
-
-impl std::fmt::Display for Transport {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Transport::Http => write!(f, "http"),
-            Transport::Stdio => write!(f, "stdio"),
-        }
-    }
-}
+// Types moved to types.rs module
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -376,9 +339,15 @@ async fn main() -> Result<()> {
             }
 
             // Scaffold the project
-            scaffold::create_project(&output_dir, &name, language, template_type, &version)
-                .await
-                .context("Failed to create project")?;
+            commands::scaffold::create_project(
+                &output_dir,
+                &name,
+                language,
+                template_type,
+                &version,
+            )
+            .await
+            .context("Failed to create project")?;
 
             println!(
                 "Created {} {} component in {}",
@@ -425,7 +394,7 @@ async fn main() -> Result<()> {
 
             // Expand any profiles found in the specs (in-place expansion)
             let (resolved_components, profile_settings) =
-                compose::expand_profile_specs(&all_specs)?;
+                commands::compose::expand_profile_specs(&all_specs)?;
 
             // Determine output path: CLI flag > profile setting > default
             let final_output = match output {
@@ -453,7 +422,7 @@ async fn main() -> Result<()> {
             let final_force = force;
 
             // Create compose options
-            let options = compose::ComposeOptions {
+            let options = commands::compose::ComposeOptions {
                 components: resolved_components,
                 transport: final_transport,
                 output: final_output,
@@ -466,7 +435,7 @@ async fn main() -> Result<()> {
                 verbose,
             };
 
-            compose::compose(options).await
+            commands::compose::compose(options).await
         }
 
         Command::Wit { command } => match command {
@@ -486,7 +455,7 @@ async fn main() -> Result<()> {
                 }
 
                 // Fetch WIT dependencies
-                pkg::fetch_wit_dependencies(&dir, update)
+                commands::pkg::fetch_wit_dependencies(&dir, update)
                     .await
                     .context("Failed to fetch WIT dependencies")?;
 
@@ -600,6 +569,10 @@ async fn main() -> Result<()> {
 
                 Ok(())
             }
+        },
+
+        Command::Mcp { command } => match command {
+            McpCommand::Serve(args) => commands::server::handle_server_command(args).await,
         },
     }
 }

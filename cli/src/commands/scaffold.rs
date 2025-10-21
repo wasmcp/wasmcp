@@ -3,9 +3,9 @@
 //! This module provides functionality to generate new handler component projects
 //! from embedded templates. Templates are included at compile-time using include_dir.
 
-use crate::{pkg, Language, TemplateType};
+use crate::{Language, TemplateType, commands::pkg};
 use anyhow::{Context, Result};
-use include_dir::{include_dir, Dir};
+use include_dir::{Dir, include_dir};
 use liquid::ParserBuilder;
 use std::fs;
 use std::path::Path;

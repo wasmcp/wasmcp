@@ -118,6 +118,8 @@ use std::path::PathBuf;
 /// # Examples
 ///
 /// ```
+/// use wasmcp::config::utils::is_path_spec;
+///
 /// assert!(is_path_spec("./handler.wasm"));
 /// assert!(is_path_spec("../target/handler.wasm"));
 /// assert!(is_path_spec("/abs/path/handler.wasm"));
@@ -159,6 +161,8 @@ pub fn is_path_spec(spec: &str) -> bool {
 /// # Examples
 ///
 /// ```
+/// use wasmcp::config::utils::is_registry_spec;
+///
 /// assert!(is_registry_spec("wasmcp:calculator@0.1.0"));
 /// assert!(is_registry_spec("namespace:name"));
 /// assert!(!is_registry_spec("./handler.wasm"));
@@ -260,10 +264,12 @@ mod tests {
         // Non-existent path should error
         let result = canonicalize_path("/this/path/definitely/does/not/exist.wasm");
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("does not exist or cannot be resolved"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("does not exist or cannot be resolved")
+        );
     }
 
     #[test]

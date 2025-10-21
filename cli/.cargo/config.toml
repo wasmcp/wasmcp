@@ -1,9 +1,0 @@
-# CLI workspace configuration
-#
-# The CLI is excluded from the parent workspace and builds as a native binary.
-# We create an empty [build] section here to prevent inheriting the parent's
-# wasm32-wasip2 target, allowing cargo to use the host's default target.
-
-[build]
-# Empty - uses host default target (x86_64-unknown-linux-gnu, aarch64-apple-darwin, etc.)
-

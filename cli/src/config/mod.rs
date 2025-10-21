@@ -12,16 +12,19 @@
 //! ## Usage
 //!
 //! ```rust
-//! use crate::config;
+//! use wasmcp::config;
 //!
+//! # fn example() -> anyhow::Result<()> {
 //! // Load config (returns default if file doesn't exist)
-//! let config = config::load_config()?;
+//! let config = config::io::load_config()?;
 //!
 //! // Register a component alias
-//! config::register_component("calc", "wasmcp:calculator@0.1.0")?;
+//! config::io::register_component("calc", "wasmcp:calculator@0.1.0")?;
 //!
 //! // Get paths
-//! let deps_dir = config::get_deps_dir()?;
+//! let deps_dir = config::paths::get_deps_dir()?;
+//! # Ok(())
+//! # }
 //! ```
 
 pub mod io;

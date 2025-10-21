@@ -72,10 +72,15 @@ pub fn save_config(config: &WasmcpConfig) -> Result<()> {
 /// # Example
 ///
 /// ```rust
+/// use wasmcp::config::io::update_config;
+///
+/// # fn example() -> anyhow::Result<()> {
 /// update_config(|config| {
 ///     config.components.insert("calc".to_string(), "wasmcp:calculator@0.1.0".to_string());
 ///     Ok(())
 /// })?;
+/// # Ok(())
+/// # }
 /// ```
 pub fn update_config<F>(f: F) -> Result<()>
 where
@@ -306,10 +311,12 @@ mod tests {
                 "Expected '{}' to be invalid, but it was accepted",
                 name
             );
-            assert!(result
-                .unwrap_err()
-                .to_string()
-                .contains("must contain only alphanumeric"));
+            assert!(
+                result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("must contain only alphanumeric")
+            );
         }
     }
 

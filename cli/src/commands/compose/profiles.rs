@@ -3,7 +3,7 @@
 //! This module handles resolving profiles with base inheritance and merging
 //! profile components with direct component specifications.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::collections::HashSet;
 
 use crate::config;

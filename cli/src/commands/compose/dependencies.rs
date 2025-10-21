@@ -6,7 +6,7 @@
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
-use crate::pkg;
+use crate::commands::pkg;
 
 /// Type alias for the package client used throughout composition
 pub type PackageClient =
@@ -91,12 +91,13 @@ pub fn get_dependency_path(name: &str, version: &str, deps_dir: &Path) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::DEFAULT_WASMCP_VERSION;
 
     #[test]
     fn test_interface_naming_server_handler() {
         assert_eq!(
-            interfaces::server_handler("0.1.0-beta.2"),
-            "wasmcp:server/handler@0.1.0-beta.2"
+            interfaces::server_handler(DEFAULT_WASMCP_VERSION),
+            format!("wasmcp:server/handler@{}", DEFAULT_WASMCP_VERSION).as_str()
         );
         assert_eq!(
             interfaces::server_handler("1.0.0"),
@@ -107,8 +108,8 @@ mod tests {
     #[test]
     fn test_interface_naming_tools() {
         assert_eq!(
-            interfaces::tools("0.1.0-beta.2"),
-            "wasmcp:protocol/tools@0.1.0-beta.2"
+            interfaces::tools(DEFAULT_WASMCP_VERSION),
+            format!("wasmcp:protocol/tools@{}", DEFAULT_WASMCP_VERSION).as_str()
         );
         assert_eq!(interfaces::tools("1.0.0"), "wasmcp:protocol/tools@1.0.0");
     }
@@ -116,12 +117,12 @@ mod tests {
     #[test]
     fn test_package_naming() {
         assert_eq!(
-            interfaces::package("http-transport", "0.1.0-beta.2"),
-            "wasmcp:http-transport@0.1.0-beta.2"
+            interfaces::package("http-transport", DEFAULT_WASMCP_VERSION),
+            format!("wasmcp:http-transport@{}", DEFAULT_WASMCP_VERSION).as_str()
         );
         assert_eq!(
-            interfaces::package("method-not-found", "0.1.0-beta.2"),
-            "wasmcp:method-not-found@0.1.0-beta.2"
+            interfaces::package("method-not-found", DEFAULT_WASMCP_VERSION),
+            format!("wasmcp:method-not-found@{}", DEFAULT_WASMCP_VERSION).as_str()
         );
         assert_eq!(
             interfaces::package("tools-middleware", "1.0.0"),
@@ -143,7 +144,7 @@ mod tests {
         use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();
-        let result = get_dependency_path("http-transport", "0.1.0-beta.2", temp_dir.path());
+        let result = get_dependency_path("http-transport", DEFAULT_WASMCP_VERSION, temp_dir.path());
 
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
@@ -157,13 +158,13 @@ mod tests {
         use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();
-        let filename = "wasmcp_http-transport@0.1.0-beta.2.wasm";
+        let filename = format!("wasmcp_http-transport@{}.wasm", DEFAULT_WASMCP_VERSION);
         let file_path = temp_dir.path().join(filename);
 
         // Create empty file
         std::fs::write(&file_path, b"").unwrap();
 
-        let result = get_dependency_path("http-transport", "0.1.0-beta.2", temp_dir.path());
+        let result = get_dependency_path("http-transport", DEFAULT_WASMCP_VERSION, temp_dir.path());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), file_path);
     }
