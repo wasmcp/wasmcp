@@ -37,6 +37,15 @@ futures-util = "0.3"
 serde_json = "1.0"
 toml = "0.8"
 
+# MCP server support (optional feature)
+rmcp = { version = "0.8", features = ["server", "transport-io", "macros"], optional = true }
+schemars = { version = "1.0", features = ["preserve_order"], optional = true }
+tracing-subscriber = { version = "0.3", optional = true }
+
+[features]
+default = []
+server = ["rmcp", "schemars", "tracing-subscriber"]
+
 [dev-dependencies]
 tempfile = "3"
 assert_cmd = "2"

@@ -1,3 +1,5 @@
+#[cfg(feature = "server")]
+mod commands;
 mod compose;
 mod config;
 mod pkg;
@@ -147,6 +149,10 @@ enum Command {
         #[command(subcommand)]
         command: RegistryCommand,
     },
+
+    /// Run MCP server for AI-assisted wasmcp development
+    #[cfg(feature = "server")]
+    Server(commands::server::ServerArgs),
 }
 
 #[derive(Parser)]
@@ -601,6 +607,9 @@ async fn main() -> Result<()> {
                 Ok(())
             }
         },
+
+        #[cfg(feature = "server")]
+        Command::Server(args) => commands::server::handle_server_command(args).await,
     }
 }
 
