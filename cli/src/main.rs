@@ -1,5 +1,6 @@
 mod commands;
 mod config;
+mod logging;
 mod types;
 
 use anyhow::{Context, Result};
