@@ -44,7 +44,9 @@ toml = "0.8"
 # MCP server support (always enabled)
 rmcp = { version = "0.8.2", features = ["server", "transport-io", "transport-streamable-http-server", "macros"] }
 schemars = { version = "1.0", features = ["preserve_order"] }
-tracing-subscriber = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
 axum = "0.8"
 tokio-util = "0.7"
 reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }

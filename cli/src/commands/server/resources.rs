@@ -1,6 +1,7 @@
 use rmcp::ErrorData as McpError;
 use rmcp::model::*;
 use std::path::Path;
+use tracing::{debug, error, info, instrument, warn};
 
 const GITHUB_REPO: &str = "https://raw.githubusercontent.com/wasmcp/wasmcp";
 const DEFAULT_BRANCH: &str = "main";
@@ -207,12 +208,14 @@ impl WasmcpResources {
         })
     }
 
+    #[instrument(skip(client, _project_root), fields(uri = %uri))]
     pub async fn read(
         client: &reqwest::Client,
         uri: &str,
         _project_root: &Path,
     ) -> Result<ReadResourceResult, McpError> {
-        match uri {
+        info!("Reading resource");
+        let result = match uri {
             // Documentation from GitHub (main branch)
             "wasmcp://docs/readme" => {
                 Self::fetch_github_file(client, DEFAULT_BRANCH, "README.md").await
@@ -261,40 +264,79 @@ impl WasmcpResources {
                 Self::read_branch_resource(client, uri).await
             }
 
-            _ => Err(McpError::resource_not_found(uri.to_string(), None)),
+            _ => {
+                warn!("Resource not found: {}", uri);
+                Err(McpError::resource_not_found(uri.to_string(), None))
+            }
+        };
+
+        match &result {
+            Ok(_) => info!("Successfully read resource"),
+            Err(e) => error!("Failed to read resource: {:?}", e),
         }
+
+        result
     }
 
     /// Parse and fetch a branch-specific resource from template URI
+    #[instrument(skip(client), fields(uri = %uri))]
     async fn read_branch_resource(
         client: &reqwest::Client,
         uri: &str,
     ) -> Result<ReadResourceResult, McpError> {
+        info!("Parsing branch resource URI");
         // Parse URI pattern: wasmcp://branch/{branch}/{namespace}/{resource}
-        let parts: Vec<&str> = uri.strip_prefix("wasmcp://branch/")
-            .ok_or_else(|| McpError::invalid_params(
-                format!("Invalid branch resource URI: {}", uri),
-                None,
-            ))?
-            .split('/')
-            .collect();
+        // Branch names can contain '/' (e.g., feat/my-feature)
+        let remainder = uri.strip_prefix("wasmcp://branch/")
+            .ok_or_else(|| {
+                error!("Invalid branch resource URI prefix");
+                McpError::invalid_params(
+                    format!("Invalid branch resource URI: {}", uri),
+                    None,
+                )
+            })?;
 
-        if parts.len() < 3 {
+        // Find the namespace by looking for known namespaces
+        debug!("Parsing remainder: {}", remainder);
+        let (branch, namespace, resource) = if let Some(idx) = remainder.find("/docs/") {
+            let branch = &remainder[..idx];
+            let rest = &remainder[idx + 1..]; // Skip the '/'
+            debug!("Found /docs/ at index {}, branch: {}, rest: {}", idx, branch, rest);
+            if let Some((ns, res)) = rest.split_once('/') {
+                (branch, ns, res)
+            } else {
+                error!("Failed to split rest into namespace/resource");
+                return Err(McpError::invalid_params(
+                    format!("Invalid URI format: {}", uri),
+                    None,
+                ));
+            }
+        } else if let Some(idx) = remainder.find("/wit/") {
+            let branch = &remainder[..idx];
+            let rest = &remainder[idx + 1..];
+            debug!("Found /wit/ at index {}, branch: {}, rest: {}", idx, branch, rest);
+            if let Some((ns, res)) = rest.split_once('/') {
+                (branch, ns, res)
+            } else {
+                error!("Failed to split rest into namespace/resource");
+                return Err(McpError::invalid_params(
+                    format!("Invalid URI format: {}", uri),
+                    None,
+                ));
+            }
+        } else {
+            error!("No /docs/ or /wit/ namespace found in remainder");
             return Err(McpError::invalid_params(
-                format!(
-                    "Branch resource URI must be wasmcp://branch/{{branch}}/{{namespace}}/{{resource}}, got: {}",
-                    uri
-                ),
+                format!("URI must contain /docs/ or /wit/ namespace: {}", uri),
                 None,
             ));
-        }
+        };
 
-        let branch = parts[0];
-        let namespace = parts[1];
-        let resource = &parts[2..].join("/");
+        info!("Parsed branch: {}, namespace: {}, resource: {}", branch, namespace, resource);
 
-        // Validate branch name (basic security check)
-        if !branch.chars().all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == '_') {
+        // Validate branch name (basic security check - allow /, -, _, . and alphanumeric)
+        if !branch.chars().all(|c| c.is_alphanumeric() || c == '/' || c == '.' || c == '-' || c == '_') {
+            error!("Invalid characters in branch name: {}", branch);
             return Err(McpError::invalid_params(
                 format!("Invalid branch name: {}", branch),
                 None,
@@ -303,7 +345,7 @@ impl WasmcpResources {
 
         // Map namespace and resource to file path
         let file_path = match namespace {
-            "docs" => match resource.as_str() {
+            "docs" => match resource {
                 "readme" => "README.md",
                 "getting-started" => "docs/getting-started.md",
                 "cli" => "cli/README.md",
@@ -313,14 +355,20 @@ impl WasmcpResources {
                 _ => return Err(McpError::resource_not_found(uri.to_string(), None)),
             },
             "wit" => {
-                if parts.len() < 4 {
-                    return Err(McpError::invalid_params(
-                        format!("WIT resource URI must include protocol or server: {}", uri),
+                // resource is like "protocol/mcp" or "server/handler"
+                let mut wit_parts = resource.split('/');
+                let wit_namespace = wit_parts.next().ok_or_else(|| {
+                    McpError::invalid_params(
+                        format!("WIT resource must include protocol or server: {}", uri),
                         None,
-                    ));
-                }
-                let wit_namespace = parts[2]; // "protocol" or "server"
-                let wit_resource = parts[3];
+                    )
+                })?;
+                let wit_resource = wit_parts.next().ok_or_else(|| {
+                    McpError::invalid_params(
+                        format!("WIT resource must include resource name: {}", uri),
+                        None,
+                    )
+                })?;
                 match (wit_namespace, wit_resource) {
                     ("protocol", "mcp") => "wit/protocol/mcp.wit",
                     ("protocol", "features") => "wit/protocol/features.wit",
@@ -336,14 +384,18 @@ impl WasmcpResources {
         Self::fetch_github_file(client, branch, file_path).await
     }
 
+    #[instrument(skip(client), fields(branch = %branch, path = %path))]
     async fn fetch_github_file(
         client: &reqwest::Client,
         branch: &str,
         path: &str,
     ) -> Result<ReadResourceResult, McpError> {
         let url = format!("{}/{}/{}", GITHUB_REPO, branch, path);
+        info!("Fetching from GitHub: {}", url);
 
+        debug!("Sending HTTP GET request");
         let response = client.get(&url).send().await.map_err(|e| {
+            error!("HTTP request failed: {}", e);
             McpError::internal_error(
                 format!("Failed to fetch from GitHub: {}", e),
                 Some(serde_json::json!({
@@ -354,18 +406,24 @@ impl WasmcpResources {
             )
         })?;
 
-        if !response.status().is_success() {
+        let status = response.status();
+        debug!("Received HTTP response with status: {}", status);
+
+        if !status.is_success() {
+            error!("Non-success status code: {}", status);
             return Err(McpError::internal_error(
-                format!("GitHub returned status {}: {}", response.status(), url),
+                format!("GitHub returned status {}: {}", status, url),
                 Some(serde_json::json!({
                     "url": url,
-                    "status_code": response.status().as_u16(),
-                    "status": response.status().to_string(),
+                    "status_code": status.as_u16(),
+                    "status": status.to_string(),
                 })),
             ));
         }
 
+        debug!("Reading response body");
         let content = response.text().await.map_err(|e| {
+            error!("Failed to read response body: {}", e);
             McpError::internal_error(
                 format!("Failed to read response: {}", e),
                 Some(serde_json::json!({
@@ -375,7 +433,11 @@ impl WasmcpResources {
             )
         })?;
 
+        let content_len = content.len();
+        debug!("Successfully read {} bytes from GitHub", content_len);
+
         let uri_str = format!("wasmcp://docs/{}", path.replace('/', "-"));
+        info!("Successfully fetched resource from GitHub, size: {} bytes", content_len);
 
         Ok(ReadResourceResult {
             contents: vec![ResourceContents::text(content, uri_str)],

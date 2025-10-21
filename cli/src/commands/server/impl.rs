@@ -193,12 +193,23 @@ impl ServerHandler for WasmcpServer {
 }
 
 pub async fn start_server(port: Option<u16>, verbose: bool) -> Result<()> {
+    // Set log level based on verbose flag (must be done before init)
     if verbose {
-        tracing_subscriber::fmt()
-            .with_target(false)
-            .with_level(true)
-            .init();
+        // SAFETY: This is safe because we're setting it before any threads are spawned
+        // and before any code reads this variable. The server is single-threaded at this point.
+        unsafe {
+            std::env::set_var("RUST_LOG", "wasmcp=debug,rmcp=debug");
+        }
     }
+
+    // Initialize logging to XDG data directory
+    crate::logging::init()?;
+
+    if verbose {
+        tracing::info!("Verbose logging enabled");
+    }
+
+    tracing::info!("Starting wasmcp MCP server");
 
     let project_root = std::env::current_dir()?;
     let server = WasmcpServer::new(project_root)?;
