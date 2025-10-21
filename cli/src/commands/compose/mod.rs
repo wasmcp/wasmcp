@@ -26,7 +26,7 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
-use crate::{config, pkg};
+use crate::{commands::pkg, config};
 
 // Public re-exports
 pub use self::dependencies::PackageClient;

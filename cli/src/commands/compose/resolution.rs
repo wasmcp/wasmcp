@@ -9,7 +9,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 
-use crate::{config, pkg};
+use crate::{commands::pkg, config};
 
 use super::dependencies::PackageClient;
 

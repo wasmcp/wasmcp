@@ -260,11 +260,44 @@ pub async fn start_server(port: Option<u16>, verbose: bool) -> Result<()> {
             let service = server.serve(stdio()).await?;
             service.waiting().await?;
         }
-        Some(_port) => {
-            // HTTP transport (Phase 2)
-            anyhow::bail!("HTTP transport not yet implemented. Use stdio mode (omit --port flag).");
+        Some(port) => {
+            start_http_server(server, port).await?;
         }
     }
+
+    Ok(())
+}
+
+async fn start_http_server(server: WasmcpServer, port: u16) -> Result<()> {
+    use rmcp::transport::streamable_http_server::{
+        StreamableHttpService, session::local::LocalSessionManager,
+    };
+    use std::net::SocketAddr;
+
+    let addr: SocketAddr = format!("127.0.0.1:{}", port).parse()?;
+
+    eprintln!("Starting wasmcp MCP server (HTTP/Streamable mode)...");
+    eprintln!("Listening on http://{}", addr);
+    eprintln!("MCP endpoint: http://{}/mcp", addr);
+
+    // Create streamable HTTP service
+    let service = StreamableHttpService::new(
+        move || Ok(server.clone()),
+        LocalSessionManager::default().into(),
+        Default::default(),
+    );
+
+    // Create router with single /mcp endpoint
+    let router = axum::Router::new().nest_service("/mcp", service);
+
+    // Start the HTTP server
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, router)
+        .with_graceful_shutdown(async {
+            tokio::signal::ctrl_c().await.ok();
+            eprintln!("Received shutdown signal...");
+        })
+        .await?;
 
     Ok(())
 }

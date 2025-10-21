@@ -18,6 +18,34 @@ pub struct ComposeArgs {
     /// Transport type (http or stdio)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transport: Option<String>,
+
+    /// Overwrite existing output file
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub force: Option<bool>,
+
+    /// Enable verbose output
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verbose: Option<bool>,
+
+    /// wasmcp version for framework dependencies
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+
+    /// Directory for dependency components
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deps_dir: Option<String>,
+
+    /// Skip downloading dependencies
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skip_download: Option<bool>,
+
+    /// Override transport component
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub override_transport: Option<String>,
+
+    /// Override method-not-found component
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub override_method_not_found: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -77,6 +105,34 @@ pub async fn compose_tool(args: ComposeArgs) -> Result<CallToolResult, McpError>
 
     if let Some(transport) = &args.transport {
         cmd.arg("--transport").arg(transport);
+    }
+
+    if args.force == Some(true) {
+        cmd.arg("--force");
+    }
+
+    if args.verbose == Some(true) {
+        cmd.arg("--verbose");
+    }
+
+    if let Some(version) = &args.version {
+        cmd.arg("--version").arg(version);
+    }
+
+    if let Some(deps_dir) = &args.deps_dir {
+        cmd.arg("--deps-dir").arg(deps_dir);
+    }
+
+    if args.skip_download == Some(true) {
+        cmd.arg("--skip-download");
+    }
+
+    if let Some(override_transport) = &args.override_transport {
+        cmd.arg("--override-transport").arg(override_transport);
+    }
+
+    if let Some(override_mnf) = &args.override_method_not_found {
+        cmd.arg("--override-method-not-found").arg(override_mnf);
     }
 
     let output = cmd.output()

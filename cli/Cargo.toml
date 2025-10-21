@@ -1,7 +1,7 @@
 [package]
 name = "wasmcp"
 version = "0.4.1"
-edition = "2021"
+edition = "2024"
 rust-version = "1.89"
 authors = ["wasmcp contributors"]
 description = "CLI for scaffolding Model Context Protocol servers as WebAssembly components"
@@ -38,13 +38,15 @@ serde_json = "1.0"
 toml = "0.8"
 
 # MCP server support (optional feature)
-rmcp = { version = "0.8", features = ["server", "transport-io", "macros"], optional = true }
+rmcp = { version = "0.8.2", features = ["server", "transport-io", "transport-streamable-http-server", "macros"], optional = true }
 schemars = { version = "1.0", features = ["preserve_order"], optional = true }
 tracing-subscriber = { version = "0.3", optional = true }
+axum = { version = "0.8", optional = true }
+tokio-util = { version = "0.7", optional = true }
 
 [features]
 default = []
-server = ["rmcp", "schemars", "tracing-subscriber"]
+server = ["rmcp", "schemars", "tracing-subscriber", "axum", "tokio-util"]
 
 [dev-dependencies]
 tempfile = "3"

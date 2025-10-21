@@ -6,7 +6,7 @@
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
-use crate::pkg;
+use crate::commands::pkg;
 
 /// Type alias for the package client used throughout composition
 pub type PackageClient =

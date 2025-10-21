@@ -1,9 +1,5 @@
-#[cfg(feature = "server")]
 mod commands;
-mod compose;
 mod config;
-mod pkg;
-mod scaffold;
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
@@ -382,7 +378,7 @@ async fn main() -> Result<()> {
             }
 
             // Scaffold the project
-            scaffold::create_project(&output_dir, &name, language, template_type, &version)
+            commands::scaffold::create_project(&output_dir, &name, language, template_type, &version)
                 .await
                 .context("Failed to create project")?;
 
@@ -431,7 +427,7 @@ async fn main() -> Result<()> {
 
             // Expand any profiles found in the specs (in-place expansion)
             let (resolved_components, profile_settings) =
-                compose::expand_profile_specs(&all_specs)?;
+                commands::compose::expand_profile_specs(&all_specs)?;
 
             // Determine output path: CLI flag > profile setting > default
             let final_output = match output {
@@ -459,7 +455,7 @@ async fn main() -> Result<()> {
             let final_force = force;
 
             // Create compose options
-            let options = compose::ComposeOptions {
+            let options = commands::compose::ComposeOptions {
                 components: resolved_components,
                 transport: final_transport,
                 output: final_output,
@@ -472,7 +468,7 @@ async fn main() -> Result<()> {
                 verbose,
             };
 
-            compose::compose(options).await
+            commands::compose::compose(options).await
         }
 
         Command::Wit { command } => match command {
@@ -492,7 +488,7 @@ async fn main() -> Result<()> {
                 }
 
                 // Fetch WIT dependencies
-                pkg::fetch_wit_dependencies(&dir, update)
+                commands::pkg::fetch_wit_dependencies(&dir, update)
                     .await
                     .context("Failed to fetch WIT dependencies")?;
 
