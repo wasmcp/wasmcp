@@ -27,7 +27,8 @@ use bindings::wasi::cli::environment::get_environment;
 use bindings::wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
-use bindings::wasi::io::streams::OutputStream;
+use bindings::wasi::io::streams::{OutputStream, Pollable};
+use bindings::wasi::io::poll::poll;
 use bindings::wasmcp::protocol::mcp::{
     ClientNotification, ClientRequest, ClientResponse, RequestId, ServerResponse,
 };
@@ -171,10 +172,8 @@ fn handle_json_rpc_request(
     // Write final JSON-RPC response to SSE stream
     write_sse_response(&output_stream, request_id, result)?;
 
-    // Drop output_stream to finalize it
+    // Drop stream and finish body
     drop(output_stream);
-
-    // Finish the body to finalize the stream
     OutgoingBody::finish(body, None).map_err(|_| "Failed to finish body")?;
 
     Ok(response)
@@ -491,21 +490,33 @@ fn serialize_capabilities(
 fn write_chunked(output_stream: &OutputStream, bytes: &[u8]) -> Result<(), String> {
     use bindings::wasi::io::streams::StreamError;
 
+    // Write using check_write() to respect budget
     let mut offset = 0;
-    const MAX_WRITE: usize = 4096;
-
     while offset < bytes.len() {
-        let chunk_size = (bytes.len() - offset).min(MAX_WRITE);
-        let chunk = &bytes[offset..offset + chunk_size];
-
-        output_stream
-            .blocking_write_and_flush(chunk)
-            .map_err(|e| match e {
-                StreamError::LastOperationFailed(_) => "Stream write failed".to_string(),
-                StreamError::Closed => "Stream closed".to_string(),
-            })?;
-
-        offset += chunk_size;
+        match output_stream.check_write() {
+            Ok(0) => {
+                // No budget available - stop writing silently
+                break;
+            }
+            Ok(budget) => {
+                // Write only what the budget allows
+                let chunk_size = (bytes.len() - offset).min(budget as usize);
+                let chunk = &bytes[offset..offset + chunk_size];
+                output_stream
+                    .write(chunk)
+                    .map_err(|e| match e {
+                        StreamError::LastOperationFailed(_) => "Stream write failed".to_string(),
+                        StreamError::Closed => "Stream closed".to_string(),
+                    })?;
+                offset += chunk_size;
+            }
+            Err(e) => {
+                return Err(match e {
+                    StreamError::LastOperationFailed(_) => "Stream check failed".to_string(),
+                    StreamError::Closed => "Stream closed".to_string(),
+                });
+            }
+        }
     }
 
     Ok(())
@@ -757,23 +768,30 @@ fn write_sse_response(
     // Format as SSE event
     let event_data = serializer::format_sse_event(&json_rpc);
 
-    // Write to output stream in chunks (blocking-write-and-flush limited to 4096 bytes per WASI spec)
+    // Write using check_write() to respect budget, matching calculator behavior
     let bytes = event_data.as_bytes();
     let mut offset = 0;
-    const MAX_WRITE: usize = 4096;
-
     while offset < bytes.len() {
-        let chunk_size = (bytes.len() - offset).min(MAX_WRITE);
-        let chunk = &bytes[offset..offset + chunk_size];
-
-        output_stream
-            .blocking_write_and_flush(chunk)
-            .map_err(|e| match e {
-                StreamError::LastOperationFailed(_) => "Stream write failed".to_string(),
-                StreamError::Closed => "Stream closed".to_string(),
-            })?;
-
-        offset += chunk_size;
+        match output_stream.check_write() {
+            Ok(0) => break, // No budget available - stop writing
+            Ok(budget) => {
+                let chunk_size = (bytes.len() - offset).min(budget as usize);
+                let chunk = &bytes[offset..offset + chunk_size];
+                output_stream
+                    .write(chunk)
+                    .map_err(|e| match e {
+                        StreamError::LastOperationFailed(_) => "Stream write failed".to_string(),
+                        StreamError::Closed => "Stream closed".to_string(),
+                    })?;
+                offset += chunk_size;
+            }
+            Err(e) => {
+                return Err(match e {
+                    StreamError::LastOperationFailed(_) => "Stream check-write failed".to_string(),
+                    StreamError::Closed => "Stream closed".to_string(),
+                });
+            }
+        }
     }
 
     Ok(())
@@ -803,18 +821,23 @@ fn create_error_response(error: String) -> OutgoingResponse {
             });
             let error_text = serde_json::to_string(&error_json).unwrap_or_else(|_| error.clone());
 
-            // Write in 4096-byte chunks per WASI spec
+            // Write using check_write() to respect budget
             let bytes = error_text.as_bytes();
             let mut offset = 0;
-            const MAX_WRITE: usize = 4096;
-
             while offset < bytes.len() {
-                let chunk_size = (bytes.len() - offset).min(MAX_WRITE);
-                let chunk = &bytes[offset..offset + chunk_size];
-                if stream.blocking_write_and_flush(chunk).is_err() {
+                if let Ok(budget) = stream.check_write() {
+                    if budget == 0 {
+                        break;
+                    }
+                    let chunk_size = (bytes.len() - offset).min(budget as usize);
+                    let chunk = &bytes[offset..offset + chunk_size];
+                    if stream.write(chunk).is_err() {
+                        break;
+                    }
+                    offset += chunk_size;
+                } else {
                     break;
                 }
-                offset += chunk_size;
             }
 
             drop(stream);
