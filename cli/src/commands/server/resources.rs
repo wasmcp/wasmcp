@@ -13,11 +13,11 @@ impl WasmcpResources {
         let resource_templates = vec![
             // Documentation templates
             RawResourceTemplate {
-                uri_template: "wasmcp://branch/{branch}/docs/{resource}".into(),
+                uri_template: "wasmcp://branch/{branch}/resources/{resource}".into(),
                 name: "Branch-specific Documentation".into(),
                 title: None,
                 description: Some(
-                    "Access documentation from specific Git branches (e.g., develop, v0.4.0). Available resources: readme, getting-started, cli, architecture, examples, wit-interfaces"
+                    "Access documentation from specific Git branches (e.g., develop, v0.4.0). Available resources: building-servers, registry, reference, architecture"
                         .into(),
                 ),
                 mime_type: Some("text/markdown".into()),
@@ -57,63 +57,43 @@ impl WasmcpResources {
 
     pub fn list_all(_project_root: &Path) -> Result<ListResourcesResult, McpError> {
         let resources = vec![
-            // Documentation resources from GitHub
+            // Documentation resources from GitHub (docs/resources/)
             RawResource {
-                uri: "wasmcp://docs/readme".into(),
-                name: "wasmcp Project README".into(),
+                uri: "wasmcp://resources/building-servers".into(),
+                name: "Building MCP Servers".into(),
                 mime_type: Some("text/markdown".into()),
                 title: None,
-                description: Some("Main project overview and quick start guide".into()),
+                description: Some("Complete workflow: create components (wasmcp new), build (make/cargo), compose into servers (local paths, OCI packages like wasmcp:math@version, aliases, profiles), and run (wasmtime serve/run). Use for 'how do I build/add/run' questions. See 'reference' for detailed command flags and format specifications.".into()),
                 size: None,
                 icons: None,
             }
             .no_annotation(),
             RawResource {
-                uri: "wasmcp://docs/getting-started".into(),
-                name: "Getting Started Guide".into(),
+                uri: "wasmcp://resources/registry".into(),
+                name: "Registry Management".into(),
                 mime_type: Some("text/markdown".into()),
                 title: None,
-                description: Some("Step-by-step tutorial for creating your first MCP component with wasmcp".into()),
+                description: Some("Component aliases and composition profiles for efficient reuse. Create short names for components (wasmcp registry component add), save multi-component compositions (wasmcp registry profile add), and use them in compose. Use for 'what is registry/alias/profile' or 'how do I save/reuse compositions'. Configuration stored in ~/.config/wasmcp/config.toml.".into()),
                 size: None,
                 icons: None,
             }
             .no_annotation(),
             RawResource {
-                uri: "wasmcp://docs/cli".into(),
+                uri: "wasmcp://resources/reference".into(),
                 name: "CLI Reference".into(),
                 mime_type: Some("text/markdown".into()),
                 title: None,
-                description: Some("Detailed CLI command documentation and advanced usage".into()),
+                description: Some("Quick reference for CLI commands, component formats, and options. Includes: all wasmcp command flags, component specification formats (path vs OCI namespace:name@version vs alias detection), template types (tools/resources/prompts), transport options, config file format. Use for 'what flags/options/formats exist' or when you need exact syntax.".into()),
                 size: None,
                 icons: None,
             }
             .no_annotation(),
             RawResource {
-                uri: "wasmcp://docs/architecture".into(),
+                uri: "wasmcp://resources/architecture".into(),
                 name: "Architecture Guide".into(),
                 mime_type: Some("text/markdown".into()),
                 title: None,
-                description: Some("Component model, composition pipeline, and capability/middleware pattern explanation".into()),
-                size: None,
-                icons: None,
-            }
-            .no_annotation(),
-            RawResource {
-                uri: "wasmcp://docs/examples".into(),
-                name: "Examples Overview".into(),
-                mime_type: Some("text/markdown".into()),
-                title: None,
-                description: Some("Overview of example components (calculator-rs, strings-py, weather-ts) with learning path".into()),
-                size: None,
-                icons: None,
-            }
-            .no_annotation(),
-            RawResource {
-                uri: "wasmcp://docs/wit-interfaces".into(),
-                name: "WIT Interface Reference".into(),
-                mime_type: Some("text/markdown".into()),
-                title: None,
-                description: Some("Complete WIT interface documentation with protocol and server package overview".into()),
+                description: Some("Conceptual overview: how wasmcp works internally. Covers capability/middleware pattern, composition pipeline (chain of responsibility), handler interfaces, and component model. Use for 'how does X work', 'why use components', or understanding design decisions. Read 'building-servers' for practical workflow.".into()),
                 size: None,
                 icons: None,
             }
@@ -216,24 +196,18 @@ impl WasmcpResources {
     ) -> Result<ReadResourceResult, McpError> {
         info!("Reading resource");
         let result = match uri {
-            // Documentation from GitHub (main branch)
-            "wasmcp://docs/readme" => {
-                Self::fetch_github_file(client, DEFAULT_BRANCH, "README.md").await
+            // Documentation from GitHub (main branch - docs/resources/)
+            "wasmcp://resources/building-servers" => {
+                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/resources/building-servers.md").await
             }
-            "wasmcp://docs/getting-started" => {
-                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/getting-started.md").await
+            "wasmcp://resources/registry" => {
+                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/resources/registry.md").await
             }
-            "wasmcp://docs/cli" => {
-                Self::fetch_github_file(client, DEFAULT_BRANCH, "cli/README.md").await
+            "wasmcp://resources/reference" => {
+                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/resources/reference.md").await
             }
-            "wasmcp://docs/architecture" => {
-                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/architecture.md").await
-            }
-            "wasmcp://docs/examples" => {
-                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/examples.md").await
-            }
-            "wasmcp://docs/wit-interfaces" => {
-                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/wit-interfaces.md").await
+            "wasmcp://resources/architecture" => {
+                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/resources/architecture.md").await
             }
 
             // WIT protocol interfaces from GitHub (main branch)
@@ -298,10 +272,10 @@ impl WasmcpResources {
 
         // Find the namespace by looking for known namespaces
         debug!("Parsing remainder: {}", remainder);
-        let (branch, namespace, resource) = if let Some(idx) = remainder.find("/docs/") {
+        let (branch, namespace, resource) = if let Some(idx) = remainder.find("/resources/") {
             let branch = &remainder[..idx];
             let rest = &remainder[idx + 1..]; // Skip the '/'
-            debug!("Found /docs/ at index {}, branch: {}, rest: {}", idx, branch, rest);
+            debug!("Found /resources/ at index {}, branch: {}, rest: {}", idx, branch, rest);
             if let Some((ns, res)) = rest.split_once('/') {
                 (branch, ns, res)
             } else {
@@ -325,9 +299,9 @@ impl WasmcpResources {
                 ));
             }
         } else {
-            error!("No /docs/ or /wit/ namespace found in remainder");
+            error!("No /resources/ or /wit/ namespace found in remainder");
             return Err(McpError::invalid_params(
-                format!("URI must contain /docs/ or /wit/ namespace: {}", uri),
+                format!("URI must contain /resources/ or /wit/ namespace: {}", uri),
                 None,
             ));
         };
@@ -345,13 +319,11 @@ impl WasmcpResources {
 
         // Map namespace and resource to file path
         let file_path = match namespace {
-            "docs" => match resource {
-                "readme" => "README.md",
-                "getting-started" => "docs/getting-started.md",
-                "cli" => "cli/README.md",
-                "architecture" => "docs/architecture.md",
-                "examples" => "docs/examples.md",
-                "wit-interfaces" => "docs/wit-interfaces.md",
+            "resources" => match resource {
+                "building-servers" => "docs/resources/building-servers.md",
+                "registry" => "docs/resources/registry.md",
+                "reference" => "docs/resources/reference.md",
+                "architecture" => "docs/resources/architecture.md",
                 _ => return Err(McpError::resource_not_found(uri.to_string(), None)),
             },
             "wit" => {

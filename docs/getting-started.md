@@ -56,16 +56,29 @@ This generates a complete project with:
 - README with language-specific details
 
 **Available languages:**
-- `--language rust` - Rust (default, see `cli/templates/rust-tools/`)
-- `--language python` - Python (see `cli/templates/python-tools/`)
-- `--language typescript` - TypeScript (see `cli/templates/typescript-tools/`)
+- `--language rust` - Rust (default)
+- `--language python` - Python
+- `--language typescript` - TypeScript
 
-**Available capabilities:**
-- Tools (default) - For executing actions
-- Resources - For exposing data/files
-- Prompts - For providing prompt templates
+**Available component types (--template-type flag):**
 
-See `cli/templates/` for all template combinations.
+```bash
+# Tools component (default) - For executing actions
+wasmcp new my-tools --language rust --template-type tools
+
+# Resources component - For exposing data/files
+wasmcp new my-resources --language rust --template-type resources
+
+# Prompts component - For providing prompt templates
+wasmcp new my-prompts --language rust --template-type prompts
+```
+
+If `--template-type` is omitted, it defaults to `tools`.
+
+**Template locations:**
+- Tools: `cli/templates/rust-tools/`, `cli/templates/python-tools/`, `cli/templates/typescript-tools/`
+- Resources: `cli/templates/rust-resources/`, `cli/templates/python-resources/`, `cli/templates/typescript-resources/`
+- Prompts: `cli/templates/rust-prompts/`, `cli/templates/python-prompts/`, `cli/templates/typescript-prompts/`
 
 ### 2. Build the Component
 
@@ -104,10 +117,22 @@ wasmcp registry component list
 
 ### 4. Compose
 
-Create a complete MCP server from your component:
+Create a complete MCP server from your component. You can compose from:
+- **Local paths**: `./component.wasm`, `target/wasm32-wasip2/release/calc.wasm`
+- **Registry aliases**: `calc` (registered with `wasmcp registry component add`)
+- **OCI packages**: `wasmcp:calculator@0.1.0`, `namespace:component@version`
+
+**Important**: OCI packages use the format `namespace:name@version` (NOT full registry URLs like `ghcr.io/...`)
 
 ```bash
+# Using a registered alias
 wasmcp compose calc -o server.wasm
+
+# Using a local path
+wasmcp compose ./target/wasm32-wasip2/release/calculator.wasm -o server.wasm
+
+# Using an OCI package (downloads from registry)
+wasmcp compose wasmcp:calculator@0.1.0 -o server.wasm
 ```
 
 This:
@@ -117,7 +142,7 @@ This:
 4. Adds method-not-found handler (from `crates/method-not-found/`)
 5. Composes them into a complete server pipeline
 
-The CLI automatically downloads framework components from `ghcr.io/wasmcp` on first use.
+The CLI automatically downloads framework components from the `wasmcp` namespace (which maps to `ghcr.io/wasmcp`) on first use.
 
 **Composition options:**
 ```bash
@@ -139,6 +164,8 @@ See `cli/README.md` for advanced composition options.
 ## Run the Server
 
 ### 5. Start the Server
+
+**Note**: Composed servers are run with `wasmtime` (the WebAssembly runtime), not `wasmcp`. The `wasmcp mcp serve` command is only for running the wasmcp CLI's own MCP server for development assistance.
 
 **HTTP transport:**
 ```bash
