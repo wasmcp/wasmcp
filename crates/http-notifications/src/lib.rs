@@ -157,9 +157,7 @@ fn write_sse_event(
             Ok(budget) => {
                 let chunk_size = (bytes.len() - offset).min(budget as usize);
                 let chunk = &bytes[offset..offset + chunk_size];
-                stream
-                    .write(chunk)
-                    .map_err(|e| NotificationError::Io(e))?;
+                stream.write(chunk).map_err(|e| NotificationError::Io(e))?;
                 offset += chunk_size;
             }
             Err(e) => {

@@ -27,8 +27,8 @@ use bindings::wasi::cli::environment::get_environment;
 use bindings::wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
-use bindings::wasi::io::streams::{OutputStream, Pollable};
 use bindings::wasi::io::poll::poll;
+use bindings::wasi::io::streams::{OutputStream, Pollable};
 use bindings::wasmcp::protocol::mcp::{
     ClientNotification, ClientRequest, ClientResponse, RequestId, ServerResponse,
 };
@@ -502,12 +502,10 @@ fn write_chunked(output_stream: &OutputStream, bytes: &[u8]) -> Result<(), Strin
                 // Write only what the budget allows
                 let chunk_size = (bytes.len() - offset).min(budget as usize);
                 let chunk = &bytes[offset..offset + chunk_size];
-                output_stream
-                    .write(chunk)
-                    .map_err(|e| match e {
-                        StreamError::LastOperationFailed(_) => "Stream write failed".to_string(),
-                        StreamError::Closed => "Stream closed".to_string(),
-                    })?;
+                output_stream.write(chunk).map_err(|e| match e {
+                    StreamError::LastOperationFailed(_) => "Stream write failed".to_string(),
+                    StreamError::Closed => "Stream closed".to_string(),
+                })?;
                 offset += chunk_size;
             }
             Err(e) => {
@@ -777,12 +775,10 @@ fn write_sse_response(
             Ok(budget) => {
                 let chunk_size = (bytes.len() - offset).min(budget as usize);
                 let chunk = &bytes[offset..offset + chunk_size];
-                output_stream
-                    .write(chunk)
-                    .map_err(|e| match e {
-                        StreamError::LastOperationFailed(_) => "Stream write failed".to_string(),
-                        StreamError::Closed => "Stream closed".to_string(),
-                    })?;
+                output_stream.write(chunk).map_err(|e| match e {
+                    StreamError::LastOperationFailed(_) => "Stream write failed".to_string(),
+                    StreamError::Closed => "Stream closed".to_string(),
+                })?;
                 offset += chunk_size;
             }
             Err(e) => {
