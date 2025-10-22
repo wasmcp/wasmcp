@@ -11,7 +11,7 @@
 /// This interface provides types for passing request-scoped context and metadata
 /// between handler components. The options pattern enables flexible, extensible
 /// context passing without rigid record structures.
-@since(version = 0.1.0-alpha.8)
+@since(version = 0.1.0)
 interface server-messages {
     use wasi:io/streams@0.2.3.{
         output-stream,
@@ -23,7 +23,7 @@ interface server-messages {
     };
 
     /// Client identity information for authentication/authorization and sessions.
-    @since(version = 0.1.0-alpha.8)
+    @since(version = 0.1.0)
     record context {
         /// Authentication/authorization claims.
         ///
@@ -53,7 +53,7 @@ interface server-messages {
 /// Export this interface to provide MCP tools functionality.
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
-@since(version = 0.1.0-alpha.8)
+@since(version = 0.1.0)
 interface tools {
     use wasi:io/streams@0.2.3.{
         output-stream,
@@ -71,7 +71,7 @@ interface tools {
     };
 
     /// List tools provided by this component.
-    @since(version = 0.1.0-alpha.8)
+    @since(version = 0.1.0)
     list-tools: func(
         ctx: context,
         request: list-tools-request,
@@ -79,7 +79,7 @@ interface tools {
     ) -> result<list-tools-result, error-code>;
 
     /// Execute a tool call. Return none for unrecognized tools.
-    @since(version = 0.1.0-alpha.8)
+    @since(version = 0.1.0)
     call-tool: func(
         ctx: context,
         request: call-tool-request,
@@ -92,7 +92,7 @@ interface tools {
 /// Export this interface to provide MCP resources functionality.
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
-@since(version = 0.1.0-alpha.8)
+@since(version = 0.1.0)
 interface resources {
     use wasi:io/streams@0.2.3.{
         output-stream,
@@ -111,7 +111,7 @@ interface resources {
     };
 
     /// List resources provided by this component.
-    @since(version = 0.1.0-alpha.8)
+    @since(version = 0.1.0)
     list-resources: func(
         ctx: context,
         request: list-resources-request,
@@ -119,7 +119,7 @@ interface resources {
     ) -> result<list-resources-result, error-code>;
 
     /// Read a resource by URI. Return none for unrecognized URIs.
-    @since(version = 0.1.0-alpha.8)
+    @since(version = 0.1.0)
     read-resource: func(
         ctx: context,
         request: read-resource-request,
@@ -127,7 +127,7 @@ interface resources {
     ) -> option<read-resource-result>;
 
     /// List resource templates (RFC 6570 URI templates).
-    @since(version = 0.1.0-alpha.8)
+    @since(version = 0.1.0)
     list-resource-templates: func(
         ctx: context,
         request: list-resource-templates-request,
@@ -140,7 +140,7 @@ interface resources {
 /// Export this interface to provide MCP prompts functionality.
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
-@since(version = 0.1.0-alpha.8)
+@since(version = 0.1.0)
 interface prompts {
     use wasi:io/streams@0.2.3.{
         output-stream,
@@ -157,7 +157,7 @@ interface prompts {
     };
 
     /// List prompts provided by this component.
-    @since(version = 0.1.0-alpha.8)
+    @since(version = 0.1.0)
     list-prompts: func(
         ctx: context,
         request: list-prompts-request,
@@ -165,7 +165,7 @@ interface prompts {
     ) -> result<list-prompts-result, error-code>;
 
     /// Get a prompt by name. Return none for unrecognized prompts.
-    @since(version = 0.1.0-alpha.8)
+    @since(version = 0.1.0)
     get-prompt: func(
         ctx: context,
         request: get-prompt-request,
@@ -178,7 +178,7 @@ interface prompts {
 /// Export this interface to provide argument completions for prompts and resources.
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
-@since(version = 0.1.0-alpha.8)
+@since(version = 0.1.0)
 interface completions {
     use wasi:io/streams@0.2.3.{
         output-stream,
@@ -194,7 +194,7 @@ interface completions {
 
     /// Provide completion suggestions for prompt or resource arguments.
     /// Return none for unsupported references.
-    @since(version = 0.1.0-alpha.8)
+    @since(version = 0.1.0)
     complete: func(
         ctx: context,
         request: complete-request,
