@@ -2,7 +2,7 @@ package wasmcp:http-transport@0.1.0;
 
 world http-transport {
     include wasi:http/proxy@0.2.3;
-    include wasmcp:server/transport@0.1.0-beta.2;
+    include wasmcp:server/transport@0.1.0;
     // Servers MUST validate the Origin header on all incoming connections to prevent DNS rebinding attacks.
     // https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#security-warning
     import wasi:cli/environment@0.2.3;

@@ -22,18 +22,18 @@ sha256 = "d2de617fe31ec0abc6072f75f97dd22bf95b3231d5b3111471d73871df9081cd"
 sha512 = "6f0b4e44c684d760c54552e2bde9bc976e0a4f6525fc1d47acb98625e030847276436242f42a41f4da1bb9169fb2968c53d659d61af9b2f709f4eb6f9880e2c7"
 
 [protocol]
-url = "https://github.com/wasmcp/wasmcp/releases/download/protocol-v0.1.0-beta.2/wasmcp-protocol-0.1.0-beta.2-source.tar.gz"
-sha256 = "c0c9c7057f1e5a420ae4d9a5703dfc4e7a0903f223688072fb0cb99476b0a787"
-sha512 = "61e8a25396ffeff62fc4c08cce1c2426e22563a1a5e9994c7dae5649704f22099a325104db41de578e3e3b46541c0b7acf9f81da0728b2b66a115a0994b9e235"
+url = "https://github.com/wasmcp/wasmcp/releases/download/protocol-v0.1.0/wasmcp-protocol-0.1.0-source.tar.gz"
+sha256 = "5c0ca5333076b50689dad759788a1c063e57181a3a43cd5ab1dd3db4cc915134"
+sha512 = "fd1e41c1b3397a2072b0deb8006902ffaa3d79e6ebcbc7ce61a35966ad81f93783c9bccb15946ab897ffe712935f64c5119d22df0b19f5b7d5280e91e9fc9fd0"
 
 [random]
 sha256 = "dd0c91e7125172eb8fd4568e15ad9fc7305643015e6ece4396c3cc5e8c2bf79a"
 sha512 = "d1ca2e7b0616a94a3b39d1b9450bb3fb595b01fd94a8626ad75433038dde40988ecb41ab93a374d569ab72163af3b30038d7bfc3499b9c07193181f4f1d9292a"
 
 [server]
-url = "https://github.com/wasmcp/wasmcp/releases/download/server-v0.1.0-beta.2/wasmcp-server-0.1.0-beta.2-source.tar.gz"
-sha256 = "c007c7c6918d3917a5b4e1dec76e1433203a7f363c3f18e4c75ffd263e110e96"
-sha512 = "99eafb1a9012c4db5cd5bef7ecb22f0ae51cd5e5dca967f058bfd16720913d3218970f67a90ed81702488eb9c1b157427e189ea6a9decbd3769a76e374fba888"
+url = "https://github.com/wasmcp/wasmcp/releases/download/server-v0.1.0/wasmcp-server-0.1.0-source.tar.gz"
+sha256 = "a1ea8b795eb6042305091b381901d73dda124dbe21d7a6c590e835ef010154e0"
+sha512 = "e75be5b8341219308bcce561973921224bc5f3954c4d3f89ace7daf3d08c6ac31c7c15d9d78537e464be72bfc35c9daad4c8c53cd3c1789e6d0e657703e0dd5f"
 deps = ["keyvalue"]
 
 [sockets]
