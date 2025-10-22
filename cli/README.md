@@ -60,38 +60,88 @@ wasmcp registry profile remove dev
 
 ### Compose components into a server
 
+Components can be specified in multiple formats:
+
+#### Component Specification Formats
+
+**Registry Packages (OCI):**
 ```bash
-# Using file paths
-wasmcp compose component.wasm -o server.wasm
+# Format: namespace:name[@version]
+# The colon (:) identifies it as a registry package
 
-# Using aliases
-wasmcp compose calc strings -o server.wasm
+wasmcp compose wasmcp:calculator@0.1.0 -o server.wasm    # With version (recommended)
+wasmcp compose wasmcp:calculator -o server.wasm          # Latest version
+wasmcp compose namespace:handler@2.0.0 -o server.wasm   # Custom namespace
+```
 
-# Using profiles
-wasmcp compose dev
+Registry packages are downloaded from OCI registries (e.g., `ghcr.io/wasmcp`) and cached in `~/.config/wasmcp/deps/`.
 
-# Mix profiles and components (order preserved)
-wasmcp compose dev extra-component.wasm -o server.wasm
+**Local File Paths:**
+```bash
+# Detected by: starts with ./ ../ ~/ / or contains / or ends with .wasm
 
-# Transport options
-wasmcp compose component.wasm -t stdio -o server.wasm
-wasmcp compose component.wasm -t http -o server.wasm
+wasmcp compose ./component.wasm -o server.wasm           # Relative path
+wasmcp compose ../target/handler.wasm -o server.wasm    # Parent directory
+wasmcp compose /abs/path/component.wasm -o server.wasm  # Absolute path
+wasmcp compose ~/projects/handler.wasm -o server.wasm   # Home directory
+wasmcp compose handler.wasm -o server.wasm              # Current directory
+```
 
+**Aliases:**
+```bash
+# Registered in ~/.config/wasmcp/wasmcp.toml
+
+wasmcp compose calc strings -o server.wasm              # Using aliases
+```
+
+**Profiles:**
+```bash
+# Expand to multiple components in-place
+
+wasmcp compose dev                                       # Profile (uses profile output)
+wasmcp compose dev -o custom.wasm                        # Override profile output
+```
+
+**Mixed Formats:**
+```bash
+# You can mix any combination
+
+wasmcp compose dev calc ./local.wasm wasmcp:remote@1.0 -o server.wasm
+```
+
+#### Transport Options
+
+```bash
+wasmcp compose component.wasm -t stdio -o server.wasm   # Stdio transport
+wasmcp compose component.wasm -t http -o server.wasm    # HTTP transport (default)
+```
+
+#### Advanced Options
+
+```bash
 # Force overwrite existing output
 wasmcp compose calc strings -o server.wasm --force
 
-# Verbose output for debugging
+# Verbose output for debugging resolution
 wasmcp compose calc strings -o server.wasm --verbose
 
-# Advanced options
+# Custom dependency directory
 wasmcp compose calc --deps-dir ./my-deps --skip-download
+
+# Override framework components
 wasmcp compose calc --override-transport custom-transport.wasm
 wasmcp compose calc --override-method-not-found custom-handler.wasm
 ```
 
-The CLI automatically detects component types and wraps them with appropriate middleware.
+**Resolution order:** profile → alias → path → registry package
 
-**Resolution order:** Each spec is checked as profile → alias → path → registry package. Profiles expand in-place, preserving component order.
+**Detection rules:**
+- Contains `:` → Registry package (OCI)
+- Contains `/` or `\` → File path
+- Ends with `.wasm` → File path
+- Otherwise → Alias or profile
+
+The CLI automatically detects component types and wraps them with appropriate middleware.
 
 ### Run the server
 

@@ -63,14 +63,29 @@ enum Command {
     /// Each component can handle specific MCP methods and delegates unknown
     /// requests to the next component in the chain.
     ///
-    /// Components can be specified as:
-    ///   - Profile names: Automatically expanded in-place to their components
-    ///   - Aliases: Short names registered in the registry
-    ///   - Local paths: ./my-handler.wasm or /abs/path/handler.wasm
-    ///   - Package specs: wasmcp:calculator@0.1.0 or namespace:name@version
+    /// Components can be specified in multiple formats:
     ///
-    /// Resolution order: Each spec is checked as profile → alias → path → registry package.
-    /// Profiles expand in-place, preserving component order.
+    ///   Registry Packages (OCI):
+    ///     namespace:name[@version]  - Downloaded from OCI registry
+    ///     wasmcp:calculator@0.1.0   - With version (recommended)
+    ///     wasmcp:calculator         - Latest version
+    ///     Note: Colon (:) is the key identifier for registry packages
+    ///
+    ///   Local Paths:
+    ///     ./my-handler.wasm         - Relative path
+    ///     ../target/handler.wasm    - Parent directory
+    ///     /abs/path/handler.wasm    - Absolute path
+    ///     ~/handler.wasm            - Home directory
+    ///     handler.wasm              - Current directory
+    ///
+    ///   Aliases:
+    ///     calc                      - Resolves via ~/.config/wasmcp/wasmcp.toml
+    ///
+    ///   Profiles:
+    ///     dev-server                - Expands to multiple components
+    ///
+    /// Resolution order: profile → alias → path → registry package
+    /// Detection: Contains ':' = registry, contains '/' or ends '.wasm' = path
     ///
     /// Output path resolution (highest priority wins):
     ///   1. Explicit -o flag: Always used when provided
@@ -78,10 +93,12 @@ enum Command {
     ///   3. Default: "mcp-server.wasm" when no profile or -o flag is specified
     ///
     /// Examples:
-    ///   wasmcp compose dev                              # Uses dev profile's components and output
-    ///   wasmcp compose base calc strings                # base profile + two components
-    ///   wasmcp compose dev extra.wasm -o server.wasm   # Override profile output
-    ///   wasmcp compose ./handler.wasm                   # Single component, default output
+    ///   wasmcp compose wasmcp:calculator@0.1.0          # Registry package with version
+    ///   wasmcp compose wasmcp:calculator                # Registry package (latest)
+    ///   wasmcp compose dev                              # Profile
+    ///   wasmcp compose calc strings                     # Aliases
+    ///   wasmcp compose ./handler.wasm                   # Local file
+    ///   wasmcp compose dev extra.wasm -o server.wasm   # Mixed: profile + local file
     Compose {
         /// (Optional) Profile(s) for backward compatibility with -p flag
         ///
