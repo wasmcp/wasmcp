@@ -120,11 +120,6 @@ wasmcp compose ./logger.wasm wasmcp:calculator@1.0 weather -o server.wasm
 
 When a client requests `tools/list`, each component that offers tools contributes their tools, creating a unified catalog automatically.
 
-**Component Detection:**
-- Contains `:` → Registry package (downloaded from OCI registry)
-- Contains `/` or ends with `.wasm` → File path
-- Otherwise → Alias or profile name
-
 ## Registry
 
 `wasmcp registry` allows for simple artifact aliases and reusable composition profiles.

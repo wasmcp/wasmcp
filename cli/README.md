@@ -135,12 +135,6 @@ wasmcp compose calc --override-method-not-found custom-handler.wasm
 
 **Resolution order:** profile → alias → path → registry package
 
-**Detection rules:**
-- Contains `:` → Registry package (OCI)
-- Contains `/` or `\` → File path
-- Ends with `.wasm` → File path
-- Otherwise → Alias or profile
-
 The CLI automatically detects component types and wraps them with appropriate middleware.
 
 ### Run the server
