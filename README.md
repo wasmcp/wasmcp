@@ -102,12 +102,20 @@ This enables dynamic composition without complex configuration - like Unix pipes
 
 ### Example Composition
 
-```bash
-# Single calculator handler
-wasmcp compose calculator.wasm -o server.wasm
+Components can be specified as local paths, registry packages (OCI), aliases, or profiles:
 
-# Multiple handlers in a pipeline
-wasmcp compose logger.wasm calculator.wasm weather.wasm -o server.wasm
+```bash
+# Local file path
+wasmcp compose ./calculator.wasm -o server.wasm
+
+# Registry package (OCI) - colon identifies it as a registry spec
+wasmcp compose wasmcp:calculator@0.1.0 -o server.wasm
+
+# Aliases (registered in ~/.config/wasmcp/wasmcp.toml)
+wasmcp compose calc weather -o server.wasm
+
+# Mixed: local path + registry package + alias
+wasmcp compose ./logger.wasm wasmcp:calculator@1.0 weather -o server.wasm
 ```
 
 When a client requests `tools/list`, each component that offers tools contributes their tools, creating a unified catalog automatically.
@@ -121,15 +129,20 @@ When a client requests `tools/list`, each component that offers tools contribute
 Register short names for frequently-used components:
 
 ```bash
-# Register local components
+# Register local components (file paths)
 wasmcp registry component add calc ./calculator.wasm
 wasmcp registry component add weather ./weather-tools.wasm
 
-# Register from registry
+# Register from OCI registry (namespace:name@version)
 wasmcp registry component add db wasmcp:database@1.0.0
+wasmcp registry component add logger namespace:logger@2.0.0
 
-# Use in composition
+# Aliases can also reference other aliases
+wasmcp registry component add prod-calc calc
+
+# Use aliases in composition
 wasmcp compose calc weather -o server.wasm
+wasmcp compose db logger -o server.wasm
 
 # List and manage
 wasmcp registry component list
