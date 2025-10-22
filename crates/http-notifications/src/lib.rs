@@ -147,20 +147,25 @@ fn write_sse_event(
     })?;
     let event_data = format!("data: {}\n\n", json_str);
 
-    // Write in 4096-byte chunks per WASI spec
+    // Write using check_write() to respect budget
     let bytes = event_data.as_bytes();
     let mut offset = 0;
-    const MAX_WRITE: usize = 4096;
 
     while offset < bytes.len() {
-        let chunk_size = (bytes.len() - offset).min(MAX_WRITE);
-        let chunk = &bytes[offset..offset + chunk_size];
-
-        stream
-            .blocking_write_and_flush(chunk)
-            .map_err(|e| NotificationError::Io(e))?;
-
-        offset += chunk_size;
+        match stream.check_write() {
+            Ok(0) => break, // No budget available - stop writing
+            Ok(budget) => {
+                let chunk_size = (bytes.len() - offset).min(budget as usize);
+                let chunk = &bytes[offset..offset + chunk_size];
+                stream
+                    .write(chunk)
+                    .map_err(|e| NotificationError::Io(e))?;
+                offset += chunk_size;
+            }
+            Err(e) => {
+                return Err(NotificationError::Io(e));
+            }
+        }
     }
 
     Ok(())

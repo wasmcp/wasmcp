@@ -11,6 +11,7 @@ mod bindings {
 
 use bindings::exports::wasmcp::protocol::tools::Guest;
 use bindings::wasmcp::protocol::mcp::*;
+use bindings::wasmcp::server::notifications;
 use bindings::wasi::io::streams::OutputStream;
 
 struct Calculator;
@@ -175,7 +176,13 @@ fn execute_factorial(
 
     // Send initial progress notification if stream is available
     if let Some(stream) = client_stream {
-        send_log_notification(stream, &format!("Starting factorial calculation for {}!", n), "info", Some("factorial"));
+        let msg = format!("Starting factorial calculation for {}!", n);
+        let _ = notifications::log(
+            stream,
+            &msg,
+            LogLevel::Info,
+            Some("factorial"),
+        );
     }
 
     // Calculate factorial with progress updates
@@ -191,10 +198,11 @@ fn execute_factorial(
         // Send progress notification every few steps (to avoid overwhelming)
         if let Some(stream) = client_stream {
             if i % 3 == 0 || i == n {
-                send_log_notification(
+                let msg = format!("Computing: {} * {} = {}", i, result / i, result);
+                let _ = notifications::log(
                     stream,
-                    &format!("Computing: {} * {} = {}", i, result / i, result),
-                    "debug",
+                    &msg,
+                    LogLevel::Debug,
                     Some("factorial"),
                 );
             }
@@ -203,7 +211,13 @@ fn execute_factorial(
 
     // Send completion notification
     if let Some(stream) = client_stream {
-        send_log_notification(stream, &format!("Factorial calculation complete: {}! = {}", n, result), "info", Some("factorial"));
+        let msg = format!("Factorial calculation complete: {}! = {}", n, result);
+        let _ = notifications::log(
+            stream,
+            &msg,
+            LogLevel::Info,
+            Some("factorial"),
+        );
     }
 
     success_result(result.to_string())
@@ -227,81 +241,6 @@ fn parse_factorial_arg(arguments: &Option<String>) -> Result<u64, String> {
     }
 
     Ok(n)
-}
-
-// Helper functions for sending notifications via SSE
-
-fn send_log_notification(
-    stream: &OutputStream,
-    message: &str,
-    level: &str,
-    logger: Option<&str>,
-) {
-    let notification = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "notifications/message",
-        "params": {
-            "level": level,
-            "logger": logger,
-            "data": message,
-        }
-    });
-
-    write_sse_event(stream, &notification);
-}
-
-fn send_progress_notification(
-    stream: &OutputStream,
-    token: &str,
-    progress: f64,
-    total: Option<f64>,
-    message: Option<&str>,
-) {
-    let mut params = serde_json::json!({
-        "progressToken": token,
-        "progress": progress,
-    });
-
-    if let Some(t) = total {
-        params["total"] = serde_json::json!(t);
-    }
-
-    if let Some(msg) = message {
-        params["message"] = serde_json::json!(msg);
-    }
-
-    let notification = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "notifications/progress",
-        "params": params,
-    });
-
-    write_sse_event(stream, &notification);
-}
-
-fn write_sse_event(stream: &OutputStream, data: &serde_json::Value) {
-    // Format as SSE exactly like http-transport does
-    if let Ok(json_str) = serde_json::to_string(data) {
-        let event_data = format!("data: {}\n\n", json_str);
-        let bytes = event_data.as_bytes();
-
-        // Write using check_write() to respect budget (like http-transport)
-        let mut offset = 0;
-        while offset < bytes.len() {
-            match stream.check_write() {
-                Ok(0) => break, // No budget available
-                Ok(budget) => {
-                    let chunk_size = (bytes.len() - offset).min(budget as usize);
-                    let chunk = &bytes[offset..offset + chunk_size];
-                    if stream.write(chunk).is_err() {
-                        break;
-                    }
-                    offset += chunk_size;
-                }
-                Err(_) => break,
-            }
-        }
-    }
 }
 
 bindings::export!(Calculator with_types_in bindings);
