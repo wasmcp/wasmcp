@@ -1,6 +1,6 @@
 //! Calculator Tools Capability Provider
 //!
-//! A tools capability that provides basic calculator operations.
+//! A tools capability that provides basic calculator operations with notification support.
 
 mod bindings {
     wit_bindgen::generate!({
@@ -11,6 +11,7 @@ mod bindings {
 
 use bindings::exports::wasmcp::protocol::tools::Guest;
 use bindings::wasmcp::protocol::mcp::*;
+use bindings::wasmcp::server::notifications;
 use bindings::wasi::io::streams::OutputStream;
 
 struct Calculator;
@@ -21,6 +22,7 @@ impl Guest for Calculator {
         _request: ListToolsRequest,
         _client_stream: Option<&OutputStream>,
     ) -> Result<ListToolsResult, ErrorCode> {
+
         Ok(ListToolsResult {
             tools: vec![
                 Tool {
@@ -55,6 +57,29 @@ impl Guest for Calculator {
                     .to_string(),
                     options: None,
                 },
+                Tool {
+                    name: "factorial".to_string(),
+                    input_schema: r#"{
+                        "type": "object",
+                        "properties": {
+                            "n": {
+                                "type": "integer",
+                                "description": "Calculate factorial of this number",
+                                "minimum": 0,
+                                "maximum": 20
+                            }
+                        },
+                        "required": ["n"]
+                    }"#
+                    .to_string(),
+                    options: Some(ToolOptions {
+                        meta: None,
+                        annotations: None,
+                        description: Some("Calculate factorial with progress updates".to_string()),
+                        output_schema: None,
+                        title: Some("Factorial".to_string()),
+                    }),
+                },
             ],
             next_cursor: None,
             meta: None,
@@ -62,13 +87,14 @@ impl Guest for Calculator {
     }
 
     fn call_tool(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        ctx: bindings::wasmcp::protocol::server_messages::Context,
         request: CallToolRequest,
-        _client_stream: Option<&OutputStream>,
+        client_stream: Option<&OutputStream>,
     ) -> Option<CallToolResult> {
         match request.name.as_str() {
             "add" => Some(execute_operation(&request.arguments, |a, b| a + b)),
             "subtract" => Some(execute_operation(&request.arguments, |a, b| a - b)),
+            "factorial" => Some(execute_factorial(&ctx, &request, client_stream)),
             _ => None, // We don't handle this tool
         }
     }
@@ -130,6 +156,91 @@ fn error_result(message: String) -> CallToolResult {
         meta: None,
         structured_content: None,
     }
+}
+
+// Calculates factorial with SSE notifications demonstrating progress updates.
+// Note: When running with wasmtime serve, use `-S http-outgoing-body-buffer-chunks=10`
+// to ensure sufficient buffer for streaming multiple notifications plus the final response.
+fn execute_factorial(
+    _ctx: &bindings::wasmcp::protocol::server_messages::Context,
+    request: &CallToolRequest,
+    client_stream: Option<&OutputStream>,
+) -> CallToolResult {
+    // Parse the argument to get n
+    let n = match parse_factorial_arg(&request.arguments) {
+        Ok(n) => n,
+        Err(msg) => {
+            return error_result(msg);
+        }
+    };
+
+    // Send initial progress notification if stream is available
+    if let Some(stream) = client_stream {
+        let msg = format!("Starting factorial calculation for {}!", n);
+        let _ = notifications::log(
+            stream,
+            &msg,
+            LogLevel::Info,
+            Some("factorial"),
+        );
+    }
+
+    // Calculate factorial with progress updates
+    let mut result: u64 = 1;
+    for i in 1..=n {
+        match result.checked_mul(i) {
+            Some(val) => result = val,
+            None => {
+                return error_result(format!("Integer overflow: {}! is too large", n));
+            }
+        }
+
+        // Send progress notification every few steps (to avoid overwhelming)
+        if let Some(stream) = client_stream {
+            if i % 3 == 0 || i == n {
+                let msg = format!("Computing: {} * {} = {}", i, result / i, result);
+                let _ = notifications::log(
+                    stream,
+                    &msg,
+                    LogLevel::Debug,
+                    Some("factorial"),
+                );
+            }
+        }
+    }
+
+    // Send completion notification
+    if let Some(stream) = client_stream {
+        let msg = format!("Factorial calculation complete: {}! = {}", n, result);
+        let _ = notifications::log(
+            stream,
+            &msg,
+            LogLevel::Info,
+            Some("factorial"),
+        );
+    }
+
+    success_result(result.to_string())
+}
+
+fn parse_factorial_arg(arguments: &Option<String>) -> Result<u64, String> {
+    let args_str = arguments
+        .as_ref()
+        .ok_or_else(|| "Missing arguments".to_string())?;
+
+    let json: serde_json::Value =
+        serde_json::from_str(args_str).map_err(|e| format!("Invalid JSON arguments: {}", e))?;
+
+    let n = json
+        .get("n")
+        .and_then(|v| v.as_u64())
+        .ok_or_else(|| "Missing or invalid parameter 'n'".to_string())?;
+
+    if n > 20 {
+        return Err(format!("Input too large: {} (maximum is 20)", n));
+    }
+
+    Ok(n)
 }
 
 bindings::export!(Calculator with_types_in bindings);
