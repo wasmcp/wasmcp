@@ -59,13 +59,19 @@ pub async fn download_dependencies(
     let resources_middleware_pkg = interfaces::package("resources-middleware", version);
     let prompts_middleware_pkg = interfaces::package("prompts-middleware", version);
 
-    let specs = vec![
+    let mut specs = vec![
         transport_pkg,
         method_not_found_pkg,
         tools_middleware_pkg,
         resources_middleware_pkg,
         prompts_middleware_pkg,
     ];
+
+    // Download http-notifications for http transport (provides notifications interface)
+    if transport == "http" {
+        let http_notifications_pkg = interfaces::package("http-notifications", version);
+        specs.push(http_notifications_pkg);
+    }
 
     pkg::download_packages(client, &specs, deps_dir).await
 }

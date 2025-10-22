@@ -124,11 +124,13 @@ jobs:
         with:
           targets: wasm32-wasip2
           cache-key: components
-          # Cache all component crates (5 framework components)
+          # Cache all component crates (7 framework components)
           workspaces: |
             crates/http-notifications
             crates/http-transport
             crates/method-not-found
+            crates/prompts-middleware
+            crates/resources-middleware
             crates/stdio-transport
             crates/tools-middleware
 
