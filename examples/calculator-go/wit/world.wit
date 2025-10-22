@@ -1,0 +1,8 @@
+package wasmcp:calculator-go@0.1.0;
+
+world calculator-go {
+    include wasi:cli/imports@0.2.3;
+
+    import wasmcp:server/notifications@0.1.0-beta.2;
+    export wasmcp:protocol/tools@0.1.0-beta.2;
+}

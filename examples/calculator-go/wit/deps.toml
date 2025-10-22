@@ -1,0 +1,6 @@
+# WIT dependencies for calculator-go example
+
+protocol = "../../../wit/protocol"
+server = "../../../wit/server"
+cli = "https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.3.tar.gz"
+io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.3.tar.gz"

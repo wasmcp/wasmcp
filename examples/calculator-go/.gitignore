@@ -1,0 +1,11 @@
+# Build artifacts
+calculator.wasm
+internal/
+target/
+
+# WIT generated
+wit/deps/
+wit/deps.lock
+
+# Go
+go.sum
