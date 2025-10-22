@@ -11,7 +11,7 @@ import type {
   ReadResourceResult,
   ListResourceTemplatesRequest,
   ListResourceTemplatesResult,
-  Resource,
+  McpResource,
 } from './generated/interfaces/wasmcp-protocol-mcp.js';
 import type { Context } from './generated/interfaces/wasmcp-protocol-server-messages.js';
 import type { OutputStream } from './generated/interfaces/wasi-io-streams.js';
@@ -21,20 +21,20 @@ function listResources(
   _request: ListResourcesRequest,
   _clientStream: OutputStream | null
 ): ListResourcesResult {
-  const resources: Resource[] = [
+  const resources: McpResource[] = [
     {
       uri: 'text://greeting',
       name: 'Greeting',
-      mimeType: 'text/plain',
       options: {
+        mimeType: 'text/plain',
         description: 'A friendly greeting message',
       },
     },
     {
       uri: 'text://info',
       name: 'Info',
-      mimeType: 'text/plain',
       options: {
+        mimeType: 'text/plain',
         description: 'Information about this resource provider',
       },
     },
@@ -73,9 +73,17 @@ async function listResourceTemplates(
 function textResource(text: string): ReadResourceResult {
   return {
     contents: [{
-      uri: '', // URI is provided in request
-      mimeType: 'text/plain',
-      text,
+      tag: 'text',
+      val: {
+        uri: '', // URI is provided in request
+        text: {
+          tag: 'text',
+          val: text,
+        },
+        options: {
+          mimeType: 'text/plain',
+        },
+      },
     }],
   };
 }

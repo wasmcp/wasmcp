@@ -17,23 +17,27 @@ class TextResources(exports.Resources):
     ) -> mcp.ListResourcesResult:
         return mcp.ListResourcesResult(
             resources=[
-                mcp.Resource(
+                mcp.McpResource(
                     uri="text://greeting",
                     name="Greeting",
-                    mime_type="text/plain",
                     options=mcp.ResourceOptions(
-                        annotations=None,
+                        size=None,
+                        title=None,
                         description="A friendly greeting message",
+                        mime_type="text/plain",
+                        annotations=None,
                         meta=None,
                     ),
                 ),
-                mcp.Resource(
+                mcp.McpResource(
                     uri="text://info",
                     name="Info",
-                    mime_type="text/plain",
                     options=mcp.ResourceOptions(
-                        annotations=None,
+                        size=None,
+                        title=None,
                         description="Information about this resource provider",
+                        mime_type="text/plain",
+                        annotations=None,
                         meta=None,
                     ),
                 ),
@@ -74,14 +78,17 @@ class TextResources(exports.Resources):
 
 def success_result(text: str) -> mcp.ReadResourceResult:
     return mcp.ReadResourceResult(
-        contents=[mcp.ResourceContents(
-            uri="",  # URI is provided in request
-            mime_type="text/plain",
-            text=text,
-            options=None,
-            blob=None,
-        )],
         meta=None,
+        contents=[mcp.ResourceContents_Text(
+            mcp.TextResourceContents(
+                uri="",  # URI is provided in request
+                text=mcp.TextData_Text(text),
+                options=mcp.EmbeddedResourceOptions(
+                    mime_type="text/plain",
+                    meta=None,
+                ),
+            )
+        )],
     )
 
 

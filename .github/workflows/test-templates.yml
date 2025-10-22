@@ -43,8 +43,8 @@ jobs:
           name: wasmcp-cli-linux
           path: cli/target/x86_64-unknown-linux-gnu/release/wasmcp
 
-  test-templates:
-    name: Test templates (${{ matrix.language }})
+  test-tools-templates:
+    name: Test tools templates (${{ matrix.language }})
     runs-on: ubuntu-latest
     needs: build-cli
     strategy:
@@ -259,3 +259,180 @@ jobs:
               --cli --transport stdio --method tools/call --tool-name reverse --tool-arg text="hello")
             echo "$response" | grep -q "olleh"
           fi
+
+  test-resources-templates:
+    name: Test resources templates (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    needs: build-cli
+    strategy:
+      matrix:
+        language: [python, rust, typescript]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download CLI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wasmcp-cli-linux
+          path: /tmp/wasmcp-bin
+
+      - name: Install wasmcp CLI
+        run: |
+          chmod +x /tmp/wasmcp-bin/wasmcp
+          sudo mv /tmp/wasmcp-bin/wasmcp /usr/local/bin/
+
+      - name: Install wasmtime
+        run: |
+          curl -fsSL https://github.com/bytecodealliance/wasmtime/releases/download/v29.0.0/wasmtime-v29.0.0-x86_64-linux.tar.xz | tar -xJ
+          sudo mv wasmtime-v29.0.0-x86_64-linux/wasmtime /usr/local/bin/
+
+      - name: Install language tooling (Rust)
+        if: matrix.language == 'rust'
+        run: |
+          rustup update stable
+          rustup target add wasm32-wasip2
+
+      - name: Install language tooling (Python)
+        if: matrix.language == 'python'
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install componentize-py
+
+      - name: Install language tooling (TypeScript)
+        if: matrix.language == 'typescript'
+        run: |
+          # Node.js and npm already installed in Setup Node.js step
+          npm install -g @bytecodealliance/jco
+
+      - name: Create test project from template
+        run: |
+          wasmcp new ci-test-${{ matrix.language }}-resources --language ${{ matrix.language }} --template-type resources
+
+      - name: Build component
+        run: cd ci-test-${{ matrix.language }}-resources && make
+
+      - name: Compose HTTP server
+        run: |
+          cd ci-test-${{ matrix.language }}-resources
+          # Determine component path based on language
+          if [ "${{ matrix.language }}" = "rust" ]; then
+            COMPONENT="target/wasm32-wasip2/release/ci_test_${{ matrix.language }}_resources.wasm"
+          elif [ "${{ matrix.language }}" = "typescript" ]; then
+            COMPONENT="dist/ci-test-typescript-resources.wasm"
+          else
+            # Python outputs to project root
+            COMPONENT="ci-test-${{ matrix.language }}-resources.wasm"
+          fi
+
+          # Verify component exists
+          if [ ! -f "$COMPONENT" ]; then
+            echo "ERROR: Component not found: $COMPONENT"
+            ls -la target/wasm32-wasip2/release/ 2>/dev/null || true
+            ls -la dist/ 2>/dev/null || true
+            ls -la . 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Composing $COMPONENT into mcp-server.wasm..."
+          wasmcp compose $COMPONENT -o mcp-server.wasm || {
+            echo "ERROR: Composition failed"
+            exit 1
+          }
+
+          # Verify output was created
+          if [ ! -f "mcp-server.wasm" ]; then
+            echo "ERROR: mcp-server.wasm was not created"
+            exit 1
+          fi
+
+          echo "✓ Composed server: $(ls -lh mcp-server.wasm)"
+
+      - name: Compose stdio server
+        run: |
+          cd ci-test-${{ matrix.language }}-resources
+          # Determine component path based on language
+          if [ "${{ matrix.language }}" = "rust" ]; then
+            COMPONENT="target/wasm32-wasip2/release/ci_test_${{ matrix.language }}_resources.wasm"
+          elif [ "${{ matrix.language }}" = "typescript" ]; then
+            COMPONENT="dist/ci-test-typescript-resources.wasm"
+          else
+            # Python outputs to project root
+            COMPONENT="ci-test-${{ matrix.language }}-resources.wasm"
+          fi
+          wasmcp compose $COMPONENT --transport stdio -o mcp-server-stdio.wasm
+
+      - name: Start HTTP server (background)
+        run: |
+          cd ci-test-${{ matrix.language }}-resources
+          echo "Starting server..."
+          wasmtime serve -Scli mcp-server.wasm &
+          SERVER_PID=$!
+          echo $SERVER_PID > /tmp/server.pid
+          echo "Server PID: $SERVER_PID"
+
+          # Wait for server to start
+          sleep 3
+
+          # Check if process is still running
+          if ! kill -0 $SERVER_PID 2>/dev/null; then
+            echo "ERROR: Server process died"
+            exit 1
+          fi
+
+          # Try to connect to server
+          for i in {1..10}; do
+            if curl -s http://localhost:8080/ >/dev/null 2>&1; then
+              echo "✓ Server is responding"
+              exit 0
+            fi
+            echo "Waiting for server... ($i/10)"
+            sleep 1
+          done
+
+          echo "ERROR: Server not responding after 10 seconds"
+          exit 1
+
+      - name: Test HTTP server with MCP Inspector
+        run: |
+          # Test resources/list
+          resources_list=$(npx @modelcontextprotocol/inspector@0.16.8 --cli http://localhost:8080/mcp \
+            --method resources/list)
+
+          # Verify resources are present (same for all languages)
+          echo "$resources_list" | grep -q "text://greeting"
+          echo "$resources_list" | grep -q "text://info"
+
+      - name: Stop HTTP server
+        if: always()
+        run: |
+          if [ -f /tmp/server.pid ]; then
+            kill $(cat /tmp/server.pid) || true
+          fi
+
+      - name: Test stdio server with MCP Inspector
+        run: |
+          cd ci-test-${{ matrix.language }}-resources
+
+          # Test resources/list
+          resources_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+            --cli --transport stdio --method resources/list)
+
+          # Verify resources are present (same for all languages)
+          echo "$resources_list" | grep -q "text://greeting"
+          echo "$resources_list" | grep -q "text://info"
+
+          # Test resources/read for greeting
+          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+            --cli --transport stdio --method resources/read --uri "text://greeting")
+          echo "$response" | grep -q "Hello from wasmcp resources"
+
+          # Test resources/read for info
+          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+            --cli --transport stdio --method resources/read --uri "text://info")
+          echo "$response" | grep -q "simple resources capability"
