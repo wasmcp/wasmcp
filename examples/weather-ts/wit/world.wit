@@ -2,5 +2,5 @@ package wasmcp:weather@0.1.0;
 
 world weather {
     import wasi:http/outgoing-handler@0.2.3;
-    export wasmcp:protocol/tools@0.1.0-beta.2;
+    export wasmcp:protocol/tools@0.1.0;
 }

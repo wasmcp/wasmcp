@@ -1,3 +1,5 @@
 # WIT dependencies for strings example
+# Note: Must list all transitive dependencies explicitly (wit-deps doesn't resolve them recursively)
 
-protocol = "../../../wit/protocol"
+protocol = "https://github.com/wasmcp/wasmcp/releases/download/protocol-v0.1.0/wasmcp-protocol-0.1.0-source.tar.gz"
+io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.3.tar.gz"

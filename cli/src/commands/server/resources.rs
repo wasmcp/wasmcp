@@ -198,7 +198,12 @@ impl WasmcpResources {
         let result = match uri {
             // Documentation from GitHub (main branch - docs/resources/)
             "wasmcp://resources/building-servers" => {
-                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/resources/building-servers.md").await
+                Self::fetch_github_file(
+                    client,
+                    DEFAULT_BRANCH,
+                    "docs/resources/building-servers.md",
+                )
+                .await
             }
             "wasmcp://resources/registry" => {
                 Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/resources/registry.md").await
@@ -207,7 +212,8 @@ impl WasmcpResources {
                 Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/resources/reference.md").await
             }
             "wasmcp://resources/architecture" => {
-                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/resources/architecture.md").await
+                Self::fetch_github_file(client, DEFAULT_BRANCH, "docs/resources/architecture.md")
+                    .await
             }
 
             // WIT protocol interfaces from GitHub (main branch)
@@ -261,21 +267,20 @@ impl WasmcpResources {
         info!("Parsing branch resource URI");
         // Parse URI pattern: wasmcp://branch/{branch}/{namespace}/{resource}
         // Branch names can contain '/' (e.g., feat/my-feature)
-        let remainder = uri.strip_prefix("wasmcp://branch/")
-            .ok_or_else(|| {
-                error!("Invalid branch resource URI prefix");
-                McpError::invalid_params(
-                    format!("Invalid branch resource URI: {}", uri),
-                    None,
-                )
-            })?;
+        let remainder = uri.strip_prefix("wasmcp://branch/").ok_or_else(|| {
+            error!("Invalid branch resource URI prefix");
+            McpError::invalid_params(format!("Invalid branch resource URI: {}", uri), None)
+        })?;
 
         // Find the namespace by looking for known namespaces
         debug!("Parsing remainder: {}", remainder);
         let (branch, namespace, resource) = if let Some(idx) = remainder.find("/resources/") {
             let branch = &remainder[..idx];
             let rest = &remainder[idx + 1..]; // Skip the '/'
-            debug!("Found /resources/ at index {}, branch: {}, rest: {}", idx, branch, rest);
+            debug!(
+                "Found /resources/ at index {}, branch: {}, rest: {}",
+                idx, branch, rest
+            );
             if let Some((ns, res)) = rest.split_once('/') {
                 (branch, ns, res)
             } else {
@@ -288,7 +293,10 @@ impl WasmcpResources {
         } else if let Some(idx) = remainder.find("/wit/") {
             let branch = &remainder[..idx];
             let rest = &remainder[idx + 1..];
-            debug!("Found /wit/ at index {}, branch: {}, rest: {}", idx, branch, rest);
+            debug!(
+                "Found /wit/ at index {}, branch: {}, rest: {}",
+                idx, branch, rest
+            );
             if let Some((ns, res)) = rest.split_once('/') {
                 (branch, ns, res)
             } else {
@@ -306,10 +314,16 @@ impl WasmcpResources {
             ));
         };
 
-        info!("Parsed branch: {}, namespace: {}, resource: {}", branch, namespace, resource);
+        info!(
+            "Parsed branch: {}, namespace: {}, resource: {}",
+            branch, namespace, resource
+        );
 
         // Validate branch name (basic security check - allow /, -, _, . and alphanumeric)
-        if !branch.chars().all(|c| c.is_alphanumeric() || c == '/' || c == '.' || c == '-' || c == '_') {
+        if !branch
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '/' || c == '.' || c == '-' || c == '_')
+        {
             error!("Invalid characters in branch name: {}", branch);
             return Err(McpError::invalid_params(
                 format!("Invalid branch name: {}", branch),
@@ -409,7 +423,10 @@ impl WasmcpResources {
         debug!("Successfully read {} bytes from GitHub", content_len);
 
         let uri_str = format!("wasmcp://docs/{}", path.replace('/', "-"));
-        info!("Successfully fetched resource from GitHub, size: {} bytes", content_len);
+        info!(
+            "Successfully fetched resource from GitHub, size: {} bytes",
+            content_len
+        );
 
         Ok(ReadResourceResult {
             contents: vec![ResourceContents::text(content, uri_str)],

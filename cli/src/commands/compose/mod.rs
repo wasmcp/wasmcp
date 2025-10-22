@@ -306,6 +306,22 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
     )
     .await?;
 
+    // Resolve http-notifications component for http transport
+    let http_notifications_path = if transport == "http" {
+        Some(
+            resolve_http_notifications_component(
+                &version,
+                &deps_dir,
+                &client,
+                skip_download,
+                verbose,
+            )
+            .await?,
+        )
+    } else {
+        None
+    };
+
     // Auto-detect and wrap capability components (tools, resources, etc.)
     if verbose {
         println!("\nDetecting component types...");
@@ -324,6 +340,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         &transport_path,
         &wrapped_components,
         &method_not_found_path,
+        http_notifications_path.as_deref(),
         &transport,
         &version,
         verbose,
@@ -416,6 +433,8 @@ enum FrameworkComponent<'a> {
     Transport(&'a str),
     /// Method-not-found terminal handler
     MethodNotFound,
+    /// HTTP notifications provider
+    HttpNotifications,
 }
 
 impl FrameworkComponent<'_> {
@@ -424,6 +443,7 @@ impl FrameworkComponent<'_> {
         match self {
             Self::Transport(transport) => format!("{}-transport", transport),
             Self::MethodNotFound => "method-not-found".to_string(),
+            Self::HttpNotifications => "http-notifications".to_string(),
         }
     }
 
@@ -432,6 +452,7 @@ impl FrameworkComponent<'_> {
         match self {
             Self::Transport(_) => "transport",
             Self::MethodNotFound => "method-not-found",
+            Self::HttpNotifications => "http-notifications",
         }
     }
 
@@ -455,9 +476,10 @@ impl FrameworkComponent<'_> {
                 }
                 dependencies::download_dependencies(transport, version, deps_dir, client).await
             }
-            Self::MethodNotFound => {
+            Self::MethodNotFound | Self::HttpNotifications => {
                 // Check if already exists (transport download includes it)
-                let pkg = dependencies::interfaces::package("method-not-found", version);
+                let pkg =
+                    dependencies::interfaces::package(self.component_name().as_str(), version);
                 let filename = pkg.replace([':', '/'], "_") + ".wasm";
                 let path = deps_dir.join(&filename);
                 if !path.exists() {
@@ -526,6 +548,26 @@ async fn resolve_method_not_found_component(
     resolve_framework_component(
         FrameworkComponent::MethodNotFound,
         override_spec,
+        version,
+        deps_dir,
+        client,
+        skip_download,
+        verbose,
+    )
+    .await
+}
+
+/// Resolve http-notifications component (default only, no override)
+async fn resolve_http_notifications_component(
+    version: &str,
+    deps_dir: &Path,
+    client: &PackageClient,
+    skip_download: bool,
+    verbose: bool,
+) -> Result<PathBuf> {
+    resolve_framework_component(
+        FrameworkComponent::HttpNotifications,
+        None,
         version,
         deps_dir,
         client,
