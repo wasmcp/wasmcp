@@ -72,12 +72,12 @@ jobs:
       packages: write
     uses: ./.github/workflows/reusable-release-component.yml
     with:
-      component-name: http-client-notifications
+      component-name: http-notifications
       component-crate: http-notifications
       version: ${{ inputs.version }}
       wit-version: ${{ inputs.wit-version }}
-      wkg-package: wasmcp:http-client-notifications
-      tag-prefix: http-client-notifications-v
+      wkg-package: wasmcp:http-notifications
+      tag-prefix: http-notifications-v
     secrets: inherit
 
   release-method-not-found:
@@ -202,7 +202,7 @@ jobs:
           echo "Released components:"
           echo "  - wasmcp:http-transport@${{ inputs.version }}"
           echo "  - wasmcp:stdio-transport@${{ inputs.version }}"
-          echo "  - wasmcp:http-client-notifications@${{ inputs.version }}"
+          echo "  - wasmcp:http-notifications@${{ inputs.version }}"
           echo "  - wasmcp:method-not-found@${{ inputs.version }}"
           echo "  - wasmcp:tools-middleware@${{ inputs.version }}"
           echo "  - wasmcp:resources-middleware@${{ inputs.version }}"

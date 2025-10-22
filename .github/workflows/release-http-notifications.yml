@@ -24,6 +24,6 @@ jobs:
       component-crate: http-notifications
       version: ${{ inputs.version }}
       wit-version: ${{ inputs.wit-version }}
-      wkg-package: wasmcp:http-client-notifications
-      tag-prefix: http-client-notifications-v
+      wkg-package: wasmcp:http-notifications
+      tag-prefix: http-notifications-v
     secrets: inherit
