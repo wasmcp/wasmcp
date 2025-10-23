@@ -239,6 +239,106 @@ fn wire_transport(
     Ok(())
 }
 
+/// Build a handler-only composition (without transport/terminal)
+///
+/// This creates a composable handler component:
+/// - Chains components: component₁ → component₂ → ... → componentₙ
+/// - Exports wasmcp:server/handler interface
+/// - Can be used in further compositions
+///
+/// The composition strategy:
+/// 1. Load and register all components
+/// 2. Chain them in reverse order (last component's handler is imported by second-to-last, etc.)
+/// 3. Export the first component's server-handler interface
+pub async fn build_handler_composition(
+    component_paths: &[PathBuf],
+    version: &str,
+    verbose: bool,
+) -> Result<Vec<u8>> {
+    if component_paths.is_empty() {
+        anyhow::bail!("Cannot build handler composition with zero components");
+    }
+
+    let mut graph = CompositionGraph::new();
+    let server_handler_interface = dependencies::interfaces::server_handler(version);
+
+    // Load and register all components
+    if verbose {
+        println!("   Loading components...");
+    }
+
+    let mut package_ids = Vec::new();
+    for (i, path) in component_paths.iter().enumerate() {
+        let name = format!("component-{}", i);
+        let pkg = load_package(&mut graph, &name, path)?;
+        package_ids.push(graph.register_package(pkg)?);
+    }
+
+    // Special case: single component - just re-export its handler
+    if package_ids.len() == 1 {
+        if verbose {
+            println!("   Single component - exporting handler interface...");
+        }
+
+        let inst = graph.instantiate(package_ids[0]);
+        let handler_export = graph
+            .alias_instance_export(inst, &server_handler_interface)
+            .context("Component does not export server-handler interface")?;
+
+        graph
+            .export(handler_export, &server_handler_interface)
+            .context("Failed to export server-handler interface")?;
+    } else {
+        // Multiple components: chain them
+        if verbose {
+            println!("   Building composition chain...");
+        }
+
+        // Start from the last component (no downstream handler needed)
+        let last_idx = package_ids.len() - 1;
+        let prev_inst = graph.instantiate(package_ids[last_idx]);
+
+        // Get the last component's server-handler export
+        let mut next_handler_export = graph
+            .alias_instance_export(prev_inst, &server_handler_interface)
+            .with_context(|| format!("Component {} does not export server-handler interface", last_idx))?;
+
+        // Chain remaining components in reverse order (second-to-last to first)
+        for i in (0..last_idx).rev() {
+            let inst = graph.instantiate(package_ids[i]);
+
+            // Wire this component's server-handler import to the previous component's export
+            graph
+                .set_instantiation_argument(inst, &server_handler_interface, next_handler_export)
+                .with_context(|| {
+                    format!("Failed to wire component-{} server-handler import", i)
+                })?;
+
+            // This component's export becomes the next input
+            next_handler_export = graph
+                .alias_instance_export(inst, &server_handler_interface)
+                .with_context(|| {
+                    format!("Component {} does not export server-handler interface", i)
+                })?;
+        }
+
+        // Export the first component's server-handler interface
+        graph
+            .export(next_handler_export, &server_handler_interface)
+            .context("Failed to export server-handler interface")?;
+    }
+
+    // Encode the composition
+    if verbose {
+        println!("   Encoding component...");
+    }
+    let bytes = graph
+        .encode(EncodeOptions::default())
+        .context("Failed to encode handler composition")?;
+
+    Ok(bytes)
+}
+
 /// Load a WebAssembly component as a package in the composition graph
 ///
 /// This reads the component file and registers it with wac-graph's type system.

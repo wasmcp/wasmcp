@@ -25,6 +25,7 @@ pub async fn wrap_capabilities(
     verbose: bool,
 ) -> Result<Vec<PathBuf>> {
     let mut wrapped_paths = Vec::new();
+    let server_handler_interface = dependencies::interfaces::server_handler(version);
     let tools_interface = dependencies::interfaces::tools(version);
     let resources_interface = dependencies::interfaces::resources(version);
     let prompts_interface = dependencies::interfaces::prompts(version);
@@ -35,8 +36,15 @@ pub async fn wrap_capabilities(
             .and_then(|s| s.to_str())
             .unwrap_or("component");
 
+        // If component already exports server-handler, it's a handler component - use as-is
+        if component_exports_interface(&path, &server_handler_interface)? {
+            if verbose {
+                println!("   {} is a server-handler → using as-is", component_name);
+            }
+            wrapped_paths.push(path);
+        }
         // Check for tools capability
-        if component_exports_interface(&path, &tools_interface)? {
+        else if component_exports_interface(&path, &tools_interface)? {
             if verbose {
                 println!(
                     "   {} is a tools-capability → wrapping with tools-middleware",
@@ -131,6 +139,9 @@ pub async fn wrap_capabilities(
 /// Check if a component exports a specific interface
 ///
 /// This loads the component and inspects its exports to determine its type.
+/// Note: For composed components, this returns true if ANY nested component exports
+/// the interface. The wrap_capabilities function handles this by checking for
+/// server-handler exports first.
 fn component_exports_interface(path: &Path, interface: &str) -> Result<bool> {
     use wasmparser::{Parser, Payload};
 
