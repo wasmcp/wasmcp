@@ -39,6 +39,15 @@ mod profiles;
 mod resolution;
 mod wrapping;
 
+/// Composition mode: Server (complete) or Handler (intermediate)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompositionMode {
+    /// Complete MCP server with transport and terminal handler
+    Server,
+    /// Handler component without transport/terminal (composable)
+    Handler,
+}
+
 /// Configuration options for component composition
 #[derive(Debug, Clone)]
 pub struct ComposeOptions {
@@ -71,6 +80,9 @@ pub struct ComposeOptions {
 
     /// Whether to show verbose output
     pub verbose: bool,
+
+    /// Composition mode (Server or Handler)
+    pub mode: CompositionMode,
 }
 
 /// Builder for ComposeOptions with sensible defaults
@@ -207,6 +219,7 @@ impl ComposeOptionsBuilder {
             skip_download: self.skip_download,
             force: self.force,
             verbose: self.verbose,
+            mode: CompositionMode::Server, // Builder defaults to server mode
         })
     }
 }
@@ -243,8 +256,46 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         skip_download,
         force,
         verbose,
+        mode,
     } = options;
 
+    // Branch based on composition mode
+    match mode {
+        CompositionMode::Server => {
+            compose_server(
+                components,
+                transport,
+                output,
+                version,
+                override_transport,
+                override_method_not_found,
+                deps_dir,
+                skip_download,
+                force,
+                verbose,
+            )
+            .await
+        }
+        CompositionMode::Handler => {
+            compose_handler(components, output, version, deps_dir, force, verbose)
+                .await
+        }
+    }
+}
+
+/// Compose a complete MCP server with transport and terminal handler
+async fn compose_server(
+    components: Vec<String>,
+    transport: String,
+    output: PathBuf,
+    version: String,
+    override_transport: Option<String>,
+    override_method_not_found: Option<String>,
+    deps_dir: PathBuf,
+    skip_download: bool,
+    force: bool,
+    verbose: bool,
+) -> Result<()> {
     // Validate transport type early (before any expensive operations)
     validate_transport(&transport)?;
 
@@ -256,7 +307,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
     if components.is_empty() {
         anyhow::bail!(
             "no components specified, provide one or more component paths or package specs\n\
-             example: wasmcp compose my-handler.wasm namespace:other-handler@1.0.0"
+             example: wasmcp compose server my-handler.wasm namespace:other-handler@1.0.0"
         );
     }
 
@@ -353,6 +404,76 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
 
     // Print success message
     print_success_message(&output_path, &transport);
+
+    Ok(())
+}
+
+/// Compose a handler component (without transport/terminal)
+async fn compose_handler(
+    components: Vec<String>,
+    output: PathBuf,
+    version: String,
+    deps_dir: PathBuf,
+    force: bool,
+    verbose: bool,
+) -> Result<()> {
+    // Validate and prepare output path
+    let output_path = resolve_output_path(&output)?;
+    validate_output_file(&output_path, force)?;
+
+    // Validate components
+    if components.is_empty() {
+        anyhow::bail!(
+            "no components specified, provide one or more component paths or package specs\n\
+             example: wasmcp compose handler my-handler.wasm namespace:other-handler@1.0.0"
+        );
+    }
+
+    // Ensure wasmcp directories exist
+    config::ensure_dirs()?;
+
+    // Create package client
+    let client = pkg::create_default_client()
+        .await
+        .context("Failed to create package client")?;
+
+    // Print initial status
+    if verbose {
+        println!("Resolving components...");
+    } else {
+        println!(
+            "Composing {} handler components → {}",
+            components.len(),
+            output_path.display()
+        );
+    }
+
+    // Resolve all component specs to local paths
+    let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
+
+    // Auto-detect and wrap capability components (tools, resources, etc.)
+    if verbose {
+        println!("\nDetecting component types...");
+    }
+    let wrapped_components =
+        wrapping::wrap_capabilities(component_paths, &deps_dir, &version, verbose).await?;
+
+    // Print composition pipeline (only in verbose mode)
+    if verbose {
+        print_handler_pipeline_diagram(&wrapped_components);
+        println!("\nComposing handler component...");
+    }
+
+    // Build and encode the handler-only composition
+    let bytes =
+        graph::build_handler_composition(&wrapped_components, &version, verbose).await?;
+
+    // Write output file
+    std::fs::write(&output_path, bytes)
+        .with_context(|| format!("Failed to write output file: {}", output_path.display()))?;
+
+    // Print success message
+    print_handler_success_message(&output_path);
 
     Ok(())
 }
@@ -593,6 +714,21 @@ fn print_pipeline_diagram(transport: &str, components: &[PathBuf]) {
     println!("   method-not-found (terminal handler)");
 }
 
+/// Print the handler composition pipeline diagram
+fn print_handler_pipeline_diagram(components: &[PathBuf]) {
+    println!("\nComposing handler component...");
+    for (i, path) in components.iter().enumerate() {
+        let name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("component");
+        if i > 0 {
+            println!("   ↓");
+        }
+        println!("   {}. {}", i + 1, name);
+    }
+}
+
 /// Print success message with run instructions
 fn print_success_message(output_path: &Path, transport: &str) {
     println!("\nComposed: {}", output_path.display());
@@ -602,6 +738,19 @@ fn print_success_message(output_path: &Path, transport: &str) {
         "stdio" => println!("  wasmtime run {}", output_path.display()),
         _ => println!("  wasmtime {}", output_path.display()),
     }
+}
+
+/// Print success message for handler composition
+fn print_handler_success_message(output_path: &Path) {
+    println!("\nComposed handler component: {}", output_path.display());
+    println!("\nTo use this handler:");
+    println!("  # In a server composition:");
+    println!("  wasmcp compose server {} other.wasm", output_path.display());
+    println!("\n  # In another handler composition:");
+    println!(
+        "  wasmcp compose handler {} additional.wasm",
+        output_path.display()
+    );
 }
 
 #[cfg(test)]
