@@ -4,11 +4,11 @@
 /// to clients over output streams. Notifications are one-way messages that don't expect responses.
 ///
 /// Categories:
-/// - **Progress**: Real-time updates on long-running operations
-/// - **Logging**: Send log messages to client's logging system
-/// - **List changes**: Notify when tools/prompts/resources are added/removed
-/// - **Subscriptions**: Push updates to subscribed resources/prompts
-/// - **Elicitation**: Request information from the client (roots, sampling)
+/// - Progress: Real-time updates on long-running operations
+/// - Logging: Send log messages to client's logging system
+/// - List changes: Notify when tools/prompts/resources are added/removed
+/// - Subscriptions: Push updates to subscribed resources/prompts
+/// - Elicitation: Request information from the client (roots, sampling)
 ///
 /// <https://spec.modelcontextprotocol.io/specification/basic/notifications>
 @since(version = 0.1.0)
@@ -92,7 +92,7 @@ interface notifications {
         logger: option<string>,
     ) -> result<_, notification-error>;
 
-    /// Send a `notifications/*/list_changed` notification to the client
+    /// Send a `list_changed` notification to the client
     ///
     /// When the server's list of tools, prompts, or resources changes (additions,
     /// removals, or modifications), this notification informs the client to re-fetch
@@ -111,7 +111,7 @@ interface notifications {
         changes: server-lists,
     ) -> result<_, notification-error>;
 
-    /// Send a `notifications/*/updated` notification to the client
+    /// Send a `updated` notification to the client
     ///
     /// For resources and prompts that support subscriptions, this notification
     /// pushes updates to clients that have subscribed. The update includes the
