@@ -1,6 +1,8 @@
 pub mod commands;
 pub mod config;
 pub mod logging;
+pub mod mcp;
+pub mod state;
 pub mod types;
 
 pub use types::{Language, TemplateType, Transport};

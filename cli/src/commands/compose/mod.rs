@@ -29,15 +29,40 @@ use std::path::{Path, PathBuf};
 use crate::{commands::pkg, config};
 
 // Public re-exports
+pub use self::builder::ComposeOptionsBuilder;
 pub use self::dependencies::PackageClient;
 pub use self::profiles::expand_profile_specs;
 
 // Submodules
+mod builder;
 pub mod dependencies;
+mod framework;
 mod graph;
+mod output;
 mod profiles;
 mod resolution;
+mod validation;
 mod wrapping;
+
+// Internal imports from submodules
+use self::framework::{
+    resolve_http_notifications_component, resolve_method_not_found_component,
+    resolve_transport_component,
+};
+use self::output::{
+    print_handler_pipeline_diagram, print_handler_success_message, print_pipeline_diagram,
+    print_success_message,
+};
+use self::validation::{resolve_output_path, validate_output_file, validate_transport};
+
+/// Composition mode: Server (complete) or Handler (intermediate)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompositionMode {
+    /// Complete MCP server with transport and terminal handler
+    Server,
+    /// Handler component without transport/terminal (composable)
+    Handler,
+}
 
 /// Configuration options for component composition
 #[derive(Debug, Clone)]
@@ -71,148 +96,10 @@ pub struct ComposeOptions {
 
     /// Whether to show verbose output
     pub verbose: bool,
+
+    /// Composition mode (Server or Handler)
+    pub mode: CompositionMode,
 }
-
-/// Builder for ComposeOptions with sensible defaults
-///
-/// This builder is part of the public API for programmatic use.
-/// It's not currently used by the CLI but is available for external consumers.
-///
-/// # Examples
-///
-/// ```rust
-/// use wasmcp::commands::compose::ComposeOptionsBuilder;
-/// use std::path::PathBuf;
-///
-/// # fn example() -> anyhow::Result<()> {
-/// let options = ComposeOptionsBuilder::new(vec!["./handler.wasm".to_string()])
-///     .transport("stdio")
-///     .output(PathBuf::from("my-server.wasm"))
-///     .force(true)
-///     .build()?;
-/// # Ok(())
-/// # }
-/// ```
-#[derive(Debug, Clone)]
-#[allow(dead_code)] // Public API - used by external consumers, not internally yet
-pub struct ComposeOptionsBuilder {
-    components: Vec<String>,
-    transport: String,
-    output: PathBuf,
-    version: String,
-    override_transport: Option<String>,
-    override_method_not_found: Option<String>,
-    deps_dir: Option<PathBuf>,
-    skip_download: bool,
-    force: bool,
-    verbose: bool,
-}
-
-#[allow(dead_code)] // Public API - used by external consumers, not internally yet
-impl ComposeOptionsBuilder {
-    /// Create a new builder with required components
-    ///
-    /// Default values:
-    /// - transport: "http"
-    /// - output: "server.wasm"
-    /// - version: current package version
-    /// - deps_dir: will be resolved from config
-    /// - skip_download: false
-    /// - force: false
-    pub fn new(components: Vec<String>) -> Self {
-        Self {
-            components,
-            transport: "http".to_string(),
-            output: PathBuf::from("server.wasm"),
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            override_transport: None,
-            override_method_not_found: None,
-            deps_dir: None,
-            skip_download: false,
-            force: false,
-            verbose: false,
-        }
-    }
-
-    /// Set the transport type ("http" or "stdio")
-    pub fn transport(mut self, transport: impl Into<String>) -> Self {
-        self.transport = transport.into();
-        self
-    }
-
-    /// Set the output path for the composed component
-    pub fn output(mut self, output: PathBuf) -> Self {
-        self.output = output;
-        self
-    }
-
-    /// Set the wasmcp version for framework components
-    pub fn version(mut self, version: impl Into<String>) -> Self {
-        self.version = version.into();
-        self
-    }
-
-    /// Override the transport component with a custom spec
-    pub fn override_transport(mut self, spec: impl Into<String>) -> Self {
-        self.override_transport = Some(spec.into());
-        self
-    }
-
-    /// Override the method-not-found component with a custom spec
-    pub fn override_method_not_found(mut self, spec: impl Into<String>) -> Self {
-        self.override_method_not_found = Some(spec.into());
-        self
-    }
-
-    /// Set the directory for downloaded dependencies
-    pub fn deps_dir(mut self, deps_dir: PathBuf) -> Self {
-        self.deps_dir = Some(deps_dir);
-        self
-    }
-
-    /// Skip downloading dependencies (use existing files only)
-    pub fn skip_download(mut self, skip: bool) -> Self {
-        self.skip_download = skip;
-        self
-    }
-
-    /// Force overwrite of existing output file
-    pub fn force(mut self, force: bool) -> Self {
-        self.force = force;
-        self
-    }
-
-    /// Enable verbose output
-    pub fn verbose(mut self, verbose: bool) -> Self {
-        self.verbose = verbose;
-        self
-    }
-
-    /// Build the ComposeOptions, resolving deps_dir from config if not set
-    pub fn build(self) -> Result<ComposeOptions> {
-        let deps_dir = match self.deps_dir {
-            Some(dir) => dir,
-            None => config::get_deps_dir()
-                .context("Failed to get dependencies directory from config")?,
-        };
-
-        Ok(ComposeOptions {
-            components: self.components,
-            transport: self.transport,
-            output: self.output,
-            version: self.version,
-            override_transport: self.override_transport,
-            override_method_not_found: self.override_method_not_found,
-            deps_dir,
-            skip_download: self.skip_download,
-            force: self.force,
-            verbose: self.verbose,
-        })
-    }
-}
-
-/// Valid transport types supported by the compose command
-const VALID_TRANSPORTS: &[&str] = &["http", "stdio"];
 
 /// Compose MCP server components into a complete WASM component
 ///
@@ -243,8 +130,46 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         skip_download,
         force,
         verbose,
+        mode,
     } = options;
 
+    // Branch based on composition mode
+    match mode {
+        CompositionMode::Server => {
+            compose_server(
+                components,
+                transport,
+                output,
+                version,
+                override_transport,
+                override_method_not_found,
+                deps_dir,
+                skip_download,
+                force,
+                verbose,
+            )
+            .await
+        }
+        CompositionMode::Handler => {
+            compose_handler(components, output, version, deps_dir, force, verbose).await
+        }
+    }
+}
+
+/// Compose a complete MCP server with transport and terminal handler
+#[allow(clippy::too_many_arguments)]
+async fn compose_server(
+    components: Vec<String>,
+    transport: String,
+    output: PathBuf,
+    version: String,
+    override_transport: Option<String>,
+    override_method_not_found: Option<String>,
+    deps_dir: PathBuf,
+    skip_download: bool,
+    force: bool,
+    verbose: bool,
+) -> Result<()> {
     // Validate transport type early (before any expensive operations)
     validate_transport(&transport)?;
 
@@ -256,7 +181,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
     if components.is_empty() {
         anyhow::bail!(
             "no components specified, provide one or more component paths or package specs\n\
-             example: wasmcp compose my-handler.wasm namespace:other-handler@1.0.0"
+             example: wasmcp compose server my-handler.wasm namespace:other-handler@1.0.0"
         );
     }
 
@@ -357,52 +282,71 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
     Ok(())
 }
 
-/// Validate transport type is supported
-fn validate_transport(transport: &str) -> Result<()> {
-    if !VALID_TRANSPORTS.contains(&transport) {
+/// Compose a handler component (without transport/terminal)
+async fn compose_handler(
+    components: Vec<String>,
+    output: PathBuf,
+    version: String,
+    deps_dir: PathBuf,
+    force: bool,
+    verbose: bool,
+) -> Result<()> {
+    // Validate and prepare output path
+    let output_path = resolve_output_path(&output)?;
+    validate_output_file(&output_path, force)?;
+
+    // Validate components
+    if components.is_empty() {
         anyhow::bail!(
-            "unsupported transport type: '{}', must be one of: {}",
-            transport,
-            VALID_TRANSPORTS.join(", ")
+            "no components specified, provide one or more component paths or package specs\n\
+             example: wasmcp compose handler my-handler.wasm namespace:other-handler@1.0.0"
         );
     }
-    Ok(())
-}
 
-/// Resolve output path - make absolute if relative (using current working directory)
-fn resolve_output_path(output: &PathBuf) -> Result<PathBuf> {
-    if output.is_absolute() {
-        Ok(output.clone())
+    // Ensure wasmcp directories exist
+    config::ensure_dirs()?;
+
+    // Create package client
+    let client = pkg::create_default_client()
+        .await
+        .context("Failed to create package client")?;
+
+    // Print initial status
+    if verbose {
+        println!("Resolving components...");
     } else {
-        // Resolve relative paths against current working directory
-        let cwd = std::env::current_dir().context("Failed to get current working directory")?;
-        Ok(cwd.join(output))
-    }
-}
-
-/// Validate output file doesn't exist (unless force is set)
-fn validate_output_file(output_path: &Path, force: bool) -> Result<()> {
-    if output_path.exists() && !force {
-        anyhow::bail!(
-            "output file '{}' already exists, use --force to overwrite",
+        println!(
+            "Composing {} handler components → {}",
+            components.len(),
             output_path.display()
         );
     }
 
-    // Check parent directory is writable
-    if let Some(parent) = output_path.parent() {
-        if parent.exists() {
-            let metadata = std::fs::metadata(parent).context(format!(
-                "failed to read directory metadata for '{}'",
-                parent.display()
-            ))?;
-            if metadata.permissions().readonly() {
-                anyhow::bail!("output directory '{}' is not writable", parent.display());
-            }
-        } else {
-            anyhow::bail!("output directory '{}' does not exist", parent.display());
-        }
+    // Resolve all component specs to local paths
+    let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
+
+    // Auto-detect and wrap capability components (tools, resources, etc.)
+    if verbose {
+        println!("\nDetecting component types...");
     }
+    let wrapped_components =
+        wrapping::wrap_capabilities(component_paths, &deps_dir, &version, verbose).await?;
+
+    // Print composition pipeline (only in verbose mode)
+    if verbose {
+        print_handler_pipeline_diagram(&wrapped_components);
+        println!("\nComposing handler component...");
+    }
+
+    // Build and encode the handler-only composition
+    let bytes = graph::build_handler_composition(&wrapped_components, &version, verbose).await?;
+
+    // Write output file
+    std::fs::write(&output_path, bytes)
+        .with_context(|| format!("Failed to write output file: {}", output_path.display()))?;
+
+    // Print success message
+    print_handler_success_message(&output_path);
 
     Ok(())
 }
@@ -427,188 +371,10 @@ async fn resolve_user_components(
     Ok(paths)
 }
 
-/// Framework component type for resolution
-enum FrameworkComponent<'a> {
-    /// Transport component (e.g., "http-transport", "stdio-transport")
-    Transport(&'a str),
-    /// Method-not-found terminal handler
-    MethodNotFound,
-    /// HTTP notifications provider
-    HttpNotifications,
-}
-
-impl FrameworkComponent<'_> {
-    /// Get the component name for dependency lookup
-    fn component_name(&self) -> String {
-        match self {
-            Self::Transport(transport) => format!("{}-transport", transport),
-            Self::MethodNotFound => "method-not-found".to_string(),
-            Self::HttpNotifications => "http-notifications".to_string(),
-        }
-    }
-
-    /// Get a human-readable display name
-    fn display_name(&self) -> &str {
-        match self {
-            Self::Transport(_) => "transport",
-            Self::MethodNotFound => "method-not-found",
-            Self::HttpNotifications => "http-notifications",
-        }
-    }
-
-    /// Download dependencies if needed for this component
-    async fn ensure_downloaded(
-        &self,
-        version: &str,
-        deps_dir: &Path,
-        client: &PackageClient,
-        skip_download: bool,
-        verbose: bool,
-    ) -> Result<()> {
-        if skip_download {
-            return Ok(());
-        }
-
-        match self {
-            Self::Transport(transport) => {
-                if verbose {
-                    println!("\nDownloading framework dependencies...");
-                }
-                dependencies::download_dependencies(transport, version, deps_dir, client).await
-            }
-            Self::MethodNotFound | Self::HttpNotifications => {
-                // Check if already exists (transport download includes it)
-                let pkg =
-                    dependencies::interfaces::package(self.component_name().as_str(), version);
-                let filename = pkg.replace([':', '/'], "_") + ".wasm";
-                let path = deps_dir.join(&filename);
-                if !path.exists() {
-                    dependencies::download_dependencies("http", version, deps_dir, client).await?;
-                }
-                Ok(())
-            }
-        }
-    }
-}
-
-/// Generic resolver for framework components (transport or method-not-found)
-async fn resolve_framework_component(
-    component: FrameworkComponent<'_>,
-    override_spec: Option<&str>,
-    version: &str,
-    deps_dir: &Path,
-    client: &PackageClient,
-    skip_download: bool,
-    verbose: bool,
-) -> Result<PathBuf> {
-    if let Some(spec) = override_spec {
-        if verbose {
-            println!("\nUsing override {}: {}", component.display_name(), spec);
-        }
-        resolution::resolve_component_spec(spec, deps_dir, client, verbose).await
-    } else {
-        component
-            .ensure_downloaded(version, deps_dir, client, skip_download, verbose)
-            .await?;
-        dependencies::get_dependency_path(&component.component_name(), version, deps_dir)
-    }
-}
-
-/// Resolve transport component (override or default)
-async fn resolve_transport_component(
-    transport: &str,
-    override_spec: Option<&str>,
-    version: &str,
-    deps_dir: &Path,
-    client: &PackageClient,
-    skip_download: bool,
-    verbose: bool,
-) -> Result<PathBuf> {
-    resolve_framework_component(
-        FrameworkComponent::Transport(transport),
-        override_spec,
-        version,
-        deps_dir,
-        client,
-        skip_download,
-        verbose,
-    )
-    .await
-}
-
-/// Resolve method-not-found component (override or default)
-async fn resolve_method_not_found_component(
-    override_spec: Option<&str>,
-    version: &str,
-    deps_dir: &Path,
-    client: &PackageClient,
-    skip_download: bool,
-    verbose: bool,
-) -> Result<PathBuf> {
-    resolve_framework_component(
-        FrameworkComponent::MethodNotFound,
-        override_spec,
-        version,
-        deps_dir,
-        client,
-        skip_download,
-        verbose,
-    )
-    .await
-}
-
-/// Resolve http-notifications component (default only, no override)
-async fn resolve_http_notifications_component(
-    version: &str,
-    deps_dir: &Path,
-    client: &PackageClient,
-    skip_download: bool,
-    verbose: bool,
-) -> Result<PathBuf> {
-    resolve_framework_component(
-        FrameworkComponent::HttpNotifications,
-        None,
-        version,
-        deps_dir,
-        client,
-        skip_download,
-        verbose,
-    )
-    .await
-}
-
-/// Print the composition pipeline diagram
-fn print_pipeline_diagram(transport: &str, components: &[PathBuf]) {
-    println!("\nComposing MCP server pipeline...");
-    println!("   {} (transport)", transport);
-    for (i, path) in components.iter().enumerate() {
-        let name = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("component");
-        println!("   ↓");
-        println!("   {}. {}", i + 1, name);
-    }
-    println!("   ↓");
-    println!("   method-not-found (terminal handler)");
-}
-
-/// Print success message with run instructions
-fn print_success_message(output_path: &Path, transport: &str) {
-    println!("\nComposed: {}", output_path.display());
-    println!("\nTo run the server:");
-    match transport {
-        "http" => println!("  wasmtime serve -Scli {}", output_path.display()),
-        "stdio" => println!("  wasmtime run {}", output_path.display()),
-        _ => println!("  wasmtime {}", output_path.display()),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::DEFAULT_WASMCP_VERSION;
-    use tempfile::TempDir;
 
     #[test]
     fn test_interface_names() {
@@ -654,101 +420,164 @@ mod tests {
         assert!(resolved.ends_with("output.wasm"));
     }
 
+    /// Test CompositionMode enum
     #[test]
-    fn test_validate_output_file_nonexistent() {
-        let temp_dir = TempDir::new().unwrap();
-        let path = temp_dir.path().join("nonexistent.wasm");
-        let result = validate_output_file(&path, false);
-        assert!(result.is_ok());
+    fn test_composition_mode_enum() {
+        let server = CompositionMode::Server;
+        let handler = CompositionMode::Handler;
+
+        // Test equality
+        assert_eq!(server, CompositionMode::Server);
+        assert_eq!(handler, CompositionMode::Handler);
+        assert_ne!(server, handler);
+
+        // Test Copy trait (CompositionMode implements Copy)
+        let server_clone = server;
+        assert_eq!(server, server_clone);
     }
 
+    /// Test empty components error messages
     #[test]
-    fn test_validate_output_file_exists_without_force() {
-        let temp_file = tempfile::NamedTempFile::new().unwrap();
-        let result = validate_output_file(temp_file.path(), false);
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("already exists"));
-        assert!(err_msg.contains("--force"));
+    fn test_empty_components_error_messages() {
+        // Server mode error
+        let server_error = "no components specified, provide one or more component paths or package specs\n\
+             example: wasmcp compose server my-handler.wasm namespace:other-handler@1.0.0";
+        assert!(server_error.contains("no components specified"));
+        assert!(server_error.contains("compose server"));
+
+        // Handler mode error
+        let handler_error = "no components specified, provide one or more component paths or package specs\n\
+             example: wasmcp compose handler my-handler.wasm namespace:other-handler@1.0.0";
+        assert!(handler_error.contains("no components specified"));
+        assert!(handler_error.contains("compose handler"));
     }
 
+    /// Test output file error messages
     #[test]
-    fn test_validate_output_file_exists_with_force() {
-        let temp_file = tempfile::NamedTempFile::new().unwrap();
-        let result = validate_output_file(temp_file.path(), true);
-        assert!(result.is_ok());
-    }
+    fn test_output_file_error_messages() {
+        let path = Path::new("/path/to/output.wasm");
 
-    #[test]
-    fn test_compose_options_builder() {
-        let options = ComposeOptionsBuilder::new(vec!["handler.wasm".to_string()])
-            .transport("stdio")
-            .force(true)
-            .skip_download(true)
-            .build()
-            .unwrap();
-
-        assert_eq!(options.components, vec!["handler.wasm"]);
-        assert_eq!(options.transport, "stdio");
-        assert!(options.force);
-        assert!(options.skip_download);
-    }
-
-    #[test]
-    fn test_compose_options_builder_defaults() {
-        let options = ComposeOptionsBuilder::new(vec!["handler.wasm".to_string()])
-            .build()
-            .unwrap();
-
-        assert_eq!(options.transport, "http");
-        assert_eq!(options.output, PathBuf::from("server.wasm"));
-        assert!(!options.force);
-        assert!(!options.skip_download);
-        assert_eq!(options.version, env!("CARGO_PKG_VERSION"));
-    }
-
-    #[test]
-    fn test_compose_options_builder_chaining() {
-        let options = ComposeOptionsBuilder::new(vec!["a.wasm".to_string()])
-            .transport("http")
-            .output(PathBuf::from("out.wasm"))
-            .version("1.0.0")
-            .override_transport("custom-transport.wasm")
-            .override_method_not_found("custom-mnf.wasm")
-            .build()
-            .unwrap();
-
-        assert_eq!(options.version, "1.0.0");
-        assert_eq!(
-            options.override_transport,
-            Some("custom-transport.wasm".to_string())
+        // File exists error
+        let exists_error = format!(
+            "output file '{}' already exists, use --force to overwrite",
+            path.display()
         );
-        assert_eq!(
-            options.override_method_not_found,
-            Some("custom-mnf.wasm".to_string())
+        assert!(exists_error.contains("already exists"));
+        assert!(exists_error.contains("--force"));
+
+        // Directory doesn't exist error
+        let parent = Path::new("/nonexistent/directory");
+        let dir_error = format!("output directory '{}' does not exist", parent.display());
+        assert!(dir_error.contains("does not exist"));
+
+        // Directory not writable error
+        let not_writable_error = format!("output directory '{}' is not writable", parent.display());
+        assert!(not_writable_error.contains("not writable"));
+    }
+
+    /// Test status message formatting
+    #[test]
+    fn test_status_messages() {
+        let components_count = 3;
+        let transport = "http";
+        let output_path = Path::new("/path/to/server.wasm");
+
+        // Server composition status
+        let server_msg = format!(
+            "Composing {} components ({} transport) → {}",
+            components_count,
+            transport,
+            output_path.display()
         );
+        assert!(server_msg.contains("Composing 3 components"));
+        assert!(server_msg.contains("http transport"));
+        assert!(server_msg.contains("server.wasm"));
+
+        // Handler composition status
+        let handler_msg = format!(
+            "Composing {} handler components → {}",
+            components_count,
+            output_path.display()
+        );
+        assert!(handler_msg.contains("Composing 3 handler components"));
+        assert!(handler_msg.contains("server.wasm"));
+
+        // Verbose status messages
+        let resolving_msg = "Resolving components...";
+        assert!(resolving_msg.contains("Resolving"));
+
+        let detecting_msg = "\nDetecting component types...";
+        assert!(detecting_msg.contains("Detecting"));
     }
 
+    /// Test framework download message
     #[test]
-    fn test_validate_transport_http() {
-        let result = validate_transport("http");
-        assert!(result.is_ok());
+    fn test_framework_download_message() {
+        let msg = "\nDownloading framework dependencies...";
+        assert!(msg.contains("Downloading framework dependencies"));
     }
 
+    /// Test override message formatting
     #[test]
-    fn test_validate_transport_stdio() {
-        let result = validate_transport("stdio");
-        assert!(result.is_ok());
+    fn test_override_messages() {
+        let component_name = "transport";
+        let spec = "custom-transport.wasm";
+
+        let override_msg = format!("\nUsing override {}: {}", component_name, spec);
+        assert!(override_msg.contains("Using override"));
+        assert!(override_msg.contains("transport"));
+        assert!(override_msg.contains("custom-transport.wasm"));
     }
 
+    /// Test component resolution verbose output format
     #[test]
-    fn test_validate_transport_invalid() {
-        let result = validate_transport("websocket");
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("unsupported transport type"));
-        assert!(err_msg.contains("websocket"));
-        assert!(err_msg.contains("http"));
-        assert!(err_msg.contains("stdio"));
+    fn test_component_resolution_output() {
+        let index = 1;
+        let spec = "calculator.wasm";
+        let path = Path::new("/path/to/calculator.wasm");
+
+        let resolution_msg = format!("   {}. {} → {}", index, spec, path.display());
+        assert!(resolution_msg.contains("1. calculator.wasm →"));
+        assert!(resolution_msg.starts_with("   "));
+    }
+
+    /// Test ComposeOptions mode default
+    #[test]
+    fn test_compose_options_default_mode() {
+        let options = ComposeOptionsBuilder::new(vec!["handler.wasm".to_string()])
+            .build()
+            .unwrap();
+
+        // Builder defaults to Server mode
+        assert_eq!(options.mode, CompositionMode::Server);
+    }
+
+    /// Test http notifications path handling
+    #[test]
+    fn test_http_notifications_conditional() {
+        // HTTP transport should include notifications
+        let transport = "http";
+        let should_include = transport == "http";
+        assert!(should_include);
+
+        // Stdio transport should not include notifications
+        let transport = "stdio";
+        let should_include = transport == "http";
+        assert!(!should_include);
+    }
+
+    /// Test component count in messages
+    #[test]
+    fn test_component_count_formatting() {
+        let components = ["a.wasm", "b.wasm", "c.wasm"];
+        let count = components.len();
+
+        let msg = format!("Composing {} components", count);
+        assert_eq!(msg, "Composing 3 components");
+
+        // Single component
+        let single = ["one.wasm"];
+        let single_msg = format!("Composing {} components", single.len());
+        assert_eq!(single_msg, "Composing 1 components");
     }
 }

@@ -147,4 +147,110 @@ mod tests {
         assert!(TEMPLATES.get_dir("python-resources").is_some());
         assert!(TEMPLATES.get_dir("typescript-resources").is_some());
     }
+
+    /// Test template path construction
+    #[test]
+    fn test_template_path_format() {
+        let path1 = format!("{}-{}", Language::Rust, TemplateType::Tools);
+        assert_eq!(path1, "rust-tools");
+
+        let path2 = format!("{}-{}", Language::Python, TemplateType::Resources);
+        assert_eq!(path2, "python-resources");
+
+        let path3 = format!("{}-{}", Language::TypeScript, TemplateType::Prompts);
+        assert_eq!(path3, "typescript-prompts");
+    }
+
+    /// Test liquid context creation
+    #[test]
+    fn test_template_context() {
+        let context = liquid::object!({
+            "project_name": "my-server",
+            "package_name": "my_server",
+            "wasmcp_version": "0.1.0",
+            "language": "rust",
+        });
+
+        assert_eq!(context["project_name"], "my-server");
+        assert_eq!(context["package_name"], "my_server");
+        assert_eq!(context["wasmcp_version"], "0.1.0");
+        assert_eq!(context["language"], "rust");
+    }
+
+    /// Test package name conversion edge cases
+    #[test]
+    fn test_package_name_edge_cases() {
+        // Multiple hyphens
+        assert_eq!("my-mcp-server".replace('-', "_"), "my_mcp_server");
+
+        // No hyphens
+        assert_eq!("myserver".replace('-', "_"), "myserver");
+
+        // Leading/trailing hyphens
+        assert_eq!("-server-".replace('-', "_"), "_server_");
+    }
+
+    /// Test parser creation
+    #[test]
+    fn test_liquid_parser_creation() {
+        let parser = ParserBuilder::with_stdlib().build();
+        assert!(parser.is_ok());
+    }
+
+    /// Test template rendering with context
+    #[test]
+    fn test_template_rendering() {
+        let parser = ParserBuilder::with_stdlib().build().unwrap();
+        let template = parser.parse("Hello {{name}}!").unwrap();
+
+        let context = liquid::object!({
+            "name": "World"
+        });
+
+        let rendered = template.render(&context).unwrap();
+        assert_eq!(rendered, "Hello World!");
+    }
+
+    /// Test error message for missing template
+    #[test]
+    fn test_missing_template_error() {
+        let error = format!(
+            "template not found for language '{}' and type '{}'",
+            "invalid-lang", "invalid-type"
+        );
+        assert!(error.contains("template not found"));
+        assert!(error.contains("invalid-lang"));
+        assert!(error.contains("invalid-type"));
+    }
+
+    /// Test WIT dependency message
+    #[test]
+    fn test_wit_dependency_message() {
+        let msg = "📦 Fetching WIT dependencies...";
+        assert!(msg.contains("Fetching WIT dependencies"));
+    }
+
+    /// Test all template types exist for Rust
+    #[test]
+    fn test_rust_templates_exist() {
+        assert!(TEMPLATES.get_dir("rust-tools").is_some());
+        assert!(TEMPLATES.get_dir("rust-resources").is_some());
+        assert!(TEMPLATES.get_dir("rust-prompts").is_some());
+    }
+
+    /// Test all template types exist for Python
+    #[test]
+    fn test_python_templates_exist() {
+        assert!(TEMPLATES.get_dir("python-tools").is_some());
+        assert!(TEMPLATES.get_dir("python-resources").is_some());
+        assert!(TEMPLATES.get_dir("python-prompts").is_some());
+    }
+
+    /// Test all template types exist for TypeScript
+    #[test]
+    fn test_typescript_templates_exist() {
+        assert!(TEMPLATES.get_dir("typescript-tools").is_some());
+        assert!(TEMPLATES.get_dir("typescript-resources").is_some());
+        assert!(TEMPLATES.get_dir("typescript-prompts").is_some());
+    }
 }

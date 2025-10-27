@@ -69,9 +69,9 @@ Components can be specified in multiple formats:
 # Format: namespace:name[@version]
 # The colon (:) identifies it as a registry package
 
-wasmcp compose wasmcp:calculator@0.1.0 -o server.wasm    # With version (recommended)
-wasmcp compose wasmcp:calculator -o server.wasm          # Latest version
-wasmcp compose namespace:handler@2.0.0 -o server.wasm   # Custom namespace
+wasmcp compose server wasmcp:calculator@0.1.0 -o server.wasm    # With version (recommended)
+wasmcp compose server wasmcp:calculator -o server.wasm          # Latest version
+wasmcp compose server namespace:handler@2.0.0 -o server.wasm   # Custom namespace
 ```
 
 Registry packages are downloaded from OCI registries (e.g., `ghcr.io/wasmcp`) and cached in `~/.config/wasmcp/deps/`.
@@ -80,57 +80,57 @@ Registry packages are downloaded from OCI registries (e.g., `ghcr.io/wasmcp`) an
 ```bash
 # Detected by: starts with ./ ../ ~/ / or contains / or ends with .wasm
 
-wasmcp compose ./component.wasm -o server.wasm           # Relative path
-wasmcp compose ../target/handler.wasm -o server.wasm    # Parent directory
-wasmcp compose /abs/path/component.wasm -o server.wasm  # Absolute path
-wasmcp compose ~/projects/handler.wasm -o server.wasm   # Home directory
-wasmcp compose handler.wasm -o server.wasm              # Current directory
+wasmcp compose server ./component.wasm -o server.wasm           # Relative path
+wasmcp compose server ../target/handler.wasm -o server.wasm    # Parent directory
+wasmcp compose server /abs/path/component.wasm -o server.wasm  # Absolute path
+wasmcp compose server ~/projects/handler.wasm -o server.wasm   # Home directory
+wasmcp compose server handler.wasm -o server.wasm              # Current directory
 ```
 
 **Aliases:**
 ```bash
-# Registered in ~/.config/wasmcp/wasmcp.toml
+# Registered in ~/.config/wasmcp/config.toml
 
-wasmcp compose calc strings -o server.wasm              # Using aliases
+wasmcp compose server calc strings -o server.wasm              # Using aliases
 ```
 
 **Profiles:**
 ```bash
 # Expand to multiple components in-place
 
-wasmcp compose dev                                       # Profile (uses profile output)
-wasmcp compose dev -o custom.wasm                        # Override profile output
+wasmcp compose server dev                                       # Profile (uses profile output)
+wasmcp compose server dev -o custom.wasm                        # Override profile output
 ```
 
 **Mixed Formats:**
 ```bash
 # You can mix any combination
 
-wasmcp compose dev calc ./local.wasm wasmcp:remote@1.0 -o server.wasm
+wasmcp compose server dev calc ./local.wasm wasmcp:remote@1.0 -o server.wasm
 ```
 
 #### Transport Options
 
 ```bash
-wasmcp compose component.wasm -t stdio -o server.wasm   # Stdio transport
-wasmcp compose component.wasm -t http -o server.wasm    # HTTP transport (default)
+wasmcp compose server component.wasm -t stdio -o server.wasm   # Stdio transport
+wasmcp compose server component.wasm -t http -o server.wasm    # HTTP transport (default)
 ```
 
 #### Advanced Options
 
 ```bash
 # Force overwrite existing output
-wasmcp compose calc strings -o server.wasm --force
+wasmcp compose server calc strings -o server.wasm --force
 
 # Verbose output for debugging resolution
-wasmcp compose calc strings -o server.wasm --verbose
+wasmcp compose server calc strings -o server.wasm --verbose
 
 # Custom dependency directory
-wasmcp compose calc --deps-dir ./my-deps --skip-download
+wasmcp compose server calc --deps-dir ./my-deps --skip-download
 
 # Override framework components
-wasmcp compose calc --override-transport custom-transport.wasm
-wasmcp compose calc --override-method-not-found custom-handler.wasm
+wasmcp compose server calc --override-transport custom-transport.wasm
+wasmcp compose server calc --override-method-not-found custom-handler.wasm
 ```
 
 **Resolution order:** profile → alias → path → registry package
@@ -151,7 +151,22 @@ wasmtime run server.wasm
 
 The CLI includes a Model Context Protocol (MCP) server that provides AI assistants with tools and resources for wasmcp development.
 
-#### Start the MCP server
+**Quick Start:**
+
+```bash
+# Foreground mode (development)
+wasmcp mcp serve
+
+# Background daemon (production)
+wasmcp mcp start
+wasmcp mcp status
+wasmcp mcp logs
+wasmcp mcp stop
+```
+
+See **[Daemon Management Guide](../docs/daemon-management.md)** for complete documentation on running the server as a background daemon.
+
+#### Start the MCP server (foreground)
 
 ```bash
 # HTTP server on default port 8085
@@ -165,13 +180,20 @@ wasmcp mcp serve --stdio
 
 # Enable verbose logging
 wasmcp mcp serve -v
+
+# Use local filesystem instead of GitHub for resources (development only)
+wasmcp mcp serve --local-resources /path/to/wasmcp
 ```
 
 #### Available Tools
 
 The MCP server exposes the following tools:
 
-- **compose** - Compose components into MCP servers with all CLI options (force, verbose, version, deps-dir, skip-download, override options)
+- **compose** - Compose components into MCP servers with all CLI options
+- **registry_list** - List registry components, profiles, and aliases
+- **registry_add_component** - Add a component alias to the registry
+- **registry_add_profile** - Add or update a composition profile
+- **registry_remove** - Remove a component alias or profile
 
 #### Available Resources
 
@@ -214,17 +236,10 @@ Configure MCP clients to connect to the server:
 ```
 
 **HTTP Client**:
-```bash
-curl -X POST http://localhost:8085/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
-```
 
-The MCP server feature is enabled by default. To build without it:
+The MCP server uses the Streamable HTTP transport with Server-Sent Events (SSE). For testing, use an MCP client like [Claude Desktop](https://claude.ai/download) or the [MCP Inspector](https://github.com/modelcontextprotocol/inspector).
 
-```bash
-cargo build --no-default-features
-```
+For programmatic access, use an MCP client library that supports the streamable HTTP transport (see [MCP specification](https://spec.modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http)).
 
 ## Architecture
 
@@ -343,7 +358,8 @@ wasmcp compose component.wasm --version 0.4.0
 
 ## See Also
 
-- [WIT packages](../wit/)
-- [Example Implementations](../examples/)
-- [Component Model](https://github.com/WebAssembly/component-model)
-- [MCP](https://spec.modelcontextprotocol.io/)
+- **[Daemon Management Guide](../docs/daemon-management.md)** - Running the MCP server as a background daemon
+- [WIT packages](../wit/) - Interface definitions
+- [Example Implementations](../examples/) - Sample components
+- [Component Model](https://github.com/WebAssembly/component-model) - WebAssembly Component specification
+- [MCP Specification](https://spec.modelcontextprotocol.io/) - Model Context Protocol

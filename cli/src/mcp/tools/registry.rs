@@ -1,52 +1,15 @@
+//! Registry management tools
+//!
+//! Provides MCP tool interfaces for managing the wasmcp registry including
+//! component aliases, composition profiles, and configuration.
+
 use rmcp::ErrorData as McpError;
 use rmcp::model::*;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use tokio::process::Command;
 
-// Tool parameter types
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct ComposeArgs {
-    /// Components to compose (profiles, aliases, or paths)
-    pub components: Vec<String>,
-
-    /// Output file path
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub output: Option<String>,
-
-    /// Transport type (http or stdio)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub transport: Option<String>,
-
-    /// Overwrite existing output file
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub force: Option<bool>,
-
-    /// Enable verbose output
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub verbose: Option<bool>,
-
-    /// wasmcp version for framework dependencies
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
-
-    /// Directory for dependency components
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub deps_dir: Option<String>,
-
-    /// Skip downloading dependencies
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub skip_download: Option<bool>,
-
-    /// Override transport component
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub override_transport: Option<String>,
-
-    /// Override method-not-found component
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub override_method_not_found: Option<String>,
-}
-
+/// Arguments for listing registry contents
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RegistryListArgs {
     /// What to list (components, profiles, or all)
@@ -58,6 +21,7 @@ fn default_list_target() -> String {
     "all".to_string()
 }
 
+/// Arguments for adding a component alias
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct AddComponentArgs {
     /// Component alias name
@@ -67,6 +31,7 @@ pub struct AddComponentArgs {
     pub spec: String,
 }
 
+/// Arguments for adding a composition profile
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct AddProfileArgs {
     /// Profile name
@@ -80,6 +45,7 @@ pub struct AddProfileArgs {
     pub output: Option<String>,
 }
 
+/// Arguments for removing registry items
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RemoveArgs {
     /// Type to remove (component or profile)
@@ -89,85 +55,8 @@ pub struct RemoveArgs {
     pub name: String,
 }
 
-// Tool implementations
-pub async fn compose_tool(args: ComposeArgs) -> Result<CallToolResult, McpError> {
-    let mut cmd = Command::new("wasmcp");
-    cmd.arg("compose");
-
-    for component in &args.components {
-        cmd.arg(component);
-    }
-
-    if let Some(output) = &args.output {
-        cmd.arg("-o").arg(output);
-    }
-
-    if let Some(transport) = &args.transport {
-        cmd.arg("--transport").arg(transport);
-    }
-
-    if args.force == Some(true) {
-        cmd.arg("--force");
-    }
-
-    if args.verbose == Some(true) {
-        cmd.arg("--verbose");
-    }
-
-    if let Some(version) = &args.version {
-        cmd.arg("--version").arg(version);
-    }
-
-    if let Some(deps_dir) = &args.deps_dir {
-        cmd.arg("--deps-dir").arg(deps_dir);
-    }
-
-    if args.skip_download == Some(true) {
-        cmd.arg("--skip-download");
-    }
-
-    if let Some(override_transport) = &args.override_transport {
-        cmd.arg("--override-transport").arg(override_transport);
-    }
-
-    if let Some(override_mnf) = &args.override_method_not_found {
-        cmd.arg("--override-method-not-found").arg(override_mnf);
-    }
-
-    let output = cmd.output().await.map_err(|e| {
-        McpError::internal_error(
-            format!("Failed to execute compose: {}", e),
-            Some(serde_json::json!({
-                "error": e.to_string(),
-                "command": "wasmcp compose",
-                "components": args.components,
-            })),
-        )
-    })?;
-
-    if output.status.success() {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        Ok(CallToolResult::success(vec![Content::text(format!(
-            "✓ Composition successful\n\n{}",
-            stdout
-        ))]))
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        Err(McpError::internal_error(
-            format!("Composition failed: {}", stderr),
-            Some(serde_json::json!({
-                "exit_code": output.status.code(),
-                "stderr": stderr.to_string(),
-                "stdout": stdout.to_string(),
-                "components": args.components,
-                "output": args.output,
-            })),
-        ))
-    }
-}
-
-pub async fn registry_list_tool(args: RegistryListArgs) -> Result<CallToolResult, McpError> {
+/// Execute registry list tool
+pub async fn list_tool(args: RegistryListArgs) -> Result<CallToolResult, McpError> {
     // Load fresh config from disk
     let config = crate::config::load_config()
         .map_err(|e| McpError::internal_error(format!("Failed to load config: {}", e), None))?;
@@ -219,9 +108,8 @@ pub async fn registry_list_tool(args: RegistryListArgs) -> Result<CallToolResult
     Ok(CallToolResult::success(vec![Content::text(output)]))
 }
 
-pub async fn registry_add_component_tool(
-    args: AddComponentArgs,
-) -> Result<CallToolResult, McpError> {
+/// Execute registry add component tool
+pub async fn add_component_tool(args: AddComponentArgs) -> Result<CallToolResult, McpError> {
     let output = Command::new("wasmcp")
         .args(["registry", "component", "add", &args.alias, &args.spec])
         .output()
@@ -257,7 +145,8 @@ pub async fn registry_add_component_tool(
     }
 }
 
-pub async fn registry_add_profile_tool(args: AddProfileArgs) -> Result<CallToolResult, McpError> {
+/// Execute registry add profile tool
+pub async fn add_profile_tool(args: AddProfileArgs) -> Result<CallToolResult, McpError> {
     let mut cmd = Command::new("wasmcp");
     cmd.args(["registry", "profile", "add", &args.name]);
 
@@ -307,7 +196,8 @@ pub async fn registry_add_profile_tool(args: AddProfileArgs) -> Result<CallToolR
     }
 }
 
-pub async fn registry_remove_tool(args: RemoveArgs) -> Result<CallToolResult, McpError> {
+/// Execute registry remove tool
+pub async fn remove_tool(args: RemoveArgs) -> Result<CallToolResult, McpError> {
     let output = Command::new("wasmcp")
         .args(["registry", &args.kind, "remove", &args.name])
         .output()

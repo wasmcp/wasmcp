@@ -219,7 +219,9 @@ fn test_empty_state_shows_concrete_examples() {
         .success()
         // Check for concrete examples, not just templates
         .stdout(predicate::str::contains("wasmcp:calculator@0.1.0"))
-        .stdout(predicate::str::contains("./target/wasm32-wasip2/release/handler.wasm"))
+        .stdout(predicate::str::contains(
+            "./target/wasm32-wasip2/release/handler.wasm",
+        ))
         .stdout(predicate::str::contains("# From a registry package:"))
         .stdout(predicate::str::contains("# From a local file:"))
         .stdout(predicate::str::contains("# From another alias:"));
@@ -236,7 +238,9 @@ fn test_profile_empty_state_shows_concrete_examples() {
         .stdout(predicate::str::contains("dev-server"))
         .stdout(predicate::str::contains("prod-server"))
         .stdout(predicate::str::contains("# Simple profile:"))
-        .stdout(predicate::str::contains("# With inheritance from a base profile:"))
+        .stdout(predicate::str::contains(
+            "# With inheritance from a base profile:",
+        ))
         .stdout(predicate::str::contains("-b dev-server"));
 }
 

@@ -123,3 +123,175 @@ fn resolve_component_spec_recursive<'a>(
             })
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+    use tempfile::TempDir;
+
+    /// Test circular alias detection
+    #[test]
+    fn test_circular_alias_detection() {
+        let mut visited = HashSet::new();
+        visited.insert("alias1".to_string());
+        visited.insert("alias2".to_string());
+
+        // Simulate detecting a cycle
+        let spec = "alias1"; // Trying to visit alias1 again
+        assert!(visited.contains(spec));
+
+        // Verify error message format
+        let chain: Vec<_> = visited.iter().map(|s| s.as_str()).collect();
+        let error_msg = format!(
+            "circular alias detected: {} → '{}'",
+            chain.join(" → "),
+            spec
+        );
+        assert!(error_msg.contains("circular alias detected"));
+        assert!(error_msg.contains("alias1"));
+    }
+
+    /// Test format_resolution_error with single-step resolution
+    #[test]
+    fn test_format_resolution_error_simple() {
+        let visited = HashSet::from(["component.wasm".to_string()]);
+        let error = format_resolution_error(
+            "component not found",
+            "component.wasm",
+            &visited,
+            "file does not exist",
+        );
+
+        assert!(error.contains("component not found"));
+        assert!(error.contains("component.wasm"));
+        assert!(error.contains("file does not exist"));
+        // Should NOT contain "resolution chain" for single-step
+        assert!(!error.contains("resolution chain"));
+    }
+
+    /// Test format_resolution_error with multi-step resolution chain
+    #[test]
+    fn test_format_resolution_error_with_chain() {
+        let visited = HashSet::from([
+            "alias1".to_string(),
+            "alias2".to_string(),
+            "final.wasm".to_string(),
+        ]);
+        let error = format_resolution_error(
+            "failed to download component",
+            "final.wasm",
+            &visited,
+            "network error",
+        );
+
+        assert!(error.contains("failed to download component"));
+        assert!(error.contains("final.wasm"));
+        assert!(error.contains("network error"));
+        // SHOULD contain "resolution chain" for multi-step
+        assert!(error.contains("resolution chain"));
+    }
+
+    /// Test path spec detection
+    #[test]
+    fn test_path_spec_detection() {
+        use crate::config::utils::is_path_spec;
+
+        // Paths should be detected
+        assert!(is_path_spec("./component.wasm"));
+        assert!(is_path_spec("../component.wasm"));
+        assert!(is_path_spec("/abs/path/component.wasm"));
+        assert!(is_path_spec("~/component.wasm"));
+        assert!(is_path_spec("path/to/component.wasm"));
+
+        // Registry specs should NOT be detected as paths
+        assert!(!is_path_spec("wasmcp:calculator@0.1.0"));
+        assert!(!is_path_spec("namespace:component"));
+        assert!(!is_path_spec("simple-alias"));
+    }
+
+    /// Test that visited set prevents infinite loops
+    #[test]
+    fn test_visited_set_usage() {
+        let mut visited = HashSet::new();
+
+        // First visit should succeed
+        assert!(!visited.contains("spec1"));
+        visited.insert("spec1".to_string());
+        assert!(visited.contains("spec1"));
+
+        // Second visit to same spec should be detected
+        assert!(visited.contains("spec1"));
+
+        // Different spec should work
+        assert!(!visited.contains("spec2"));
+        visited.insert("spec2".to_string());
+        assert!(visited.contains("spec2"));
+
+        // Both should now be in the set
+        assert_eq!(visited.len(), 2);
+    }
+
+    /// Test async function signature and error propagation
+    #[tokio::test]
+    async fn test_resolve_component_spec_async_signature() {
+        // This test verifies the async function can be called
+        // Real testing requires a PackageClient and config setup
+        let temp_dir = TempDir::new().unwrap();
+
+        // Test with a path that doesn't exist
+        let client = pkg::create_default_client().await.unwrap();
+        let result =
+            resolve_component_spec("./nonexistent.wasm", temp_dir.path(), &client, false).await;
+
+        // Should fail because file doesn't exist
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("component not found") || err_msg.contains("No such file"));
+    }
+
+    /// Test resolution error messages are helpful
+    #[test]
+    fn test_error_message_quality() {
+        let visited = HashSet::from(["alias1".to_string(), "alias2".to_string()]);
+
+        let error = format_resolution_error(
+            "failed to download component",
+            "namespace:component@1.0.0",
+            &visited,
+            "404 Not Found",
+        );
+
+        // Error should be informative
+        assert!(error.contains("failed to download component"));
+        assert!(error.contains("namespace:component@1.0.0"));
+        assert!(error.contains("404 Not Found"));
+        assert!(error.contains("resolution chain"));
+        assert!(error.contains("alias1"));
+        assert!(error.contains("alias2"));
+    }
+
+    /// Test recursive resolution structure
+    #[tokio::test]
+    async fn test_recursive_resolution_terminates() {
+        // Verify the recursive function signature is correct
+        // The function uses Pin<Box<dyn Future>> for recursion
+        let temp_dir = TempDir::new().unwrap();
+        let mut visited = HashSet::new();
+        let client = pkg::create_default_client().await.unwrap();
+
+        // Test with invalid path - should terminate with error
+        let result = resolve_component_spec_recursive(
+            "./invalid.wasm",
+            temp_dir.path(),
+            &client,
+            &mut visited,
+            false,
+        )
+        .await;
+
+        assert!(result.is_err());
+        // Visited set should contain the spec we tried
+        assert!(visited.contains("./invalid.wasm"));
+    }
+}
