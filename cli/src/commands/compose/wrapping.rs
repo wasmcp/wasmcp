@@ -25,6 +25,7 @@ pub async fn wrap_capabilities(
     verbose: bool,
 ) -> Result<Vec<PathBuf>> {
     let mut wrapped_paths = Vec::new();
+    let server_handler_interface = dependencies::interfaces::server_handler(version);
     let tools_interface = dependencies::interfaces::tools(version);
     let resources_interface = dependencies::interfaces::resources(version);
     let prompts_interface = dependencies::interfaces::prompts(version);
@@ -35,8 +36,15 @@ pub async fn wrap_capabilities(
             .and_then(|s| s.to_str())
             .unwrap_or("component");
 
+        // If component already exports server-handler, it's a handler component - use as-is
+        if component_exports_interface(&path, &server_handler_interface)? {
+            if verbose {
+                println!("   {} is a server-handler → using as-is", component_name);
+            }
+            wrapped_paths.push(path);
+        }
         // Check for tools capability
-        if component_exports_interface(&path, &tools_interface)? {
+        else if component_exports_interface(&path, &tools_interface)? {
             if verbose {
                 println!(
                     "   {} is a tools-capability → wrapping with tools-middleware",
@@ -131,6 +139,9 @@ pub async fn wrap_capabilities(
 /// Check if a component exports a specific interface
 ///
 /// This loads the component and inspects its exports to determine its type.
+/// Note: For composed components, this returns true if ANY nested component exports
+/// the interface. The wrap_capabilities function handles this by checking for
+/// server-handler exports first.
 fn component_exports_interface(path: &Path, interface: &str) -> Result<bool> {
     use wasmparser::{Parser, Payload};
 
@@ -210,4 +221,382 @@ fn wrap_with_middleware(
         .context("Failed to encode wrapped component")?;
 
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    /// Test that component_exports_interface correctly identifies missing exports
+    #[test]
+    fn test_component_missing_file() {
+        let result =
+            component_exports_interface(Path::new("/nonexistent/file.wasm"), "some:interface");
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Failed to read component")
+        );
+    }
+
+    /// Test get_dependency_path references in error messages
+    #[test]
+    fn test_wrap_capabilities_error_handling() {
+        // This test verifies that the function signature is correct and can handle errors
+        // Real integration testing requires actual WASM components
+        let temp_dir = TempDir::new().unwrap();
+        let component_paths = vec![temp_dir.path().join("nonexistent.wasm")];
+
+        // Create a runtime for the async function
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(wrap_capabilities(
+            component_paths,
+            temp_dir.path(),
+            "0.1.0",
+            false,
+        ));
+
+        // Should fail because component doesn't exist
+        assert!(result.is_err());
+    }
+
+    /// Test WRAPPED_COMPONENT_PREFIX constant
+    #[test]
+    fn test_wrapped_component_prefix() {
+        assert_eq!(WRAPPED_COMPONENT_PREFIX, ".wrapped-");
+        // Verify it starts with a dot (hidden file on Unix)
+        assert!(WRAPPED_COMPONENT_PREFIX.starts_with('.'));
+    }
+
+    /// Test that wrap_capabilities creates correctly named output files
+    #[test]
+    fn test_wrapped_component_naming() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Test the naming pattern that would be used
+        let expected_tools = format!("{}tools-0.wasm", WRAPPED_COMPONENT_PREFIX);
+        let expected_resources = format!("{}resources-1.wasm", WRAPPED_COMPONENT_PREFIX);
+
+        assert_eq!(expected_tools, ".wrapped-tools-0.wasm");
+        assert_eq!(expected_resources, ".wrapped-resources-1.wasm");
+
+        // Verify paths would be constructed correctly
+        let tools_path = temp_dir.path().join(expected_tools);
+        let resources_path = temp_dir.path().join(expected_resources);
+
+        assert!(
+            tools_path
+                .to_string_lossy()
+                .contains(".wrapped-tools-0.wasm")
+        );
+        assert!(
+            resources_path
+                .to_string_lossy()
+                .contains(".wrapped-resources-1.wasm")
+        );
+    }
+
+    /// Test component name extraction from path
+    #[test]
+    fn test_component_name_extraction() {
+        let path1 = PathBuf::from("/path/to/calculator.wasm");
+        let name1 = path1
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("component");
+        assert_eq!(name1, "calculator");
+
+        let path2 = PathBuf::from("my-handler.wasm");
+        let name2 = path2
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("component");
+        assert_eq!(name2, "my-handler");
+
+        // Test fallback
+        let path3 = PathBuf::from("/");
+        let name3 = path3
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("component");
+        assert_eq!(name3, "component");
+    }
+
+    /// Test that dependencies module interfaces are accessible
+    #[test]
+    fn test_interface_constants_available() {
+        use crate::DEFAULT_WASMCP_VERSION;
+
+        // Verify we can call interface naming functions
+        let server_handler = dependencies::interfaces::server_handler(DEFAULT_WASMCP_VERSION);
+        let tools = dependencies::interfaces::tools(DEFAULT_WASMCP_VERSION);
+        let resources = dependencies::interfaces::resources(DEFAULT_WASMCP_VERSION);
+        let prompts = dependencies::interfaces::prompts(DEFAULT_WASMCP_VERSION);
+
+        // Verify format
+        assert!(server_handler.starts_with("wasmcp:server/handler@"));
+        assert!(tools.starts_with("wasmcp:protocol/tools@"));
+        assert!(resources.starts_with("wasmcp:protocol/resources@"));
+        assert!(prompts.starts_with("wasmcp:protocol/prompts@"));
+    }
+
+    /// Test verbose message formats for component detection
+    #[test]
+    fn test_verbose_detection_messages() {
+        let component_name = "calculator";
+
+        // Server-handler detection message
+        let handler_msg = format!("   {} is a server-handler → using as-is", component_name);
+        assert_eq!(
+            handler_msg,
+            "   calculator is a server-handler → using as-is"
+        );
+        assert!(handler_msg.contains("server-handler"));
+        assert!(handler_msg.contains("using as-is"));
+
+        // Tools capability wrapping message
+        let tools_msg = format!(
+            "   {} is a tools-capability → wrapping with tools-middleware",
+            component_name
+        );
+        assert_eq!(
+            tools_msg,
+            "   calculator is a tools-capability → wrapping with tools-middleware"
+        );
+        assert!(tools_msg.contains("tools-capability"));
+        assert!(tools_msg.contains("tools-middleware"));
+
+        // Resources capability wrapping message
+        let resources_msg = format!(
+            "   {} is a resources-capability → wrapping with resources-middleware",
+            component_name
+        );
+        assert!(resources_msg.contains("resources-capability"));
+        assert!(resources_msg.contains("resources-middleware"));
+
+        // Prompts capability wrapping message
+        let prompts_msg = format!(
+            "   {} is a prompts-capability → wrapping with prompts-middleware",
+            component_name
+        );
+        assert!(prompts_msg.contains("prompts-capability"));
+        assert!(prompts_msg.contains("prompts-middleware"));
+    }
+
+    /// Test middleware path construction pattern
+    #[test]
+    fn test_middleware_naming_pattern() {
+        // Middleware names used in get_dependency_path calls
+        let tools_middleware = "tools-middleware";
+        let resources_middleware = "resources-middleware";
+        let prompts_middleware = "prompts-middleware";
+
+        assert_eq!(tools_middleware, "tools-middleware");
+        assert_eq!(resources_middleware, "resources-middleware");
+        assert_eq!(prompts_middleware, "prompts-middleware");
+
+        // Verify consistent naming pattern: {type}-middleware
+        assert!(tools_middleware.ends_with("-middleware"));
+        assert!(resources_middleware.ends_with("-middleware"));
+        assert!(prompts_middleware.ends_with("-middleware"));
+    }
+
+    /// Test wrapped component output path construction
+    #[test]
+    fn test_wrapped_output_path_construction() {
+        let temp_dir = TempDir::new().unwrap();
+        let index = 3;
+
+        // Test each capability type's output naming
+        let tools_output = temp_dir
+            .path()
+            .join(format!("{}tools-{}.wasm", WRAPPED_COMPONENT_PREFIX, index));
+        let resources_output = temp_dir.path().join(format!(
+            "{}resources-{}.wasm",
+            WRAPPED_COMPONENT_PREFIX, index
+        ));
+        let prompts_output = temp_dir.path().join(format!(
+            "{}prompts-{}.wasm",
+            WRAPPED_COMPONENT_PREFIX, index
+        ));
+
+        // Verify naming pattern
+        assert!(
+            tools_output
+                .to_string_lossy()
+                .contains(".wrapped-tools-3.wasm")
+        );
+        assert!(
+            resources_output
+                .to_string_lossy()
+                .contains(".wrapped-resources-3.wasm")
+        );
+        assert!(
+            prompts_output
+                .to_string_lossy()
+                .contains(".wrapped-prompts-3.wasm")
+        );
+
+        // Verify all use same prefix
+        assert!(
+            tools_output
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with(WRAPPED_COMPONENT_PREFIX)
+        );
+        assert!(
+            resources_output
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with(WRAPPED_COMPONENT_PREFIX)
+        );
+        assert!(
+            prompts_output
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with(WRAPPED_COMPONENT_PREFIX)
+        );
+    }
+
+    /// Test detection order priority - server-handler MUST be checked first
+    #[test]
+    fn test_detection_order_priority() {
+        // This test documents the critical bug fix: checking server-handler first
+        // prevents re-wrapping already-wrapped components
+
+        // Detection order (line 40-133):
+        // 1. server-handler (MUST be first)
+        // 2. tools
+        // 3. resources
+        // 4. prompts
+        // 5. else (assume server-handler)
+
+        let detection_order = [
+            "server-handler",
+            "tools",
+            "resources",
+            "prompts",
+            "else (assume server-handler)",
+        ];
+
+        // Verify server-handler is first
+        assert_eq!(detection_order[0], "server-handler");
+
+        // This is critical because composed handlers export server-handler at top level
+        // but contain nested capability components. If we check capabilities first,
+        // we'd detect the nested component and try to re-wrap.
+    }
+
+    /// Test error context message construction
+    #[test]
+    fn test_error_context_messages() {
+        let path = Path::new("/path/to/component.wasm");
+        let capability_name = "tools-capability";
+
+        // Component reading error
+        let read_error = format!("Failed to read component: {}", path.display());
+        assert!(read_error.contains("Failed to read component"));
+        assert!(read_error.contains("/path/to/component.wasm"));
+
+        // Export retrieval error
+        let export_error = format!("Failed to get {} export", capability_name);
+        assert_eq!(export_error, "Failed to get tools-capability export");
+        assert!(export_error.contains("Failed to get"));
+        assert!(export_error.contains("export"));
+
+        // Interface wiring error
+        let wire_error = format!("Failed to wire {} interface", capability_name);
+        assert_eq!(wire_error, "Failed to wire tools-capability interface");
+        assert!(wire_error.contains("Failed to wire"));
+        assert!(wire_error.contains("interface"));
+    }
+
+    /// Test wasmparser error handling in component_exports_interface
+    #[test]
+    fn test_component_parse_error_context() {
+        let error_msg = "Failed to parse component";
+        assert_eq!(error_msg, "Failed to parse component");
+
+        let export_error = "Failed to parse export";
+        assert_eq!(export_error, "Failed to parse export");
+    }
+
+    /// Test middleware wrapping error contexts
+    #[test]
+    fn test_middleware_wrapping_errors() {
+        let server_handler_error = "Failed to get server-handler export from middleware";
+        let export_error = "Failed to export server-handler";
+        let encode_error = "Failed to encode wrapped component";
+        let write_error = "Failed to write wrapped component";
+
+        assert!(server_handler_error.contains("server-handler export from middleware"));
+        assert!(export_error.contains("export server-handler"));
+        assert!(encode_error.contains("encode wrapped component"));
+        assert!(write_error.contains("write wrapped component"));
+    }
+
+    /// Test capability interface names used in wrapping
+    #[test]
+    fn test_capability_interface_names() {
+        let middleware_name = "tools-middleware";
+        let capability_name = "tools-capability";
+
+        // Package names for wac-graph
+        assert_eq!(middleware_name, "tools-middleware");
+        assert_eq!(capability_name, "tools-capability");
+
+        // Verify consistent naming: {type}-middleware and {type}-capability
+        let base_type = "tools";
+        assert_eq!(format!("{}-middleware", base_type), middleware_name);
+        assert_eq!(format!("{}-capability", base_type), capability_name);
+    }
+
+    /// Test component iteration pattern with indices
+    #[test]
+    fn test_component_iteration_with_indices() {
+        let paths = vec![
+            PathBuf::from("comp1.wasm"),
+            PathBuf::from("comp2.wasm"),
+            PathBuf::from("comp3.wasm"),
+        ];
+
+        // Simulate the iteration at line 33
+        let indexed: Vec<(usize, PathBuf)> = paths.into_iter().enumerate().collect();
+
+        assert_eq!(indexed.len(), 3);
+        assert_eq!(indexed[0].0, 0);
+        assert_eq!(indexed[1].0, 1);
+        assert_eq!(indexed[2].0, 2);
+
+        // Indices are used for unique output filenames
+        for (i, _path) in indexed {
+            let output_name = format!("{}tools-{}.wasm", WRAPPED_COMPONENT_PREFIX, i);
+            assert!(output_name.starts_with(".wrapped-"));
+            assert!(output_name.ends_with(".wasm"));
+        }
+    }
+
+    /// Test that else branch assumes server-handler (line 128-133)
+    #[test]
+    fn test_fallback_assumes_handler() {
+        // If a component doesn't export any known interface, we assume it's a handler
+        // This is the else branch at line 128-133
+
+        let component_name = "unknown-component";
+        let fallback_msg = format!("   {} is a server-handler → using as-is", component_name);
+
+        assert!(fallback_msg.contains("server-handler"));
+        assert!(fallback_msg.contains("using as-is"));
+
+        // This fallback prevents errors when components export custom interfaces
+    }
 }

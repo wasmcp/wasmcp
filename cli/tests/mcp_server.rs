@@ -5,7 +5,7 @@ use wasmcp::commands::server::WasmcpServer;
 // Helper to create test server
 fn create_test_server() -> WasmcpServer {
     let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    WasmcpServer::new(project_root).expect("Failed to create test server")
+    WasmcpServer::new(project_root, None).expect("Failed to create test server")
 }
 
 #[test]
@@ -22,7 +22,7 @@ fn test_server_info() {
 #[test]
 fn test_server_creation() {
     let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let result = WasmcpServer::new(project_root);
+    let result = WasmcpServer::new(project_root, None);
     assert!(result.is_ok(), "Server creation should succeed");
 }
 

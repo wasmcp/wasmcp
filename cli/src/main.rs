@@ -1,15 +1,10 @@
-mod commands;
-mod config;
-mod logging;
-mod types;
+// Use modules from the library crate
+use wasmcp::{DEFAULT_WASMCP_VERSION, commands, config, types};
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::path::PathBuf;
 use types::{Language, TemplateType, Transport};
-
-// Re-export the default version constant
-use wasmcp::DEFAULT_WASMCP_VERSION;
 
 /// Get the default deps directory from config, or fall back to a relative path
 fn default_deps_dir() -> PathBuf {
@@ -55,13 +50,15 @@ enum Command {
         output: Option<PathBuf>,
     },
 
-    /// Compose handler components into a complete MCP server
+    /// Compose handler components
     ///
-    /// Components are composed in a linear middleware pipeline:
-    ///   transport → component₁ → component₂ → ... → method-not-found
+    /// Choose the appropriate subcommand:
+    ///   - Use 'server' when you want a runnable MCP server
+    ///   - Use 'handler' when building reusable middleware
     ///
-    /// Each component can handle specific MCP methods and delegates unknown
-    /// requests to the next component in the chain.
+    /// Subcommands:
+    ///   server   - Compose a complete MCP server (with transport and terminal handler)
+    ///   handler  - Compose a handler component (without transport/terminal)
     ///
     /// Components can be specified in multiple formats:
     ///
@@ -87,19 +84,50 @@ enum Command {
     /// Resolution order: profile → alias → path → registry package
     /// Detection: Contains ':' = registry, contains '/' or ends '.wasm' = path
     ///
+    /// Examples:
+    ///   wasmcp compose server wasmcp:calculator@0.1.0   # Complete server
+    ///   wasmcp compose handler calc.wasm math.wasm      # Handler component
+    ///   wasmcp compose calc strings                      # Backward compat (server mode)
+    #[command(subcommand)]
+    Compose(ComposeCommand),
+
+    /// WIT dependency management commands
+    Wit {
+        #[command(subcommand)]
+        command: WitCommand,
+    },
+
+    /// Registry management commands for component aliases and profiles
+    Registry {
+        #[command(subcommand)]
+        command: RegistryCommand,
+    },
+
+    /// Model Context Protocol (MCP) server commands
+    Mcp {
+        #[command(subcommand)]
+        command: McpCommand,
+    },
+}
+
+#[derive(Parser)]
+enum ComposeCommand {
+    /// Compose a complete MCP server
+    ///
+    /// Creates a runnable MCP server with transport layer and terminal handler:
+    ///   transport → component₁ → component₂ → ... → method-not-found
+    ///
     /// Output path resolution (highest priority wins):
     ///   1. Explicit -o flag: Always used when provided
     ///   2. Profile output: Uses the last profile's configured output path
     ///   3. Default: "mcp-server.wasm" when no profile or -o flag is specified
     ///
     /// Examples:
-    ///   wasmcp compose wasmcp:calculator@0.1.0          # Registry package with version
-    ///   wasmcp compose wasmcp:calculator                # Registry package (latest)
-    ///   wasmcp compose dev                              # Profile
-    ///   wasmcp compose calc strings                     # Aliases
-    ///   wasmcp compose ./handler.wasm                   # Local file
-    ///   wasmcp compose dev extra.wasm -o server.wasm   # Mixed: profile + local file
-    Compose {
+    ///   wasmcp compose server wasmcp:calculator@0.1.0
+    ///   wasmcp compose server dev                        # Profile
+    ///   wasmcp compose server calc strings               # Aliases
+    ///   wasmcp compose server ./handler.wasm
+    Server {
         /// (Optional) Profile(s) for backward compatibility with -p flag
         ///
         /// NOTE: Profiles can also be specified directly in the components list.
@@ -157,29 +185,93 @@ enum Command {
         verbose: bool,
     },
 
-    /// WIT dependency management commands
-    Wit {
-        #[command(subcommand)]
-        command: WitCommand,
-    },
+    /// Compose a handler component (composable middleware without transport)
+    ///
+    /// Creates an intermediate handler component that exports wasmcp:server/handler
+    /// but does NOT include transport or terminal components. This is useful for:
+    ///   - Building reusable middleware layers
+    ///   - Creating multi-component tools that can be composed into servers
+    ///   - Orchestrating multiple downstream components
+    ///
+    /// Component chain structure:
+    ///   component₁ → component₂ → ... → componentₙ
+    ///
+    /// Unlike 'compose server', this does NOT create a runnable server.
+    /// The output must be composed into a server with 'compose server'.
+    ///
+    /// Examples:
+    ///   # Build distance-calculator with math tools
+    ///   wasmcp compose handler distance-calc.wasm wasmcp:math@0.1.0 -o dist-calc.wasm
+    ///
+    ///   # Then use in a server
+    ///   wasmcp compose server dist-calc.wasm other-tools.wasm
+    Handler {
+        /// (Optional) Profile(s) for backward compatibility with -p flag
+        #[arg(long, short = 'p', value_name = "NAME")]
+        profile: Vec<String>,
 
-    /// Registry management commands for component aliases and profiles
-    Registry {
-        #[command(subcommand)]
-        command: RegistryCommand,
-    },
+        /// Components to compose (profile names, aliases, paths, or package specs)
+        #[arg(required_unless_present = "profile")]
+        components: Vec<String>,
 
-    /// Model Context Protocol (MCP) server commands
-    Mcp {
-        #[command(subcommand)]
-        command: McpCommand,
+        /// Output path for the composed handler
+        ///
+        /// Defaults to "handler.wasm" in the current directory.
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+
+        /// wasmcp version for framework dependencies
+        #[arg(long, default_value_t = DEFAULT_WASMCP_VERSION.to_string())]
+        version: String,
+
+        /// Directory for dependency components
+        #[arg(long, default_value_os_t = default_deps_dir())]
+        deps_dir: PathBuf,
+
+        /// Overwrite existing output file
+        #[arg(long)]
+        force: bool,
+
+        /// Enable verbose output (show detailed resolution and composition steps)
+        #[arg(long, short = 'v')]
+        verbose: bool,
     },
 }
 
 #[derive(Parser)]
 enum McpCommand {
     /// Run MCP server for AI-assisted wasmcp development
+    ///
+    /// Runs the server in foreground mode. Logs appear in the terminal.
+    /// Press Ctrl+C to stop. Does not create PID files.
     Serve(commands::server::ServerArgs),
+
+    /// Start MCP server as background daemon
+    ///
+    /// Server runs in the background with PID and log files.
+    /// Use 'wasmcp mcp status' to check health.
+    Start(commands::server::ServerArgs),
+
+    /// Stop background daemon
+    Stop,
+
+    /// Restart background daemon with merged flags
+    ///
+    /// Merges new flags with saved flags. New flags override saved ones.
+    Restart(commands::server::ServerArgs),
+
+    /// Show daemon status and health
+    Status,
+
+    /// View daemon logs
+    Logs {
+        /// Follow log output (like tail -f)
+        #[arg(short = 'f', long)]
+        follow: bool,
+    },
+
+    /// Clean up daemon state files
+    Clean,
 }
 
 #[derive(Parser)]
@@ -327,6 +419,21 @@ enum ProfileCommand {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Handle internal daemon entry point (macOS spawned process)
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() >= 3 && args[1] == "__internal_daemon__" {
+        let port: u16 = args[2].parse().context("Invalid port in daemon args")?;
+        let verbose: bool = args[3]
+            .parse()
+            .context("Invalid verbose flag in daemon args")?;
+        let local_resources = if args.len() > 4 {
+            Some(PathBuf::from(&args[4]))
+        } else {
+            None
+        };
+        return commands::server::daemon::daemon_entry(port, verbose, local_resources).await;
+    }
+
     let cli = Cli::parse();
 
     match cli.command {
@@ -391,70 +498,112 @@ async fn main() -> Result<()> {
             Ok(())
         }
 
-        Command::Compose {
-            profile,
-            components,
-            transport,
-            output,
-            version,
-            override_transport,
-            override_method_not_found,
-            deps_dir,
-            skip_download,
-            force,
-            verbose,
-        } => {
-            // Merge components from both sources (new unified approach)
-            // If -p flags are used, they're prepended to components list for backward compatibility
-            let mut all_specs = Vec::new();
-            all_specs.extend(profile.iter().cloned());
-            all_specs.extend(components.iter().cloned());
-
-            // Expand any profiles found in the specs (in-place expansion)
-            let (resolved_components, profile_settings) =
-                commands::compose::expand_profile_specs(&all_specs)?;
-
-            // Determine output path: CLI flag > profile setting > default
-            let final_output = match output {
-                Some(path) => {
-                    // Explicit -o flag: use relative to current working directory
-                    path
-                }
-                None => {
-                    if let Some(ref settings) = profile_settings {
-                        // Profile setting: use composed directory
-                        let composed_dir = config::get_composed_dir()?;
-                        composed_dir.join(&settings.output)
-                    } else {
-                        // Default: use current working directory
-                        PathBuf::from("mcp-server.wasm")
-                    }
-                }
-            };
-
-            // Use other settings as-is
-            let final_transport = transport.to_string();
-            let final_version = version;
-            let final_override_transport = override_transport;
-            let final_override_method_not_found = override_method_not_found;
-            let final_force = force;
-
-            // Create compose options
-            let options = commands::compose::ComposeOptions {
-                components: resolved_components,
-                transport: final_transport,
-                output: final_output,
-                version: final_version,
-                override_transport: final_override_transport,
-                override_method_not_found: final_override_method_not_found,
+        Command::Compose(compose_cmd) => match compose_cmd {
+            ComposeCommand::Server {
+                profile,
+                components,
+                transport,
+                output,
+                version,
+                override_transport,
+                override_method_not_found,
                 deps_dir,
                 skip_download,
-                force: final_force,
+                force,
                 verbose,
-            };
+            } => {
+                // Merge components from both sources (new unified approach)
+                // If -p flags are used, they're prepended to components list for backward compatibility
+                let mut all_specs = Vec::new();
+                all_specs.extend(profile.iter().cloned());
+                all_specs.extend(components.iter().cloned());
 
-            commands::compose::compose(options).await
-        }
+                // Expand any profiles found in the specs (in-place expansion)
+                let (resolved_components, profile_settings) =
+                    commands::compose::expand_profile_specs(&all_specs)?;
+
+                // Determine output path: CLI flag > profile setting > default
+                let final_output = match output {
+                    Some(path) => {
+                        // Explicit -o flag: use relative to current working directory
+                        path
+                    }
+                    None => {
+                        if let Some(ref settings) = profile_settings {
+                            // Profile setting: use composed directory
+                            let composed_dir = config::get_composed_dir()?;
+                            composed_dir.join(&settings.output)
+                        } else {
+                            // Default: use current working directory
+                            PathBuf::from("mcp-server.wasm")
+                        }
+                    }
+                };
+
+                // Use other settings as-is
+                let final_transport = transport.to_string();
+                let final_version = version;
+                let final_override_transport = override_transport;
+                let final_override_method_not_found = override_method_not_found;
+                let final_force = force;
+
+                // Create compose options
+                let options = commands::compose::ComposeOptions {
+                    components: resolved_components,
+                    transport: final_transport,
+                    output: final_output,
+                    version: final_version,
+                    override_transport: final_override_transport,
+                    override_method_not_found: final_override_method_not_found,
+                    deps_dir,
+                    skip_download,
+                    force: final_force,
+                    verbose,
+                    mode: commands::compose::CompositionMode::Server,
+                };
+
+                commands::compose::compose(options).await
+            }
+
+            ComposeCommand::Handler {
+                profile,
+                components,
+                output,
+                version,
+                deps_dir,
+                force,
+                verbose,
+            } => {
+                // Merge components from both sources
+                let mut all_specs = Vec::new();
+                all_specs.extend(profile.iter().cloned());
+                all_specs.extend(components.iter().cloned());
+
+                // Expand any profiles found in the specs
+                let (resolved_components, _profile_settings) =
+                    commands::compose::expand_profile_specs(&all_specs)?;
+
+                // Determine output path: CLI flag > default
+                let final_output = output.unwrap_or_else(|| PathBuf::from("handler.wasm"));
+
+                // Create compose options for handler mode
+                let options = commands::compose::ComposeOptions {
+                    components: resolved_components,
+                    transport: String::new(), // Not used in handler mode
+                    output: final_output,
+                    version,
+                    override_transport: None,
+                    override_method_not_found: None,
+                    deps_dir,
+                    skip_download: false, // Not applicable to handler mode
+                    force,
+                    verbose,
+                    mode: commands::compose::CompositionMode::Handler,
+                };
+
+                commands::compose::compose(options).await
+            }
+        },
 
         Command::Wit { command } => match command {
             WitCommand::Fetch { dir, update } => {
@@ -590,7 +739,61 @@ async fn main() -> Result<()> {
         },
 
         Command::Mcp { command } => match command {
-            McpCommand::Serve(args) => commands::server::handle_server_command(args).await,
+            McpCommand::Serve(args) => {
+                let mut args = args;
+                args.command = None; // Force serve mode
+                commands::server::handle_server_command(args).await
+            }
+            McpCommand::Start(args) => {
+                let mut args = args;
+                args.command = Some(commands::server::ServerCommand::Start);
+                commands::server::handle_server_command(args).await
+            }
+            McpCommand::Stop => {
+                let args = commands::server::ServerArgs {
+                    command: Some(commands::server::ServerCommand::Stop),
+                    port: 8085,
+                    stdio: false,
+                    verbose: false,
+                    local_resources: None,
+                };
+                commands::server::handle_server_command(args).await
+            }
+            McpCommand::Restart(args) => {
+                let mut args = args;
+                args.command = Some(commands::server::ServerCommand::Restart);
+                commands::server::handle_server_command(args).await
+            }
+            McpCommand::Status => {
+                let args = commands::server::ServerArgs {
+                    command: Some(commands::server::ServerCommand::Status),
+                    port: 8085,
+                    stdio: false,
+                    verbose: false,
+                    local_resources: None,
+                };
+                commands::server::handle_server_command(args).await
+            }
+            McpCommand::Logs { follow } => {
+                let args = commands::server::ServerArgs {
+                    command: Some(commands::server::ServerCommand::Logs { follow }),
+                    port: 8085,
+                    stdio: false,
+                    verbose: false,
+                    local_resources: None,
+                };
+                commands::server::handle_server_command(args).await
+            }
+            McpCommand::Clean => {
+                let args = commands::server::ServerArgs {
+                    command: Some(commands::server::ServerCommand::Clean),
+                    port: 8085,
+                    stdio: false,
+                    verbose: false,
+                    local_resources: None,
+                };
+                commands::server::handle_server_command(args).await
+            }
         },
     }
 }

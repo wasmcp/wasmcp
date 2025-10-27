@@ -52,7 +52,11 @@ cargo install --git https://github.com/wasmcp/wasmcp
 **Prerequisites:**
 - [Wasmtime](https://wasmtime.dev/) - WebAssembly runtime (required to run servers)
 
-See [cli/README.md](cli/README.md) for detailed usage.
+## Documentation
+
+- **[CLI Reference](cli/README.md)** - Complete CLI command documentation
+- **[Daemon Management](docs/daemon-management.md)** - Running the MCP server as a background daemon
+- **[Examples](examples/)** - Example component implementations
 
 ## Why?
 

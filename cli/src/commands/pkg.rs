@@ -235,3 +235,154 @@ pub async fn fetch_wit_dependencies(project_dir: &Path, update: bool) -> Result<
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    /// Test create_wasmcp_config creates config with wasmcp namespace
+    #[tokio::test]
+    async fn test_create_wasmcp_config() {
+        let _config = create_wasmcp_config().await.unwrap();
+
+        // Config should be created successfully
+        // Cannot easily test namespace mapping without internal APIs
+        // but we can verify the function doesn't error
+    }
+
+    /// Test spec filename conversion
+    #[test]
+    fn test_spec_to_filename() {
+        // Test namespace:name@version format
+        let spec1 = "wasmcp:calculator@0.1.0";
+        let filename1 = spec1.replace([':', '/'], "_") + ".wasm";
+        assert_eq!(filename1, "wasmcp_calculator@0.1.0.wasm");
+
+        // Test with slashes
+        let spec2 = "namespace/name@1.0.0";
+        let filename2 = spec2.replace([':', '/'], "_") + ".wasm";
+        assert_eq!(filename2, "namespace_name@1.0.0.wasm");
+
+        // Test complex spec
+        let spec3 = "ghcr.io/org/component:v1.2.3";
+        let filename3 = spec3.replace([':', '/'], "_") + ".wasm";
+        assert_eq!(filename3, "ghcr.io_org_component_v1.2.3.wasm");
+    }
+
+    /// Test resolve_spec with local path
+    #[tokio::test]
+    async fn test_resolve_spec_local_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.wasm");
+        std::fs::write(&test_file, b"test").unwrap();
+
+        let client = create_default_client().await.unwrap();
+        let result = resolve_spec(test_file.to_str().unwrap(), &client, temp_dir.path()).await;
+
+        assert!(result.is_ok());
+        let resolved = result.unwrap();
+        assert!(resolved.exists());
+    }
+
+    /// Test resolve_spec with nonexistent local path fails
+    #[tokio::test]
+    async fn test_resolve_spec_nonexistent_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let nonexistent = temp_dir.path().join("nonexistent.wasm");
+
+        let client = create_default_client().await.unwrap();
+        let result = resolve_spec(nonexistent.to_str().unwrap(), &client, temp_dir.path()).await;
+
+        assert!(result.is_err());
+    }
+
+    /// Test path spec detection
+    #[test]
+    fn test_path_spec_patterns() {
+        use config::utils::is_path_spec;
+
+        // These should be detected as paths
+        assert!(is_path_spec("./component.wasm"));
+        assert!(is_path_spec("../component.wasm"));
+        assert!(is_path_spec("/abs/path.wasm"));
+        assert!(is_path_spec("rel/path.wasm"));
+        assert!(is_path_spec("~/home.wasm"));
+
+        // These should NOT be detected as paths (registry specs)
+        assert!(!is_path_spec("wasmcp:calculator@0.1.0"));
+        assert!(!is_path_spec("namespace:component"));
+        assert!(!is_path_spec("simple-name"));
+    }
+
+    /// Test cache directory creation
+    #[tokio::test]
+    async fn test_create_client_cache_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let cache_dir = temp_dir.path().join("cache");
+
+        // Cache dir doesn't exist yet
+        assert!(!cache_dir.exists());
+
+        // Create client should create cache dir
+        let result = create_client(&cache_dir).await;
+        assert!(result.is_ok());
+
+        // Cache dir should now exist
+        assert!(cache_dir.exists());
+    }
+
+    /// Test WIT dependency paths
+    #[test]
+    fn test_wit_dependency_paths() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_dir = temp_dir.path();
+
+        let manifest_path = project_dir.join("wit/deps.toml");
+        let lock_path = project_dir.join("wit/deps.lock");
+        let deps_dir = project_dir.join("wit/deps");
+
+        // Verify path construction
+        assert_eq!(manifest_path.file_name().unwrap(), "deps.toml");
+        assert_eq!(lock_path.file_name().unwrap(), "deps.lock");
+        assert_eq!(deps_dir.file_name().unwrap(), "deps");
+    }
+
+    /// Test package spec parsing validation
+    #[test]
+    fn test_package_spec_formats() {
+        // Valid spec formats
+        let valid_specs = vec![
+            "namespace:name@1.0.0",
+            "namespace:name", // version optional
+            "wasmcp:calculator@0.1.0",
+        ];
+
+        for spec in valid_specs {
+            let parse_result: Result<PackageSpec, _> = spec.parse();
+            assert!(parse_result.is_ok(), "Should parse: {}", spec);
+        }
+    }
+
+    /// Test default client uses wasmcp cache dir
+    #[tokio::test]
+    async fn test_create_default_client_uses_wasmcp_cache() {
+        // Should create client successfully
+        let result = create_default_client().await;
+        assert!(result.is_ok());
+    }
+
+    /// Test deps directory naming
+    #[test]
+    fn test_deps_directory_naming() {
+        let temp_dir = TempDir::new().unwrap();
+        let deps_dir = temp_dir.path().join("deps");
+
+        // Test we can construct expected paths
+        let comp1_path = deps_dir.join("wasmcp_calculator@0.1.0.wasm");
+        let comp2_path = deps_dir.join("namespace_component@1.0.0.wasm");
+
+        assert!(comp1_path.to_string_lossy().contains("calculator"));
+        assert!(comp2_path.to_string_lossy().contains("component"));
+    }
+}
