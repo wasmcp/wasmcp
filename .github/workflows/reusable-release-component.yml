@@ -61,50 +61,10 @@ jobs:
             echo "Using component version for WIT: ${{ inputs.version }}"
           fi
 
-  verify-wit-packages:
-    name: Verify WIT Source Tarballs
-    runs-on: ubuntu-latest
-    needs: validate
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Verify WIT source tarballs exist
-        run: |
-          WIT_VERSION="${{ needs.validate.outputs.wit_version }}"
-
-          echo "Checking for required WIT source tarballs at version $WIT_VERSION..."
-
-          # Check protocol source tarball
-          protocol_url="https://github.com/${{ github.repository }}/releases/download/protocol-v${WIT_VERSION}/wasmcp-protocol-${WIT_VERSION}-source.tar.gz"
-          if ! curl --fail --silent --head "$protocol_url" >/dev/null; then
-            echo "❌ Error: Protocol WIT source tarball not found at:"
-            echo "   $protocol_url"
-            echo ""
-            echo "Please publish the protocol WIT package first."
-            exit 1
-          fi
-          echo "✅ Protocol source tarball exists: wasmcp-protocol-${WIT_VERSION}-source.tar.gz"
-
-          # Check server source tarball
-          server_url="https://github.com/${{ github.repository }}/releases/download/server-v${WIT_VERSION}/wasmcp-server-${WIT_VERSION}-source.tar.gz"
-          if ! curl --fail --silent --head "$server_url" >/dev/null; then
-            echo "❌ Error: Server WIT source tarball not found at:"
-            echo "   $server_url"
-            echo ""
-            echo "Please publish the server WIT package first."
-            exit 1
-          fi
-          echo "✅ Server source tarball exists: wasmcp-server-${WIT_VERSION}-source.tar.gz"
-
-          echo ""
-          echo "✅ All required WIT source tarballs are available"
-
   build-and-publish:
     name: Build and Publish Component
     runs-on: ubuntu-latest
-    needs: verify-wit-packages
+    needs: validate
     permissions:
       contents: read
       packages: write
@@ -313,13 +273,12 @@ jobs:
   all-jobs-complete:
     name: All Jobs Complete
     runs-on: ubuntu-latest
-    needs: [validate, verify-wit-packages, build-and-publish, generate-sbom, create-release]
+    needs: [validate, build-and-publish, generate-sbom, create-release]
     if: always()
     steps:
       - name: Check results
         run: |
           if [ "${{ needs.validate.result }}" != "success" ] || \
-             [ "${{ needs.verify-wit-packages.result }}" != "success" ] || \
              [ "${{ needs.build-and-publish.result }}" != "success" ] || \
              [ "${{ needs.generate-sbom.result }}" != "success" ] || \
              [ "${{ needs.create-release.result }}" != "success" ]; then
