@@ -9,9 +9,109 @@ use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
 use super::dependencies;
+use crate::versioning::VersionResolver;
 
 /// Prefix for temporary wrapped component files
 const WRAPPED_COMPONENT_PREFIX: &str = ".wrapped-";
+
+/// Discover the server-handler interface that a middleware component exports
+///
+/// Inspects a middleware component's exports to find the server-handler interface version.
+/// For example, tools-middleware exports wasmcp:server/handler@VERSION.
+fn discover_server_handler_interface(middleware_path: &Path) -> Result<String> {
+    use wit_component::DecodedWasm;
+
+    let bytes = std::fs::read(middleware_path)
+        .with_context(|| format!("Failed to read middleware from {}", middleware_path.display()))?;
+
+    let decoded = wit_component::decode(&bytes)
+        .context("Failed to decode middleware component")?;
+
+    let (resolve, world_id) = match decoded {
+        DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
+        DecodedWasm::WitPackage(_, _) => {
+            anyhow::bail!("Expected a component, found a WIT package");
+        }
+    };
+
+    let world = &resolve.worlds[world_id];
+
+    // Search exports for server-handler interface
+    for (key, _item) in &world.exports {
+        if let wit_parser::WorldKey::Interface(id) = key {
+            let interface = &resolve.interfaces[*id];
+            if let Some(package_id) = interface.package {
+                let package = &resolve.packages[package_id];
+                let full_name = format!(
+                    "{}:{}/{}@{}",
+                    package.name.namespace,
+                    package.name.name,
+                    interface.name.as_ref().unwrap_or(&"unknown".to_string()),
+                    package.name.version.as_ref().map(|v| v.to_string()).unwrap_or_else(|| "0.0.0".to_string())
+                );
+
+                if full_name.starts_with("wasmcp:server/handler@") {
+                    return Ok(full_name);
+                }
+            }
+        }
+    }
+
+    anyhow::bail!(
+        "No server-handler export found in middleware at {}",
+        middleware_path.display()
+    )
+}
+
+/// Discover the capability interface that a middleware component expects
+///
+/// Inspects a middleware component's imports to find which capability interface it wraps.
+/// For example, tools-middleware imports wasmcp:protocol/tools@VERSION.
+fn discover_capability_interface(middleware_path: &Path, prefix: &str) -> Result<String> {
+    use wit_component::DecodedWasm;
+
+    let bytes = std::fs::read(middleware_path)
+        .with_context(|| format!("Failed to read middleware from {}", middleware_path.display()))?;
+
+    let decoded = wit_component::decode(&bytes)
+        .context("Failed to decode middleware component")?;
+
+    let (resolve, world_id) = match decoded {
+        DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
+        DecodedWasm::WitPackage(_, _) => {
+            anyhow::bail!("Expected a component, found a WIT package");
+        }
+    };
+
+    let world = &resolve.worlds[world_id];
+
+    // Search imports for matching capability interface
+    for (key, _item) in &world.imports {
+        if let wit_parser::WorldKey::Interface(id) = key {
+            let interface = &resolve.interfaces[*id];
+            if let Some(package_id) = interface.package {
+                let package = &resolve.packages[package_id];
+                let full_name = format!(
+                    "{}:{}/{}@{}",
+                    package.name.namespace,
+                    package.name.name,
+                    interface.name.as_ref().unwrap_or(&"unknown".to_string()),
+                    package.name.version.as_ref().map(|v| v.to_string()).unwrap_or_else(|| "0.0.0".to_string())
+                );
+
+                if full_name.starts_with(prefix) {
+                    return Ok(full_name);
+                }
+            }
+        }
+    }
+
+    anyhow::bail!(
+        "No import found matching prefix '{}' in middleware at {}",
+        prefix,
+        middleware_path.display()
+    )
+}
 
 /// Auto-detect and wrap capability components with appropriate middleware
 ///
@@ -21,14 +121,34 @@ const WRAPPED_COMPONENT_PREFIX: &str = ".wrapped-";
 pub async fn wrap_capabilities(
     component_paths: Vec<PathBuf>,
     deps_dir: &Path,
-    version: &str,
+    resolver: &VersionResolver,
     verbose: bool,
 ) -> Result<Vec<PathBuf>> {
     let mut wrapped_paths = Vec::new();
-    let server_handler_interface = dependencies::interfaces::server_handler(version);
-    let tools_interface = dependencies::interfaces::tools(version);
-    let resources_interface = dependencies::interfaces::resources(version);
-    let prompts_interface = dependencies::interfaces::prompts(version);
+
+    // Discover capability interfaces from middleware components
+    let tools_middleware_path = dependencies::get_dependency_path("tools-middleware", resolver, deps_dir)?;
+    let resources_middleware_path = dependencies::get_dependency_path("resources-middleware", resolver, deps_dir)?;
+    let prompts_middleware_path = dependencies::get_dependency_path("prompts-middleware", resolver, deps_dir)?;
+
+    // Discover server-handler interface (all middleware export it, use tools as source)
+    let server_handler_interface = discover_server_handler_interface(&tools_middleware_path)
+        .context("Failed to discover server-handler interface from middleware")?;
+
+    let tools_interface = discover_capability_interface(&tools_middleware_path, "wasmcp:protocol/tools@")
+        .context("Failed to discover tools interface from tools-middleware")?;
+    let resources_interface = discover_capability_interface(&resources_middleware_path, "wasmcp:protocol/resources@")
+        .context("Failed to discover resources interface from resources-middleware")?;
+    let prompts_interface = discover_capability_interface(&prompts_middleware_path, "wasmcp:protocol/prompts@")
+        .context("Failed to discover prompts interface from prompts-middleware")?;
+
+    if verbose {
+        println!("   Discovered capability interfaces:");
+        println!("     - {}", server_handler_interface);
+        println!("     - {}", tools_interface);
+        println!("     - {}", resources_interface);
+        println!("     - {}", prompts_interface);
+    }
 
     for (i, path) in component_paths.into_iter().enumerate() {
         let component_name = path
@@ -52,15 +172,12 @@ pub async fn wrap_capabilities(
                 );
             }
 
-            let middleware_path =
-                dependencies::get_dependency_path("tools-middleware", version, deps_dir)?;
             let wrapped_bytes = wrap_with_middleware(
-                &middleware_path,
+                &tools_middleware_path,
                 &path,
                 &tools_interface,
                 "tools-middleware",
                 "tools-capability",
-                version,
             )?;
 
             let wrapped_path =
@@ -79,15 +196,12 @@ pub async fn wrap_capabilities(
                 );
             }
 
-            let middleware_path =
-                dependencies::get_dependency_path("resources-middleware", version, deps_dir)?;
             let wrapped_bytes = wrap_with_middleware(
-                &middleware_path,
+                &resources_middleware_path,
                 &path,
                 &resources_interface,
                 "resources-middleware",
                 "resources-capability",
-                version,
             )?;
 
             let wrapped_path =
@@ -106,15 +220,12 @@ pub async fn wrap_capabilities(
                 );
             }
 
-            let middleware_path =
-                dependencies::get_dependency_path("prompts-middleware", version, deps_dir)?;
             let wrapped_bytes = wrap_with_middleware(
-                &middleware_path,
+                &prompts_middleware_path,
                 &path,
                 &prompts_interface,
                 "prompts-middleware",
                 "prompts-capability",
-                version,
             )?;
 
             let wrapped_path =
@@ -175,7 +286,6 @@ fn wrap_with_middleware(
     capability_interface: &str,
     middleware_name: &str,
     capability_name: &str,
-    version: &str,
 ) -> Result<Vec<u8>> {
     let mut graph = CompositionGraph::new();
 
@@ -187,8 +297,8 @@ fn wrap_with_middleware(
     let middleware_id = graph.register_package(middleware_pkg)?;
     let capability_id = graph.register_package(capability_pkg)?;
 
-    // Get interface names
-    let server_handler_interface = dependencies::interfaces::server_handler(version);
+    // Discover server-handler interface from middleware component exports
+    let server_handler_interface = discover_server_handler_interface(middleware_path)?;
 
     // Instantiate capability component
     let capability_inst = graph.instantiate(capability_id);

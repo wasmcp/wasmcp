@@ -38,15 +38,20 @@ pub async fn status() -> Result<()> {
 
 async fn check_mcp_health(port: u16) -> String {
     use rmcp::{
-        ServiceExt,
+        serve_client,
         model::{ClientCapabilities, ClientInfo, Implementation},
-        transport::StreamableHttpClientTransport,
+        transport::{
+            StreamableHttpClientTransport,
+            streamable_http_client::StreamableHttpClientTransportConfig,
+        },
     };
 
     let url = format!("http://127.0.0.1:{}/mcp", port);
 
-    // Create transport
-    let transport = StreamableHttpClientTransport::from_uri(url.as_str());
+    // Create transport with reqwest client
+    let client = reqwest::Client::new();
+    let config = StreamableHttpClientTransportConfig::with_uri(url);
+    let transport = StreamableHttpClientTransport::with_client(client, config);
 
     // Create client info
     let client_info = ClientInfo {
@@ -62,7 +67,7 @@ async fn check_mcp_health(port: u16) -> String {
     };
 
     // Connect to server
-    let client = match client_info.serve(transport).await {
+    let client = match serve_client(client_info, transport).await {
         Ok(c) => c,
         Err(e) => return format!("FAILED (connection: {})", e),
     };

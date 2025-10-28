@@ -1,6 +1,6 @@
 [package]
 name = "wasmcp"
-version = "0.4.3"
+version = "0.4.4"
 edition = "2024"
 rust-version = "1.89"
 authors = ["wasmcp contributors"]
@@ -28,21 +28,21 @@ anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 include_dir = "0.7"
 wac-graph = "0.8"
-wit-parser = "0.224"
-wit-component = "0.224"
-wasmparser = "0.224"
+wit-parser = "0.240"
+wit-component = "0.240"
+wasmparser = "0.240"
 tokio = { version = "1", features = ["process", "rt", "rt-multi-thread", "macros", "fs", "io-util"] }
-dirs = "5.0"
-wasm-pkg-client = "0.9"
-wasm-pkg-common = "0.9"
-wasm-pkg-core = "0.9"
+dirs = "6.0"
+wasm-pkg-client = "0.12"
+wasm-pkg-common = "0.12"
+wasm-pkg-core = "0.12"
 wit-deps = "0.5"
 futures-util = "0.3"
 serde_json = "1.0"
-toml = "0.8"
+toml = "0.9"
 
 # MCP server support (always enabled)
-rmcp = { version = "0.8.2", features = ["server", "client", "transport-io", "transport-streamable-http-server", "transport-streamable-http-client-reqwest", "macros"] }
+rmcp = { version = "0.8.3", features = ["server", "client", "transport-io", "transport-streamable-http-server", "transport-streamable-http-client", "transport-streamable-http-client-reqwest", "macros"] }
 schemars = { version = "1.0", features = ["preserve_order"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }

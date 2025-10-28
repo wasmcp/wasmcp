@@ -16,7 +16,13 @@ export default {
     rules: [
       {
         test: /\.tsx?$/,
-        use: "ts-loader",
+        use: {
+          loader: "ts-loader",
+          options: {
+            // Skip type checking in webpack - we do it separately with tsc
+            transpileOnly: true,
+          },
+        },
         exclude: /node_modules/,
       },
     ],
@@ -40,8 +46,10 @@ export default {
   },
   externalsType: "module",
   externals: {
-    "./generated/interfaces/wasmcp-mcp-tools-capability.js":
-      "wasmcp:mcp/tools-capability@0.4.0",
+    "wasmcp:protocol/mcp@0.1.0": "wasmcp:protocol/mcp@0.1.0",
+    "wasmcp:protocol/server-messages@0.1.0": "wasmcp:protocol/server-messages@0.1.0",
+    "wasi:io/streams@0.2.3": "wasi:io/streams@0.2.3",
+    "wasmcp:server/notifications@0.1.1": "wasmcp:server/notifications@0.1.1",
   },
   optimization: {
     minimize: false,

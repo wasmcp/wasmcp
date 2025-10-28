@@ -29,6 +29,7 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 use super::{PackageClient, dependencies, resolution};
+use crate::versioning::VersionResolver;
 
 /// Framework component type for resolution
 ///
@@ -105,7 +106,7 @@ impl FrameworkComponent<'_> {
     ///
     /// # Arguments
     ///
-    /// * `version` - wasmcp version for framework components
+    /// * `resolver` - Version resolver for component versions
     /// * `deps_dir` - Directory where dependencies are cached
     /// * `client` - OCI package client for downloads
     /// * `skip_download` - If true, assume components already exist
@@ -116,7 +117,7 @@ impl FrameworkComponent<'_> {
     /// Returns an error if download fails or component cannot be found.
     pub async fn ensure_downloaded(
         &self,
-        version: &str,
+        resolver: &VersionResolver,
         deps_dir: &Path,
         client: &PackageClient,
         skip_download: bool,
@@ -131,16 +132,17 @@ impl FrameworkComponent<'_> {
                 if verbose {
                     println!("\nDownloading framework dependencies...");
                 }
-                dependencies::download_dependencies(transport, version, deps_dir, client).await
+                dependencies::download_dependencies(transport, resolver, deps_dir, client).await
             }
             Self::MethodNotFound | Self::HttpNotifications => {
                 // Check if already exists (transport download includes it)
+                let version = resolver.get_version(&self.component_name())?;
                 let pkg =
-                    dependencies::interfaces::package(self.component_name().as_str(), version);
+                    dependencies::interfaces::package(self.component_name().as_str(), &version);
                 let filename = pkg.replace([':', '/'], "_") + ".wasm";
                 let path = deps_dir.join(&filename);
                 if !path.exists() {
-                    dependencies::download_dependencies("http", version, deps_dir, client).await?;
+                    dependencies::download_dependencies("http", resolver, deps_dir, client).await?;
                 }
                 Ok(())
             }
@@ -157,7 +159,7 @@ impl FrameworkComponent<'_> {
 ///
 /// * `component` - Type of framework component to resolve
 /// * `override_spec` - Optional custom component spec to use instead of default
-/// * `version` - wasmcp version for framework components
+/// * `resolver` - Version resolver for component versions
 /// * `deps_dir` - Directory where dependencies are cached
 /// * `client` - OCI package client for downloads
 /// * `skip_download` - If true, assume components already exist
@@ -176,7 +178,7 @@ impl FrameworkComponent<'_> {
 pub async fn resolve_framework_component(
     component: FrameworkComponent<'_>,
     override_spec: Option<&str>,
-    version: &str,
+    resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
     skip_download: bool,
@@ -189,9 +191,9 @@ pub async fn resolve_framework_component(
         resolution::resolve_component_spec(spec, deps_dir, client, verbose).await
     } else {
         component
-            .ensure_downloaded(version, deps_dir, client, skip_download, verbose)
+            .ensure_downloaded(resolver, deps_dir, client, skip_download, verbose)
             .await?;
-        dependencies::get_dependency_path(&component.component_name(), version, deps_dir)
+        dependencies::get_dependency_path(&component.component_name(), resolver, deps_dir)
     }
 }
 
@@ -225,7 +227,7 @@ pub async fn resolve_framework_component(
 pub async fn resolve_transport_component(
     transport: &str,
     override_spec: Option<&str>,
-    version: &str,
+    resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
     skip_download: bool,
@@ -234,7 +236,7 @@ pub async fn resolve_transport_component(
     resolve_framework_component(
         FrameworkComponent::Transport(transport),
         override_spec,
-        version,
+        resolver,
         deps_dir,
         client,
         skip_download,
@@ -248,7 +250,7 @@ pub async fn resolve_transport_component(
 /// Convenience wrapper for resolving the method-not-found terminal handler.
 pub async fn resolve_method_not_found_component(
     override_spec: Option<&str>,
-    version: &str,
+    resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
     skip_download: bool,
@@ -257,7 +259,7 @@ pub async fn resolve_method_not_found_component(
     resolve_framework_component(
         FrameworkComponent::MethodNotFound,
         override_spec,
-        version,
+        resolver,
         deps_dir,
         client,
         skip_download,
@@ -272,7 +274,7 @@ pub async fn resolve_method_not_found_component(
 /// This component does not support overrides as it's tightly coupled
 /// to the HTTP transport implementation.
 pub async fn resolve_http_notifications_component(
-    version: &str,
+    resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
     skip_download: bool,
@@ -281,7 +283,7 @@ pub async fn resolve_http_notifications_component(
     resolve_framework_component(
         FrameworkComponent::HttpNotifications,
         None,
-        version,
+        resolver,
         deps_dir,
         client,
         skip_download,

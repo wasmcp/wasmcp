@@ -15,10 +15,6 @@ on:
         description: 'Component version (e.g. 0.1.0 or 0.1.0-beta.2)'
         required: true
         type: string
-      wit-version:
-        description: 'WIT package version (defaults to same as component version)'
-        required: false
-        type: string
       wkg-package:
         description: 'Full wkg package identifier (e.g. wasmcp:http-transport)'
         required: true
@@ -37,8 +33,6 @@ jobs:
   validate:
     name: Validate Version
     runs-on: ubuntu-latest
-    outputs:
-      wit_version: ${{ steps.wit-version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -48,17 +42,6 @@ jobs:
             echo "Error: Invalid version format: ${{ inputs.version }}"
             echo "Expected: X.Y.Z or X.Y.Z-prerelease"
             exit 1
-          fi
-
-      - name: Determine WIT version
-        id: wit-version
-        run: |
-          if [ -n "${{ inputs.wit-version }}" ]; then
-            echo "version=${{ inputs.wit-version }}" >> $GITHUB_OUTPUT
-            echo "Using specified WIT version: ${{ inputs.wit-version }}"
-          else
-            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
-            echo "Using component version for WIT: ${{ inputs.version }}"
           fi
 
   build-and-publish:

@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "build": "npm run types && npm run bundle && npm run componentize",
-    "types": "jco types wit -o src/generated",
+    "types": "jco guest-types wit -o src/generated --world-name weather",
+    "fix-types": "sed -i '' 's/notifications\\/\\*\\/list_changed/notifications list_changed/g' src/generated/interfaces/wasmcp-server-notifications.d.ts || true",
+    "typecheck": "tsc --noEmit --skipLibCheck",
     "bundle": "webpack",
     "componentize": "jco componentize build/bundled.js --wit wit --world-name weather -o dist/weather.wasm"
   },

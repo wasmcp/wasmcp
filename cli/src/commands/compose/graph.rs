@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
 use super::dependencies;
+use crate::versioning::VersionResolver;
 
 /// Package IDs for composition
 struct CompositionPackages {
@@ -35,9 +36,32 @@ pub async fn build_composition(
     method_not_found_path: &Path,
     http_notifications_path: Option<&Path>,
     transport_type: &str,
-    version: &str,
+    _resolver: &VersionResolver,
     verbose: bool,
 ) -> Result<Vec<u8>> {
+    // Discover interface versions from actual components before building graph
+    // This decouples composition from our version manifest
+    let server_handler_interface = find_component_export(
+        method_not_found_path,
+        "wasmcp:server/handler@"
+    ).context("Failed to discover server-handler interface from method-not-found component")?;
+
+    let notifications_interface = if let Some(path) = http_notifications_path {
+        Some(find_component_export(
+            path,
+            "wasmcp:server/notifications@"
+        ).context("Failed to discover notifications interface from http-notifications component")?)
+    } else {
+        None
+    };
+
+    if verbose {
+        println!("   Discovered server-handler interface: {}", server_handler_interface);
+        if let Some(ref notif) = notifications_interface {
+            println!("   Discovered notifications interface: {}", notif);
+        }
+    }
+
     let mut graph = CompositionGraph::new();
 
     // Load and register all components
@@ -58,10 +82,11 @@ pub async fn build_composition(
             println!("   Instantiating http-notifications...");
         }
         let notifications_inst = graph.instantiate(notifications_id);
-        let notifications_interface = format!("wasmcp:server/notifications@{}", version);
+        let notif_interface = notifications_interface.as_ref().unwrap();
+
         Some(
             graph
-                .alias_instance_export(notifications_inst, &notifications_interface)
+                .alias_instance_export(notifications_inst, notif_interface)
                 .context("Failed to get notifications export from http-notifications")?,
         )
     } else {
@@ -72,13 +97,12 @@ pub async fn build_composition(
     if verbose {
         println!("   Building composition graph...");
     }
-    let server_handler_interface = dependencies::interfaces::server_handler(version);
     let handler_export = build_middleware_chain(
         &mut graph,
         &packages,
         &server_handler_interface,
         notifications_export,
-        version,
+        notifications_interface.as_deref(),
     )?;
 
     // Wire transport and export interface
@@ -89,7 +113,7 @@ pub async fn build_composition(
         notifications_export,
         transport_type,
         &server_handler_interface,
-        version,
+        notifications_interface.as_deref(),
     )?;
 
     // Encode the composition
@@ -155,7 +179,7 @@ fn build_middleware_chain(
     packages: &CompositionPackages,
     server_handler_interface: &str,
     notifications_export: Option<wac_graph::NodeId>,
-    version: &str,
+    notifications_interface: Option<&str>,
 ) -> Result<wac_graph::NodeId> {
     // Start with method-not-found as the terminal handler
     let prev_inst = graph.instantiate(packages.method_not_found_id);
@@ -176,12 +200,11 @@ fn build_middleware_chain(
             .with_context(|| format!("Failed to wire component-{} server-handler import", i))?;
 
         // Wire notifications import if http-notifications is available
-        if let Some(notifications_node) = notifications_export {
-            let notifications_interface = format!("wasmcp:server/notifications@{}", version);
+        if let (Some(notifications_node), Some(notif_interface)) = (notifications_export, notifications_interface) {
             // Attempt to wire notifications - it's OK if the component doesn't import it
             let _ = graph.set_instantiation_argument(
                 inst,
-                &notifications_interface,
+                notif_interface,
                 notifications_node,
             );
         }
@@ -203,18 +226,17 @@ fn wire_transport(
     notifications_export: Option<wac_graph::NodeId>,
     transport_type: &str,
     server_handler_interface: &str,
-    version: &str,
+    notifications_interface: Option<&str>,
 ) -> Result<()> {
     // Wire transport at the front of the chain
     let transport_inst = graph.instantiate(transport_id);
     graph.set_instantiation_argument(transport_inst, server_handler_interface, handler_export)?;
 
     // Wire notifications to transport if available (http-transport imports it)
-    if let Some(notifications_node) = notifications_export {
-        let notifications_interface = format!("wasmcp:server/notifications@{}", version);
+    if let (Some(notifications_node), Some(notif_interface)) = (notifications_export, notifications_interface) {
         let _ = graph.set_instantiation_argument(
             transport_inst,
-            &notifications_interface,
+            notif_interface,
             notifications_node,
         );
     }
@@ -252,7 +274,7 @@ fn wire_transport(
 /// 3. Export the first component's server-handler interface
 pub async fn build_handler_composition(
     component_paths: &[PathBuf],
-    version: &str,
+    version_resolver: &VersionResolver,
     verbose: bool,
 ) -> Result<Vec<u8>> {
     if component_paths.is_empty() {
@@ -260,7 +282,8 @@ pub async fn build_handler_composition(
     }
 
     let mut graph = CompositionGraph::new();
-    let server_handler_interface = dependencies::interfaces::server_handler(version);
+    let version = version_resolver.get_version("server")?;
+    let server_handler_interface = dependencies::interfaces::server_handler(&version);
 
     // Load and register all components
     if verbose {
@@ -358,6 +381,61 @@ pub fn load_package(
                 path.display()
             )
         })
+}
+
+/// Find an interface export from a component by prefix pattern
+///
+/// Inspects the component binary to find an export matching the given prefix.
+/// For example, prefix "wasmcp:server/handler@" will match "wasmcp:server/handler@0.1.0".
+///
+/// Returns the full interface name if found.
+fn find_component_export(component_path: &Path, prefix: &str) -> Result<String> {
+    use wit_component::DecodedWasm;
+
+    // Read the component binary
+    let bytes = std::fs::read(component_path)
+        .with_context(|| format!("Failed to read component from {}", component_path.display()))?;
+
+    // Decode the component to get its WIT metadata
+    let decoded = wit_component::decode(&bytes)
+        .context("Failed to decode component")?;
+
+    let (resolve, world_id) = match decoded {
+        DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
+        DecodedWasm::WitPackage(_, _) => {
+            anyhow::bail!("Expected a component, found a WIT package");
+        }
+    };
+
+    let world = &resolve.worlds[world_id];
+
+    // Search exports for matching interface
+    for (key, _item) in &world.exports {
+        if let wit_parser::WorldKey::Interface(id) = key {
+            let interface = &resolve.interfaces[*id];
+            if let Some(package_id) = interface.package {
+                let package = &resolve.packages[package_id];
+                // Build the full interface name: namespace:package/interface@version
+                let full_name = format!(
+                    "{}:{}/{}@{}",
+                    package.name.namespace,
+                    package.name.name,
+                    interface.name.as_ref().unwrap_or(&"unknown".to_string()),
+                    package.name.version.as_ref().map(|v| v.to_string()).unwrap_or_else(|| "0.0.0".to_string())
+                );
+
+                if full_name.starts_with(prefix) {
+                    return Ok(full_name);
+                }
+            }
+        }
+    }
+
+    anyhow::bail!(
+        "No export found matching prefix '{}' in component at {}",
+        prefix,
+        component_path.display()
+    )
 }
 
 #[cfg(test)]

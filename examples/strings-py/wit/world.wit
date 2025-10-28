@@ -1,5 +1,6 @@
 package wasmcp:strings@0.1.0;
 
 world strings {
+    import wasmcp:server/notifications@0.1.1;
     export wasmcp:protocol/tools@0.1.0;
 }
