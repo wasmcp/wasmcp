@@ -54,7 +54,7 @@ make
 
 **Command:**
 ```bash
-wasmcp compose <components...> -o <output.wasm> [-t <transport>] [--force] [--verbose]
+wasmcp compose server <components...> -o <output.wasm> [-t <transport>] [--force] [--verbose]
 ```
 
 **Component input formats:**
@@ -74,25 +74,25 @@ wasmcp compose <components...> -o <output.wasm> [-t <transport>] [--force] [--ve
 **Examples:**
 ```bash
 # From local path
-wasmcp compose ./calculator.wasm -o server.wasm
+wasmcp compose server ./calculator.wasm -o server.wasm
 
 # From OCI package
-wasmcp compose wasmcp:calculator@0.1.0 -o server.wasm
+wasmcp compose server wasmcp:calculator@0.1.0 -o server.wasm
 
 # From alias
-wasmcp compose calc -o server.wasm
+wasmcp compose server calc -o server.wasm
 
 # Multiple components
-wasmcp compose calc strings weather -o combined.wasm
+wasmcp compose server calc strings weather -o combined.wasm
 
 # Mixed formats
-wasmcp compose calc ./local.wasm wasmcp:remote@1.0 -o server.wasm
+wasmcp compose server calc ./local.wasm wasmcp:remote@1.0 -o server.wasm
 
 # Stdio transport
-wasmcp compose calc -t stdio -o server.wasm
+wasmcp compose server calc -t stdio -o server.wasm
 
 # Force overwrite + verbose
-wasmcp compose calc -o server.wasm --force --verbose
+wasmcp compose server calc -o server.wasm --force --verbose
 ```
 
 **What composition does:**
@@ -170,7 +170,7 @@ wasmcp registry component list
 
 **Use in compose:**
 ```bash
-wasmcp compose calc strings -o server.wasm
+wasmcp compose server calc strings -o server.wasm
 ```
 
 ## MCP Client Integration
@@ -200,7 +200,7 @@ cd calculator && make && cd ..
 wasmcp registry component add calc calculator/target/wasm32-wasip2/release/calculator.wasm
 
 # Compose into server
-wasmcp compose calc -o server.wasm
+wasmcp compose server calc -o server.wasm
 
 # Run server
 wasmtime serve -Scli server.wasm
@@ -223,7 +223,7 @@ wasmcp registry component add calc calc/target/wasm32-wasip2/release/calc.wasm
 wasmcp registry component add strings strings/strings.wasm
 
 # Compose together
-wasmcp compose calc strings -o combined.wasm
+wasmcp compose server calc strings -o combined.wasm
 wasmtime serve -Scli combined.wasm
 ```
 

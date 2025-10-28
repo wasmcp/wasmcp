@@ -106,7 +106,7 @@ export handle: func(request: string) -> result<string, error>
 
 **Command:**
 ```bash
-wasmcp compose calc strings -o server.wasm
+wasmcp compose server calc strings -o server.wasm
 ```
 
 **Creates:**
@@ -240,7 +240,7 @@ See `crates/tools-middleware/` for actual implementation.
 
 **Usage:**
 ```bash
-wasmcp compose calc -t http -o server.wasm
+wasmcp compose server calc -t http -o server.wasm
 wasmtime serve -Scli server.wasm
 # Server at http://0.0.0.0:8080/mcp
 ```
@@ -260,7 +260,7 @@ wasmtime serve -Scli server.wasm
 
 **Usage:**
 ```bash
-wasmcp compose calc -t stdio -o server.wasm
+wasmcp compose server calc -t stdio -o server.wasm
 wasmtime run server.wasm
 ```
 
@@ -270,7 +270,7 @@ wasmtime run server.wasm
 
 ### CLI Intelligence
 
-When you run `wasmcp compose component.wasm`, CLI:
+When you run `wasmcp compose server component.wasm`, CLI:
 
 1. **Inspects component** using `wasm-tools component wit`
 2. **Detects exports:**
@@ -287,7 +287,7 @@ You don't specify middleware - CLI figures it out.
 
 **Given:**
 ```bash
-wasmcp compose calc.wasm strings.wasm weather.wasm
+wasmcp compose server calc.wasm strings.wasm weather.wasm
 ```
 
 **If all export `tools-capability`, CLI builds:**
@@ -401,7 +401,7 @@ world my-middleware {
 
 **Usage:**
 ```bash
-wasmcp compose calc --override-middleware my-middleware.wasm
+wasmcp compose server calc --override-middleware my-middleware.wasm
 ```
 
 ### Custom Transports
@@ -414,7 +414,7 @@ Build WebSocket, gRPC, or other transports:
 4. Call `handle(request)` for each message
 
 ```bash
-wasmcp compose calc --override-transport websocket-transport.wasm
+wasmcp compose server calc --override-transport websocket-transport.wasm
 ```
 
 ## Component Distribution
@@ -428,7 +428,7 @@ wkg publish component.wasm --registry ghcr.io/my-org
 
 **Use in composition:**
 ```bash
-wasmcp compose my-org:component@1.0.0
+wasmcp compose server my-org:component@1.0.0
 ```
 
 **Cache location:** `~/.config/wasmcp/deps/`
@@ -438,7 +438,7 @@ wasmcp compose my-org:component@1.0.0
 **Specify version:**
 ```bash
 wasmcp new calc --version 0.4.0
-wasmcp compose calc --version 0.4.0
+wasmcp compose server calc --version 0.4.0
 ```
 
 Ensures middleware and capabilities use compatible interfaces.
@@ -450,7 +450,7 @@ Ensures middleware and capabilities use compatible interfaces.
 Components chained in specified order:
 
 ```bash
-wasmcp compose logger calc strings
+wasmcp compose server logger calc strings
 ```
 
 Creates:

@@ -31,7 +31,7 @@ Compose components into MCP server.
 
 **Syntax:**
 ```bash
-wasmcp compose <components...> -o <output> [options]
+wasmcp compose server <components...> -o <output> [options]
 ```
 
 **Options:**
@@ -47,10 +47,10 @@ wasmcp compose <components...> -o <output> [options]
 
 **Examples:**
 ```bash
-wasmcp compose calc strings -o server.wasm
-wasmcp compose calc -t stdio -o server.wasm
-wasmcp compose calc --force --verbose -o server.wasm
-wasmcp compose calc --override-transport custom.wasm -o server.wasm
+wasmcp compose server calc strings -o server.wasm
+wasmcp compose server calc -t stdio -o server.wasm
+wasmcp compose server calc --force --verbose -o server.wasm
+wasmcp compose server calc --override-transport custom.wasm -o server.wasm
 ```
 
 ### wasmcp registry component
@@ -294,7 +294,7 @@ wasmtime run server.wasm
 
 **Override with:**
 ```bash
-wasmcp compose calc --override-transport custom-transport.wasm
+wasmcp compose server calc --override-transport custom-transport.wasm
 ```
 
 **Requirements:**
@@ -434,7 +434,7 @@ wasmcp new calc --version 0.4.0
 
 **Specify version when composing:**
 ```bash
-wasmcp compose calc --version 0.4.0
+wasmcp compose server calc --version 0.4.0
 ```
 
 **Version used for:**

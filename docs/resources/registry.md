@@ -37,7 +37,7 @@ wasmcp registry component remove <alias>
 
 **Use in compose:**
 ```bash
-wasmcp compose calc strings -o server.wasm
+wasmcp compose server calc strings -o server.wasm
 ```
 
 ## Composition Profiles
@@ -72,10 +72,10 @@ wasmcp registry profile remove <name>
 **Use profile:**
 ```bash
 # Uses profile's output path (~/.config/wasmcp/composed/dev-server.wasm)
-wasmcp compose dev
+wasmcp compose server dev
 
 # Override output path
-wasmcp compose dev -o ./my-server.wasm
+wasmcp compose server dev -o ./my-server.wasm
 ```
 
 ## Profile Inheritance
@@ -158,18 +158,18 @@ Registry enforces:
 
 **Explicit `-o` flag:** Always uses current working directory or absolute path
 ```bash
-wasmcp compose dev -o ./server.wasm  # Creates ./server.wasm
-wasmcp compose dev -o /abs/path/server.wasm  # Creates /abs/path/server.wasm
+wasmcp compose server dev -o ./server.wasm  # Creates ./server.wasm
+wasmcp compose server dev -o /abs/path/server.wasm  # Creates /abs/path/server.wasm
 ```
 
 **Profile without `-o`:** Uses `~/.config/wasmcp/composed/{profile-output}`
 ```bash
-wasmcp compose dev  # Creates ~/.config/wasmcp/composed/dev-server.wasm
+wasmcp compose server dev  # Creates ~/.config/wasmcp/composed/dev-server.wasm
 ```
 
 **No profile, no `-o`:** Uses current working directory
 ```bash
-wasmcp compose calc strings  # Creates ./mcp-server.wasm
+wasmcp compose server calc strings  # Creates ./mcp-server.wasm
 ```
 
 ## Complete Examples
@@ -185,7 +185,7 @@ wasmcp registry component add logger ./logger.wasm
 wasmcp registry profile add dev calc strings logger -o dev.wasm
 
 # Use in development
-wasmcp compose dev
+wasmcp compose server dev
 wasmtime serve -Scli ~/.config/wasmcp/composed/dev.wasm
 ```
 
@@ -199,13 +199,13 @@ wasmcp registry component add alerts wasmcp:alerts@2.0.0
 wasmcp registry profile add prod monitor alerts -o prod.wasm -b dev
 
 # Deploy to production
-wasmcp compose prod -o /deploy/server.wasm
+wasmcp compose server prod -o /deploy/server.wasm
 ```
 
 **Quick experiments:**
 ```bash
 # Try new component without registering
-wasmcp compose calc strings ./experimental.wasm -o test.wasm
+wasmcp compose server calc strings ./experimental.wasm -o test.wasm
 wasmtime serve -Scli test.wasm
 ```
 

@@ -83,7 +83,7 @@ enum Command {
     /// Examples:
     ///   wasmcp compose server wasmcp:calculator@0.1.0   # Complete server
     ///   wasmcp compose handler calc.wasm math.wasm      # Handler component
-    ///   wasmcp compose calc strings                      # Backward compat (server mode)
+    ///   wasmcp compose server calc strings              # Multiple handlers
     #[command(subcommand)]
     Compose(ComposeCommand),
 
@@ -478,7 +478,7 @@ async fn main() -> Result<()> {
             println!("\nNext steps:");
             println!("  cd {}", name);
             println!("  make          # Build the component");
-            println!("  wasmcp compose {} -o server.wasm", component_path);
+            println!("  wasmcp compose server {} -o server.wasm", component_path);
 
             Ok(())
         }
