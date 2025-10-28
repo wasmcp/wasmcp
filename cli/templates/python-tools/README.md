@@ -12,7 +12,7 @@ make build  # Output: target/{{project_name}}.wasm
 ## Compose
 
 ```bash
-wasmcp compose target/{{project_name}}.wasm -o server.wasm
+wasmcp compose server target/{{project_name}}.wasm -o server.wasm
 ```
 
 The CLI automatically detects this is a tools-capability component and wraps it with tools-middleware.
@@ -24,7 +24,7 @@ The CLI automatically detects this is a tools-capability component and wraps it 
 wasmtime serve -Scli server.wasm
 
 # Stdio
-wasmcp compose target/{{project_name}}.wasm -t stdio -o server.wasm
+wasmcp compose server target/{{project_name}}.wasm -t stdio -o server.wasm
 wasmtime run server.wasm
 ```
 

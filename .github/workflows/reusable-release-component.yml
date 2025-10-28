@@ -248,7 +248,7 @@ jobs:
             This component is automatically downloaded during composition:
 
             ```bash
-            wasmcp compose your-component.wasm -o server.wasm
+            wasmcp compose server your-component.wasm -o server.wasm
             ```
 
             **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ inputs.tag-prefix }}${{ inputs.version }}

@@ -16,7 +16,7 @@ make  # Output: {{project_name}}.wasm
 ## Compose
 
 ```bash
-wasmcp compose {{project_name}}.wasm -o server.wasm
+wasmcp compose server {{project_name}}.wasm -o server.wasm
 ```
 
 The CLI automatically detects this is a prompts-capability component and wraps it with prompts-middleware.
@@ -28,7 +28,7 @@ The CLI automatically detects this is a prompts-capability component and wraps i
 wasmtime serve -Scli server.wasm
 
 # Stdio
-wasmcp compose {{project_name}}.wasm -t stdio -o server.wasm
+wasmcp compose server {{project_name}}.wasm -t stdio -o server.wasm
 wasmtime run server.wasm
 ```
 

@@ -115,13 +115,13 @@ try {
 After building, compose your handler into an MCP server:
 
 ```bash
-wasmcp compose target/{{project_name}}.wasm -o server.wasm
+wasmcp compose server target/{{project_name}}.wasm -o server.wasm
 ```
 
 Or with multiple handlers:
 
 ```bash
-wasmcp compose \
+wasmcp compose server \
   target/{{project_name}}.wasm \
   other-handler.wasm \
   -o server.wasm
