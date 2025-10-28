@@ -6,7 +6,7 @@ A [WebAssembly Component](https://component-model.bytecodealliance.org/) Develop
 
 </div>
 
-## Installation
+## Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wasmcp/wasmcp/main/install.sh | bash
