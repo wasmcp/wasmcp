@@ -7,6 +7,7 @@ members = [
 ]
 exclude = [
     "cli",
+    "cli/templates/*",
     "examples/*",
     "tmp/*",
 ]

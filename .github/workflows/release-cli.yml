@@ -115,10 +115,73 @@ jobs:
             cli/wasmcp-cli-${{ matrix.target }}-sbom.json
             cli/wasmcp-cli-${{ matrix.target }}-sbom.xml
 
+  test-install-script:
+    name: Test Install Script
+    runs-on: ${{ matrix.os }}
+    needs: build-cli
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download CLI artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create local release structure for testing
+        run: |
+          mkdir -p test-release
+          find artifacts -name "*.tar.gz" -exec cp {} test-release/ \;
+          find artifacts -name "*.sha256" -exec cp {} test-release/ \;
+          ls -la test-release/
+
+      - name: Start local HTTP server with release files
+        run: |
+          cd test-release
+          python3 -m http.server 8888 &
+          sleep 2
+          curl -I http://localhost:8888/ || echo "Server not ready, waiting..."
+          sleep 2
+
+      - name: Test install script (dry run validation)
+        run: |
+          # Test help
+          bash install.sh --help
+
+          # Validate script syntax
+          bash -n install.sh
+
+      - name: Test install script functions
+        run: |
+          # Source the script to test individual functions
+          set +e  # Don't exit on error for these tests
+          source <(sed -n '/^detect_os()/,/^}/p' install.sh)
+          source <(sed -n '/^detect_arch()/,/^}/p' install.sh)
+
+          # Test detection functions
+          os=$(detect_os)
+          arch=$(detect_arch)
+
+          echo "Detected OS: $os"
+          echo "Detected Arch: $arch"
+
+          # Verify expected values
+          case "$(uname -s)" in
+            Linux*) [[ "$os" == "unknown-linux-gnu" ]] || exit 1 ;;
+            Darwin*) [[ "$os" == "apple-darwin" ]] || exit 1 ;;
+          esac
+
+          case "$(uname -m)" in
+            x86_64) [[ "$arch" == "x86_64" ]] || exit 1 ;;
+            arm64|aarch64) [[ "$arch" == "aarch64" ]] || exit 1 ;;
+          esac
+
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: build-cli
+    needs: [build-cli, test-install-script]
     permissions:
       contents: write
     steps:
@@ -149,7 +212,26 @@ jobs:
           body: |
             # CLI v${{ inputs.version }}
 
-            ## wasmcp CLI
+            ## Quick Install (Recommended)
+
+            Install wasmcp with a single command:
+
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/install.sh | bash
+            ```
+
+            **Install specific version:**
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/install.sh | bash -s -- --version ${{ inputs.version }}
+            ```
+
+            The install script will:
+            - Detect your OS and architecture automatically
+            - Download and verify the checksum
+            - Install to `~/.wasmcp/bin`
+            - Configure your shell PATH
+
+            ## Manual Installation
 
             Download the CLI for your platform:
 
@@ -217,13 +299,14 @@ jobs:
   all-jobs-complete:
     name: All Jobs Complete
     runs-on: ubuntu-latest
-    needs: [validate, build-cli, create-release]
+    needs: [validate, build-cli, test-install-script, create-release]
     if: always()
     steps:
       - name: Check results
         run: |
           if [ "${{ needs.validate.result }}" != "success" ] || \
              [ "${{ needs.build-cli.result }}" != "success" ] || \
+             [ "${{ needs.test-install-script.result }}" != "success" ] || \
              [ "${{ needs.create-release.result }}" != "success" ]; then
             echo "One or more jobs failed"
             exit 1
