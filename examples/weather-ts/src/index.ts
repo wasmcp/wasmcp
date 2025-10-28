@@ -2,7 +2,7 @@
  * Weather Tools Capability
  *
  * A tools capability that provides weather information using the Open-Meteo
- * public API. Demonstrates outbound HTTP requests and concurrent operations.
+ * public API. Demonstrates outbound HTTP requests, concurrent operations, and notifications.
  */
 
 import * as z from 'zod';
@@ -12,9 +12,11 @@ import type {
   CallToolRequest,
   CallToolResult,
   Tool,
-} from './generated/interfaces/wasmcp-protocol-mcp.js';
-import type { Context } from './generated/interfaces/wasmcp-protocol-server-messages.js';
-import type { OutputStream } from './generated/interfaces/wasi-io-streams.js';
+  LogLevel,
+} from 'wasmcp:protocol/mcp@0.1.0';
+import type { Context } from 'wasmcp:protocol/server-messages@0.1.0';
+import type { OutputStream } from 'wasi:io/streams@0.2.3';
+import { log } from 'wasmcp:server/notifications@0.1.1';
 
 // Tool input schemas
 const GetWeatherSchema = z.object({
@@ -69,25 +71,36 @@ function listTools(
 async function callTool(
   _ctx: Context,
   request: CallToolRequest,
-  _clientStream: OutputStream | null
+  clientStream: OutputStream | null
 ): Promise<CallToolResult | null> {
   switch (request.name) {
     case 'get_weather':
-      return await handleGetWeather(request.arguments);
+      return await handleGetWeather(request.arguments, clientStream);
     case 'multi_weather':
-      return await handleMultiWeather(request.arguments);
+      return await handleMultiWeather(request.arguments, clientStream);
     default:
       return null; // We don't handle this tool
   }
 }
 
-async function handleGetWeather(args?: string): Promise<CallToolResult> {
+async function handleGetWeather(args?: string, clientStream?: OutputStream | null): Promise<CallToolResult> {
   try {
     if (!args) {
       return errorResult('Arguments are required');
     }
 
     const parsed: GetWeatherArgs = GetWeatherSchema.parse(JSON.parse(args));
+
+    // Send notification about starting weather fetch
+    if (clientStream) {
+      log(
+        clientStream,
+        `Fetching weather for ${parsed.location}...`,
+        'info' as LogLevel,
+        'weather'
+      );
+    }
+
     const weather = await getWeatherForCity(parsed.location);
     return textResult(weather);
   } catch (error) {
@@ -100,7 +113,7 @@ async function handleGetWeather(args?: string): Promise<CallToolResult> {
   }
 }
 
-async function handleMultiWeather(args?: string): Promise<CallToolResult> {
+async function handleMultiWeather(args?: string, clientStream?: OutputStream | null): Promise<CallToolResult> {
   try {
     if (!args) {
       return errorResult('Arguments are required');
@@ -112,16 +125,43 @@ async function handleMultiWeather(args?: string): Promise<CallToolResult> {
       return errorResult('No cities provided');
     }
 
+    // Send notification about concurrent fetch
+    if (clientStream) {
+      log(
+        clientStream,
+        `Fetching weather for ${parsed.cities.length} cities concurrently...`,
+        'info' as LogLevel,
+        'weather'
+      );
+    }
+
     // Fetch weather for all cities concurrently
     const results = await Promise.all(
       parsed.cities.map(async (city) => {
         try {
+          if (clientStream) {
+            log(
+              clientStream,
+              `Processing ${city}...`,
+              'debug' as LogLevel,
+              'weather'
+            );
+          }
           return await getWeatherForCity(city);
         } catch (error) {
           return `Error fetching weather for ${city}: ${error instanceof Error ? error.message : String(error)}`;
         }
       })
     );
+
+    if (clientStream) {
+      log(
+        clientStream,
+        'All weather requests completed',
+        'info' as LogLevel,
+        'weather'
+      );
+    }
 
     const output = `=== Weather Results ===
 

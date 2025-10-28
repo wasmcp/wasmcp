@@ -25,6 +25,7 @@ use std::path::PathBuf;
 
 use super::{ComposeOptions, CompositionMode};
 use crate::config;
+use crate::versioning::VersionResolver;
 
 /// Builder for ComposeOptions with sensible defaults
 ///
@@ -35,7 +36,6 @@ use crate::config;
 ///
 /// - `transport`: "http"
 /// - `output`: "server.wasm"
-/// - `version`: Current package version
 /// - `deps_dir`: Resolved from config (XDG directories)
 /// - `skip_download`: false
 /// - `force`: false
@@ -47,7 +47,6 @@ pub struct ComposeOptionsBuilder {
     components: Vec<String>,
     transport: String,
     output: PathBuf,
-    version: String,
     override_transport: Option<String>,
     override_method_not_found: Option<String>,
     deps_dir: Option<PathBuf>,
@@ -84,7 +83,6 @@ impl ComposeOptionsBuilder {
             components,
             transport: "http".to_string(),
             output: PathBuf::from("server.wasm"),
-            version: env!("CARGO_PKG_VERSION").to_string(),
             override_transport: None,
             override_method_not_found: None,
             deps_dir: None,
@@ -108,15 +106,6 @@ impl ComposeOptionsBuilder {
     /// If relative, will be resolved against the current working directory.
     pub fn output(mut self, output: PathBuf) -> Self {
         self.output = output;
-        self
-    }
-
-    /// Set the wasmcp version for framework components
-    ///
-    /// This controls which version of transport, middleware, and terminal
-    /// components are downloaded from the registry.
-    pub fn version(mut self, version: impl Into<String>) -> Self {
-        self.version = version.into();
         self
     }
 
@@ -204,11 +193,15 @@ impl ComposeOptionsBuilder {
                 .context("Failed to get dependencies directory from config")?,
         };
 
+        // Create version resolver
+        let version_resolver =
+            VersionResolver::new().context("Failed to create version resolver")?;
+
         Ok(ComposeOptions {
             components: self.components,
             transport: self.transport,
             output: self.output,
-            version: self.version,
+            version_resolver,
             override_transport: self.override_transport,
             override_method_not_found: self.override_method_not_found,
             deps_dir,
@@ -249,7 +242,8 @@ mod tests {
         assert_eq!(options.output, PathBuf::from("server.wasm"));
         assert!(!options.force);
         assert!(!options.skip_download);
-        assert_eq!(options.version, env!("CARGO_PKG_VERSION"));
+        // Version comes from embedded versions.toml
+        assert!(options.version_resolver.get_version("server").is_ok());
     }
 
     #[test]
@@ -257,13 +251,13 @@ mod tests {
         let options = ComposeOptionsBuilder::new(vec!["a.wasm".to_string()])
             .transport("http")
             .output(PathBuf::from("out.wasm"))
-            .version("1.0.0")
             .override_transport("custom-transport.wasm")
             .override_method_not_found("custom-mnf.wasm")
             .build()
             .unwrap();
 
-        assert_eq!(options.version, "1.0.0");
+        // Version comes from embedded versions.toml
+        assert!(options.version_resolver.get_version("server").is_ok());
         assert_eq!(
             options.override_transport,
             Some("custom-transport.wasm".to_string())

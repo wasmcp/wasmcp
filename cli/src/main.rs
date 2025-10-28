@@ -1,5 +1,5 @@
 // Use modules from the library crate
-use wasmcp::{DEFAULT_WASMCP_VERSION, commands, config, types};
+use wasmcp::{commands, config, types};
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -36,10 +36,6 @@ enum Command {
         /// Template type (tools or resources)
         #[arg(long, short = 't', value_name = "TYPE", default_value = "tools")]
         template_type: TemplateType,
-
-        /// wasmcp version to use for WIT dependencies
-        #[arg(long, default_value_t = DEFAULT_WASMCP_VERSION.to_string())]
-        version: String,
 
         /// Overwrite existing directory
         #[arg(long)]
@@ -156,9 +152,9 @@ enum ComposeCommand {
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
 
-        /// wasmcp version for framework dependencies
-        #[arg(long, default_value_t = DEFAULT_WASMCP_VERSION.to_string())]
-        version: String,
+        /// Version overrides for specific components (e.g., --version-override server=0.1.2)
+        #[arg(long = "version-override", value_name = "COMPONENT=VERSION")]
+        version_overrides: Vec<String>,
 
         /// Override transport component (path or package spec)
         #[arg(long)]
@@ -219,10 +215,6 @@ enum ComposeCommand {
         /// Defaults to "handler.wasm" in the current directory.
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
-
-        /// wasmcp version for framework dependencies
-        #[arg(long, default_value_t = DEFAULT_WASMCP_VERSION.to_string())]
-        version: String,
 
         /// Directory for dependency components
         #[arg(long, default_value_os_t = default_deps_dir())]
@@ -441,7 +433,6 @@ async fn main() -> Result<()> {
             name,
             language,
             template_type,
-            version,
             force,
             output,
         } => {
@@ -464,15 +455,9 @@ async fn main() -> Result<()> {
             }
 
             // Scaffold the project
-            commands::scaffold::create_project(
-                &output_dir,
-                &name,
-                language,
-                template_type,
-                &version,
-            )
-            .await
-            .context("Failed to create project")?;
+            commands::scaffold::create_project(&output_dir, &name, language, template_type)
+                .await
+                .context("Failed to create project")?;
 
             println!(
                 "Created {} {} component in {}",
@@ -504,7 +489,7 @@ async fn main() -> Result<()> {
                 components,
                 transport,
                 output,
-                version,
+                version_overrides,
                 override_transport,
                 override_method_not_found,
                 deps_dir,
@@ -542,17 +527,23 @@ async fn main() -> Result<()> {
 
                 // Use other settings as-is
                 let final_transport = transport.to_string();
-                let final_version = version;
                 let final_override_transport = override_transport;
                 let final_override_method_not_found = override_method_not_found;
                 let final_force = force;
+
+                // Create version resolver with overrides
+                let mut version_resolver = wasmcp::versioning::VersionResolver::new()
+                    .context("Failed to create version resolver")?;
+                version_resolver
+                    .apply_overrides(version_overrides)
+                    .context("Failed to apply version overrides")?;
 
                 // Create compose options
                 let options = commands::compose::ComposeOptions {
                     components: resolved_components,
                     transport: final_transport,
                     output: final_output,
-                    version: final_version,
+                    version_resolver,
                     override_transport: final_override_transport,
                     override_method_not_found: final_override_method_not_found,
                     deps_dir,
@@ -569,7 +560,6 @@ async fn main() -> Result<()> {
                 profile,
                 components,
                 output,
-                version,
                 deps_dir,
                 force,
                 verbose,
@@ -586,12 +576,16 @@ async fn main() -> Result<()> {
                 // Determine output path: CLI flag > default
                 let final_output = output.unwrap_or_else(|| PathBuf::from("handler.wasm"));
 
+                // Create version resolver (uses versions from versions.toml)
+                let version_resolver = wasmcp::versioning::VersionResolver::new()
+                    .context("Failed to create version resolver")?;
+
                 // Create compose options for handler mode
                 let options = commands::compose::ComposeOptions {
                     components: resolved_components,
                     transport: String::new(), // Not used in handler mode
                     output: final_output,
-                    version,
+                    version_resolver,
                     override_transport: None,
                     override_method_not_found: None,
                     deps_dir,

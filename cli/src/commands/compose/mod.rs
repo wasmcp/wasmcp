@@ -26,6 +26,7 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
+use crate::versioning::VersionResolver;
 use crate::{commands::pkg, config};
 
 // Public re-exports
@@ -65,7 +66,7 @@ pub enum CompositionMode {
 }
 
 /// Configuration options for component composition
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ComposeOptions {
     /// Ordered list of middleware component specs (paths or package names)
     pub components: Vec<String>,
@@ -76,8 +77,8 @@ pub struct ComposeOptions {
     /// Output path for the composed component
     pub output: PathBuf,
 
-    /// wasmcp version for transport components
-    pub version: String,
+    /// Version resolver for component versions
+    pub version_resolver: VersionResolver,
 
     /// Override transport component (path or package spec)
     pub override_transport: Option<String>,
@@ -123,7 +124,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         components,
         transport,
         output,
-        version,
+        version_resolver,
         override_transport,
         override_method_not_found,
         deps_dir,
@@ -140,7 +141,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 components,
                 transport,
                 output,
-                version,
+                version_resolver,
                 override_transport,
                 override_method_not_found,
                 deps_dir,
@@ -151,7 +152,15 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
             .await
         }
         CompositionMode::Handler => {
-            compose_handler(components, output, version, deps_dir, force, verbose).await
+            compose_handler(
+                components,
+                output,
+                version_resolver,
+                deps_dir,
+                force,
+                verbose,
+            )
+            .await
         }
     }
 }
@@ -162,7 +171,7 @@ async fn compose_server(
     components: Vec<String>,
     transport: String,
     output: PathBuf,
-    version: String,
+    version_resolver: VersionResolver,
     override_transport: Option<String>,
     override_method_not_found: Option<String>,
     deps_dir: PathBuf,
@@ -212,7 +221,7 @@ async fn compose_server(
     let transport_path = resolve_transport_component(
         &transport,
         override_transport.as_deref(),
-        &version,
+        &version_resolver,
         &deps_dir,
         &client,
         skip_download,
@@ -223,7 +232,7 @@ async fn compose_server(
     // Resolve method-not-found component
     let method_not_found_path = resolve_method_not_found_component(
         override_method_not_found.as_deref(),
-        &version,
+        &version_resolver,
         &deps_dir,
         &client,
         skip_download,
@@ -235,7 +244,7 @@ async fn compose_server(
     let http_notifications_path = if transport == "http" {
         Some(
             resolve_http_notifications_component(
-                &version,
+                &version_resolver,
                 &deps_dir,
                 &client,
                 skip_download,
@@ -252,7 +261,7 @@ async fn compose_server(
         println!("\nDetecting component types...");
     }
     let wrapped_components =
-        wrapping::wrap_capabilities(component_paths, &deps_dir, &version, verbose).await?;
+        wrapping::wrap_capabilities(component_paths, &deps_dir, &version_resolver, verbose).await?;
 
     // Print composition pipeline (only in verbose mode)
     if verbose {
@@ -267,13 +276,13 @@ async fn compose_server(
         &method_not_found_path,
         http_notifications_path.as_deref(),
         &transport,
-        &version,
+        &version_resolver,
         verbose,
     )
     .await?;
 
     // Write output file
-    std::fs::write(&output_path, bytes)
+    std::fs::write(&output_path, &bytes)
         .with_context(|| format!("Failed to write output file: {}", output_path.display()))?;
 
     // Print success message
@@ -286,7 +295,7 @@ async fn compose_server(
 async fn compose_handler(
     components: Vec<String>,
     output: PathBuf,
-    version: String,
+    version_resolver: VersionResolver,
     deps_dir: PathBuf,
     force: bool,
     verbose: bool,
@@ -330,7 +339,7 @@ async fn compose_handler(
         println!("\nDetecting component types...");
     }
     let wrapped_components =
-        wrapping::wrap_capabilities(component_paths, &deps_dir, &version, verbose).await?;
+        wrapping::wrap_capabilities(component_paths, &deps_dir, &version_resolver, verbose).await?;
 
     // Print composition pipeline (only in verbose mode)
     if verbose {
@@ -339,7 +348,8 @@ async fn compose_handler(
     }
 
     // Build and encode the handler-only composition
-    let bytes = graph::build_handler_composition(&wrapped_components, &version, verbose).await?;
+    let bytes =
+        graph::build_handler_composition(&wrapped_components, &version_resolver, verbose).await?;
 
     // Write output file
     std::fs::write(&output_path, bytes)
@@ -374,17 +384,16 @@ async fn resolve_user_components(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::DEFAULT_WASMCP_VERSION;
 
     #[test]
     fn test_interface_names() {
         assert_eq!(
-            dependencies::interfaces::server_handler(DEFAULT_WASMCP_VERSION),
-            format!("wasmcp:server/handler@{}", DEFAULT_WASMCP_VERSION).as_str()
+            dependencies::interfaces::server_handler("0.1.0"),
+            "wasmcp:server/handler@0.1.0"
         );
         assert_eq!(
-            dependencies::interfaces::tools(DEFAULT_WASMCP_VERSION),
-            format!("wasmcp:protocol/tools@{}", DEFAULT_WASMCP_VERSION).as_str()
+            dependencies::interfaces::tools("0.1.0"),
+            "wasmcp:protocol/tools@0.1.0"
         );
         assert_eq!(
             dependencies::interfaces::WASI_HTTP_HANDLER,
@@ -396,12 +405,12 @@ mod tests {
     #[test]
     fn test_package_naming() {
         assert_eq!(
-            dependencies::interfaces::package("http-transport", DEFAULT_WASMCP_VERSION),
-            format!("wasmcp:http-transport@{}", DEFAULT_WASMCP_VERSION).as_str()
+            dependencies::interfaces::package("http-transport", "0.1.0"),
+            "wasmcp:http-transport@0.1.0"
         );
         assert_eq!(
-            dependencies::interfaces::package("method-not-found", DEFAULT_WASMCP_VERSION),
-            format!("wasmcp:method-not-found@{}", DEFAULT_WASMCP_VERSION).as_str()
+            dependencies::interfaces::package("method-not-found", "0.1.0"),
+            "wasmcp:method-not-found@0.1.0"
         );
     }
 
@@ -550,6 +559,12 @@ mod tests {
 
         // Builder defaults to Server mode
         assert_eq!(options.mode, CompositionMode::Server);
+        assert_eq!(options.transport, "http");
+        assert_eq!(options.output, PathBuf::from("server.wasm"));
+        assert!(!options.force);
+        assert!(!options.skip_download);
+        // Version comes from embedded versions.toml
+        assert!(options.version_resolver.get_version("server").is_ok());
     }
 
     /// Test http notifications path handling
@@ -564,6 +579,28 @@ mod tests {
         let transport = "stdio";
         let should_include = transport == "http";
         assert!(!should_include);
+    }
+
+    #[test]
+    fn test_compose_options_builder_chaining() {
+        let options = ComposeOptionsBuilder::new(vec!["a.wasm".to_string()])
+            .transport("http")
+            .output(PathBuf::from("out.wasm"))
+            .override_transport("custom-transport.wasm")
+            .override_method_not_found("custom-mnf.wasm")
+            .build()
+            .unwrap();
+
+        // Version comes from embedded versions.toml
+        assert!(options.version_resolver.get_version("server").is_ok());
+        assert_eq!(
+            options.override_transport,
+            Some("custom-transport.wasm".to_string())
+        );
+        assert_eq!(
+            options.override_method_not_found,
+            Some("custom-mnf.wasm".to_string())
+        );
     }
 
     /// Test component count in messages

@@ -3,6 +3,7 @@
 //! This module provides functionality to generate new handler component projects
 //! from embedded templates. Templates are included at compile-time using include_dir.
 
+use crate::versioning::VersionResolver;
 use crate::{Language, TemplateType, commands::pkg};
 use anyhow::{Context, Result};
 use include_dir::{Dir, include_dir};
@@ -29,10 +30,15 @@ pub async fn create_project(
     name: &str,
     language: Language,
     template_type: TemplateType,
-    wasmcp_version: &str,
 ) -> Result<()> {
     // Create output directory
     fs::create_dir_all(output_dir).context("Failed to create output directory")?;
+
+    // Get wasmcp version from version resolver
+    let resolver = VersionResolver::new().context("Failed to create version resolver")?;
+    let wasmcp_version = resolver
+        .get_version("server")
+        .context("Failed to get server version")?;
 
     // Create template context
     let package_name = name.replace('-', "_");
