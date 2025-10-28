@@ -30,8 +30,8 @@ impl VersionResolver {
     pub fn new() -> Result<Self> {
         // Load embedded versions.toml
         let manifest_str = include_str!("../../versions.toml");
-        let manifest: VersionManifest = toml::from_str(manifest_str)
-            .context("Failed to parse embedded versions.toml")?;
+        let manifest: VersionManifest =
+            toml::from_str(manifest_str).context("Failed to parse embedded versions.toml")?;
 
         Ok(Self {
             versions: manifest.versions,
@@ -112,7 +112,9 @@ mod tests {
     fn test_overrides() {
         let mut resolver = VersionResolver::new().unwrap();
 
-        resolver.apply_overrides(vec!["server=0.2.0".to_string()]).unwrap();
+        resolver
+            .apply_overrides(vec!["server=0.2.0".to_string()])
+            .unwrap();
 
         assert_eq!(resolver.get_version("server").unwrap(), "0.2.0");
     }
@@ -121,6 +123,10 @@ mod tests {
     fn test_invalid_override_format() {
         let mut resolver = VersionResolver::new().unwrap();
 
-        assert!(resolver.apply_overrides(vec!["invalid".to_string()]).is_err());
+        assert!(
+            resolver
+                .apply_overrides(vec!["invalid".to_string()])
+                .is_err()
+        );
     }
 }

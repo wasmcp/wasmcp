@@ -26,8 +26,8 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
-use crate::{commands::pkg, config};
 use crate::versioning::VersionResolver;
+use crate::{commands::pkg, config};
 
 // Public re-exports
 pub use self::builder::ComposeOptionsBuilder;
@@ -152,7 +152,15 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
             .await
         }
         CompositionMode::Handler => {
-            compose_handler(components, output, version_resolver, deps_dir, force, verbose).await
+            compose_handler(
+                components,
+                output,
+                version_resolver,
+                deps_dir,
+                force,
+                verbose,
+            )
+            .await
         }
     }
 }
@@ -340,7 +348,8 @@ async fn compose_handler(
     }
 
     // Build and encode the handler-only composition
-    let bytes = graph::build_handler_composition(&wrapped_components, &version_resolver, verbose).await?;
+    let bytes =
+        graph::build_handler_composition(&wrapped_components, &version_resolver, verbose).await?;
 
     // Write output file
     std::fs::write(&output_path, bytes)

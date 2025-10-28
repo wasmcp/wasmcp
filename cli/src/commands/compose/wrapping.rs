@@ -21,11 +21,14 @@ const WRAPPED_COMPONENT_PREFIX: &str = ".wrapped-";
 fn discover_server_handler_interface(middleware_path: &Path) -> Result<String> {
     use wit_component::DecodedWasm;
 
-    let bytes = std::fs::read(middleware_path)
-        .with_context(|| format!("Failed to read middleware from {}", middleware_path.display()))?;
+    let bytes = std::fs::read(middleware_path).with_context(|| {
+        format!(
+            "Failed to read middleware from {}",
+            middleware_path.display()
+        )
+    })?;
 
-    let decoded = wit_component::decode(&bytes)
-        .context("Failed to decode middleware component")?;
+    let decoded = wit_component::decode(&bytes).context("Failed to decode middleware component")?;
 
     let (resolve, world_id) = match decoded {
         DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
@@ -47,7 +50,12 @@ fn discover_server_handler_interface(middleware_path: &Path) -> Result<String> {
                     package.name.namespace,
                     package.name.name,
                     interface.name.as_ref().unwrap_or(&"unknown".to_string()),
-                    package.name.version.as_ref().map(|v| v.to_string()).unwrap_or_else(|| "0.0.0".to_string())
+                    package
+                        .name
+                        .version
+                        .as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "0.0.0".to_string())
                 );
 
                 if full_name.starts_with("wasmcp:server/handler@") {
@@ -70,11 +78,14 @@ fn discover_server_handler_interface(middleware_path: &Path) -> Result<String> {
 fn discover_capability_interface(middleware_path: &Path, prefix: &str) -> Result<String> {
     use wit_component::DecodedWasm;
 
-    let bytes = std::fs::read(middleware_path)
-        .with_context(|| format!("Failed to read middleware from {}", middleware_path.display()))?;
+    let bytes = std::fs::read(middleware_path).with_context(|| {
+        format!(
+            "Failed to read middleware from {}",
+            middleware_path.display()
+        )
+    })?;
 
-    let decoded = wit_component::decode(&bytes)
-        .context("Failed to decode middleware component")?;
+    let decoded = wit_component::decode(&bytes).context("Failed to decode middleware component")?;
 
     let (resolve, world_id) = match decoded {
         DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
@@ -96,7 +107,12 @@ fn discover_capability_interface(middleware_path: &Path, prefix: &str) -> Result
                     package.name.namespace,
                     package.name.name,
                     interface.name.as_ref().unwrap_or(&"unknown".to_string()),
-                    package.name.version.as_ref().map(|v| v.to_string()).unwrap_or_else(|| "0.0.0".to_string())
+                    package
+                        .name
+                        .version
+                        .as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "0.0.0".to_string())
                 );
 
                 if full_name.starts_with(prefix) {
@@ -127,20 +143,26 @@ pub async fn wrap_capabilities(
     let mut wrapped_paths = Vec::new();
 
     // Discover capability interfaces from middleware components
-    let tools_middleware_path = dependencies::get_dependency_path("tools-middleware", resolver, deps_dir)?;
-    let resources_middleware_path = dependencies::get_dependency_path("resources-middleware", resolver, deps_dir)?;
-    let prompts_middleware_path = dependencies::get_dependency_path("prompts-middleware", resolver, deps_dir)?;
+    let tools_middleware_path =
+        dependencies::get_dependency_path("tools-middleware", resolver, deps_dir)?;
+    let resources_middleware_path =
+        dependencies::get_dependency_path("resources-middleware", resolver, deps_dir)?;
+    let prompts_middleware_path =
+        dependencies::get_dependency_path("prompts-middleware", resolver, deps_dir)?;
 
     // Discover server-handler interface (all middleware export it, use tools as source)
     let server_handler_interface = discover_server_handler_interface(&tools_middleware_path)
         .context("Failed to discover server-handler interface from middleware")?;
 
-    let tools_interface = discover_capability_interface(&tools_middleware_path, "wasmcp:protocol/tools@")
-        .context("Failed to discover tools interface from tools-middleware")?;
-    let resources_interface = discover_capability_interface(&resources_middleware_path, "wasmcp:protocol/resources@")
-        .context("Failed to discover resources interface from resources-middleware")?;
-    let prompts_interface = discover_capability_interface(&prompts_middleware_path, "wasmcp:protocol/prompts@")
-        .context("Failed to discover prompts interface from prompts-middleware")?;
+    let tools_interface =
+        discover_capability_interface(&tools_middleware_path, "wasmcp:protocol/tools@")
+            .context("Failed to discover tools interface from tools-middleware")?;
+    let resources_interface =
+        discover_capability_interface(&resources_middleware_path, "wasmcp:protocol/resources@")
+            .context("Failed to discover resources interface from resources-middleware")?;
+    let prompts_interface =
+        discover_capability_interface(&prompts_middleware_path, "wasmcp:protocol/prompts@")
+            .context("Failed to discover prompts interface from prompts-middleware")?;
 
     if verbose {
         println!("   Discovered capability interfaces:");
@@ -360,12 +382,15 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let component_paths = vec![temp_dir.path().join("nonexistent.wasm")];
 
+        // Create version resolver
+        let resolver = crate::versioning::VersionResolver::new().unwrap();
+
         // Create a runtime for the async function
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(wrap_capabilities(
             component_paths,
             temp_dir.path(),
-            "0.1.0",
+            &resolver,
             false,
         ));
 

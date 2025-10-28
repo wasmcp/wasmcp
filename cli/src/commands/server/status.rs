@@ -38,8 +38,8 @@ pub async fn status() -> Result<()> {
 
 async fn check_mcp_health(port: u16) -> String {
     use rmcp::{
-        serve_client,
         model::{ClientCapabilities, ClientInfo, Implementation},
+        serve_client,
         transport::{
             StreamableHttpClientTransport,
             streamable_http_client::StreamableHttpClientTransportConfig,

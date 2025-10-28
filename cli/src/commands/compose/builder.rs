@@ -194,8 +194,8 @@ impl ComposeOptionsBuilder {
         };
 
         // Create version resolver
-        let version_resolver = VersionResolver::new()
-            .context("Failed to create version resolver")?;
+        let version_resolver =
+            VersionResolver::new().context("Failed to create version resolver")?;
 
         Ok(ComposeOptions {
             components: self.components,

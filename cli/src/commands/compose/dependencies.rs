@@ -66,8 +66,10 @@ pub async fn download_dependencies(
     let transport_pkg = interfaces::package(&transport_component, &transport_version);
     let method_not_found_pkg = interfaces::package("method-not-found", &method_not_found_version);
     let tools_middleware_pkg = interfaces::package("tools-middleware", &tools_middleware_version);
-    let resources_middleware_pkg = interfaces::package("resources-middleware", &resources_middleware_version);
-    let prompts_middleware_pkg = interfaces::package("prompts-middleware", &prompts_middleware_version);
+    let resources_middleware_pkg =
+        interfaces::package("resources-middleware", &resources_middleware_version);
+    let prompts_middleware_pkg =
+        interfaces::package("prompts-middleware", &prompts_middleware_version);
 
     let mut specs = vec![
         transport_pkg,
@@ -80,7 +82,8 @@ pub async fn download_dependencies(
     // Download http-notifications for http transport (provides notifications interface)
     if transport == "http" {
         let http_notifications_version = resolver.get_version("http-notifications")?;
-        let http_notifications_pkg = interfaces::package("http-notifications", &http_notifications_version);
+        let http_notifications_pkg =
+            interfaces::package("http-notifications", &http_notifications_version);
         specs.push(http_notifications_pkg);
     }
 
@@ -90,7 +93,11 @@ pub async fn download_dependencies(
 /// Get the file path for a framework dependency
 ///
 /// Framework dependencies are always stored as `wasmcp_{name}@{version}.wasm`
-pub fn get_dependency_path(name: &str, resolver: &VersionResolver, deps_dir: &Path) -> Result<PathBuf> {
+pub fn get_dependency_path(
+    name: &str,
+    resolver: &VersionResolver,
+    deps_dir: &Path,
+) -> Result<PathBuf> {
     let version = resolver.get_version(name)?;
     let filename = format!("wasmcp_{}@{}.wasm", name, version);
     let path = deps_dir.join(&filename);
@@ -111,7 +118,11 @@ pub fn get_dependency_path(name: &str, resolver: &VersionResolver, deps_dir: &Pa
 ///
 /// This variant allows specifying an explicit version, useful when the version
 /// is already known or when working with locked versions.
-pub fn get_dependency_path_versioned(name: &str, version: &str, deps_dir: &Path) -> Result<PathBuf> {
+pub fn get_dependency_path_versioned(
+    name: &str,
+    version: &str,
+    deps_dir: &Path,
+) -> Result<PathBuf> {
     let filename = format!("wasmcp_{}@{}.wasm", name, version);
     let path = deps_dir.join(&filename);
 
@@ -145,10 +156,7 @@ mod tests {
 
     #[test]
     fn test_interface_naming_tools() {
-        assert_eq!(
-            interfaces::tools("0.1.0"),
-            "wasmcp:protocol/tools@0.1.0"
-        );
+        assert_eq!(interfaces::tools("0.1.0"), "wasmcp:protocol/tools@0.1.0");
         assert_eq!(interfaces::tools("1.0.0"), "wasmcp:protocol/tools@1.0.0");
     }
 

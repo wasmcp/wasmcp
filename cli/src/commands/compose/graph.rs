@@ -41,22 +41,26 @@ pub async fn build_composition(
 ) -> Result<Vec<u8>> {
     // Discover interface versions from actual components before building graph
     // This decouples composition from our version manifest
-    let server_handler_interface = find_component_export(
-        method_not_found_path,
-        "wasmcp:server/handler@"
-    ).context("Failed to discover server-handler interface from method-not-found component")?;
+    let server_handler_interface =
+        find_component_export(method_not_found_path, "wasmcp:server/handler@").context(
+            "Failed to discover server-handler interface from method-not-found component",
+        )?;
 
     let notifications_interface = if let Some(path) = http_notifications_path {
-        Some(find_component_export(
-            path,
-            "wasmcp:server/notifications@"
-        ).context("Failed to discover notifications interface from http-notifications component")?)
+        Some(
+            find_component_export(path, "wasmcp:server/notifications@").context(
+                "Failed to discover notifications interface from http-notifications component",
+            )?,
+        )
     } else {
         None
     };
 
     if verbose {
-        println!("   Discovered server-handler interface: {}", server_handler_interface);
+        println!(
+            "   Discovered server-handler interface: {}",
+            server_handler_interface
+        );
         if let Some(ref notif) = notifications_interface {
             println!("   Discovered notifications interface: {}", notif);
         }
@@ -200,13 +204,11 @@ fn build_middleware_chain(
             .with_context(|| format!("Failed to wire component-{} server-handler import", i))?;
 
         // Wire notifications import if http-notifications is available
-        if let (Some(notifications_node), Some(notif_interface)) = (notifications_export, notifications_interface) {
+        if let (Some(notifications_node), Some(notif_interface)) =
+            (notifications_export, notifications_interface)
+        {
             // Attempt to wire notifications - it's OK if the component doesn't import it
-            let _ = graph.set_instantiation_argument(
-                inst,
-                notif_interface,
-                notifications_node,
-            );
+            let _ = graph.set_instantiation_argument(inst, notif_interface, notifications_node);
         }
 
         // This component's export becomes the next input
@@ -233,12 +235,11 @@ fn wire_transport(
     graph.set_instantiation_argument(transport_inst, server_handler_interface, handler_export)?;
 
     // Wire notifications to transport if available (http-transport imports it)
-    if let (Some(notifications_node), Some(notif_interface)) = (notifications_export, notifications_interface) {
-        let _ = graph.set_instantiation_argument(
-            transport_inst,
-            notif_interface,
-            notifications_node,
-        );
+    if let (Some(notifications_node), Some(notif_interface)) =
+        (notifications_export, notifications_interface)
+    {
+        let _ =
+            graph.set_instantiation_argument(transport_inst, notif_interface, notifications_node);
     }
 
     // Export the appropriate WASI interface based on transport type
@@ -397,8 +398,7 @@ fn find_component_export(component_path: &Path, prefix: &str) -> Result<String> 
         .with_context(|| format!("Failed to read component from {}", component_path.display()))?;
 
     // Decode the component to get its WIT metadata
-    let decoded = wit_component::decode(&bytes)
-        .context("Failed to decode component")?;
+    let decoded = wit_component::decode(&bytes).context("Failed to decode component")?;
 
     let (resolve, world_id) = match decoded {
         DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
@@ -421,7 +421,12 @@ fn find_component_export(component_path: &Path, prefix: &str) -> Result<String> 
                     package.name.namespace,
                     package.name.name,
                     interface.name.as_ref().unwrap_or(&"unknown".to_string()),
-                    package.name.version.as_ref().map(|v| v.to_string()).unwrap_or_else(|| "0.0.0".to_string())
+                    package
+                        .name
+                        .version
+                        .as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "0.0.0".to_string())
                 );
 
                 if full_name.starts_with(prefix) {

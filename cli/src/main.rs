@@ -455,14 +455,9 @@ async fn main() -> Result<()> {
             }
 
             // Scaffold the project
-            commands::scaffold::create_project(
-                &output_dir,
-                &name,
-                language,
-                template_type,
-            )
-            .await
-            .context("Failed to create project")?;
+            commands::scaffold::create_project(&output_dir, &name, language, template_type)
+                .await
+                .context("Failed to create project")?;
 
             println!(
                 "Created {} {} component in {}",
@@ -539,7 +534,8 @@ async fn main() -> Result<()> {
                 // Create version resolver with overrides
                 let mut version_resolver = wasmcp::versioning::VersionResolver::new()
                     .context("Failed to create version resolver")?;
-                version_resolver.apply_overrides(version_overrides)
+                version_resolver
+                    .apply_overrides(version_overrides)
                     .context("Failed to apply version overrides")?;
 
                 // Create compose options
