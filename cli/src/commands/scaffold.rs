@@ -105,8 +105,16 @@ fn render_embedded_dir(
             file.path().display()
         ))?;
 
+        // Strip .template suffix from output filename if present
+        let file_name_str = file_name
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("file name is not valid UTF-8"))?;
+        let output_file_name = file_name_str
+            .strip_suffix(".template")
+            .unwrap_or(file_name_str);
+
         // Write output file
-        let output_path = output_base.join(file_name);
+        let output_path = output_base.join(output_file_name);
         fs::write(&output_path, rendered)
             .context(format!("Failed to write file: {}", output_path.display()))?;
     }

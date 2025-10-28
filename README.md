@@ -6,6 +6,22 @@ A [WebAssembly Component](https://component-model.bytecodealliance.org/) Develop
 
 </div>
 
+## Installation
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wasmcp/wasmcp/main/install.sh | bash
+```
+
+See [releases](https://github.com/wasmcp/wasmcp/releases) for SBOMs etc.
+
+Or build from source:
+
+```bash
+cargo install --git https://github.com/wasmcp/wasmcp
+```
+
+Requires [`wasmtime`](https://wasmtime.dev/), [`wash`](https://github.com/wasmCloud/wash), [`spin`](https://github.com/spinframework/spin), or another component-capable runtime to run composed servers.
+
 ## Quick Start
 
 Create and run your first MCP tool component:
@@ -18,7 +34,7 @@ cd time-tools && make && cd ..
 wasmcp registry component add time time-tools/time-tools.wasm
 
 # Compose into an MCP server and run
-wasmcp compose time -o server.wasm
+wasmcp compose server time -o server.wasm
 wasmtime serve -Scli server.wasm  # http://0.0.0.0:8080/mcp
 ```
 
@@ -30,33 +46,17 @@ cd math-tools && make && cd ..
 wasmcp registry component add math math-tools/target/wasm32-wasip2/release/math_tools.wasm
 
 # Compose both together
-wasmcp compose time math -o combined-server.wasm
+wasmcp compose server time math -o combined-server.wasm
 wasmtime serve -Scli combined-server.wasm
 ```
 
-[Wasmtime](https://wasmtime.dev/) or another component-capable runtime is required to run servers.
-
-See [examples/](#examples) for simple references.
-
-## Installation
-
-**Download latest release:**
-
-See [releases](https://github.com/wasmcp/wasmcp/releases) for pre-built binaries.
-
-**Build from source:**
-```bash
-cargo install --git https://github.com/wasmcp/wasmcp
-```
-
-**Prerequisites:**
-- [Wasmtime](https://wasmtime.dev/) - WebAssembly runtime (required to run servers)
+See [examples/](examples/) for more.
 
 ## Documentation
 
-- **[CLI Reference](cli/README.md)** - Complete CLI command documentation
-- **[Daemon Management](docs/daemon-management.md)** - Running the MCP server as a background daemon
-- **[Examples](examples/)** - Example component implementations
+- **[Examples](examples/)**
+- **[CLI Reference](cli/README.md)**
+- **[Development MCP server](docs/daemon-management.md)** - Run a local development server that provides context to your coding agent about developing, composing, and running `wasmcp` projects.
 
 ## Why?
 

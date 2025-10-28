@@ -5,11 +5,16 @@ Build composable MCP servers using WebAssembly components.
 ## Installation
 
 ```bash
-cd cli
-cargo build --release
+curl -fsSL https://raw.githubusercontent.com/wasmcp/wasmcp/main/install.sh | bash
 ```
 
-The CLI is a native binary (not WebAssembly). It builds for your host platform automatically.
+Installs to `~/.wasmcp/bin` and configures PATH. For a specific version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wasmcp/wasmcp/main/install.sh | bash -s -- --version 0.4.4
+```
+
+Alternatively, download binaries from [releases](https://github.com/wasmcp/wasmcp/releases) or build from source with `cargo build --release`.
 
 Requires [Wasmtime](https://wasmtime.dev/) to run composed servers.
 
