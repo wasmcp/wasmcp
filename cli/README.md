@@ -16,18 +16,18 @@ curl -fsSL https://raw.githubusercontent.com/wasmcp/wasmcp/main/install.sh | bas
 
 Alternatively, download binaries from [releases](https://github.com/wasmcp/wasmcp/releases) or build from source with `cargo build --release`.
 
-Requires [Wasmtime](https://wasmtime.dev/) to run composed servers.
+Requires a runtime like [Wasmtime](https://wasmtime.dev/) to run composed servers.
 
 ## Usage
 
 ### Create a new component
 
 ```bash
-wasmcp new my-math --language rust
-wasmcp new my-strings --language python
+wasmcp new my-math --language rust # --type tools by default
+wasmcp new my-strings -l python -t resources # MCP resources
 ```
 
-Generated projects include simple tool implementations demonstrating the capability pattern.
+Generated projects include simple component implementations.
 
 ### Component Registry
 

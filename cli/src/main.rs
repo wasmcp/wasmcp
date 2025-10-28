@@ -152,7 +152,7 @@ enum ComposeCommand {
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
 
-        /// Version overrides for specific components (e.g., --version-override server=0.1.2)
+        /// Version overrides for specific components (e.g., --version-override http-notifications=0.1.0)
         #[arg(long = "version-override", value_name = "COMPONENT=VERSION")]
         version_overrides: Vec<String>,
 
