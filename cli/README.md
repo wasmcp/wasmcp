@@ -349,11 +349,18 @@ wasmcp registry info -p
 
 ## Version Compatibility
 
-Components must use matching wasmcp versions. Specify version when creating components and composing:
+Component versions are managed through `versions.toml` in your project root. This file specifies the exact version of each framework component (server, protocol, transports, middleware).
+
+Override specific component versions during composition:
 
 ```bash
-wasmcp new my-component --language rust --version 0.4.0
-wasmcp compose component.wasm --version 0.4.0
+# Override protocol version for testing
+wasmcp compose server component.wasm --override-protocol=0.2.0
+
+# Override multiple components
+wasmcp compose server component.wasm \
+  --override-http-transport=0.3.0-beta.1 \
+  --override-tools-middleware=0.2.0
 ```
 
 ## See Also
