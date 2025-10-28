@@ -110,16 +110,16 @@ Components can be specified as local paths, registry packages (OCI), aliases, or
 
 ```bash
 # Local file path
-wasmcp compose ./calculator.wasm -o server.wasm
+wasmcp compose server ./calculator.wasm -o server.wasm
 
 # Registry package (OCI) - colon identifies it as a registry spec
-wasmcp compose wasmcp:calculator@0.1.0 -o server.wasm
+wasmcp compose server wasmcp:calculator@0.1.0 -o server.wasm
 
 # Aliases (registered in ~/.config/wasmcp/wasmcp.toml)
-wasmcp compose calc weather -o server.wasm
+wasmcp compose server calc weather -o server.wasm
 
 # Mixed: local path + registry package + alias
-wasmcp compose ./logger.wasm wasmcp:calculator@1.0 weather -o server.wasm
+wasmcp compose server ./logger.wasm wasmcp:calculator@1.0 weather -o server.wasm
 ```
 
 When a client requests `tools/list`, each component that offers tools contributes their tools, creating a unified catalog automatically.
@@ -145,8 +145,8 @@ wasmcp registry component add logger namespace:logger@2.0.0
 wasmcp registry component add prod-calc calc
 
 # Use aliases in composition
-wasmcp compose calc weather -o server.wasm
-wasmcp compose db logger -o server.wasm
+wasmcp compose server calc weather -o server.wasm
+wasmcp compose server db logger -o server.wasm
 
 # List and manage
 wasmcp registry component list
@@ -162,11 +162,11 @@ Save a list of components to compose together:
 wasmcp registry profile add dev calc weather -o dev.wasm
 
 # Later, rebuild the same server
-wasmcp compose dev
+wasmcp compose server dev
 # Creates: ~/.config/wasmcp/composed/dev.wasm
 
 # Or specify a different output location
-wasmcp compose dev -o ./my-server.wasm
+wasmcp compose server dev -o ./my-server.wasm
 # Creates: ./my-server.wasm
 ```
 
