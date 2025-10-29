@@ -10,7 +10,7 @@
 /// allowing servers to maintain state and context across interactions.
 ///
 /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/session>
-@unstable(feature = sessions)
+@since(version = 0.1.0)
 interface sessions {
     use wasi:io/streams@0.2.3.{
         output-stream,
@@ -29,7 +29,7 @@ interface sessions {
     };
 
     /// Errors that can occur during session operations
-    @unstable(feature = sessions)
+    @since(version = 0.1.0)
     variant session-error {
         /// An I/O error occurred in communication with the client
         io(stream-error),
@@ -46,20 +46,20 @@ interface sessions {
     /// The elicit result is ready when the pollable indicates readiness.
     /// This enables async/await style operations where handlers can request
     /// information from clients and continue processing when the response arrives.
-    @unstable(feature = sessions)
+    @since(version = 0.1.0)
     resource future-elicit-result {
         /// Create a pollable to wait for the elicit result
         ///
         /// The pollable becomes ready when the client responds to the elicitation.
         /// Use WASI poll to wait for readiness before calling elicit-result().
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         subscribe: func() -> pollable;
 
         /// Get the elicit result
         ///
         /// Precondition: Only call this after subscribe() indicates readiness.
         /// Calling before the result is ready may trap or return invalid data.
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         elicit-result: func() -> elicit-result;
     }
 
@@ -78,7 +78,7 @@ interface sessions {
     /// 6. delete() - Remove session and all data
     ///
     /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/session>
-    @unstable(feature = sessions)
+    @since(version = 0.1.0)
     resource session {
         /// Initialize a new session in the given bucket
         ///
@@ -87,7 +87,7 @@ interface sessions {
         /// the Mcp-Session-Id response header.
         ///
         /// The bucket is consumed and owned by the session resource.
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         initialize: static func(
             /// WASI key-value bucket for session storage
             bucket: bucket,
@@ -100,7 +100,7 @@ interface sessions {
         /// ID doesn't exist in the bucket.
         ///
         /// The bucket is consumed and owned by the session resource.
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         open: static func(
             /// WASI key-value bucket containing the session
             bucket: bucket,
@@ -113,7 +113,7 @@ interface sessions {
         /// This releases the session resource but keeps all data in the bucket.
         /// The returned bucket can be used to create new sessions or passed to
         /// other components.
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         close: static func(
             /// The session to close
             session: session,
@@ -124,7 +124,7 @@ interface sessions {
         /// This permanently removes the session ID and all key-value pairs.
         /// The bucket is returned for reuse. If deletion fails, returns both
         /// the bucket and the error so the caller can recover.
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         delete: static func(
             /// The session to delete
             session: session,
@@ -134,14 +134,14 @@ interface sessions {
         ///
         /// This ID should be returned to clients in the Mcp-Session-Id header
         /// so they can resume the session in future requests.
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         id: func() -> string;
 
         /// Get a persistent session value by key
         ///
         /// Returns None if the key doesn't exist. Session data persists across
         /// HTTP requests as long as the session exists.
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         get: func(
             /// The key to retrieve
             key: string,
@@ -151,7 +151,7 @@ interface sessions {
         ///
         /// The value is immediately persisted to the underlying key-value store.
         /// Overwriting an existing key replaces the previous value.
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         set: func(
             /// The key to store under
             key: string,
@@ -169,7 +169,7 @@ interface sessions {
         /// The future should be stored and polled later to retrieve the response.
         ///
         /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         elicit: func(
             /// Output stream to send the elicitation request
             client: borrow<output-stream>,
@@ -184,7 +184,7 @@ interface sessions {
         /// to remove all session data.
         ///
         /// This operation is idempotent - calling multiple times has no effect.
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         terminate: func(
             /// Optional reason for termination (shown to client)
             reason: option<string>,
@@ -194,7 +194,7 @@ interface sessions {
         ///
         /// Returns true if terminate() was previously called on this session.
         /// Terminated sessions can still read data but should not accept new operations.
-        @unstable(feature = sessions)
+        @since(version = 0.1.0)
         is-terminated: func() -> result<bool, session-error>;
     }
 }
