@@ -15,6 +15,11 @@ interface server-handler {
         client-notification,
     };
 
+    /// Request context passed to handlers.
+    ///
+    /// Contains authentication, session, streaming, and protocol information
+    /// extracted from the transport layer.
+    @since(version = 0.1.0)
     record request-ctx {
         request-id: request-id,
         jwt: option<string>,
@@ -38,7 +43,10 @@ interface server-handler {
         request: client-request,
     ) -> result<server-result, error-code>;
 
-
+    /// Result context for client responses.
+    ///
+    /// Used when the client responds to a server-initiated request.
+    @since(version = 0.1.0)
     record result-ctx {
         request-id: request-id,
         jwt: option<string>,
@@ -53,6 +61,10 @@ interface server-handler {
         %result: client-result,
     );
 
+    /// Error context for client error responses.
+    ///
+    /// Used when the client returns an error to a server-initiated request.
+    @since(version = 0.1.0)
     record error-ctx {
         request-id: option<request-id>,
         jwt: option<string>,
@@ -67,6 +79,11 @@ interface server-handler {
         error: error-code,
     );
 
+    /// Notification context for client-initiated notifications.
+    ///
+    /// Contains authentication and session information for handling
+    /// notifications from the client.
+    @since(version = 0.1.0)
     record notification-ctx {
         jwt: option<string>,
         session-id: option<string>,

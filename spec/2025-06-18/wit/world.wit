@@ -20,38 +20,70 @@ world server-middleware {
     export server-handler;
 }
 
+/// Tools middleware world.
+///
+/// Wraps tools capability components with server-handler interface.
+@since(version = 0.1.0)
 world tools-middleware {
     include server-middleware;
     import tools;
 }
 
+/// Tools handler world.
+///
+/// Export this world to implement tools capability.
+@since(version = 0.1.0)
 world tools-handler {
     export tools;
 }
 
+/// Resources middleware world.
+///
+/// Wraps resources capability components with server-handler interface.
+@since(version = 0.1.0)
 world resources-middleware {
     include server-middleware;
     import resources;
 }
 
+/// Resources handler world.
+///
+/// Export this world to implement resources capability.
+@since(version = 0.1.0)
 world resources-handler {
     export resources;
 }
 
+/// Prompts middleware world.
+///
+/// Wraps prompts capability components with server-handler interface.
+@since(version = 0.1.0)
 world prompts-middleware {
     include server-middleware;
     import prompts;
 }
 
+/// Prompts handler world.
+///
+/// Export this world to implement prompts capability.
+@since(version = 0.1.0)
 world prompts-handler {
     export prompts;
 }
 
+/// Completions middleware world.
+///
+/// Wraps completions capability components with server-handler interface.
+@since(version = 0.1.0)
 world completions-middleware {
     include server-middleware;
     import completions;
 }
 
+/// Completions handler world.
+///
+/// Export this world to implement completions capability.
+@since(version = 0.1.0)
 world completions-handler {
     export completions;
 }
