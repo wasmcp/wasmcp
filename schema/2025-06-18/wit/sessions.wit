@@ -22,7 +22,7 @@ interface sessions {
         bucket,
         error as store-error,
     };
-    use wasmcp:protocol/mcp@0.1.0.{
+    use mcp.{
         elicit-request,
         elicit-result,
     };
@@ -118,7 +118,7 @@ interface sessions {
         delete: static func(
             /// The session to delete
             session: session,
-        ) -> result<bucket, tuple<bucket, session-error>>;
+        ) -> result<bucket, session-error>;
 
         /// Get the session ID
         ///

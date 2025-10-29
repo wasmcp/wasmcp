@@ -1,3 +1,86 @@
+use wasi:io/streams@0.2.3;
+
+/// Server-side MCP message handler.
+@since(version = 0.1.0)
+interface server-handler {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        request-id,
+        server-result,
+        client-request,
+        client-result,
+        client-notification,
+    };
+
+    record request-ctx {
+        request-id: request-id,
+        jwt: option<string>,
+        session-id: option<string>,
+        message-stream: option<borrow<output-stream>>,
+        protocol-version: string,
+    }
+
+    /// Handle a client request.
+    ///
+    /// Processes an MCP request from the client and returns a response.
+    ///
+    /// Parameters:
+    /// - `request`: Tuple of (request body, request ID for correlation)
+    /// - `options`: Context from transport (auth, session, streams, custom metadata)
+    ///
+    /// Returns the server response or an error code if processing fails.
+    @since(version = 0.1.0)
+    handle-request: func(
+        ctx: request-ctx,
+        request: client-request,
+    ) -> result<server-result, error-code>;
+
+
+    record result-ctx {
+        request-id: request-id,
+        jwt: option<string>,
+        session-id: option<string>,
+        protocol-version: string,
+    }
+
+    /// Handle a client response to a server-initiated request.
+    @since(version = 0.1.0)
+    handle-result: func(
+        ctx: result-ctx,
+        %result: client-result,
+    );
+
+    record error-ctx {
+        request-id: option<request-id>,
+        jwt: option<string>,
+        session-id: option<string>,
+        protocol-version: string,
+    }
+
+    /// Handle a client error response.
+    @since(version = 0.1.0)
+    handle-error: func(
+        ctx: error-ctx,
+        error: error-code,
+    );
+
+    record notification-ctx {
+        jwt: option<string>,
+        session-id: option<string>,
+        protocol-version: string,
+    }
+
+    /// Handle a client notification.
+    @since(version = 0.1.0)
+    handle-notification: func(
+        ctx: notification-ctx,
+        notification: client-notification,
+    );
+}
+
 /// MCP server-side capability interfaces and request handling utilities.
 ///
 /// This file defines:
@@ -6,48 +89,6 @@
 ///
 /// <https://spec.modelcontextprotocol.io>
 
-/// Server request handling utilities.
-///
-/// This interface provides types for passing request-scoped context and metadata
-/// between handler components. The options pattern enables flexible, extensible
-/// context passing without rigid record structures.
-@since(version = 0.1.0)
-interface server-messages {
-    use wasi:io/streams@0.2.3.{
-        output-stream,
-    };
-    use mcp.{
-        claims,
-        session-id,
-        json,
-    };
-
-    /// Client identity information for authentication/authorization and sessions.
-    @since(version = 0.1.0)
-    record context {
-        /// Authentication/authorization claims.
-        ///
-        /// Contains parsed JWT claims, API key metadata, or other authentication
-        /// information extracted by the transport layer. Capability components can
-        /// use this for authorization decisions.
-        ///
-        /// Example: `{ "sub": "user123", "role": "admin" }`
-        claims: option<claims>,
-        /// Active session identifier.
-        ///
-        /// Session ID for stateful request processing. When present, capability
-        /// components can use wasmcp:server/sessions interface to:
-        /// - Store persistent state across requests
-        /// - Track pending elicitation requests
-        /// - Manage session lifecycle
-        ///
-        /// See: wasmcp:server/sessions interface
-        session-id: option<session-id>,
-        /// Arbitrary key-value metadata.
-        data: list<tuple<string, list<u8>>>,
-    }
-}
-
 /// Tools interface.
 ///
 /// Export this interface to provide MCP tools functionality.
@@ -55,7 +96,7 @@ interface server-messages {
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
 @since(version = 0.1.0)
 interface tools {
-    use wasi:io/streams@0.2.3.{
+    use streams.{
         output-stream,
     };
     use mcp.{
@@ -66,25 +107,23 @@ interface tools {
         call-tool-request,
         call-tool-result,
     };
-    use server-messages.{
-        context,
+    use server-handler.{
+        request-ctx,
     };
 
     /// List tools provided by this component.
     @since(version = 0.1.0)
     list-tools: func(
-        ctx: context,
+        ctx: request-ctx,
         request: list-tools-request,
-        client-stream: option<borrow<output-stream>>,
     ) -> result<list-tools-result, error-code>;
 
     /// Execute a tool call. Return none for unrecognized tools.
     @since(version = 0.1.0)
     call-tool: func(
-        ctx: context,
+        ctx: request-ctx,
         request: call-tool-request,
-        client-stream: option<borrow<output-stream>>,
-    ) -> option<call-tool-result>;
+    ) -> result<option<call-tool-result>, error-code>;
 }
 
 /// Resources interface.
@@ -94,7 +133,7 @@ interface tools {
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
 @since(version = 0.1.0)
 interface resources {
-    use wasi:io/streams@0.2.3.{
+    use streams.{
         output-stream,
     };
     use mcp.{
@@ -106,32 +145,29 @@ interface resources {
         list-resource-templates-request,
         list-resource-templates-result,
     };
-    use server-messages.{
-        context,
+    use server-handler.{
+        request-ctx,
     };
 
     /// List resources provided by this component.
     @since(version = 0.1.0)
     list-resources: func(
-        ctx: context,
+        ctx: request-ctx,
         request: list-resources-request,
-        client-stream: option<borrow<output-stream>>,
     ) -> result<list-resources-result, error-code>;
 
     /// Read a resource by URI. Return none for unrecognized URIs.
     @since(version = 0.1.0)
     read-resource: func(
-        ctx: context,
+        ctx: request-ctx,
         request: read-resource-request,
-        client-stream: option<borrow<output-stream>>,
-    ) -> option<read-resource-result>;
+    ) -> result<option<read-resource-result>, error-code>;
 
     /// List resource templates (RFC 6570 URI templates).
     @since(version = 0.1.0)
     list-resource-templates: func(
-        ctx: context,
+        ctx: request-ctx,
         request: list-resource-templates-request,
-        client-stream: option<borrow<output-stream>>,
     ) -> result<list-resource-templates-result, error-code>;
 }
 
@@ -142,7 +178,7 @@ interface resources {
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
 @since(version = 0.1.0)
 interface prompts {
-    use wasi:io/streams@0.2.3.{
+    use streams.{
         output-stream,
     };
     use mcp.{
@@ -152,25 +188,23 @@ interface prompts {
         get-prompt-request,
         get-prompt-result,
     };
-    use server-messages.{
-        context,
+    use server-handler.{
+        request-ctx,
     };
 
     /// List prompts provided by this component.
     @since(version = 0.1.0)
     list-prompts: func(
-        ctx: context,
+        ctx: request-ctx,
         request: list-prompts-request,
-        client-stream: option<borrow<output-stream>>,
     ) -> result<list-prompts-result, error-code>;
 
     /// Get a prompt by name. Return none for unrecognized prompts.
     @since(version = 0.1.0)
     get-prompt: func(
-        ctx: context,
+        ctx: request-ctx,
         request: get-prompt-request,
-        client-stream: option<borrow<output-stream>>,
-    ) -> option<get-prompt-result>;
+    ) -> result<option<get-prompt-result>, error-code>;
 }
 
 /// Completions interface.
@@ -180,7 +214,7 @@ interface prompts {
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
 @since(version = 0.1.0)
 interface completions {
-    use wasi:io/streams@0.2.3.{
+    use streams.{
         output-stream,
     };
     use mcp.{
@@ -188,16 +222,15 @@ interface completions {
         complete-request,
         complete-result,
     };
-    use server-messages.{
-        context,
+    use server-handler.{
+        request-ctx,
     };
 
     /// Provide completion suggestions for prompt or resource arguments.
     /// Return none for unsupported references.
     @since(version = 0.1.0)
     complete: func(
-        ctx: context,
+        ctx: request-ctx,
         request: complete-request,
-        client-stream: option<borrow<output-stream>>,
-    ) -> option<complete-result>;
+    ) -> result<option<complete-result>, error-code>;
 }

@@ -1,0 +1,5 @@
+interface context {
+    get: func(ctx: list<tuple<string, list<u8>>>, key: string) -> option<list<u8>>;
+    session-id: func(ctx: list<tuple<string, list<u8>>>) -> option<string>;
+    jwt: func(ctx: list<tuple<string, list<u8>>>) -> option<string>;
+}

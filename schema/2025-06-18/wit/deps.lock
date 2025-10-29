@@ -1,4 +1,5 @@
 [io]
+url = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.3.tar.gz"
 sha256 = "1cccbfe4122686ea57a25cd368e8cdfc408cbcad089f47fb6685b6f92e96f050"
 sha512 = "7a95f964c13da52611141acd89bc8876226497f128e99dd176a4270c5b5efbd8cc847b5fbd1a91258d028c646db99e0424d72590cf1caf20f9f3a3343fad5017"
 
@@ -6,9 +7,3 @@ sha512 = "7a95f964c13da52611141acd89bc8876226497f128e99dd176a4270c5b5efbd8cc847b
 url = "https://github.com/WebAssembly/wasi-keyvalue/archive/refs/tags/v0.2.0-draft.tar.gz"
 sha256 = "d2de617fe31ec0abc6072f75f97dd22bf95b3231d5b3111471d73871df9081cd"
 sha512 = "6f0b4e44c684d760c54552e2bde9bc976e0a4f6525fc1d47acb98625e030847276436242f42a41f4da1bb9169fb2968c53d659d61af9b2f709f4eb6f9880e2c7"
-
-[protocol]
-url = "https://github.com/wasmcp/wasmcp/releases/download/protocol-v0.1.0-beta.2/wasmcp-protocol-0.1.0-beta.2-source.tar.gz"
-sha256 = "c0c9c7057f1e5a420ae4d9a5703dfc4e7a0903f223688072fb0cb99476b0a787"
-sha512 = "61e8a25396ffeff62fc4c08cce1c2426e22563a1a5e9994c7dae5649704f22099a325104db41de578e3e3b46541c0b7acf9f81da0728b2b66a115a0994b9e235"
-deps = ["io"]
