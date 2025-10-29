@@ -3,9 +3,9 @@
 //! This module handles parsing JSON-RPC requests into WIT types.
 //! Serde handles validation automatically.
 
-use crate::bindings::wasmcp::protocol::mcp::{
+use crate::bindings::wasmcp::mcp_v20250618::mcp::{
     Annotations, CallToolRequest, CancelledNotification, ClientCapabilities, ClientNotification,
-    ClientRequest, ClientResponse, CommonNotification, CompleteRequest, CompletionArgument,
+    ClientRequest, ClientResult, CommonNotification, CompleteRequest, CompletionArgument,
     CompletionContext, CompletionPromptReference, CompletionReference, ContentBlock,
     ContentOptions, ElicitResult, ElicitResultAction, ElicitResultContent, Error, ErrorCode,
     GetPromptRequest, Implementation, InitializeRequest, ListPromptsRequest,
@@ -87,7 +87,7 @@ fn parse_protocol_version(s: &str) -> Result<ProtocolVersion, String> {
 }
 
 fn convert_client_capabilities(caps: JsonClientCapabilities) -> ClientCapabilities {
-    use crate::bindings::wasmcp::protocol::mcp::ClientLists;
+    use crate::bindings::wasmcp::mcp_v20250618::mcp::ClientLists;
 
     ClientCapabilities {
         elicitation: caps
@@ -349,7 +349,7 @@ fn parse_set_log_level_request(params: Option<&Value>) -> Result<ClientRequest, 
 }
 
 fn parse_ping_request(params: Option<&Value>) -> Result<ClientRequest, String> {
-    use crate::bindings::wasmcp::protocol::mcp::{PingRequest, ProgressToken};
+    use crate::bindings::wasmcp::mcp_v20250618::mcp::{PingRequest, ProgressToken};
 
     let ping_request = if let Some(p) = params {
         let progress_token = p.get("progressToken").and_then(|pt| {
@@ -515,8 +515,8 @@ fn parse_common_notification(params: Option<&Value>) -> Result<CommonNotificatio
 // CLIENT RESPONSE PARSING
 // =============================================================================
 
-/// Parse a JSON-RPC response into a Result<ClientResponse, ErrorCode>
-pub fn parse_client_response(json: &Value) -> Result<Result<ClientResponse, ErrorCode>, String> {
+/// Parse a JSON-RPC response into a Result<ClientResult, ErrorCode>
+pub fn parse_client_response(json: &Value) -> Result<Result<ClientResult, ErrorCode>, String> {
     // Check for error response
     if let Some(error_obj) = json.get("error") {
         let id_value = json.get("id");
@@ -541,7 +541,6 @@ pub fn parse_client_response(json: &Value) -> Result<Result<ClientResponse, Erro
             .and_then(|d| serde_json::to_string(d).ok());
 
         let error = Error {
-            id,
             code,
             message,
             data,
@@ -570,18 +569,18 @@ pub fn parse_client_response(json: &Value) -> Result<Result<ClientResponse, Erro
     // Infer response type from result structure
     // elicitation-create has "action" field
     if result.get("action").is_some() {
-        return parse_elicit_result(result).map(|r| Ok(ClientResponse::ElicitationCreate(r)));
+        return parse_elicit_result(result).map(|r| Ok(ClientResult::ElicitationCreate(r)));
     }
 
     // roots-list has "roots" array
     if result.get("roots").is_some() {
-        return parse_list_roots_result(result).map(|r| Ok(ClientResponse::RootsList(r)));
+        return parse_list_roots_result(result).map(|r| Ok(ClientResult::RootsList(r)));
     }
 
     // sampling-create-message has "model" and "role" fields
     if result.get("model").is_some() && result.get("role").is_some() {
         return parse_sampling_create_message_result(result)
-            .map(|r| Ok(ClientResponse::SamplingCreateMessage(r)));
+            .map(|r| Ok(ClientResult::SamplingCreateMessage(r)));
     }
 
     Err("Unable to determine response type from result structure".to_string())
@@ -731,7 +730,7 @@ fn parse_sampling_create_message_result(
 ///
 /// See: `sampling-create-message-result.content` in mcp.wit for rationale
 fn parse_content_block(content: &Value) -> Result<ContentBlock, String> {
-    use crate::bindings::wasmcp::protocol::mcp::{
+    use crate::bindings::wasmcp::mcp_v20250618::mcp::{
         Blob, BlobData, ContentOptions, TextContent, TextData,
     };
 
@@ -842,7 +841,7 @@ fn parse_content_block(content: &Value) -> Result<ContentBlock, String> {
 
 /// Parse optional content-options from a content block JSON object
 fn parse_content_options(content: &Value) -> Result<Option<ContentOptions>, String> {
-    use crate::bindings::wasmcp::protocol::mcp::ContentOptions;
+    use crate::bindings::wasmcp::mcp_v20250618::mcp::ContentOptions;
 
     let meta = content
         .get("_meta")
@@ -862,7 +861,7 @@ fn parse_content_options(content: &Value) -> Result<Option<ContentOptions>, Stri
 
 /// Parse annotations from JSON
 fn parse_annotations(annot: &Value) -> Result<Annotations, String> {
-    use crate::bindings::wasmcp::protocol::mcp::{Annotations, Role};
+    use crate::bindings::wasmcp::mcp_v20250618::mcp::{Annotations, Role};
 
     let audience = annot
         .get("audience")

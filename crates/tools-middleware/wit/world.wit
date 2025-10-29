@@ -1,6 +1,6 @@
-package wasmcp:tools-middleware@0.1.0;
+package wasmcp:tools-middleware@0.1.2;
 
 world tools-middleware {
-    include wasmcp:server/middleware@0.1.0;
-    import wasmcp:protocol/tools@0.1.0;
+    include wasmcp:mcp-v20250618/server-middleware@0.1.0;
+    import wasmcp:mcp-v20250618/tools@0.1.0;
 }

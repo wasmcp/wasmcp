@@ -3,12 +3,12 @@
 //! This module handles conversion from WIT types to JSON-RPC 2.0 format
 //! for the stdio transport (newline-delimited JSON).
 
-use crate::bindings::wasmcp::protocol::mcp::{
+use crate::bindings::wasmcp::mcp_v20250618::mcp::{
     Annotations, AudioContent, BlobData, CallToolResult, CompleteResult, ContentBlock, ErrorCode,
     GetPromptResult, ImageContent, Implementation, InitializeResult, ListPromptsResult,
     ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, McpResource, Prompt,
     PromptMessage, ProtocolVersion, ReadResourceResult, RequestId, ResourceContents,
-    ResourceLinkContent, ResourceTemplate, Role, ServerCapabilities, ServerResponse, TextContent,
+    ResourceLinkContent, ResourceTemplate, Role, ServerCapabilities, ServerResult, TextContent,
     TextData, Tool,
 };
 use crate::stream_reader::{read_blob_stream, read_text_stream, StreamConfig};
@@ -335,7 +335,7 @@ fn protocol_version_to_string(version: &ProtocolVersion) -> String {
 }
 
 fn convert_server_capabilities(caps: &ServerCapabilities) -> JsonServerCapabilities {
-    use crate::bindings::wasmcp::protocol::mcp::{ServerLists, ServerSubscriptions};
+    use crate::bindings::wasmcp::mcp_v20250618::mcp::{ServerLists, ServerSubscriptions};
 
     JsonServerCapabilities {
         completions: caps
@@ -677,7 +677,7 @@ fn convert_content_block(block: &ContentBlock) -> Result<JsonContentBlock, Strin
             mime_type: link.options.as_ref().and_then(|o| o.mime_type.clone()),
         })),
         ContentBlock::EmbeddedResource(embedded) => {
-            use crate::bindings::wasmcp::protocol::mcp::ResourceContents;
+            use crate::bindings::wasmcp::mcp_v20250618::mcp::ResourceContents;
             match &embedded.resource {
                 ResourceContents::Text(text_res) => {
                     let text = convert_text_data(&text_res.text)?;
@@ -709,7 +709,7 @@ fn convert_content_block(block: &ContentBlock) -> Result<JsonContentBlock, Strin
 /// Serialize a JSON-RPC response (success or error) to a JSON value
 pub fn serialize_jsonrpc_response(
     id: &RequestId,
-    result: Result<&ServerResponse, &ErrorCode>,
+    result: Result<&ServerResult, &ErrorCode>,
 ) -> Value {
     match result {
         Ok(response) => {
@@ -734,20 +734,20 @@ pub fn serialize_jsonrpc_response(
     }
 }
 
-/// Serialize a ServerResponse to JSON
+/// Serialize a ServerResult to JSON
 ///
 /// Handles all MCP server response types with proper error propagation.
 /// Stream data is read with bounded memory via the streaming infrastructure.
-fn serialize_server_response(response: &ServerResponse) -> Value {
+fn serialize_server_response(response: &ServerResult) -> Value {
     match response {
-        ServerResponse::Initialize(init_result) => {
+        ServerResult::Initialize(init_result) => {
             serde_json::to_value(convert_initialize_result(init_result)).unwrap_or_else(|e| {
                 json!({
                     "error": format!("Failed to serialize initialize result: {}", e)
                 })
             })
         }
-        ServerResponse::ToolsList(tools_result) => match convert_list_tools_result(tools_result) {
+        ServerResult::ToolsList(tools_result) => match convert_list_tools_result(tools_result) {
             Ok(json_result) => serde_json::to_value(json_result).unwrap_or_else(|e| {
                 json!({
                     "error": format!("Failed to serialize tools list: {}", e)
@@ -757,7 +757,7 @@ fn serialize_server_response(response: &ServerResponse) -> Value {
                 "error": format!("Failed to convert tools list: {}", e)
             }),
         },
-        ServerResponse::ToolsCall(call_result) => match convert_call_tool_result(call_result) {
+        ServerResult::ToolsCall(call_result) => match convert_call_tool_result(call_result) {
             Ok(json_result) => serde_json::to_value(json_result).unwrap_or_else(|e| {
                 json!({
                     "error": format!("Failed to serialize tool call result: {}", e)
@@ -767,7 +767,7 @@ fn serialize_server_response(response: &ServerResponse) -> Value {
                 "error": format!("Failed to convert tool call result: {}", e)
             }),
         },
-        ServerResponse::ResourcesList(resources_result) => serde_json::to_value(
+        ServerResult::ResourcesList(resources_result) => serde_json::to_value(
             convert_list_resources_result(resources_result),
         )
         .unwrap_or_else(|e| {
@@ -775,7 +775,7 @@ fn serialize_server_response(response: &ServerResponse) -> Value {
                 "error": format!("Failed to serialize resources list: {}", e)
             })
         }),
-        ServerResponse::ResourcesRead(read_result) => {
+        ServerResult::ResourcesRead(read_result) => {
             match convert_read_resource_result(read_result) {
                 Ok(json_result) => serde_json::to_value(json_result).unwrap_or_else(|e| {
                     json!({
@@ -787,7 +787,7 @@ fn serialize_server_response(response: &ServerResponse) -> Value {
                 }),
             }
         }
-        ServerResponse::ResourcesTemplatesList(templates_result) => {
+        ServerResult::ResourcesTemplatesList(templates_result) => {
             serde_json::to_value(convert_list_resource_templates_result(templates_result))
                 .unwrap_or_else(|e| {
                     json!({
@@ -795,14 +795,14 @@ fn serialize_server_response(response: &ServerResponse) -> Value {
                     })
                 })
         }
-        ServerResponse::PromptsList(prompts_result) => {
+        ServerResult::PromptsList(prompts_result) => {
             serde_json::to_value(convert_list_prompts_result(prompts_result)).unwrap_or_else(|e| {
                 json!({
                     "error": format!("Failed to serialize prompts list: {}", e)
                 })
             })
         }
-        ServerResponse::PromptsGet(get_prompt_result) => {
+        ServerResult::PromptsGet(get_prompt_result) => {
             match convert_get_prompt_result(get_prompt_result) {
                 Ok(json_result) => serde_json::to_value(json_result).unwrap_or_else(|e| {
                     json!({
@@ -814,7 +814,7 @@ fn serialize_server_response(response: &ServerResponse) -> Value {
                 }),
             }
         }
-        ServerResponse::CompletionComplete(complete_result) => {
+        ServerResult::CompletionComplete(complete_result) => {
             serde_json::to_value(convert_complete_result(complete_result)).unwrap_or_else(|e| {
                 json!({
                     "error": format!("Failed to serialize completion result: {}", e)

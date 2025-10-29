@@ -12,10 +12,10 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::server::notifications::Guest;
-use bindings::exports::wasmcp::server::notifications::NotificationError;
+use bindings::exports::wasmcp::mcp_v20250618::notifications::Guest;
+use bindings::exports::wasmcp::mcp_v20250618::notifications::NotificationError;
 use bindings::wasi::io::streams::{OutputStream, StreamError};
-use bindings::wasmcp::protocol::mcp::*;
+use bindings::wasmcp::mcp_v20250618::mcp::*;
 
 struct HttpClientNotifications;
 
