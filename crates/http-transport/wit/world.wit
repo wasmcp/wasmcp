@@ -1,4 +1,4 @@
-package wasmcp:http-transport@0.1.0;
+package wasmcp:http-transport@0.1.2;
 
 world http-transport {
     include wasi:http/proxy@0.2.3;
