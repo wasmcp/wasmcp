@@ -16,60 +16,98 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::server::handler::Guest;
+use bindings::exports::wasmcp::mcp_v20250618::server_handler::{
+    ErrorCtx as ExportErrorCtx, Guest, NotificationCtx as ExportNotificationCtx,
+    RequestCtx as ExportRequestCtx, ResultCtx as ExportResultCtx,
+};
 use bindings::wasi::io::streams::OutputStream;
-use bindings::wasmcp::protocol::mcp::*;
-use bindings::wasmcp::protocol::resources as capability;
-use bindings::wasmcp::protocol::server_messages::Context;
-use bindings::wasmcp::server::handler as downstream;
+use bindings::wasmcp::mcp_v20250618::mcp::*;
+use bindings::wasmcp::mcp_v20250618::resources as capability;
+use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
 
 struct ResourcesMiddleware;
 
 impl Guest for ResourcesMiddleware {
     fn handle_request(
-        ctx: Context,
-        request: (ClientRequest, RequestId),
-        client_stream: Option<&OutputStream>,
-    ) -> Result<ServerResponse, ErrorCode> {
-        let (req, id) = request;
-        match req {
-            ClientRequest::ResourcesList(list_req) => {
-                handle_resources_list(list_req, id, &ctx, client_stream)
-            }
-            ClientRequest::ResourcesRead(read_req) => {
-                handle_resources_read(read_req, id, &ctx, client_stream)
-            }
+        ctx: ExportRequestCtx,
+        request: ClientRequest,
+    ) -> Result<ServerResult, ErrorCode> {
+        match &request {
+            ClientRequest::ResourcesList(list_req) => handle_resources_list(list_req.clone(), ctx),
+            ClientRequest::ResourcesRead(read_req) => handle_resources_read(read_req.clone(), ctx),
             ClientRequest::ResourcesTemplatesList(templates_req) => {
-                handle_templates_list(templates_req, id, &ctx, client_stream)
+                handle_templates_list(templates_req.clone(), ctx)
             }
             _ => {
                 // Delegate all other requests to downstream handler
-                downstream::handle_request(&ctx, (&req, &id), client_stream)
+                downstream::handle_request(
+                    &downstream::RequestCtx {
+                        request_id: ctx.request_id.clone(),
+                        jwt: ctx.jwt.clone(),
+                        session_id: ctx.session_id.clone(),
+                        message_stream: ctx.message_stream,
+                        protocol_version: ctx.protocol_version.clone(),
+                    },
+                    &request,
+                )
             }
         }
     }
 
-    fn handle_notification(ctx: Context, notification: ClientNotification) {
+    fn handle_notification(ctx: ExportNotificationCtx, notification: ClientNotification) {
         // Forward to downstream handler
-        downstream::handle_notification(&ctx, &notification);
+        downstream::handle_notification(
+            &downstream::NotificationCtx {
+                jwt: ctx.jwt.clone(),
+                session_id: ctx.session_id.clone(),
+                protocol_version: ctx.protocol_version.clone(),
+            },
+            &notification,
+        );
     }
 
-    fn handle_response(ctx: Context, response: Result<(ClientResponse, RequestId), ErrorCode>) {
+    fn handle_result(ctx: ExportResultCtx, result: ClientResult) {
         // Forward to downstream handler
-        downstream::handle_response(&ctx, response);
+        downstream::handle_result(
+            &downstream::ResultCtx {
+                request_id: ctx.request_id.clone(),
+                jwt: ctx.jwt.clone(),
+                session_id: ctx.session_id.clone(),
+                protocol_version: ctx.protocol_version.clone(),
+            },
+            result,
+        );
+    }
+
+    fn handle_error(ctx: ExportErrorCtx, error: ErrorCode) {
+        // Forward to downstream handler
+        downstream::handle_error(
+            &downstream::ErrorCtx {
+                request_id: ctx.request_id.clone(),
+                jwt: ctx.jwt.clone(),
+                session_id: ctx.session_id.clone(),
+                protocol_version: ctx.protocol_version.clone(),
+            },
+            &error,
+        );
     }
 }
 
 fn handle_resources_list(
     req: ListResourcesRequest,
-    id: RequestId,
-    ctx: &Context,
-    client_stream: Option<&OutputStream>,
-) -> Result<ServerResponse, ErrorCode> {
-    use bindings::wasmcp::protocol::mcp::ListResourcesResult;
-
+    ctx: ExportRequestCtx,
+) -> Result<ServerResult, ErrorCode> {
     // Try to get resources from our capability
-    let our_result = match capability::list_resources(ctx, &req, client_stream) {
+    let our_result = match capability::list_resources(
+        &capability::RequestCtx {
+            request_id: ctx.request_id.clone(),
+            jwt: ctx.jwt.clone(),
+            session_id: ctx.session_id.clone(),
+            message_stream: ctx.message_stream,
+            protocol_version: ctx.protocol_version.clone(),
+        },
+        &req,
+    ) {
         Ok(result) => Some(result),
         Err(ErrorCode::MethodNotFound(_)) => {
             // Capability doesn't implement resources interface - skip it
@@ -84,15 +122,24 @@ fn handle_resources_list(
 
     // Try to get downstream resources
     let downstream_req = ClientRequest::ResourcesList(req.clone());
-    match downstream::handle_request(ctx, (&downstream_req, &id), client_stream) {
-        Ok(ServerResponse::ResourcesList(downstream_result)) => {
+    match downstream::handle_request(
+        &downstream::RequestCtx {
+            request_id: ctx.request_id.clone(),
+            jwt: ctx.jwt.clone(),
+            session_id: ctx.session_id.clone(),
+            message_stream: ctx.message_stream,
+            protocol_version: ctx.protocol_version.clone(),
+        },
+        &downstream_req,
+    ) {
+        Ok(ServerResult::ResourcesList(downstream_result)) => {
             // Merge our resources with downstream resources
             match our_result {
                 Some(our) => {
                     let mut all_resources = our.resources;
                     all_resources.extend(downstream_result.resources);
 
-                    Ok(ServerResponse::ResourcesList(ListResourcesResult {
+                    Ok(ServerResult::ResourcesList(ListResourcesResult {
                         resources: all_resources,
                         next_cursor: downstream_result.next_cursor.or(our.next_cursor),
                         meta: our.meta.or(downstream_result.meta),
@@ -100,18 +147,17 @@ fn handle_resources_list(
                 }
                 None => {
                     // Only downstream has resources
-                    Ok(ServerResponse::ResourcesList(downstream_result))
+                    Ok(ServerResult::ResourcesList(downstream_result))
                 }
             }
         }
         Err(ErrorCode::MethodNotFound(_)) => {
             // Downstream doesn't support resources
             match our_result {
-                Some(our) => Ok(ServerResponse::ResourcesList(our)),
+                Some(our) => Ok(ServerResult::ResourcesList(our)),
                 None => {
                     // Neither capability nor downstream implements resources - return MethodNotFound
                     Err(ErrorCode::MethodNotFound(Error {
-                        id: Some(id),
                         code: -32601,
                         message: "Method not found: resources/list".to_string(),
                         data: None,
@@ -124,7 +170,7 @@ fn handle_resources_list(
             match our_result {
                 Some(our) => {
                     // We have capability resources, return them despite downstream error
-                    Ok(ServerResponse::ResourcesList(our))
+                    Ok(ServerResult::ResourcesList(our))
                 }
                 None => {
                     // No capability resources, propagate downstream error
@@ -135,11 +181,10 @@ fn handle_resources_list(
         Ok(_) => {
             // Unexpected response type from downstream
             match our_result {
-                Some(our) => Ok(ServerResponse::ResourcesList(our)),
+                Some(our) => Ok(ServerResult::ResourcesList(our)),
                 None => {
                     // No resources available
                     Err(ErrorCode::InternalError(Error {
-                        id: Some(id),
                         code: -32603,
                         message: "Unexpected response type from downstream handler".to_string(),
                         data: None,
@@ -152,26 +197,41 @@ fn handle_resources_list(
 
 fn handle_resources_read(
     req: ReadResourceRequest,
-    id: RequestId,
-    ctx: &Context,
-    client_stream: Option<&OutputStream>,
-) -> Result<ServerResponse, ErrorCode> {
+    ctx: ExportRequestCtx,
+) -> Result<ServerResult, ErrorCode> {
     // Try reading from our capability first
-    match capability::read_resource(ctx, &req, client_stream) {
-        Some(result) => {
+    match capability::read_resource(
+        &capability::RequestCtx {
+            request_id: ctx.request_id.clone(),
+            jwt: ctx.jwt.clone(),
+            session_id: ctx.session_id.clone(),
+            message_stream: ctx.message_stream,
+            protocol_version: ctx.protocol_version.clone(),
+        },
+        &req,
+    ) {
+        Ok(Some(result)) => {
             // Capability handled it - return the result
-            Ok(ServerResponse::ResourcesRead(result))
+            Ok(ServerResult::ResourcesRead(result))
         }
-        None => {
+        Ok(None) => {
             // Capability doesn't handle this URI - try downstream
             let downstream_req = ClientRequest::ResourcesRead(req.clone());
-            match downstream::handle_request(ctx, (&downstream_req, &id), client_stream) {
+            match downstream::handle_request(
+                &downstream::RequestCtx {
+                    request_id: ctx.request_id.clone(),
+                    jwt: ctx.jwt.clone(),
+                    session_id: ctx.session_id.clone(),
+                    message_stream: ctx.message_stream,
+                    protocol_version: ctx.protocol_version.clone(),
+                },
+                &downstream_req,
+            ) {
                 Ok(response) => Ok(response),
                 Err(ErrorCode::MethodNotFound(_)) => {
                     // Downstream also doesn't handle it - return InvalidParams
                     // The method exists, but the URI parameter is invalid/unknown
                     Err(ErrorCode::InvalidParams(Error {
-                        id: Some(id),
                         code: -32602,
                         message: format!("Unknown resource URI: {}", req.uri),
                         data: None,
@@ -180,19 +240,28 @@ fn handle_resources_read(
                 Err(e) => Err(e),
             }
         }
+        Err(e) => {
+            // Capability returned an error - propagate it
+            Err(e)
+        }
     }
 }
 
 fn handle_templates_list(
     req: ListResourceTemplatesRequest,
-    id: RequestId,
-    ctx: &Context,
-    client_stream: Option<&OutputStream>,
-) -> Result<ServerResponse, ErrorCode> {
-    use bindings::wasmcp::protocol::mcp::ListResourceTemplatesResult;
-
+    ctx: ExportRequestCtx,
+) -> Result<ServerResult, ErrorCode> {
     // Try to get templates from our capability
-    let our_result = match capability::list_resource_templates(ctx, &req, client_stream) {
+    let our_result = match capability::list_resource_templates(
+        &capability::RequestCtx {
+            request_id: ctx.request_id.clone(),
+            jwt: ctx.jwt.clone(),
+            session_id: ctx.session_id.clone(),
+            message_stream: ctx.message_stream,
+            protocol_version: ctx.protocol_version.clone(),
+        },
+        &req,
+    ) {
         Ok(result) => Some(result),
         Err(ErrorCode::MethodNotFound(_)) => {
             // Capability doesn't implement templates - skip it
@@ -206,15 +275,24 @@ fn handle_templates_list(
 
     // Try to get downstream templates
     let downstream_req = ClientRequest::ResourcesTemplatesList(req.clone());
-    match downstream::handle_request(ctx, (&downstream_req, &id), client_stream) {
-        Ok(ServerResponse::ResourcesTemplatesList(downstream_result)) => {
+    match downstream::handle_request(
+        &downstream::RequestCtx {
+            request_id: ctx.request_id.clone(),
+            jwt: ctx.jwt.clone(),
+            session_id: ctx.session_id.clone(),
+            message_stream: ctx.message_stream,
+            protocol_version: ctx.protocol_version.clone(),
+        },
+        &downstream_req,
+    ) {
+        Ok(ServerResult::ResourcesTemplatesList(downstream_result)) => {
             // Merge our templates with downstream templates
             match our_result {
                 Some(our) => {
                     let mut all_templates = our.resource_templates;
                     all_templates.extend(downstream_result.resource_templates);
 
-                    Ok(ServerResponse::ResourcesTemplatesList(
+                    Ok(ServerResult::ResourcesTemplatesList(
                         ListResourceTemplatesResult {
                             resource_templates: all_templates,
                             next_cursor: downstream_result.next_cursor.or(our.next_cursor),
@@ -224,18 +302,17 @@ fn handle_templates_list(
                 }
                 None => {
                     // Only downstream has templates
-                    Ok(ServerResponse::ResourcesTemplatesList(downstream_result))
+                    Ok(ServerResult::ResourcesTemplatesList(downstream_result))
                 }
             }
         }
         Err(ErrorCode::MethodNotFound(_)) => {
             // Downstream doesn't support templates
             match our_result {
-                Some(our) => Ok(ServerResponse::ResourcesTemplatesList(our)),
+                Some(our) => Ok(ServerResult::ResourcesTemplatesList(our)),
                 None => {
                     // Neither capability nor downstream implements templates - return MethodNotFound
                     Err(ErrorCode::MethodNotFound(Error {
-                        id: Some(id),
                         code: -32601,
                         message: "Method not found: resources/templates/list".to_string(),
                         data: None,
@@ -248,7 +325,7 @@ fn handle_templates_list(
             match our_result {
                 Some(our) => {
                     // We have capability templates, return them despite downstream error
-                    Ok(ServerResponse::ResourcesTemplatesList(our))
+                    Ok(ServerResult::ResourcesTemplatesList(our))
                 }
                 None => {
                     // No capability templates, propagate downstream error
@@ -259,11 +336,10 @@ fn handle_templates_list(
         Ok(_) => {
             // Unexpected response type from downstream
             match our_result {
-                Some(our) => Ok(ServerResponse::ResourcesTemplatesList(our)),
+                Some(our) => Ok(ServerResult::ResourcesTemplatesList(our)),
                 None => {
                     // No templates available
                     Err(ErrorCode::InternalError(Error {
-                        id: Some(id),
                         code: -32603,
                         message: "Unexpected response type from downstream handler".to_string(),
                         data: None,

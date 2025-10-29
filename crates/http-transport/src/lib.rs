@@ -29,11 +29,13 @@ use bindings::wasi::http::types::{
 };
 use bindings::wasi::io::poll::poll;
 use bindings::wasi::io::streams::{OutputStream, Pollable};
-use bindings::wasmcp::protocol::mcp::{
-    ClientNotification, ClientRequest, ClientResponse, RequestId, ServerResponse,
+use bindings::wasmcp::mcp_v20250618::mcp::{
+    ClientNotification, ClientRequest, ClientResult, RequestId, ServerResult,
 };
-use bindings::wasmcp::protocol::server_messages::Context;
-use bindings::wasmcp::server::handler::{handle_notification, handle_request, handle_response};
+use bindings::wasmcp::mcp_v20250618::server_handler::{
+    handle_error, handle_notification, handle_request, handle_result, ErrorCtx, NotificationCtx,
+    RequestCtx, ResultCtx,
+};
 
 struct HttpTransport;
 
@@ -56,15 +58,15 @@ fn handle_http_request(request: IncomingRequest) -> Result<OutgoingResponse, Str
     // 1. Validate Origin header (DNS rebinding protection)
     validate_origin(&request)?;
 
-    // 2. Validate MCP-Protocol-Version header (if present)
-    validate_protocol_version(&request)?;
+    // 2. Extract and validate MCP-Protocol-Version header
+    let protocol_version = validate_protocol_version(&request)?;
 
     // 3. Parse method and handle accordingly
     let method = request.method();
 
     match method {
-        bindings::wasi::http::types::Method::Post => handle_post(request),
-        bindings::wasi::http::types::Method::Get => handle_get(request),
+        bindings::wasi::http::types::Method::Post => handle_post(request, protocol_version),
+        bindings::wasi::http::types::Method::Get => handle_get(request, protocol_version),
         bindings::wasi::http::types::Method::Delete => {
             // DELETE not supported in stateless mode
             create_method_not_allowed_response()
@@ -73,7 +75,10 @@ fn handle_http_request(request: IncomingRequest) -> Result<OutgoingResponse, Str
     }
 }
 
-fn handle_post(request: IncomingRequest) -> Result<OutgoingResponse, String> {
+fn handle_post(
+    request: IncomingRequest,
+    protocol_version: String,
+) -> Result<OutgoingResponse, String> {
     // Validate Accept header per spec
     // Per MCP spec: "The client MUST include an Accept header, listing both application/json
     // and text/event-stream as supported content types"
@@ -91,20 +96,23 @@ fn handle_post(request: IncomingRequest) -> Result<OutgoingResponse, String> {
         // It's a request or notification
         if let Some(id) = json_rpc.get("id") {
             // Request - handle and return SSE stream
-            handle_json_rpc_request(&json_rpc, id)
+            handle_json_rpc_request(&json_rpc, id, protocol_version)
         } else {
             // Notification - accept and return 202
-            handle_json_rpc_notification(&json_rpc)
+            handle_json_rpc_notification(&json_rpc, protocol_version)
         }
     } else if json_rpc.get("result").is_some() || json_rpc.get("error").is_some() {
         // It's a response (from client to server)
-        handle_json_rpc_response(&json_rpc)
+        handle_json_rpc_response(&json_rpc, protocol_version)
     } else {
         Err("Invalid JSON-RPC message".to_string())
     }
 }
 
-fn handle_get(_request: IncomingRequest) -> Result<OutgoingResponse, String> {
+fn handle_get(
+    _request: IncomingRequest,
+    _protocol_version: String,
+) -> Result<OutgoingResponse, String> {
     // In stateless mode, we don't support GET (no persistent SSE streams)
     // The spec allows servers to return 405 Method Not Allowed
     create_method_not_allowed_response()
@@ -113,6 +121,7 @@ fn handle_get(_request: IncomingRequest) -> Result<OutgoingResponse, String> {
 fn handle_json_rpc_request(
     json_rpc: &serde_json::Value,
     id: &serde_json::Value,
+    protocol_version: String,
 ) -> Result<OutgoingResponse, String> {
     // Parse request ID
     let request_id = parse_request_id(id)?;
@@ -159,15 +168,17 @@ fn handle_json_rpc_request(
     let body = response.body().map_err(|_| "Failed to get response body")?;
     let output_stream = body.write().map_err(|_| "Failed to get output stream")?;
 
-    // Create context (stateless: no session, no claims)
-    let ctx = Context {
-        claims: None,
+    // Create context (stateless: no session, no JWT)
+    let ctx = RequestCtx {
+        request_id: request_id.clone(),
+        jwt: None,
         session_id: None,
-        data: vec![],
+        message_stream: Some(&output_stream),
+        protocol_version,
     };
 
     // Delegate to server-handler (may send notifications via output stream)
-    let result = handle_request(&ctx, (&client_request, &request_id), Some(&output_stream));
+    let result = handle_request(&ctx, &client_request);
 
     // Write final JSON-RPC response to SSE stream
     write_sse_response(&output_stream, request_id, result)?;
@@ -183,7 +194,7 @@ fn handle_initialize_request(
     json_rpc: &serde_json::Value,
     request_id: RequestId,
 ) -> Result<OutgoingResponse, String> {
-    use bindings::wasmcp::protocol::mcp::{
+    use bindings::wasmcp::mcp_v20250618::mcp::{
         ClientCapabilities, Implementation, InitializeRequest, InitializeResult, ProtocolVersion,
         ServerCapabilities,
     };
@@ -334,44 +345,54 @@ fn handle_set_level_request(request_id: RequestId) -> Result<OutgoingResponse, S
     Ok(response)
 }
 
-fn discover_capabilities() -> bindings::wasmcp::protocol::mcp::ServerCapabilities {
-    use bindings::wasmcp::protocol::mcp::{
+fn discover_capabilities() -> bindings::wasmcp::mcp_v20250618::mcp::ServerCapabilities {
+    use bindings::wasmcp::mcp_v20250618::mcp::{
         ClientRequest, CompleteRequest, CompletionArgument, CompletionPromptReference,
         CompletionReference, ListPromptsRequest, ListResourcesRequest, ListToolsRequest,
-        ServerCapabilities, ServerLists, ServerResponse,
+        ServerCapabilities, ServerLists, ServerResult,
     };
 
     // Try to discover what the downstream handler supports by calling list methods
     // With optional output stream, we can pass None for discovery calls
     let mut list_flags = ServerLists::empty();
 
-    // Create a context for discovery calls
-    let ctx = Context {
-        claims: None,
-        session_id: None,
-        data: vec![],
-    };
-
     // Try list-tools
     let req = ClientRequest::ToolsList(ListToolsRequest { cursor: None });
-    let id = RequestId::Number(0);
-    if let Ok(_) = handle_request(&ctx, (&req, &id), None) {
+    let ctx = RequestCtx {
+        request_id: RequestId::Number(0),
+        jwt: None,
+        session_id: None,
+        message_stream: None,
+        protocol_version: "2025-06-18".to_string(),
+    };
+    if let Ok(_) = handle_request(&ctx, &req) {
         list_flags |= ServerLists::TOOLS;
     }
 
     // Try list-resources
     let req = ClientRequest::ResourcesList(ListResourcesRequest { cursor: None });
-    let id = RequestId::Number(1);
-    if let Ok(_) = handle_request(&ctx, (&req, &id), None) {
+    let ctx = RequestCtx {
+        request_id: RequestId::Number(1),
+        jwt: None,
+        session_id: None,
+        message_stream: None,
+        protocol_version: "2025-06-18".to_string(),
+    };
+    if let Ok(_) = handle_request(&ctx, &req) {
         list_flags |= ServerLists::RESOURCES;
     }
 
     // Try list-prompts and use result to test completions
     let mut has_completions = false;
     let req = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
-    let id = RequestId::Number(2);
-    if let Ok(ServerResponse::PromptsList(prompts_result)) = handle_request(&ctx, (&req, &id), None)
-    {
+    let ctx = RequestCtx {
+        request_id: RequestId::Number(2),
+        jwt: None,
+        session_id: None,
+        message_stream: None,
+        protocol_version: "2025-06-18".to_string(),
+    };
+    if let Ok(ServerResult::PromptsList(prompts_result)) = handle_request(&ctx, &req) {
         list_flags |= ServerLists::PROMPTS;
 
         // Try to discover completions support using a real prompt
@@ -397,10 +418,18 @@ fn discover_capabilities() -> bindings::wasmcp::protocol::mcp::ServerCapabilitie
 
                         // Test if completions are supported
                         let req = ClientRequest::CompletionComplete(completion_request);
-                        let id = RequestId::Number(3);
-                        match handle_request(&ctx, (&req, &id), None) {
+                        let ctx = RequestCtx {
+                            request_id: RequestId::Number(3),
+                            jwt: None,
+                            session_id: None,
+                            message_stream: None,
+                            protocol_version: "2025-06-18".to_string(),
+                        };
+                        match handle_request(&ctx, &req) {
                             Ok(_) => has_completions = true,
-                            Err(bindings::wasmcp::protocol::mcp::ErrorCode::MethodNotFound(_)) => {
+                            Err(
+                                bindings::wasmcp::mcp_v20250618::mcp::ErrorCode::MethodNotFound(_),
+                            ) => {
                                 has_completions = false;
                             }
                             Err(_) => {
@@ -433,7 +462,7 @@ fn discover_capabilities() -> bindings::wasmcp::protocol::mcp::ServerCapabilitie
 }
 
 fn serialize_capabilities(
-    caps: &bindings::wasmcp::protocol::mcp::ServerCapabilities,
+    caps: &bindings::wasmcp::mcp_v20250618::mcp::ServerCapabilities,
 ) -> serde_json::Value {
     let mut result = serde_json::Map::new();
 
@@ -447,12 +476,12 @@ fn serialize_capabilities(
 
     // Serialize list_changed capabilities - each capability type gets its own nested object
     if let Some(flags) = caps.list_changed {
-        if flags.contains(bindings::wasmcp::protocol::mcp::ServerLists::TOOLS) {
+        if flags.contains(bindings::wasmcp::mcp_v20250618::mcp::ServerLists::TOOLS) {
             let mut tools_caps = serde_json::Map::new();
             tools_caps.insert("listChanged".to_string(), serde_json::json!(true));
             result.insert("tools".to_string(), serde_json::Value::Object(tools_caps));
         }
-        if flags.contains(bindings::wasmcp::protocol::mcp::ServerLists::RESOURCES) {
+        if flags.contains(bindings::wasmcp::mcp_v20250618::mcp::ServerLists::RESOURCES) {
             let mut resources_caps = serde_json::Map::new();
             resources_caps.insert("listChanged".to_string(), serde_json::json!(true));
             result.insert(
@@ -460,7 +489,7 @@ fn serialize_capabilities(
                 serde_json::Value::Object(resources_caps),
             );
         }
-        if flags.contains(bindings::wasmcp::protocol::mcp::ServerLists::PROMPTS) {
+        if flags.contains(bindings::wasmcp::mcp_v20250618::mcp::ServerLists::PROMPTS) {
             let mut prompts_caps = serde_json::Map::new();
             prompts_caps.insert("listChanged".to_string(), serde_json::json!(true));
             result.insert(
@@ -520,15 +549,18 @@ fn write_chunked(output_stream: &OutputStream, bytes: &[u8]) -> Result<(), Strin
     Ok(())
 }
 
-fn handle_json_rpc_notification(json_rpc: &serde_json::Value) -> Result<OutgoingResponse, String> {
+fn handle_json_rpc_notification(
+    json_rpc: &serde_json::Value,
+    protocol_version: String,
+) -> Result<OutgoingResponse, String> {
     // Parse notification from JSON
     let notification = parser::parse_client_notification(json_rpc)?;
 
-    // Create context (stateless)
-    let ctx = Context {
-        claims: None,
+    // Create context (stateless: no session, no JWT)
+    let ctx = NotificationCtx {
+        jwt: None,
         session_id: None,
-        data: vec![],
+        protocol_version,
     };
 
     // Forward to server-handler (no response expected)
@@ -542,7 +574,10 @@ fn handle_json_rpc_notification(json_rpc: &serde_json::Value) -> Result<Outgoing
     Ok(response)
 }
 
-fn handle_json_rpc_response(json_rpc: &serde_json::Value) -> Result<OutgoingResponse, String> {
+fn handle_json_rpc_response(
+    json_rpc: &serde_json::Value,
+    protocol_version: String,
+) -> Result<OutgoingResponse, String> {
     // Parse response ID (required for responses)
     let id = json_rpc.get("id").ok_or("Missing id in response")?;
     let request_id = parser::parse_request_id(id)?;
@@ -550,18 +585,29 @@ fn handle_json_rpc_response(json_rpc: &serde_json::Value) -> Result<OutgoingResp
     // Parse client response from JSON
     let response_result = parser::parse_client_response(json_rpc)?;
 
-    // Create context (stateless)
-    let ctx = Context {
-        claims: None,
-        session_id: None,
-        data: vec![],
-    };
-
-    // Convert to Result<(ClientResponse, RequestId), ErrorCode>
-    let result_with_id = response_result.map(|resp| (resp, request_id));
-
     // Forward to server-handler (no response expected)
-    handle_response(&ctx, result_with_id);
+    match response_result {
+        Ok(client_result) => {
+            // Success response
+            let ctx = ResultCtx {
+                request_id,
+                jwt: None,
+                session_id: None,
+                protocol_version: protocol_version.clone(),
+            };
+            handle_result(&ctx, client_result);
+        }
+        Err(error_code) => {
+            // Error response
+            let ctx = ErrorCtx {
+                request_id: Some(request_id),
+                jwt: None,
+                session_id: None,
+                protocol_version,
+            };
+            handle_error(&ctx, &error_code);
+        }
+    }
 
     // Return 202 Accepted
     let response = OutgoingResponse::new(Fields::new());
@@ -599,7 +645,7 @@ fn validate_accept_header(request: &IncomingRequest) -> Result<(), String> {
     Ok(())
 }
 
-fn validate_protocol_version(request: &IncomingRequest) -> Result<(), String> {
+fn validate_protocol_version(request: &IncomingRequest) -> Result<String, String> {
     // Per MCP spec: If using HTTP, the client MUST include the MCP-Protocol-Version header
     // https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#protocol-version-header
 
@@ -609,7 +655,7 @@ fn validate_protocol_version(request: &IncomingRequest) -> Result<(), String> {
     if version_values.is_empty() {
         // No version header - assume 2025-03-26 for backwards compatibility
         // Per spec: "the server SHOULD assume protocol version 2025-03-26"
-        return Ok(());
+        return Ok("2025-03-26".to_string());
     }
 
     let version_str = String::from_utf8(version_values[0].clone())
@@ -617,7 +663,7 @@ fn validate_protocol_version(request: &IncomingRequest) -> Result<(), String> {
 
     // Validate supported versions
     match version_str.as_str() {
-        "2025-06-18" | "2025-03-26" | "2024-11-05" => Ok(()),
+        "2025-06-18" | "2025-03-26" | "2024-11-05" => Ok(version_str),
         _ => Err(format!("Unsupported MCP-Protocol-Version: {}", version_str)),
     }
 }
@@ -755,7 +801,7 @@ fn parse_client_request(json_rpc: &serde_json::Value) -> Result<ClientRequest, S
 fn write_sse_response(
     output_stream: &OutputStream,
     request_id: RequestId,
-    result: Result<ServerResponse, bindings::wasmcp::protocol::mcp::ErrorCode>,
+    result: Result<ServerResult, bindings::wasmcp::mcp_v20250618::mcp::ErrorCode>,
 ) -> Result<(), String> {
     use bindings::wasi::io::streams::StreamError;
 

@@ -2,5 +2,5 @@ package wasmcp:stdio-transport@0.1.0;
 
 world stdio-transport {
     include wasi:cli/command@0.2.3;
-    include wasmcp:server/transport@0.1.0;
+    include wasmcp:mcp-v20250618/server-transport@0.1.0;
 }
