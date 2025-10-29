@@ -236,5 +236,5 @@ wasm-tools component wit component.wasm | grep "wasmcp:"
 - architecture: Overall system design, capability pattern, chain of responsibility
 - building-servers: Practical workflow from wasmcp new to deployment
 - reference: Command flags, component formats, config file structure
-- wit/server/handler: Handler interface specification
-- wit/protocol/features: Capability interfaces (tools, resources, prompts)
+- spec/2025-06-18/wit/server.wit: Handler interface specification (server-handler)
+- spec/2025-06-18/wit/: Capability interfaces (tools, resources, prompts, completions)

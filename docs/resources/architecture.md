@@ -34,7 +34,7 @@ wasmcp separates business logic from protocol handling:
 
 **What they do:** Implement business logic
 
-**What they export:** Clean capability interfaces from `wit/protocol/features.wit`
+**What they export:** Clean capability interfaces from `spec/2025-06-18/wit/` (tools, resources, prompts, completions)
 
 **Example (tools):**
 ```wit
@@ -163,7 +163,7 @@ Only the middleware that owns the tool executes it.
 
 ## Handler Interface
 
-All components in chain use same interface from `wit/server/handler.wit`:
+All components in chain use same interface from `spec/2025-06-18/wit/server.wit` (server-handler interface):
 
 ```wit
 interface handler {
@@ -346,7 +346,7 @@ Published to `ghcr.io/wasmcp`, auto-downloaded by CLI:
 
 ### Sessions
 
-**Interface:** `wit/server/sessions.wit`
+**Interface:** `spec/2025-06-18/wit/sessions.wit`
 
 For middleware needing state across requests:
 
@@ -361,7 +361,7 @@ interface sessions {
 
 ### Notifications
 
-**Interface:** `wit/server/notifications.wit`
+**Interface:** `spec/2025-06-18/wit/notifications.wit`
 
 For server-to-client notifications:
 

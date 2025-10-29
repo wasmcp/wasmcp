@@ -19,12 +19,3 @@ registry = "wasi.dev"
 requirement = "=0.2.0-draft"
 version = "0.2.0-draft"
 digest = "sha256:f5afa14646d3f32cee23106add8d7da53774083fef32f5648176aee7be61d36b"
-
-[[packages]]
-name = "wasmcp:protocol"
-registry = "ghcr.io"
-
-[[packages.versions]]
-requirement = "=0.1.0"
-version = "0.1.0"
-digest = "sha256:a8a3eb2a6df14a537f22ca8e8cf0377f27e298328a137ebfc2eb88e4a23eab16"

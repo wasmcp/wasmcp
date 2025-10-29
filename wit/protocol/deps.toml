@@ -1,4 +1,0 @@
-# WIT dependencies for wasmcp:protocol
-# Pin to v0.2.3 for compatibility with community tooling
-
-io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.3.tar.gz"

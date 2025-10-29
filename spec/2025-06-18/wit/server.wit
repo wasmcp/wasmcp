@@ -1,0 +1,253 @@
+use wasi:io/streams@0.2.3;
+
+/// Server-side MCP message handler.
+@since(version = 0.1.0)
+interface server-handler {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        request-id,
+        server-result,
+        client-request,
+        client-result,
+        client-notification,
+    };
+
+    /// Request context passed to handlers.
+    ///
+    /// Contains authentication, session, streaming, and protocol information
+    /// extracted from the transport layer.
+    @since(version = 0.1.0)
+    record request-ctx {
+        request-id: request-id,
+        jwt: option<string>,
+        session-id: option<string>,
+        message-stream: option<borrow<output-stream>>,
+        protocol-version: string,
+    }
+
+    /// Handle a client request.
+    ///
+    /// Processes an MCP request from the client and returns a response.
+    ///
+    /// Parameters:
+    /// - `request`: Tuple of (request body, request ID for correlation)
+    /// - `options`: Context from transport (auth, session, streams, custom metadata)
+    ///
+    /// Returns the server response or an error code if processing fails.
+    @since(version = 0.1.0)
+    handle-request: func(
+        ctx: request-ctx,
+        request: client-request,
+    ) -> result<server-result, error-code>;
+
+    /// Result context for client responses.
+    ///
+    /// Used when the client responds to a server-initiated request.
+    @since(version = 0.1.0)
+    record result-ctx {
+        request-id: request-id,
+        jwt: option<string>,
+        session-id: option<string>,
+        protocol-version: string,
+    }
+
+    /// Handle a client response to a server-initiated request.
+    @since(version = 0.1.0)
+    handle-result: func(
+        ctx: result-ctx,
+        %result: client-result,
+    );
+
+    /// Error context for client error responses.
+    ///
+    /// Used when the client returns an error to a server-initiated request.
+    @since(version = 0.1.0)
+    record error-ctx {
+        request-id: option<request-id>,
+        jwt: option<string>,
+        session-id: option<string>,
+        protocol-version: string,
+    }
+
+    /// Handle a client error response.
+    @since(version = 0.1.0)
+    handle-error: func(
+        ctx: error-ctx,
+        error: error-code,
+    );
+
+    /// Notification context for client-initiated notifications.
+    ///
+    /// Contains authentication and session information for handling
+    /// notifications from the client.
+    @since(version = 0.1.0)
+    record notification-ctx {
+        jwt: option<string>,
+        session-id: option<string>,
+        protocol-version: string,
+    }
+
+    /// Handle a client notification.
+    @since(version = 0.1.0)
+    handle-notification: func(
+        ctx: notification-ctx,
+        notification: client-notification,
+    );
+}
+
+/// MCP server-side capability interfaces and request handling utilities.
+///
+/// This file defines:
+/// - Request option types for passing context between components
+/// - Capability interfaces (tools, resources, prompts, completions)
+///
+/// <https://spec.modelcontextprotocol.io>
+
+/// Tools interface.
+///
+/// Export this interface to provide MCP tools functionality.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
+@since(version = 0.1.0)
+interface tools {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        cursor,
+        error-code,
+        list-tools-request,
+        list-tools-result,
+        call-tool-request,
+        call-tool-result,
+    };
+    use server-handler.{
+        request-ctx,
+    };
+
+    /// List tools provided by this component.
+    @since(version = 0.1.0)
+    list-tools: func(
+        ctx: request-ctx,
+        request: list-tools-request,
+    ) -> result<list-tools-result, error-code>;
+
+    /// Execute a tool call. Return none for unrecognized tools.
+    @since(version = 0.1.0)
+    call-tool: func(
+        ctx: request-ctx,
+        request: call-tool-request,
+    ) -> result<option<call-tool-result>, error-code>;
+}
+
+/// Resources interface.
+///
+/// Export this interface to provide MCP resources functionality.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
+@since(version = 0.1.0)
+interface resources {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        list-resources-request,
+        list-resources-result,
+        read-resource-request,
+        read-resource-result,
+        list-resource-templates-request,
+        list-resource-templates-result,
+    };
+    use server-handler.{
+        request-ctx,
+    };
+
+    /// List resources provided by this component.
+    @since(version = 0.1.0)
+    list-resources: func(
+        ctx: request-ctx,
+        request: list-resources-request,
+    ) -> result<list-resources-result, error-code>;
+
+    /// Read a resource by URI. Return none for unrecognized URIs.
+    @since(version = 0.1.0)
+    read-resource: func(
+        ctx: request-ctx,
+        request: read-resource-request,
+    ) -> result<option<read-resource-result>, error-code>;
+
+    /// List resource templates (RFC 6570 URI templates).
+    @since(version = 0.1.0)
+    list-resource-templates: func(
+        ctx: request-ctx,
+        request: list-resource-templates-request,
+    ) -> result<list-resource-templates-result, error-code>;
+}
+
+/// Prompts interface.
+///
+/// Export this interface to provide MCP prompts functionality.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
+@since(version = 0.1.0)
+interface prompts {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        list-prompts-request,
+        list-prompts-result,
+        get-prompt-request,
+        get-prompt-result,
+    };
+    use server-handler.{
+        request-ctx,
+    };
+
+    /// List prompts provided by this component.
+    @since(version = 0.1.0)
+    list-prompts: func(
+        ctx: request-ctx,
+        request: list-prompts-request,
+    ) -> result<list-prompts-result, error-code>;
+
+    /// Get a prompt by name. Return none for unrecognized prompts.
+    @since(version = 0.1.0)
+    get-prompt: func(
+        ctx: request-ctx,
+        request: get-prompt-request,
+    ) -> result<option<get-prompt-result>, error-code>;
+}
+
+/// Completions interface.
+///
+/// Export this interface to provide argument completions for prompts and resources.
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
+@since(version = 0.1.0)
+interface completions {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        complete-request,
+        complete-result,
+    };
+    use server-handler.{
+        request-ctx,
+    };
+
+    /// Provide completion suggestions for prompt or resource arguments.
+    /// Return none for unsupported references.
+    @since(version = 0.1.0)
+    complete: func(
+        ctx: request-ctx,
+        request: complete-request,
+    ) -> result<option<complete-result>, error-code>;
+}

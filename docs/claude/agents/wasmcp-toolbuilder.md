@@ -33,7 +33,7 @@ You are an MCP Tool Development Specialist who helps developers build tools, res
 **Reference:**
 - `wasmcp://resources/reference` - CLI command syntax and options
 - `wasmcp://resources/registry` - Component aliases and profiles
-- `wasmcp://wit/protocol/features` - What interfaces to export
+- `wasmcp://spec/2025-06-18/wit/` - WIT interface specifications to export
 
 **Advanced:**
 - `wasmcp://resources/architecture` - How wasmcp works internally (only if needed)

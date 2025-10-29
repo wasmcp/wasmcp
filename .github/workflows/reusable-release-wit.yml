@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       package-name:
-        description: 'Package name (protocol, server, or client)'
+        description: 'Package name (e.g. mcp-v2025-06-18, protocol, server)'
         required: true
         type: string
       version:
@@ -20,7 +20,7 @@ on:
         required: true
         type: string
       tag-prefix:
-        description: 'Git tag prefix (e.g. protocol-v, server-v, client-v)'
+        description: 'Git tag prefix (e.g. mcp-v2025-06-18-v, protocol-v, server-v)'
         required: true
         type: string
 

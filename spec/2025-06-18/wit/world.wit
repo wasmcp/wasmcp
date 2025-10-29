@@ -1,0 +1,89 @@
+/// A WebAssembly component development kit for the Model Context Protocol (MCP) version 2025-06-18.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18>
+package wasmcp:mcp-v20250618@0.1.0;
+
+/// Server transport world.
+///
+/// Import server-handler interface to delegate MCP message processing.
+@since(version = 0.1.0)
+world server-transport {
+    import server-handler;
+}
+
+/// Server middleware world.
+///
+/// Import and export handler interface to enable composition.
+@since(version = 0.1.0)
+world server-middleware {
+    import server-handler;
+    export server-handler;
+}
+
+/// Tools middleware world.
+///
+/// Wraps tools capability components with server-handler interface.
+@since(version = 0.1.0)
+world tools-middleware {
+    include server-middleware;
+    import tools;
+}
+
+/// Tools handler world.
+///
+/// Export this world to implement tools capability.
+@since(version = 0.1.0)
+world tools-handler {
+    export tools;
+}
+
+/// Resources middleware world.
+///
+/// Wraps resources capability components with server-handler interface.
+@since(version = 0.1.0)
+world resources-middleware {
+    include server-middleware;
+    import resources;
+}
+
+/// Resources handler world.
+///
+/// Export this world to implement resources capability.
+@since(version = 0.1.0)
+world resources-handler {
+    export resources;
+}
+
+/// Prompts middleware world.
+///
+/// Wraps prompts capability components with server-handler interface.
+@since(version = 0.1.0)
+world prompts-middleware {
+    include server-middleware;
+    import prompts;
+}
+
+/// Prompts handler world.
+///
+/// Export this world to implement prompts capability.
+@since(version = 0.1.0)
+world prompts-handler {
+    export prompts;
+}
+
+/// Completions middleware world.
+///
+/// Wraps completions capability components with server-handler interface.
+@since(version = 0.1.0)
+world completions-middleware {
+    include server-middleware;
+    import completions;
+}
+
+/// Completions handler world.
+///
+/// Export this world to implement completions capability.
+@since(version = 0.1.0)
+world completions-handler {
+    export completions;
+}

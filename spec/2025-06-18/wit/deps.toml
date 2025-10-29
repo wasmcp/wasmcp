@@ -1,5 +1,5 @@
 # WIT dependencies for wasmcp:server
 # Depends on published protocol package and wasi:keyvalue for sessions
 
-protocol = "https://github.com/wasmcp/wasmcp/releases/download/protocol-v0.1.0/wasmcp-protocol-0.1.0-source.tar.gz"
+io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.3.tar.gz"
 keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/refs/tags/v0.2.0-draft.tar.gz"
