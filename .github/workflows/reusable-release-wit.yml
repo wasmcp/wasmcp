@@ -29,32 +29,9 @@ env:
   REGISTRY_NAMESPACE: wasmcp
 
 jobs:
-  validate:
-    name: Validate Version
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate version format
-        run: |
-          if ! echo "${{ inputs.version }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'; then
-            echo "Error: Invalid version format: ${{ inputs.version }}"
-            echo "Expected: X.Y.Z or X.Y.Z-prerelease"
-            exit 1
-          fi
-
-      - name: Check WIT package version matches
-        run: |
-          wit_version=$(grep -hE 'package ${{ inputs.wkg-package }}@' ${{ inputs.wit-dir }}/*.wit | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?' | head -1)
-          if [ "$wit_version" != "${{ inputs.version }}" ]; then
-            echo "Error: WIT package version ($wit_version) does not match release version (${{ inputs.version }})"
-            exit 1
-          fi
-
   publish-wit:
     name: Publish WIT Package
     runs-on: ubuntu-latest
-    needs: validate
     permissions:
       contents: read
       packages: write
@@ -86,59 +63,36 @@ jobs:
           EOF
 
       - name: Fetch WIT dependencies
-        run: |
-          # Fetch dependencies for the WIT package being released
-          if [ -f "${{ inputs.wit-dir }}/deps.toml" ]; then
-            echo "Fetching WIT deps for ${{ inputs.package-name }}..."
-            wit-deps -m "${{ inputs.wit-dir }}/deps.toml" -d "${{ inputs.wit-dir }}/deps" -l "${{ inputs.wit-dir }}/deps.lock"
-          else
-            echo "No deps.toml found for ${{ inputs.package-name }}, skipping dependency fetch"
-          fi
-
-      - name: Check if WIT package already exists
-        id: check-wit
-        run: |
-          if wkg get ${{ inputs.wkg-package }}@${{ inputs.version }} >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️ WIT package ${{ inputs.wkg-package }}@${{ inputs.version }} already exists"
-            exit 1
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "📦 WIT package ${{ inputs.wkg-package }}@${{ inputs.version }} not found, will publish"
-          fi
+        working-directory: ${{ inputs.wit-dir }}/..
+        run: wit-deps
 
       - name: Build WIT package
-        working-directory: ${{ inputs.wit-dir }}
-        run: |
-          wkg wit build --wit-dir .
-          echo "✅ Built WIT package: ${{ inputs.wkg-package }}@${{ inputs.version }}.wasm"
+        working-directory: ${{ inputs.wit-dir }}/..
+        run: wkg wit build
 
       - name: Publish WIT package
-        working-directory: ${{ inputs.wit-dir }}
+        working-directory: ${{ inputs.wit-dir }}/..
         run: |
-          wkg publish ${{ inputs.wkg-package }}@${{ inputs.version }}.wasm
-          echo "✅ Published WIT package: ${{ inputs.wkg-package }}@${{ inputs.version }}"
+          wasm_file=$(ls *.wasm | head -1)
+          echo "Publishing: $wasm_file"
+          wkg publish "$wasm_file"
 
-      - name: Rename WIT package for artifact upload
-        working-directory: ${{ inputs.wit-dir }}
+      - name: Prepare artifact
+        working-directory: ${{ inputs.wit-dir }}/..
         run: |
-          # Replace colons with underscores for filesystem compatibility
-          safe_name=$(echo "${{ inputs.wkg-package }}" | tr ':' '_')
-          mv "${{ inputs.wkg-package }}@${{ inputs.version }}.wasm" "${safe_name}@${{ inputs.version }}.wasm"
+          wasm_file=$(ls *.wasm | head -1)
+          safe_name=$(echo "$wasm_file" | tr ':' '_')
+          if [ "$wasm_file" != "$safe_name" ]; then
+            mv "$wasm_file" "$safe_name"
+          fi
 
       - name: Create WIT source tarball for wit-deps
         run: |
-          # Create a tarball with WIT files at wit/ in the root for wit-deps compatibility
-          # Include wit/deps/ with all transitive dependencies resolved (following WASI pattern)
           mkdir -p /tmp/wit-source
-
-          # Copy entire WIT directory including resolved deps
           cp -r ${{ inputs.wit-dir }} /tmp/wit-source/wit
-
           cd /tmp/wit-source
           tar -czf wasmcp-${{ inputs.package-name }}-${{ inputs.version }}-source.tar.gz wit/
           mv wasmcp-${{ inputs.package-name }}-${{ inputs.version }}-source.tar.gz ${{ github.workspace }}/${{ inputs.wit-dir }}/
-          echo "✅ Created source tarball with resolved dependencies for wit-deps"
 
       - name: Upload WIT package artifact
         uses: actions/upload-artifact@v4
@@ -151,14 +105,8 @@ jobs:
       - name: Summary
         run: |
           echo "## 🎉 WIT Package Published" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Package:** \`${{ inputs.wkg-package }}@${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Registry:** \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ inputs.package-name }}:${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. Components will automatically fetch the new WIT version during build" >> $GITHUB_STEP_SUMMARY
-          echo "2. Release other WIT packages if needed (protocol, server, client)" >> $GITHUB_STEP_SUMMARY
-          echo "3. Release components once all WIT packages are published" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** ${{ inputs.package-name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}" >> $GITHUB_STEP_SUMMARY
 
   create-release:
     name: Create GitHub Release
@@ -225,21 +173,14 @@ jobs:
   all-jobs-complete:
     name: All Jobs Complete
     runs-on: ubuntu-latest
-    needs: [validate, publish-wit, create-release]
+    needs: [publish-wit, create-release]
     if: always()
     steps:
       - name: Check results
         run: |
-          if [ "${{ needs.validate.result }}" != "success" ] || \
-             [ "${{ needs.publish-wit.result }}" != "success" ] || \
+          if [ "${{ needs.publish-wit.result }}" != "success" ] || \
              [ "${{ needs.create-release.result }}" != "success" ]; then
             echo "One or more jobs failed"
             exit 1
           fi
-          echo "✅ WIT package release ${{ inputs.wkg-package }}@${{ inputs.version }} completed successfully!"
-          echo ""
-          echo "Next steps:"
-          echo "  1. Components will automatically fetch the new WIT version during build"
-          echo "  2. Release other WIT packages if needed (protocol, server, client)"
-          echo "  3. Release components once all WIT packages are published"
-          echo "  4. Update release notes at https://github.com/${{ github.repository }}/releases/tag/${{ inputs.tag-prefix }}${{ inputs.version }}"
+          echo "✅ WIT package release completed successfully!"
