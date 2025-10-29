@@ -7,10 +7,6 @@ on:
         description: 'Component version (e.g. 0.1.0 or 0.1.0-beta.2)'
         required: true
         type: string
-      wit-version:
-        description: 'WIT package version (defaults to component version)'
-        required: false
-        type: string
 
 jobs:
   release:
@@ -23,7 +19,6 @@ jobs:
       component-name: http-transport
       component-crate: http-transport
       version: ${{ inputs.version }}
-      wit-version: ${{ inputs.wit-version }}
       wkg-package: wasmcp:http-transport
       tag-prefix: http-transport-v
     secrets: inherit
