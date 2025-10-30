@@ -201,7 +201,7 @@ pub async fn read_branch_resource(
                 ("protocol", "features") => "wit/protocol/features.wit",
                 ("server", "handler") => "wit/server/handler.wit",
                 ("server", "sessions") => "wit/server/sessions.wit",
-                ("server", "notifications") => "wit/server/notifications.wit",
+                ("server", "messages") => "wit/server/messages.wit",
                 _ => return Err(McpError::resource_not_found(uri.to_string(), None)),
             }
         }

@@ -79,12 +79,11 @@ pub async fn download_dependencies(
         prompts_middleware_pkg,
     ];
 
-    // Download http-notifications for http transport (provides notifications interface)
+    // Download http-messages for http transport (provides messages interface)
     if transport == "http" {
-        let http_notifications_version = resolver.get_version("http-notifications")?;
-        let http_notifications_pkg =
-            interfaces::package("http-notifications", &http_notifications_version);
-        specs.push(http_notifications_pkg);
+        let http_messages_version = resolver.get_version("http-messages")?;
+        let http_messages_pkg = interfaces::package("http-messages", &http_messages_version);
+        specs.push(http_messages_pkg);
     }
 
     pkg::download_packages(client, &specs, deps_dir).await

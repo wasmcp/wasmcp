@@ -112,10 +112,10 @@ mod tests {
         let mut resolver = VersionResolver::new().unwrap();
 
         resolver
-            .apply_overrides(vec!["http-notifications=0.2.0".to_string()])
+            .apply_overrides(vec!["http-messages=0.2.0".to_string()])
             .unwrap();
 
-        assert_eq!(resolver.get_version("http-notifications").unwrap(), "0.2.0");
+        assert_eq!(resolver.get_version("http-messages").unwrap(), "0.2.0");
     }
 
     #[test]

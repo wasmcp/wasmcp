@@ -1,14 +1,14 @@
 //! Framework component resolution
 //!
 //! This module handles resolution and downloading of wasmcp framework components
-//! (transport, method-not-found, http-notifications). Framework components are
+//! (transport, method-not-found, http-messages). Framework components are
 //! downloaded from OCI registries and cached locally.
 //!
 //! # Framework Components
 //!
 //! - **Transport**: HTTP or stdio server wrapper (`http-transport`, `stdio-transport`)
 //! - **MethodNotFound**: Terminal handler that returns errors for unknown methods
-//! - **HttpNotifications**: Progress/logging support for HTTP transport
+//! - **Httpmessages**: Progress/logging support for HTTP transport
 //!
 //! # Resolution Flow
 //!
@@ -47,10 +47,10 @@ pub enum FrameworkComponent<'a> {
     /// Returns proper MCP errors for unimplemented methods.
     MethodNotFound,
 
-    /// HTTP notifications provider
+    /// HTTP messages provider
     ///
     /// Adds progress/log notification support for HTTP servers.
-    HttpNotifications,
+    Httpmessages,
 }
 
 impl FrameworkComponent<'_> {
@@ -73,7 +73,7 @@ impl FrameworkComponent<'_> {
         match self {
             Self::Transport(transport) => format!("{}-transport", transport),
             Self::MethodNotFound => "method-not-found".to_string(),
-            Self::HttpNotifications => "http-notifications".to_string(),
+            Self::Httpmessages => "http-messages".to_string(),
         }
     }
 
@@ -95,7 +95,7 @@ impl FrameworkComponent<'_> {
         match self {
             Self::Transport(_) => "transport",
             Self::MethodNotFound => "method-not-found",
-            Self::HttpNotifications => "http-notifications",
+            Self::Httpmessages => "http-messages",
         }
     }
 
@@ -134,7 +134,7 @@ impl FrameworkComponent<'_> {
                 }
                 dependencies::download_dependencies(transport, resolver, deps_dir, client).await
             }
-            Self::MethodNotFound | Self::HttpNotifications => {
+            Self::MethodNotFound | Self::Httpmessages => {
                 // Check if already exists (transport download includes it)
                 let version = resolver.get_version(&self.component_name())?;
                 let pkg =
@@ -268,12 +268,12 @@ pub async fn resolve_method_not_found_component(
     .await
 }
 
-/// Resolve http-notifications component (default only, no override)
+/// Resolve http-messages component (default only, no override)
 ///
-/// Convenience wrapper for resolving the HTTP notifications component.
+/// Convenience wrapper for resolving the HTTP messages component.
 /// This component does not support overrides as it's tightly coupled
 /// to the HTTP transport implementation.
-pub async fn resolve_http_notifications_component(
+pub async fn resolve_http_messages_component(
     resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
@@ -281,7 +281,7 @@ pub async fn resolve_http_notifications_component(
     verbose: bool,
 ) -> Result<PathBuf> {
     resolve_framework_component(
-        FrameworkComponent::HttpNotifications,
+        FrameworkComponent::Httpmessages,
         None,
         resolver,
         deps_dir,
@@ -308,8 +308,8 @@ mod tests {
         let mnf = FrameworkComponent::MethodNotFound;
         assert_eq!(mnf.component_name(), "method-not-found");
 
-        let notifications = FrameworkComponent::HttpNotifications;
-        assert_eq!(notifications.component_name(), "http-notifications");
+        let messages = FrameworkComponent::Httpmessages;
+        assert_eq!(messages.component_name(), "http-messages");
     }
 
     /// Test FrameworkComponent::display_name()
@@ -321,8 +321,8 @@ mod tests {
         let mnf = FrameworkComponent::MethodNotFound;
         assert_eq!(mnf.display_name(), "method-not-found");
 
-        let notifications = FrameworkComponent::HttpNotifications;
-        assert_eq!(notifications.display_name(), "http-notifications");
+        let messages = FrameworkComponent::Httpmessages;
+        assert_eq!(messages.display_name(), "http-messages");
     }
 
     /// Test framework download message format

@@ -78,11 +78,11 @@ pub fn list() -> Vec<Annotated<RawResource>> {
         },
         Annotated {
             raw: RawResource {
-                uri: "wasmcp://wit/server/notifications".into(),
+                uri: "wasmcp://wit/server/messages".into(),
                 name: "Notification Interface".into(),
                 mime_type: Some("text/plain".into()),
                 title: None,
-                description: Some("Server-to-client notification interfaces (progress, logs, resource updates). Answers: how to send notifications, what notification types exist. Contains: notification interface definitions. Skip: for basic composition, not needed unless building notification middleware.".into()),
+                description: Some("Server-to-client notification interfaces (progress, logs, resource updates). Answers: how to send messages, what notification types exist. Contains: notification interface definitions. Skip: for basic composition, not needed unless building notification middleware.".into()),
                 size: None,
                 icons: None,
             },
@@ -105,7 +105,7 @@ pub async fn read(
         "protocol/features" => "wit/protocol/features.wit",
         "server/handler" => "wit/server/handler.wit",
         "server/sessions" => "wit/server/sessions.wit",
-        "server/notifications" => "wit/server/notifications.wit",
+        "server/messages" => "wit/server/messages.wit",
         _ => return None,
     };
 
@@ -130,7 +130,7 @@ pub fn list_templates() -> Vec<RawResourceTemplate> {
             name: "Branch-specific WIT Server Interfaces".into(),
             title: None,
             description: Some(
-                "Access WIT server interfaces from specific Git branches. Available resources: handler, sessions, notifications"
+                "Access WIT server interfaces from specific Git branches. Available resources: handler, sessions, messages"
                     .into(),
             ),
             mime_type: Some("text/plain".into()),

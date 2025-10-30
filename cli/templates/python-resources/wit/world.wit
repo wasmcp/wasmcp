@@ -1,9 +1,9 @@
-package wasmcp:{{project_name}}@{{wasmcp_version}};
+package wasmcp:{{project_name}}@0.1.0;
 
 /// {{project_name}} MCP resources capability component
 ///
 /// This component exports the resources interface.
 /// The CLI will automatically wrap it with resources-middleware for composition.
 world {{project_name}} {
-    export wasmcp:mcp-v20250618/resources@0.1.0;
+    export wasmcp:mcp-v20250618/resources@{{wasmcp_version}};
 }

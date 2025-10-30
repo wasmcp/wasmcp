@@ -47,7 +47,7 @@ mod wrapping;
 
 // Internal imports from submodules
 use self::framework::{
-    resolve_http_notifications_component, resolve_method_not_found_component,
+    resolve_http_messages_component, resolve_method_not_found_component,
     resolve_transport_component,
 };
 use self::output::{
@@ -240,10 +240,10 @@ async fn compose_server(
     )
     .await?;
 
-    // Resolve http-notifications component for http transport
-    let http_notifications_path = if transport == "http" {
+    // Resolve http-messages component for http transport
+    let http_messages_path = if transport == "http" {
         Some(
-            resolve_http_notifications_component(
+            resolve_http_messages_component(
                 &version_resolver,
                 &deps_dir,
                 &client,
@@ -274,7 +274,7 @@ async fn compose_server(
         &transport_path,
         &wrapped_components,
         &method_not_found_path,
-        http_notifications_path.as_deref(),
+        http_messages_path.as_deref(),
         &transport,
         &version_resolver,
         verbose,
@@ -572,15 +572,15 @@ mod tests {
         );
     }
 
-    /// Test http notifications path handling
+    /// Test http messages path handling
     #[test]
-    fn test_http_notifications_conditional() {
-        // HTTP transport should include notifications
+    fn test_http_messages_conditional() {
+        // HTTP transport should include messages
         let transport = "http";
         let should_include = transport == "http";
         assert!(should_include);
 
-        // Stdio transport should not include notifications
+        // Stdio transport should not include messages
         let transport = "stdio";
         let should_include = transport == "http";
         assert!(!should_include);

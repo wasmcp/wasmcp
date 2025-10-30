@@ -217,7 +217,6 @@ The server provides read-only access to:
 - `wasmcp://wit/protocol/features` - Capability interfaces (tools, resources, prompts)
 - `wasmcp://wit/server/handler` - Core handler interface for middleware
 - `wasmcp://wit/server/sessions` - Session management interfaces
-- `wasmcp://wit/server/notifications` - Notification interfaces
 
 **Registry** (from local configuration):
 - `wasmcp://registry/components` - Component aliases (JSON)

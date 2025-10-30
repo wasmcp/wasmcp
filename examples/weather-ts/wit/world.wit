@@ -2,6 +2,6 @@ package wasmcp:weather@0.1.0;
 
 world weather {
     import wasi:http/outgoing-handler@0.2.3;
-    import wasmcp:mcp-v20250618/notifications@0.1.0;
-    export wasmcp:mcp-v20250618/tools@0.1.0;
+    import wasmcp:mcp-v20250618/server-messages@0.1.1;
+    export wasmcp:mcp-v20250618/tools@0.1.1;
 }

@@ -15,7 +15,7 @@ struct CompositionPackages {
     transport_id: wac_graph::PackageId,
     user_ids: Vec<wac_graph::PackageId>,
     method_not_found_id: wac_graph::PackageId,
-    http_notifications_id: Option<wac_graph::PackageId>,
+    http_messages_id: Option<wac_graph::PackageId>,
 }
 
 /// Build the component composition using wac-graph
@@ -34,7 +34,7 @@ pub async fn build_composition(
     transport_path: &Path,
     component_paths: &[PathBuf],
     method_not_found_path: &Path,
-    http_notifications_path: Option<&Path>,
+    http_messages_path: Option<&Path>,
     transport_type: &str,
     _resolver: &VersionResolver,
     verbose: bool,
@@ -47,11 +47,10 @@ pub async fn build_composition(
     )
     .context("Failed to discover server-handler interface from method-not-found component")?;
 
-    let notifications_interface = if let Some(path) = http_notifications_path {
+    let messages_interface = if let Some(path) = http_messages_path {
         Some(
-            find_component_export(path, "wasmcp:mcp-v20250618/notifications@").context(
-                "Failed to discover notifications interface from http-notifications component",
-            )?,
+            find_component_export(path, "wasmcp:mcp-v20250618/server-messages@")
+                .context("Failed to discover messages interface from http-messages component")?,
         )
     } else {
         None
@@ -62,8 +61,8 @@ pub async fn build_composition(
             "   Discovered server-handler interface: {}",
             server_handler_interface
         );
-        if let Some(ref notif) = notifications_interface {
-            println!("   Discovered notifications interface: {}", notif);
+        if let Some(ref notif) = messages_interface {
+            println!("   Discovered messages interface: {}", notif);
         }
     }
 
@@ -78,21 +77,21 @@ pub async fn build_composition(
         transport_path,
         component_paths,
         method_not_found_path,
-        http_notifications_path,
+        http_messages_path,
     )?;
 
-    // Instantiate http-notifications first if present (provides notifications interface)
-    let notifications_export = if let Some(notifications_id) = packages.http_notifications_id {
+    // Instantiate http-messages first if present (provides messages interface)
+    let messages_export = if let Some(messages_id) = packages.http_messages_id {
         if verbose {
-            println!("   Instantiating http-notifications...");
+            println!("   Instantiating http-messages...");
         }
-        let notifications_inst = graph.instantiate(notifications_id);
-        let notif_interface = notifications_interface.as_ref().unwrap();
+        let messages_inst = graph.instantiate(messages_id);
+        let notif_interface = messages_interface.as_ref().unwrap();
 
         Some(
             graph
-                .alias_instance_export(notifications_inst, notif_interface)
-                .context("Failed to get notifications export from http-notifications")?,
+                .alias_instance_export(messages_inst, notif_interface)
+                .context("Failed to get messages export from http-messages")?,
         )
     } else {
         None
@@ -106,8 +105,8 @@ pub async fn build_composition(
         &mut graph,
         &packages,
         &server_handler_interface,
-        notifications_export,
-        notifications_interface.as_deref(),
+        messages_export,
+        messages_interface.as_deref(),
     )?;
 
     // Wire transport and export interface
@@ -115,10 +114,10 @@ pub async fn build_composition(
         &mut graph,
         packages.transport_id,
         handler_export,
-        notifications_export,
+        messages_export,
         transport_type,
         &server_handler_interface,
-        notifications_interface.as_deref(),
+        messages_interface.as_deref(),
     )?;
 
     // Encode the composition
@@ -138,14 +137,14 @@ fn load_and_register_components(
     transport_path: &Path,
     component_paths: &[PathBuf],
     method_not_found_path: &Path,
-    http_notifications_path: Option<&Path>,
+    http_messages_path: Option<&Path>,
 ) -> Result<CompositionPackages> {
     // Load packages
     let transport_pkg = load_package(graph, "transport", transport_path)?;
     let method_not_found_pkg = load_package(graph, "method-not-found", method_not_found_path)?;
 
-    let http_notifications_pkg = http_notifications_path
-        .map(|path| load_package(graph, "http-notifications", path))
+    let http_messages_pkg = http_messages_path
+        .map(|path| load_package(graph, "http-messages", path))
         .transpose()?;
 
     let mut user_packages = Vec::new();
@@ -159,7 +158,7 @@ fn load_and_register_components(
     // Register packages
     let transport_id = graph.register_package(transport_pkg)?;
     let method_not_found_id = graph.register_package(method_not_found_pkg)?;
-    let http_notifications_id = http_notifications_pkg
+    let http_messages_id = http_messages_pkg
         .map(|pkg| graph.register_package(pkg))
         .transpose()?;
 
@@ -172,7 +171,7 @@ fn load_and_register_components(
         transport_id,
         user_ids,
         method_not_found_id,
-        http_notifications_id,
+        http_messages_id,
     })
 }
 
@@ -183,8 +182,8 @@ fn build_middleware_chain(
     graph: &mut CompositionGraph,
     packages: &CompositionPackages,
     server_handler_interface: &str,
-    notifications_export: Option<wac_graph::NodeId>,
-    notifications_interface: Option<&str>,
+    messages_export: Option<wac_graph::NodeId>,
+    messages_interface: Option<&str>,
 ) -> Result<wac_graph::NodeId> {
     // Start with method-not-found as the terminal handler
     let prev_inst = graph.instantiate(packages.method_not_found_id);
@@ -204,12 +203,11 @@ fn build_middleware_chain(
             .set_instantiation_argument(inst, server_handler_interface, next_handler_export)
             .with_context(|| format!("Failed to wire component-{} server-handler import", i))?;
 
-        // Wire notifications import if http-notifications is available
-        if let (Some(notifications_node), Some(notif_interface)) =
-            (notifications_export, notifications_interface)
+        // Wire messages import if http-messages is available
+        if let (Some(messages_node), Some(notif_interface)) = (messages_export, messages_interface)
         {
-            // Attempt to wire notifications - it's OK if the component doesn't import it
-            let _ = graph.set_instantiation_argument(inst, notif_interface, notifications_node);
+            // Attempt to wire messages - it's OK if the component doesn't import it
+            let _ = graph.set_instantiation_argument(inst, notif_interface, messages_node);
         }
 
         // This component's export becomes the next input
@@ -226,21 +224,18 @@ fn wire_transport(
     graph: &mut CompositionGraph,
     transport_id: wac_graph::PackageId,
     handler_export: wac_graph::NodeId,
-    notifications_export: Option<wac_graph::NodeId>,
+    messages_export: Option<wac_graph::NodeId>,
     transport_type: &str,
     server_handler_interface: &str,
-    notifications_interface: Option<&str>,
+    messages_interface: Option<&str>,
 ) -> Result<()> {
     // Wire transport at the front of the chain
     let transport_inst = graph.instantiate(transport_id);
     graph.set_instantiation_argument(transport_inst, server_handler_interface, handler_export)?;
 
-    // Wire notifications to transport if available (http-transport imports it)
-    if let (Some(notifications_node), Some(notif_interface)) =
-        (notifications_export, notifications_interface)
-    {
-        let _ =
-            graph.set_instantiation_argument(transport_inst, notif_interface, notifications_node);
+    // Wire messages to transport if available (http-transport imports it)
+    if let (Some(messages_node), Some(notif_interface)) = (messages_export, messages_interface) {
+        let _ = graph.set_instantiation_argument(transport_inst, notif_interface, messages_node);
     }
 
     // Export the appropriate WASI interface based on transport type
@@ -540,14 +535,14 @@ mod tests {
         assert!(interface.starts_with("wasmcp:mcp-v20250618/server-handler@"));
     }
 
-    /// Test notifications interface construction
+    /// Test messages interface construction
     #[test]
-    fn test_notifications_interface_construction() {
+    fn test_messages_interface_construction() {
         let version = "0.1.0";
-        let interface = format!("wasmcp:server/notifications@{}", version);
+        let interface = format!("wasmcp:mcp-v20250618/server-messages@{}", version);
 
-        assert_eq!(interface, "wasmcp:server/notifications@0.1.0");
-        assert!(interface.starts_with("wasmcp:server/notifications@"));
+        assert_eq!(interface, "wasmcp:mcp-v20250618/server-messages@0.1.0");
+        assert!(interface.starts_with("wasmcp:mcp-v20250618/server-messages@"));
     }
 
     /// Test error context for component loading
@@ -683,7 +678,7 @@ mod tests {
         let loading_msg = "   Loading components...";
         let building_msg = "   Building composition graph...";
         let encoding_msg = "   Encoding component...";
-        let notifications_msg = "   Instantiating http-notifications...";
+        let messages_msg = "   Instantiating http-messages...";
         let chain_msg = "   Building composition chain...";
         let single_msg = "   Single component - exporting handler interface...";
 
@@ -691,7 +686,7 @@ mod tests {
         assert!(loading_msg.starts_with("   "));
         assert!(building_msg.starts_with("   "));
         assert!(encoding_msg.ends_with("..."));
-        assert!(notifications_msg.contains("http-notifications"));
+        assert!(messages_msg.contains("http-messages"));
         assert!(chain_msg.contains("composition chain"));
         assert!(single_msg.contains("Single component"));
     }

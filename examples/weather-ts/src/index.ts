@@ -12,11 +12,10 @@ import type {
   CallToolRequest,
   CallToolResult,
   Tool,
-  LogLevel,
-} from './generated/interfaces/wasmcp-mcp-v20250618-mcp.js';
-import type { RequestCtx } from './generated/interfaces/wasmcp-mcp-v20250618-tools.js';
-import type { OutputStream } from './generated/interfaces/wasi-io-streams.js';
-import { log } from 'wasmcp:mcp-v20250618/notifications@0.1.0';
+} from 'wasmcp:mcp-v20250618/mcp@0.1.1';
+import type { RequestCtx } from 'wasmcp:mcp-v20250618/tools@0.1.1';
+import type { OutputStream } from 'wasi:io/streams@0.2.3';
+import { notify } from 'wasmcp:mcp-v20250618/server-messages@0.1.1';
 
 // Tool input schemas
 const GetWeatherSchema = z.object({
@@ -71,10 +70,24 @@ async function callTool(
   ctx: RequestCtx,
   request: CallToolRequest
 ): Promise<CallToolResult | undefined> {
+  const log = (message: string) => {
+    if (ctx.messageStream) {
+      notify(ctx.messageStream, {
+        tag: 'log',
+        val: {
+          data: message,
+          level: 'info',
+          logger: 'weather-tools',
+        },
+      });
+    }
+  };
+
   switch (request.name) {
     case 'get_weather':
       return await handleGetWeather(request.arguments, ctx.messageStream);
     case 'multi_weather':
+      log(`Fetching weather concurrently for ${request.arguments}`);
       return await handleMultiWeather(request.arguments, ctx.messageStream);
     default:
       return undefined; // We don't handle this tool
@@ -88,16 +101,6 @@ async function handleGetWeather(args?: string, messageStream?: OutputStream): Pr
     }
 
     const parsed: GetWeatherArgs = GetWeatherSchema.parse(JSON.parse(args));
-
-    // Send notification about starting weather fetch
-    if (messageStream) {
-      log(
-        messageStream,
-        `Fetching weather for ${parsed.location}...`,
-        'info' as LogLevel,
-        'weather'
-      );
-    }
 
     const weather = await getWeatherForCity(parsed.location);
     return textResult(weather);
@@ -123,43 +126,16 @@ async function handleMultiWeather(args?: string, messageStream?: OutputStream): 
       return errorResult('No cities provided');
     }
 
-    // Send notification about concurrent fetch
-    if (messageStream) {
-      log(
-        messageStream,
-        `Fetching weather for ${parsed.cities.length} cities concurrently...`,
-        'info' as LogLevel,
-        'weather'
-      );
-    }
-
     // Fetch weather for all cities concurrently
     const results = await Promise.all(
       parsed.cities.map(async (city) => {
         try {
-          if (messageStream) {
-            log(
-              messageStream,
-              `Processing ${city}...`,
-              'debug' as LogLevel,
-              'weather'
-            );
-          }
           return await getWeatherForCity(city);
         } catch (error) {
           return `Error fetching weather for ${city}: ${error instanceof Error ? error.message : String(error)}`;
         }
       })
     );
-
-    if (messageStream) {
-      log(
-        messageStream,
-        'All weather requests completed',
-        'info' as LogLevel,
-        'weather'
-      );
-    }
 
     const output = `=== Weather Results ===
 

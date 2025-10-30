@@ -11,8 +11,10 @@ mod bindings {
 
 use bindings::exports::wasmcp::mcp_v20250618::tools::Guest;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::notifications;
+use bindings::wasmcp::mcp_v20250618::server_messages;
 use bindings::wasmcp::mcp_v20250618::server_handler::RequestCtx;
+
+use crate::bindings::wasi::io::streams::OutputStream;
 
 struct Calculator;
 
@@ -157,9 +159,9 @@ fn error_result(message: String) -> CallToolResult {
     }
 }
 
-// Calculates factorial with SSE notifications demonstrating progress updates.
+// Calculates factorial with SSE server_messages demonstrating progress updates.
 // Note: When running with wasmtime serve, use `-S http-outgoing-body-buffer-chunks=10`
-// to ensure sufficient buffer for streaming multiple notifications plus the final response.
+// to ensure sufficient buffer for streaming multiple server_messages plus the final response.
 fn execute_factorial(
     ctx: &RequestCtx,
     request: &CallToolRequest,
@@ -172,16 +174,19 @@ fn execute_factorial(
         }
     };
 
-    // Send initial progress notification if stream is available
-    if let Some(stream) = &ctx.message_stream {
-        let msg = format!("Starting factorial calculation for {}!", n);
-        let _ = notifications::log(
+    let log = |stream: Option<&OutputStream>, msg: String| if let Some(stream) = stream {
+        let _ = server_messages::notify(
             stream,
-            &msg,
-            LogLevel::Info,
-            Some("factorial"),
+            &ServerNotification::Log(LoggingMessageNotification {
+                data: msg,
+                level: LogLevel::Info,
+                logger: Some("factorial".to_string())
+            })
         );
-    }
+    };
+
+    // Send initial progress notification if stream is available
+    log(ctx.message_stream, format!("Starting factorial calculation for {n}!"));
 
     // Calculate factorial with progress updates
     let mut result: u64 = 1;
@@ -189,34 +194,24 @@ fn execute_factorial(
         match result.checked_mul(i) {
             Some(val) => result = val,
             None => {
-                return error_result(format!("Integer overflow: {}! is too large", n));
+                return error_result(format!("Integer overflow: {n}! is too large"));
             }
         }
 
         // Send progress notification every few steps (to avoid overwhelming)
-        if let Some(stream) = &ctx.message_stream {
-            if i % 3 == 0 || i == n {
-                let msg = format!("Computing: {} * {} = {}", i, result / i, result);
-                let _ = notifications::log(
-                    stream,
-                    &msg,
-                    LogLevel::Debug,
-                    Some("factorial"),
-                );
-            }
+        if i % 3 == 0 || i == n {
+            log(
+                ctx.message_stream,
+                format!("Computing: {i} * {} = {result}", result / i),
+            );
         }
     }
 
     // Send completion notification
-    if let Some(stream) = &ctx.message_stream {
-        let msg = format!("Factorial calculation complete: {}! = {}", n, result);
-        let _ = notifications::log(
-            stream,
-            &msg,
-            LogLevel::Info,
-            Some("factorial"),
-        );
-    }
+    log(
+        ctx.message_stream,
+        format!("Factorial calculation complete: {n}! = {result}"),
+    );
 
     success_result(result.to_string())
 }
