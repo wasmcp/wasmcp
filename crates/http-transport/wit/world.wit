@@ -6,4 +6,7 @@ world http-transport {
     // Servers MUST validate the Origin header on all incoming connections to prevent DNS rebinding attacks.
     // https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#security-warning
     import wasi:cli/environment@0.2.3;
+    // Session support requires key-value storage and cryptographic random generation
+    import wasi:keyvalue/store@0.2.0-draft;
+    import wasi:random/random@0.2.3;
 }

@@ -1,13 +1,17 @@
-//! Stateless HTTP transport for the Model Context Protocol (MCP)
+//! HTTP transport for the Model Context Protocol (MCP)
 //!
 //! This transport implements the Streamable HTTP protocol per MCP spec 2025-06-18.
-//! It handles JSON-RPC framing, SSE responses, and Origin validation.
+//! It handles JSON-RPC framing, SSE responses, Origin validation, and optional session management.
 //!
 //! Architecture:
 //! - WASI HTTP proxy interface (incoming requests)
 //! - Delegates to imported server-handler component
 //! - Returns SSE streams for all responses
-//! - Stateless: No session management (sessions are optional per world.wit)
+//! - Optional session management via WASI KV (configurable via environment)
+//!
+//! Environment Variables:
+//! - MCP_SESSION_ENABLED: "true"/"false" (default: "false") - Enable session support
+//! - MCP_SESSION_BUCKET: Bucket name (default: "mcp-sessions") - KV storage location
 
 mod bindings {
     wit_bindgen::generate!({
@@ -18,6 +22,7 @@ mod bindings {
 
 mod parser;
 mod serializer;
+mod session;
 mod stream_reader;
 
 use bindings::exports::wasi::http::incoming_handler::Guest;
@@ -31,6 +36,39 @@ use bindings::wasmcp::mcp_v20250618::server_handler::{
     handle_error, handle_notification, handle_request, handle_result, ErrorCtx, NotificationCtx,
     RequestCtx, ResultCtx,
 };
+
+use session::{Session, SessionError, validate_session_id_format};
+
+/// Session configuration from environment variables
+struct SessionConfig {
+    /// Whether session support is enabled
+    enabled: bool,
+    /// KV bucket name for session storage
+    bucket_name: String,
+}
+
+impl SessionConfig {
+    /// Load configuration from environment variables
+    fn from_env() -> Self {
+        let env_vars = get_environment();
+        let env_map: std::collections::HashMap<String, String> = env_vars.into_iter().collect();
+
+        let enabled = env_map
+            .get("MCP_SESSION_ENABLED")
+            .map(|v| v.to_lowercase() == "true")
+            .unwrap_or(false);
+
+        let bucket_name = env_map
+            .get("MCP_SESSION_BUCKET")
+            .cloned()
+            .unwrap_or_else(|| "mcp-sessions".to_string());
+
+        SessionConfig {
+            enabled,
+            bucket_name,
+        }
+    }
+}
 
 struct HttpTransport;
 
@@ -79,12 +117,26 @@ fn handle_post(
     // and text/event-stream as supported content types"
     validate_accept_header(&request)?;
 
+    // Extract session ID from header (before consuming request)
+    let session_id_from_header = extract_session_id(&request)?;
+
     // Read request body
     let body = read_request_body(request.consume().map_err(|_| "Failed to consume request")?)?;
 
     // Parse JSON-RPC message
     let json_rpc: serde_json::Value =
         serde_json::from_slice(&body).map_err(|e| format!("Invalid JSON: {}", e))?;
+
+    // Check if this is an initialize request (session validation happens differently)
+    let is_initialize = json_rpc.get("method")
+        .and_then(|m| m.as_str())
+        .map(|m| m == "initialize")
+        .unwrap_or(false);
+
+    // Validate session for non-initialize requests
+    if !is_initialize {
+        validate_session_for_request(session_id_from_header.as_deref())?;
+    }
 
     // Determine message type (request, notification, or response)
     if json_rpc.get("method").is_some() {
@@ -99,6 +151,7 @@ fn handle_post(
     } else if json_rpc.get("result").is_some() || json_rpc.get("error").is_some() {
         // It's a response (from client to server)
         handle_json_rpc_response(&json_rpc, protocol_version)
+
     } else {
         Err("Invalid JSON-RPC message".to_string())
     }
@@ -113,10 +166,62 @@ fn handle_get(
     create_method_not_allowed_response()
 }
 
+fn handle_delete(request: IncomingRequest) -> Result<OutgoingResponse, String> {
+    // Per MCP spec: "Clients that no longer need a particular session (e.g., because
+    // the user is leaving the client application) SHOULD send an HTTP DELETE to the
+    // MCP endpoint with the Mcp-Session-Id header, to explicitly terminate the session."
+
+    let config = SessionConfig::from_env();
+
+    // If sessions not enabled, return 405 Method Not Allowed
+    if !config.enabled {
+        return create_method_not_allowed_response();
+    }
+
+    // Extract session ID from header
+    let session_id = match extract_session_id(&request)? {
+        Some(id) => id,
+        None => {
+            // No session ID provided - return 400 Bad Request
+            return Err("HTTP/400:Mcp-Session-Id header required for DELETE".to_string());
+        }
+    };
+
+    // Open session and terminate it
+    match Session::open(&config.bucket_name, &session_id) {
+        Ok(mut session) => {
+            // Terminate the session
+            match session.terminate(Some("client_requested".to_string())) {
+                Ok(_) => {
+                    // Return 200 OK
+                    let response = OutgoingResponse::new(Fields::new());
+                    response
+                        .set_status_code(200)
+                        .map_err(|_| "Failed to set status")?;
+                    Ok(response)
+                }
+                Err(_) => {
+                    // Failed to terminate - return 500 Internal Server Error
+                    Err("HTTP/500:Failed to terminate session".to_string())
+                }
+            }
+        }
+        Err(SessionError::NoSuchSession) => {
+            // Session doesn't exist - return 404 Not Found
+            Err("HTTP/404:Session not found".to_string())
+        }
+        Err(_) => {
+            // Other errors - return 404 Not Found
+            Err("HTTP/404:Failed to open session".to_string())
+        }
+    }
+}
+
 fn handle_json_rpc_request(
     json_rpc: &serde_json::Value,
     id: &serde_json::Value,
     protocol_version: String,
+    session_id: Option<String>,
 ) -> Result<OutgoingResponse, String> {
     // Parse request ID
     let request_id = parse_request_id(id)?;
@@ -129,7 +234,7 @@ fn handle_json_rpc_request(
 
     // Handle transport-level methods directly
     match method {
-        "initialize" => return handle_initialize_request(json_rpc, request_id),
+        "initialize" => return handle_initialize_request(json_rpc, request_id, session_id),
         "ping" => return handle_ping_request(request_id),
         "logging/setLevel" => return handle_set_level_request(request_id),
         _ => {
@@ -185,6 +290,7 @@ fn handle_json_rpc_request(
 fn handle_initialize_request(
     json_rpc: &serde_json::Value,
     request_id: RequestId,
+    _existing_session_id: Option<String>,  // Should always be None for initialize
 ) -> Result<OutgoingResponse, String> {
     use bindings::wasmcp::mcp_v20250618::mcp::ProtocolVersion;
 
@@ -209,6 +315,29 @@ fn handle_initialize_request(
         }
     };
 
+    // Create session if enabled
+    // Per MCP spec: "A server using the Streamable HTTP transport MAY assign a session ID
+    // at initialization time, by including it in an Mcp-Session-Id header on the HTTP response"
+    let config = SessionConfig::from_env();
+    let new_session_id = if config.enabled {
+        match Session::initialize(&config.bucket_name) {
+            Ok(session) => {
+                let id = session.id().to_string();
+                // Session resource owns the bucket, it will be dropped here but metadata is persisted
+                drop(session);
+                Some(id)
+            }
+            Err(e) => {
+                // Session creation failed - log and continue without session
+                // In production, this might be a fatal error depending on requirements
+                eprintln!("Failed to create session: {:?}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     // Discover capabilities by calling downstream handler's list methods
     let capabilities = discover_capabilities();
 
@@ -225,6 +354,15 @@ fn handle_initialize_request(
     headers
         .set("content-type", &[b"application/json".to_vec()])
         .map_err(|_| "Failed to set content-type")?;
+
+    // Set Mcp-Session-Id header if session was created
+    // Per MCP spec: Session ID communicated via Mcp-Session-Id header
+    if let Some(ref session_id) = new_session_id {
+        headers
+            .set(&"mcp-session-id".to_string(), &[session_id.as_bytes().to_vec()])
+            .map_err(|_| "Failed to set Mcp-Session-Id header")?;
+    }
+
     let response = OutgoingResponse::new(headers);
     response
         .set_status_code(200)
@@ -574,6 +712,7 @@ fn handle_json_rpc_response(
     // Parse client response from JSON
     let response_result = parser::parse_client_response(json_rpc)?;
 
+
     // Forward to server-handler (no response expected)
     match response_result {
         Ok(client_result) => {
@@ -604,6 +743,79 @@ fn handle_json_rpc_response(
         .set_status_code(202)
         .map_err(|_| "Failed to set status")?;
     Ok(response)
+}
+
+/// Extracts session ID from Mcp-Session-Id header
+///
+/// Per MCP spec:
+/// - Session IDs MUST only contain visible ASCII (0x21-0x7E)
+/// - Returns None if header not present
+/// - Returns error if header present but invalid format
+fn extract_session_id(request: &IncomingRequest) -> Result<Option<String>, String> {
+    let headers = request.headers();
+    let session_values = headers.get(&"mcp-session-id".to_string());
+
+    if session_values.is_empty() {
+        return Ok(None);
+    }
+
+    let session_id = String::from_utf8(session_values[0].clone())
+        .map_err(|_| "Invalid Mcp-Session-Id header encoding".to_string())?;
+
+    // Validate format per MCP spec
+    validate_session_id_format(&session_id)
+        .map_err(|e| format!("Invalid session ID format: {:?}", e))?;
+
+    Ok(Some(session_id))
+}
+
+/// Validates session for non-initialize requests
+///
+/// Per MCP spec:
+/// - If MCP_SESSION_ENABLED=false: Sessions disabled, no validation
+/// - If MCP_SESSION_ENABLED=true AND no session ID: Return 400 Bad Request
+/// - If MCP_SESSION_ENABLED=true AND session ID provided: Validate session exists and not terminated
+///   - If session terminated/invalid: Return 404 Not Found
+///
+/// Returns Err with HTTP status code embedded for proper error response
+fn validate_session_for_request(session_id: Option<&str>) -> Result<(), String> {
+    let config = SessionConfig::from_env();
+
+    // If sessions disabled, no validation needed
+    if !config.enabled {
+        return Ok(());
+    }
+
+    // Sessions are enabled - session ID is required
+    let session_id = session_id.ok_or_else(|| {
+        // Per MCP spec: "Servers that require a session ID SHOULD respond to requests
+        // without an Mcp-Session-Id header with HTTP 400 Bad Request"
+        "HTTP/400:Session required but Mcp-Session-Id header missing".to_string()
+    })?;
+
+    // Validate session exists and is not terminated
+    match Session::open(&config.bucket_name, session_id) {
+        Ok(session) => {
+            // Check if session is terminated
+            match session.is_terminated() {
+                Ok(true) => {
+                    // Per MCP spec: "The server MUST respond to requests containing
+                    // that session ID with HTTP 404 Not Found"
+                    Err("HTTP/404:Session terminated".to_string())
+                }
+                Ok(false) => Ok(()), // Session is valid
+                Err(_) => Err("HTTP/404:Failed to check session status".to_string()),
+            }
+        }
+        Err(SessionError::NoSuchSession) => {
+            // Per MCP spec: Return 404 for invalid sessions
+            Err("HTTP/404:Session not found".to_string())
+        }
+        Err(e) => {
+            // Storage errors also return 404 (session effectively doesn't exist)
+            Err(format!("HTTP/404:Session validation failed: {:?}", e))
+        }
+    }
 }
 
 fn validate_accept_header(request: &IncomingRequest) -> Result<(), String> {
@@ -828,8 +1040,23 @@ fn write_sse_response(
 }
 
 fn create_error_response(error: String) -> OutgoingResponse {
+    // Parse HTTP status code from error message if present
+    // Format: "HTTP/404:Message" or just "Message"
+    let (status_code, message) = if error.starts_with("HTTP/") {
+        let parts: Vec<&str> = error.splitn(2, ':').collect();
+        if parts.len() == 2 {
+            let code_part = parts[0].trim_start_matches("HTTP/");
+            let code = code_part.parse::<u16>().unwrap_or(400);
+            (code, parts[1].to_string())
+        } else {
+            (400, error)
+        }
+    } else {
+        (400, error)
+    };
+
     let response = OutgoingResponse::new(Fields::new());
-    response.set_status_code(400).ok();
+    response.set_status_code(status_code).ok();
 
     // Set Content-Type header for JSON error
     let headers = response.headers();
@@ -845,11 +1072,11 @@ fn create_error_response(error: String) -> OutgoingResponse {
                 "jsonrpc": "2.0",
                 "error": {
                     "code": -32700,
-                    "message": error
+                    "message": message
                 },
                 "id": null
             });
-            let error_text = serde_json::to_string(&error_json).unwrap_or_else(|_| error.clone());
+            let error_text = serde_json::to_string(&error_json).unwrap_or_else(|_| message.clone());
 
             // Write using check_write() to respect budget
             let bytes = error_text.as_bytes();
