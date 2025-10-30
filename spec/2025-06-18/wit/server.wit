@@ -1,6 +1,9 @@
 use wasi:io/streams@0.2.3;
 
 /// Server-side MCP message handler.
+////
+/// The handler processes incoming messages and generates appropriate
+/// responses or actions based on the MCP protocol.
 @since(version = 0.1.0)
 interface server-handler {
     use streams.{
@@ -98,13 +101,81 @@ interface server-handler {
     );
 }
 
+/// Server-sent MCP messages
+///
+/// This interface provides convenience functions for servers to send MCP notifications and requests
+/// to clients over output streams. Notifications are one-way messages that don't expect responses.
+///
+/// Categories:
+/// - Progress: Real-time updates on long-running operations
+/// - Logging: Send log messages to client's logging system
+/// - List changes: Notify when tools/prompts/resources are added/removed
+/// - Subscriptions: Push updates to subscribed resources/prompts
+/// - Elicitation: Request information from the client (roots, sampling)
+@since(version = 0.1.1)
+interface server-messages {
+    use wasi:io/streams@0.2.3.{
+        output-stream,
+        stream-error,
+    };
+    use mcp.{
+        server-notification,
+        server-request,
+    };
+
+    /// Errors that can occur when sending messages to the client
+    @since(version = 0.1.1)
+    variant message-error {
+        /// An I/O error occurred writing to the output stream
+        io(stream-error),
+        /// Failed to serialize the notification to JSON-RPC format
+        serialization(string),
+        /// An unexpected error occurred
+        unexpected(string),
+    }
+
+    /// Send a notification to the client on the current SSE response stream
+    ///
+    /// Notifications are one-way messages that do not expect a response.
+    @since(version = 0.1.1)
+    notify: func(
+        /// Output stream (SSE stream) to send the notification
+        output: borrow<output-stream>,
+        /// The notification to send to the client
+        notification: server-notification,
+    ) -> result<_, message-error>;
+
+    /// Send a request to the client on the current SSE response stream
+    ///
+    /// Servers can request information from clients using the elicitation mechanism.
+    /// The request is sent on the HTTP SSE stream, but the client's JSON-RPC response
+    /// arrives as a new HTTP POST request.
+    ///
+    /// To await responses:
+    /// 1. Send the request using this function
+    /// 2. Use sessions interface to track pending requests
+    /// 3. Match incoming HTTP requests to pending elicitations
+    ///
+    /// Note: Client MCP/JSON-RPC responses arrive as new HTTP requests.
+    /// Use sessions to await client responses within a handler instance.
+    ///
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
+    @since(version = 0.1.1)
+    request: func(
+        /// Output stream (SSE stream) to send the request
+        output: borrow<output-stream>,
+        /// The request to send to the client
+        request: server-request,
+    ) -> result<_, message-error>;
+}
+
 /// MCP server-side capability interfaces and request handling utilities.
 ///
 /// This file defines:
 /// - Request option types for passing context between components
 /// - Capability interfaces (tools, resources, prompts, completions)
 ///
-/// <https://spec.modelcontextprotocol.io>
+/// <https://modelcontextprotocol.io>
 
 /// Tools interface.
 ///
