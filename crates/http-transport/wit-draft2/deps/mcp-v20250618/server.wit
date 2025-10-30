@@ -1,0 +1,347 @@
+use wasi:io/streams@0.2.3;
+
+/// Server-side MCP message handler.
+////
+/// The handler processes incoming messages and generates appropriate
+/// responses or actions based on the MCP protocol.
+@since(version = 0.1.0)
+interface server-handler {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        request-id,
+        server-result,
+        client-request,
+        client-result,
+        client-notification,
+    };
+
+    /// Identity information from authentication.
+    @since(version = 0.1.2)
+    record identity {
+        /// Raw bearer token as received.
+        jwt: string,
+        /// Validated claims from the JWT payload.
+        claims: list<tuple<string, string>>,
+    }
+
+    /// Session information from the transport.
+    @since(version = 0.1.2)
+    record session {
+        /// The session ID from Mcp-Session-Id header.
+        session-id: string,
+        /// The ID of the session's underlying key-value store.
+        store-id: string,
+    }
+
+    /// Request context passed to handlers.
+    ///
+    /// Contains authentication, session, streaming, and protocol information
+    /// extracted from the transport layer.
+    @since(version = 0.1.0)
+    record request-ctx {
+        /// Unique ID for correlating requests and responses
+        id: request-id,
+        /// MCP protocol version expected by the client
+        protocol-version: string,
+        /// Output stream for sending server-sent messages
+        messages: option<borrow<output-stream>>,
+        /// Authenticated user identity, if available
+        session: option<session>,
+        /// User identity information, if available
+        user: option<identity>,
+    }
+
+    /// Handle a client request.
+    ///
+    /// Processes an MCP request from the client and returns a response.
+    ///
+    /// Parameters:
+    /// - `request`: Tuple of (request body, request ID for correlation)
+    /// - `options`: Context from transport (auth, session, streams, custom metadata)
+    ///
+    /// Returns the server response or an error code if processing fails.
+    @since(version = 0.1.0)
+    handle-request: func(
+        ctx: request-ctx,
+        request: client-request,
+    ) -> result<server-result, error-code>;
+
+    /// Result context for client responses.
+    ///
+    /// Used when the client responds to a server-initiated request.
+    @since(version = 0.1.0)
+    record result-ctx {
+        /// Unique ID for correlating requests and responses
+        id: request-id,
+        /// MCP protocol version expected by the client
+        protocol-version: string,
+        /// Authenticated user identity, if available
+        session: option<session>,
+        /// User identity information, if available
+        user: option<identity>,
+    }
+
+    /// Handle a client response to a server-initiated request.
+    @since(version = 0.1.0)
+    handle-result: func(
+        ctx: result-ctx,
+        %result: client-result,
+    );
+
+    /// Error context for client error responses.
+    ///
+    /// Used when the client returns an error to a server-initiated request.
+    @since(version = 0.1.0)
+    record error-ctx {
+        /// Unique ID for correlating requests and responses.
+        /// Per JSON-RPC spec, this may be null for some errors.
+        id: option<request-id>,
+        /// MCP protocol version expected by the client
+        protocol-version: string,
+        /// Authenticated user identity, if available
+        session: option<session>,
+        /// User identity information, if available
+        user: option<identity>,
+    }
+
+    /// Handle a client error response.
+    @since(version = 0.1.0)
+    handle-error: func(
+        ctx: error-ctx,
+        error: error-code,
+    );
+
+    /// Notification context for client-initiated notifications.
+    ///
+    /// Contains authentication and session information for handling
+    /// notifications from the client.
+    @since(version = 0.1.0)
+    record notification-ctx {
+        protocol-version: string,
+        /// Authenticated user identity, if available
+        session: option<session>,
+        /// User identity information, if available
+        user: option<identity>,
+    }
+
+    /// Handle a client notification.
+    @since(version = 0.1.0)
+    handle-notification: func(
+        ctx: notification-ctx,
+        notification: client-notification,
+    );
+}
+
+/// Server-sent MCP messages
+///
+/// This interface provides convenience functions for servers to send MCP notifications and requests
+/// to clients over output streams. Notifications are one-way messages that don't expect responses.
+///
+/// Categories:
+/// - Progress: Real-time updates on long-running operations
+/// - Logging: Send log messages to client's logging system
+/// - List changes: Notify when tools/prompts/resources are added/removed
+/// - Subscriptions: Push updates to subscribed resources/prompts
+/// - Elicitation: Request information from the client (roots, sampling)
+@since(version = 0.1.1)
+interface server-messages {
+    use wasi:io/streams@0.2.3.{
+        output-stream,
+        stream-error,
+    };
+    use mcp.{
+        server-notification,
+        server-request,
+    };
+
+    /// Errors that can occur when sending messages to the client
+    @since(version = 0.1.1)
+    variant message-error {
+        /// An I/O error occurred writing to the output stream
+        io(stream-error),
+        /// Failed to serialize the notification to JSON-RPC format
+        serialization(string),
+        /// An unexpected error occurred
+        unexpected(string),
+    }
+
+    /// Send a notification to the client on the current SSE response stream
+    ///
+    /// Notifications are one-way messages that do not expect a response.
+    @since(version = 0.1.1)
+    notify: func(
+        /// Output stream (SSE stream) to send the notification
+        output: borrow<output-stream>,
+        /// The notification to send to the client
+        notification: server-notification,
+    ) -> result<_, message-error>;
+
+    /// Send a request to the client on the current SSE response stream
+    ///
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
+    @since(version = 0.1.1)
+    request: func(
+        /// Output stream (SSE stream) to send the request
+        output: borrow<output-stream>,
+        /// The request to send to the client
+        request: server-request,
+    ) -> result<_, message-error>;
+}
+
+/// MCP tools feature
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
+@since(version = 0.1.0)
+interface tools {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        cursor,
+        error-code,
+        list-tools-request,
+        list-tools-result,
+        call-tool-request,
+        call-tool-result,
+    };
+    use server-handler.{
+        request-ctx,
+    };
+
+    /// List tools provided by this component.
+    @since(version = 0.1.0)
+    list-tools: func(
+        ctx: request-ctx,
+        request: list-tools-request,
+    ) -> result<list-tools-result, error-code>;
+
+    /// Execute a tool call. Return none for unrecognized tools.
+    @since(version = 0.1.0)
+    call-tool: func(
+        ctx: request-ctx,
+        request: call-tool-request,
+    ) -> result<option<call-tool-result>, error-code>;
+}
+
+/// MCP resources feature
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
+@since(version = 0.1.0)
+interface resources {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        list-resources-request,
+        list-resources-result,
+        read-resource-request,
+        read-resource-result,
+        list-resource-templates-request,
+        list-resource-templates-result,
+    };
+    use server-handler.{
+        request-ctx,
+    };
+
+    /// List resources provided by this component.
+    @since(version = 0.1.0)
+    list-resources: func(
+        ctx: request-ctx,
+        request: list-resources-request,
+    ) -> result<list-resources-result, error-code>;
+
+    /// Read a resource by URI. Return none for unrecognized URIs.
+    @since(version = 0.1.0)
+    read-resource: func(
+        ctx: request-ctx,
+        request: read-resource-request,
+    ) -> result<option<read-resource-result>, error-code>;
+
+    /// List resource templates (RFC 6570 URI templates).
+    @since(version = 0.1.0)
+    list-resource-templates: func(
+        ctx: request-ctx,
+        request: list-resource-templates-request,
+    ) -> result<list-resource-templates-result, error-code>;
+}
+
+/// MCP prompts feature
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
+@since(version = 0.1.0)
+interface prompts {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        list-prompts-request,
+        list-prompts-result,
+        get-prompt-request,
+        get-prompt-result,
+    };
+    use server-handler.{
+        request-ctx,
+    };
+
+    /// List prompts provided by this component.
+    @since(version = 0.1.0)
+    list-prompts: func(
+        ctx: request-ctx,
+        request: list-prompts-request,
+    ) -> result<list-prompts-result, error-code>;
+
+    /// Get a prompt by name. Return none for unrecognized prompts.
+    @since(version = 0.1.0)
+    get-prompt: func(
+        ctx: request-ctx,
+        request: get-prompt-request,
+    ) -> result<option<get-prompt-result>, error-code>;
+}
+
+/// MCP completions feature
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
+@since(version = 0.1.0)
+interface completions {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        complete-request,
+        complete-result,
+    };
+    use server-handler.{
+        request-ctx,
+    };
+
+    /// Provide completion suggestions for prompt or resource arguments.
+    /// Return none for unsupported references.
+    @since(version = 0.1.0)
+    complete: func(
+        ctx: request-ctx,
+        request: complete-request,
+    ) -> result<option<complete-result>, error-code>;
+}
+
+/// Server transport world.
+///
+/// Import server-handler interface to delegate MCP message processing.
+@since(version = 0.1.0)
+world server-transport {
+    import server-handler;
+}
+
+/// Server middleware world.
+///
+/// Import and export handler interface to enable composition.
+@since(version = 0.1.0)
+world server-middleware {
+    import server-handler;
+    export server-handler;
+}

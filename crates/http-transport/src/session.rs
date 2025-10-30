@@ -47,7 +47,12 @@ impl From<StoreError> for SessionError {
 /// Session manager for http-transport internal session lifecycle management
 ///
 /// This manages session metadata in WASI KV for the transport layer.
-/// The bucket is used for storing session metadata under `__meta__` key.
+/// Each session's metadata is stored using the session ID as the key.
+/// All sessions share the same bucket (one bucket per transport instance).
+///
+/// Storage schema:
+/// - Key: `{session_id}` (e.g., "fef9e597-c392-41dd-bdec-d90223d5fd0a")
+/// - Value: JSON-serialized SessionMetadata
 ///
 /// Note: This is distinct from server_handler::Session which is the record
 /// passed to downstream components via RequestCtx.
@@ -71,12 +76,18 @@ impl SessionManager {
     /// * `Ok(SessionManager)` - New session with unique ID
     /// * `Err(SessionError)` - If bucket open fails or metadata store fails
     pub fn initialize(bucket_name: &str) -> Result<SessionManager, SessionError> {
+        eprintln!("[SESSION_INIT] Initializing new session with bucket '{}'", bucket_name);
         // Open KV bucket
         let bucket = store::open(bucket_name)
-            .map_err(|e| SessionError::Store(format!("Failed to open bucket '{}': {:?}", bucket_name, e)))?;
+            .map_err(|e| {
+                eprintln!("[SESSION_INIT] Failed to open bucket: {:?}", e);
+                SessionError::Store(format!("Failed to open bucket '{}': {:?}", bucket_name, e))
+            })?;
+        eprintln!("[SESSION_INIT] Bucket opened successfully");
 
         // Generate cryptographically secure UUID v4
         let session_id = generate_uuid_v4()?;
+        eprintln!("[SESSION_INIT] Generated session ID: {}", session_id);
 
         // Create initial metadata
         let metadata = SessionMetadata {
@@ -88,8 +99,14 @@ impl SessionManager {
         // Store metadata
         let metadata_json = serde_json::to_vec(&metadata)
             .map_err(|e| SessionError::Unexpected(format!("Failed to serialize metadata: {}", e)))?;
+        eprintln!("[SESSION_INIT] Serialized metadata, writing to __meta__");
 
         bucket.set("__meta__", &metadata_json)?;
+        eprintln!("[SESSION_INIT] Metadata written successfully");
+
+        // Verify it was written
+        let exists = bucket.exists("__meta__")?;
+        eprintln!("[SESSION_INIT] Verification: __meta__ exists = {}", exists);
 
         Ok(SessionManager {
             id: session_id,
@@ -112,16 +129,25 @@ impl SessionManager {
     /// * `Err(SessionError::NoSuchSession)` - If metadata doesn't exist
     /// * `Err(SessionError::Store)` - If bucket open fails
     pub fn open(bucket_name: &str, id: &str) -> Result<SessionManager, SessionError> {
+        eprintln!("[SESSION_OPEN] Opening session '{}' with bucket '{}'", id, bucket_name);
         // Open KV bucket
         let bucket = store::open(bucket_name)
-            .map_err(|e| SessionError::Store(format!("Failed to open bucket '{}': {:?}", bucket_name, e)))?;
+            .map_err(|e| {
+                eprintln!("[SESSION_OPEN] Failed to open bucket: {:?}", e);
+                SessionError::Store(format!("Failed to open bucket '{}': {:?}", bucket_name, e))
+            })?;
+        eprintln!("[SESSION_OPEN] Bucket opened successfully");
 
         // Check if session metadata exists
+        eprintln!("[SESSION_OPEN] Checking if __meta__ exists");
         let exists = bucket.exists("__meta__")?;
+        eprintln!("[SESSION_OPEN] __meta__ exists: {}", exists);
         if !exists {
+            eprintln!("[SESSION_OPEN] No __meta__ found, returning NoSuchSession");
             return Err(SessionError::NoSuchSession);
         }
 
+        eprintln!("[SESSION_OPEN] Session opened successfully");
         Ok(SessionManager {
             id: id.to_string(),
             bucket,

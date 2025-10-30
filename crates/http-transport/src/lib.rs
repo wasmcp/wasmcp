@@ -13,6 +13,16 @@
 //! - MCP_SESSION_ENABLED: "true"/"false" (default: "false") - Enable session support
 //! - MCP_SESSION_BUCKET: Bucket name (default: "mcp-sessions") - KV storage location
 
+#[cfg(feature = "draft2")]
+mod bindings {
+    wit_bindgen::generate!({
+        path: "wit-draft2",
+        world: "http-transport-draft2",
+        generate_all,
+    });
+}
+
+#[cfg(not(feature = "draft2"))]
 mod bindings {
     wit_bindgen::generate!({
         world: "http-transport",
@@ -54,15 +64,36 @@ impl SessionConfig {
         let env_vars = get_environment();
         let env_map: std::collections::HashMap<String, String> = env_vars.into_iter().collect();
 
+        eprintln!("[SESSION_CONFIG] Environment variables:");
+        for (key, value) in &env_map {
+            if key.starts_with("MCP_") {
+                eprintln!("[SESSION_CONFIG]   {}={}", key, value);
+            }
+        }
+
         let enabled = env_map
             .get("MCP_SESSION_ENABLED")
             .map(|v| v.to_lowercase() == "true")
             .unwrap_or(false);
 
-        let bucket_name = env_map
-            .get("MCP_SESSION_BUCKET")
-            .cloned()
-            .unwrap_or_else(|| "mcp-sessions".to_string());
+        let runtime = env_map
+            .get("MCP_RUNTIME")
+            .map(|v| v.to_lowercase())
+            .unwrap_or_default();
+
+        // Wasmtime only supports empty string as bucket name
+        let bucket_name = if runtime == "wasmtime" {
+            eprintln!("[SESSION_CONFIG] Runtime is wasmtime, using empty bucket name");
+            String::new()
+        } else {
+            env_map
+                .get("MCP_SESSION_BUCKET")
+                .cloned()
+                .unwrap_or_else(|| "mcp-sessions".to_string())
+        };
+
+        eprintln!("[SESSION_CONFIG] Final config: enabled={}, bucket_name='{}', runtime={}",
+                  enabled, bucket_name, runtime);
 
         SessionConfig {
             enabled,
@@ -101,10 +132,7 @@ fn handle_http_request(request: IncomingRequest) -> Result<OutgoingResponse, Str
     match method {
         bindings::wasi::http::types::Method::Post => handle_post(request, protocol_version),
         bindings::wasi::http::types::Method::Get => handle_get(request, protocol_version),
-        bindings::wasi::http::types::Method::Delete => {
-            // DELETE not supported in stateless mode
-            create_method_not_allowed_response()
-        }
+        bindings::wasi::http::types::Method::Delete => handle_delete(request),
         _ => create_method_not_allowed_response(),
     }
 }
@@ -134,16 +162,48 @@ fn handle_post(
         .map(|m| m == "initialize")
         .unwrap_or(false);
 
-    // Validate session for non-initialize requests and build SessionInfo
-    let session_info = if !is_initialize {
-        validate_session_for_request(session_id_from_header.as_deref())?;
-        session_id_from_header.map(|id| {
-            let config = SessionConfig::from_env();
-            SessionInfo {
-                session_id: id,
-                store_id: config.bucket_name,
+    // Handle session management
+    let config = SessionConfig::from_env();
+    let session_info = if config.enabled {
+        if is_initialize {
+            // Create new session for initialize request
+            let manager = SessionManager::initialize(&config.bucket_name)
+                .map_err(|e| format!("Failed to create session: {:?}", e))?;
+            Some(SessionInfo {
+                session_id: manager.id().to_string(),
+                store_id: config.bucket_name.clone(),
+            })
+        } else if let Some(session_id) = session_id_from_header {
+            // Validate existing session
+            eprintln!("[SESSION_VALIDATE] Validating session ID: {}", session_id);
+            validate_session_id_format(&session_id)
+                .map_err(|e| format!("Invalid session ID: {:?}", e))?;
+
+            eprintln!("[SESSION_VALIDATE] Opening session with bucket: '{}'", config.bucket_name);
+            let manager = SessionManager::open(&config.bucket_name, &session_id)
+                .map_err(|e| {
+                    eprintln!("[SESSION_VALIDATE] Failed to open session: {:?}", e);
+                    match e {
+                        SessionError::NoSuchSession => "HTTP/404:Session not found".to_string(),
+                        _ => format!("HTTP/500:Session error: {:?}", e),
+                    }
+                })?;
+
+            eprintln!("[SESSION_VALIDATE] Session opened, checking termination status");
+            // Check if session is terminated
+            if manager.is_terminated().map_err(|e| format!("HTTP/500:{:?}", e))? {
+                eprintln!("[SESSION_VALIDATE] Session is terminated");
+                return Err("HTTP/404:Session terminated".to_string());
             }
-        })
+
+            eprintln!("[SESSION_VALIDATE] Session is valid");
+            Some(SessionInfo {
+                session_id,
+                store_id: config.bucket_name.clone(),
+            })
+        } else {
+            None
+        }
     } else {
         None
     };
@@ -197,11 +257,11 @@ fn handle_delete(request: IncomingRequest) -> Result<OutgoingResponse, String> {
         }
     };
 
-    // Open session and terminate it
+    // Open session and delete it
     match SessionManager::open(&config.bucket_name, &session_id) {
-        Ok(mut session) => {
-            // Terminate the session
-            match session.terminate(Some("client_requested".to_string())) {
+        Ok(session) => {
+            // Delete the session entirely (calls bucket.delete on metadata)
+            match session.delete() {
                 Ok(_) => {
                     // Return 200 OK
                     let response = OutgoingResponse::new(Fields::new());
@@ -211,8 +271,8 @@ fn handle_delete(request: IncomingRequest) -> Result<OutgoingResponse, String> {
                     Ok(response)
                 }
                 Err(_) => {
-                    // Failed to terminate - return 500 Internal Server Error
-                    Err("HTTP/500:Failed to terminate session".to_string())
+                    // Failed to delete - return 500 Internal Server Error
+                    Err("HTTP/500:Failed to delete session".to_string())
                 }
             }
         }
@@ -329,10 +389,13 @@ fn handle_initialize_request(
     // Per MCP spec: "A server using the Streamable HTTP transport MAY assign a session ID
     // at initialization time, by including it in an Mcp-Session-Id header on the HTTP response"
     let config = SessionConfig::from_env();
+    eprintln!("[INIT] Session config: enabled={}, bucket={}", config.enabled, config.bucket_name);
     let new_session_id = if config.enabled {
+        eprintln!("[INIT] Sessions enabled, attempting to create session...");
         match SessionManager::initialize(&config.bucket_name) {
             Ok(session) => {
                 let id = session.id().to_string();
+                eprintln!("[INIT] Session created successfully: {}", id);
                 // SessionManager resource owns the bucket, it will be dropped here but metadata is persisted
                 drop(session);
                 Some(id)
@@ -340,11 +403,12 @@ fn handle_initialize_request(
             Err(e) => {
                 // Session creation failed - log and continue without session
                 // In production, this might be a fatal error depending on requirements
-                eprintln!("Failed to create session: {:?}", e);
+                eprintln!("[INIT] Failed to create session: {:?}", e);
                 None
             }
         }
     } else {
+        eprintln!("[INIT] Sessions disabled, skipping session creation");
         None
     };
 
@@ -368,9 +432,13 @@ fn handle_initialize_request(
     // Set Mcp-Session-Id header if session was created
     // Per MCP spec: Session ID communicated via Mcp-Session-Id header
     if let Some(ref session_id) = new_session_id {
+        eprintln!("[INIT] Setting Mcp-Session-Id header: {}", session_id);
         headers
             .set(&"mcp-session-id".to_string(), &[session_id.as_bytes().to_vec()])
             .map_err(|_| "Failed to set Mcp-Session-Id header")?;
+        eprintln!("[INIT] Header set successfully");
+    } else {
+        eprintln!("[INIT] No session ID to set in header");
     }
 
     let response = OutgoingResponse::new(headers);

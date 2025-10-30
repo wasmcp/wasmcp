@@ -10,8 +10,8 @@ world transport-base {
     import wasi:random/random@0.2.3;
 }
 
-world http-transport {
+world http-transport-draft2 {
     include transport-base;
     // Session support requires key-value storage and cryptographic random generation
-    import wasi:keyvalue/store@0.2.0-draft;
+    import wasi:keyvalue/store@0.2.0-draft2;
 }
