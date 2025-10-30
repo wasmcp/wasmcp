@@ -5,13 +5,13 @@
 
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{
     Annotations, CallToolRequest, CancelledNotification, ClientCapabilities, ClientNotification,
-    ClientRequest, ClientResult, CommonNotification, CompleteRequest, CompletionArgument,
-    CompletionContext, CompletionPromptReference, CompletionReference, ContentBlock,
-    ContentOptions, ElicitResult, ElicitResultAction, ElicitResultContent, Error, ErrorCode,
-    GetPromptRequest, Implementation, InitializeRequest, ListPromptsRequest,
-    ListResourceTemplatesRequest, ListResourcesRequest, ListRootsResult, ListToolsRequest,
-    LogLevel, ProgressNotification, ProgressToken, ProtocolVersion, ReadResourceRequest, RequestId,
-    Role, Root, SamplingCreateMessageResult,
+    ClientRequest, ClientResult, CompleteRequest, CompletionArgument, CompletionContext,
+    CompletionPromptReference, CompletionReference, ContentBlock, ContentOptions, ElicitResult,
+    ElicitResultAction, ElicitResultContent, Error, ErrorCode, GetPromptRequest, Implementation,
+    InitializeRequest, ListPromptsRequest, ListResourceTemplatesRequest, ListResourcesRequest,
+    ListRootsResult, ListToolsRequest, LogLevel, NotificationOptions, ProgressNotification,
+    ProgressToken, ProtocolVersion, ReadResourceRequest, RequestId, Role, Root,
+    SamplingCreateMessageResult,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -433,12 +433,12 @@ pub fn parse_client_notification(json: &Value) -> Result<ClientNotification, Str
 
     match method {
         "notifications/initialized" => {
-            let common = parse_common_notification(params)?;
-            Ok(ClientNotification::Initialized(common))
+            let opts = parse_notification_options(params)?;
+            Ok(ClientNotification::Initialized(opts))
         }
         "notifications/roots/list_changed" => {
-            let common = parse_common_notification(params)?;
-            Ok(ClientNotification::RootsListChanged(common))
+            let opts = parse_notification_options(params)?;
+            Ok(ClientNotification::RootsListChanged(opts))
         }
         "notifications/cancelled" => {
             let params = params.ok_or("Missing params for cancelled notification")?;
@@ -496,8 +496,8 @@ pub fn parse_client_notification(json: &Value) -> Result<ClientNotification, Str
     }
 }
 
-/// Parse common notification fields (_meta and extras)
-fn parse_common_notification(params: Option<&Value>) -> Result<CommonNotification, String> {
+/// Parse notification options (_meta and extras)
+fn parse_notification_options(params: Option<&Value>) -> Result<NotificationOptions, String> {
     let (meta, extras) = if let Some(p) = params {
         let meta = p.get("_meta").and_then(|m| serde_json::to_string(m).ok());
 
@@ -508,7 +508,7 @@ fn parse_common_notification(params: Option<&Value>) -> Result<CommonNotificatio
         (None, None)
     };
 
-    Ok(CommonNotification { meta, extras })
+    Ok(NotificationOptions { meta, extras })
 }
 
 // =============================================================================

@@ -4,12 +4,11 @@
 //! and SSE event formatting.
 
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{
-    Annotations, AudioContent, BlobData, CallToolResult, CompleteResult, ContentBlock, ErrorCode,
-    GetPromptResult, ImageContent, Implementation, InitializeResult, ListPromptsResult,
+    Annotations, BlobData, CallToolResult, CompleteResult, ContentBlock, ErrorCode,
+    GetPromptResult, Implementation, InitializeResult, ListPromptsResult,
     ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, McpResource, Prompt,
     PromptMessage, ProtocolVersion, ReadResourceResult, RequestId, ResourceContents,
-    ResourceLinkContent, ResourceTemplate, Role, ServerCapabilities, ServerResult, TextContent,
-    TextData, Tool,
+    ResourceTemplate, Role, ServerCapabilities, ServerResult, TextData, Tool,
 };
 use crate::stream_reader::{read_blob_stream, read_text_stream, StreamConfig};
 use serde::{Deserialize, Serialize};

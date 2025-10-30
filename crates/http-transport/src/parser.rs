@@ -189,7 +189,7 @@ fn parse_call_tool_request(params: Option<&Value>) -> Result<ClientRequest, Stri
 
     let arguments = params
         .get("arguments")
-        .map(|args| serde_json::to_string(args))
+        .map(serde_json::to_string)
         .transpose()
         .map_err(|e| format!("Failed to serialize arguments: {}", e))?;
 
@@ -253,7 +253,7 @@ fn parse_get_prompt_request(params: Option<&Value>) -> Result<ClientRequest, Str
 
     let arguments = params
         .get("arguments")
-        .map(|args| serde_json::to_string(args))
+        .map(serde_json::to_string)
         .transpose()
         .map_err(|e| format!("Failed to serialize prompt arguments: {}", e))?;
 
@@ -308,7 +308,7 @@ fn parse_complete_request(params: Option<&Value>) -> Result<ClientRequest, Strin
         .map(|ctx| {
             let arguments = ctx
                 .get("arguments")
-                .map(|args| serde_json::to_string(args))
+                .map(serde_json::to_string)
                 .transpose()
                 .map_err(|e| format!("Failed to serialize context arguments: {}", e))?;
             Ok::<CompletionContext, String>(CompletionContext { arguments })
@@ -352,10 +352,8 @@ fn parse_ping_request(params: Option<&Value>) -> Result<ClientRequest, String> {
         let progress_token = p.get("progressToken").and_then(|pt| {
             if let Some(s) = pt.as_str() {
                 Some(ProgressToken::String(s.to_string()))
-            } else if let Some(i) = pt.as_i64() {
-                Some(ProgressToken::Integer(i))
             } else {
-                None
+                pt.as_i64().map(ProgressToken::Integer)
             }
         });
 
@@ -420,8 +418,7 @@ pub fn parse_client_notification(
     json: &Value,
 ) -> Result<crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification, String> {
     use crate::bindings::wasmcp::mcp_v20250618::mcp::{
-        CancelledNotification, ClientNotification, CommonNotification, ProgressNotification,
-        ProgressToken,
+        CancelledNotification, ClientNotification, ProgressNotification, ProgressToken,
     };
 
     let method = json
@@ -433,12 +430,12 @@ pub fn parse_client_notification(
 
     match method {
         "notifications/initialized" => {
-            let common = parse_common_notification(params)?;
-            Ok(ClientNotification::Initialized(common))
+            let opts = parse_notification_options(params)?;
+            Ok(ClientNotification::Initialized(opts))
         }
         "notifications/roots/list_changed" => {
-            let common = parse_common_notification(params)?;
-            Ok(ClientNotification::RootsListChanged(common))
+            let opts = parse_notification_options(params)?;
+            Ok(ClientNotification::RootsListChanged(opts))
         }
         "notifications/cancelled" => {
             let params = params.ok_or("Missing params for cancelled notification")?;
@@ -496,20 +493,20 @@ pub fn parse_client_notification(
     }
 }
 
-/// Parse common notification fields (meta and extras)
-fn parse_common_notification(
+/// Parse notification options (_meta and extras)
+fn parse_notification_options(
     params: Option<&Value>,
-) -> Result<crate::bindings::wasmcp::mcp_v20250618::mcp::CommonNotification, String> {
-    use crate::bindings::wasmcp::mcp_v20250618::mcp::CommonNotification;
+) -> Result<crate::bindings::wasmcp::mcp_v20250618::mcp::NotificationOptions, String> {
+    use crate::bindings::wasmcp::mcp_v20250618::mcp::NotificationOptions;
 
     if let Some(p) = params {
         let meta = p.get("_meta").and_then(|m| serde_json::to_string(m).ok());
 
         let extras = p.get("extras").and_then(|e| serde_json::to_string(e).ok());
 
-        Ok(CommonNotification { meta, extras })
+        Ok(NotificationOptions { meta, extras })
     } else {
-        Ok(CommonNotification {
+        Ok(NotificationOptions {
             meta: None,
             extras: None,
         })
@@ -559,7 +556,7 @@ pub fn parse_client_response(
             -32602 => ErrorCode::InvalidParams(error),
             -32603 => ErrorCode::InternalError(error),
             -32099..=-32000 => ErrorCode::Server(error),
-            -32768..=-32001 => ErrorCode::JsonRpc(error),
+            -32768..=-32100 => ErrorCode::JsonRpc(error),
             _ => ErrorCode::Mcp(error),
         };
 
@@ -628,10 +625,10 @@ fn parse_elicit_result(
                         Some((key.clone(), ElicitResultContent::String(s.to_string())))
                     } else if let Some(n) = value.as_f64() {
                         Some((key.clone(), ElicitResultContent::Number(n)))
-                    } else if let Some(b) = value.as_bool() {
-                        Some((key.clone(), ElicitResultContent::Boolean(b)))
                     } else {
-                        None
+                        value
+                            .as_bool()
+                            .map(|b| (key.clone(), ElicitResultContent::Boolean(b)))
                     }
                 })
                 .collect()
@@ -750,7 +747,7 @@ fn parse_content_block(
     content: &Value,
 ) -> Result<crate::bindings::wasmcp::mcp_v20250618::mcp::ContentBlock, String> {
     use crate::bindings::wasmcp::mcp_v20250618::mcp::{
-        Blob, BlobData, ContentBlock, ContentOptions, TextContent, TextData,
+        Blob, BlobData, ContentBlock, TextContent, TextData,
     };
 
     let content_type = content
@@ -870,7 +867,7 @@ fn parse_content_options(
 
     let annotations = content
         .get("annotations")
-        .map(|a| parse_annotations(a))
+        .map(parse_annotations)
         .transpose()?;
 
     if meta.is_some() || annotations.is_some() {
