@@ -18,17 +18,79 @@ interface server-handler {
         client-notification,
     };
 
+    // JWT signature algorithm
+    @since(version = 0.1.2)
+    enum jwt-alg {
+        hs256, hs384, hs512,
+        rs256, rs384, rs512,
+        ps256, ps384, ps512,
+        es256, es384,
+        eddsa,
+    }
+
+    /// Validation checks for identity information.
+    /// A flag is set only if the check was enforced and passed.
+    @since(version = 0.1.2)
+    flags validation-check {
+        signature,     // JWS signature verified
+        alg-allowed,   // header.alg matched the allowlist
+        exp,           // exp required & passed
+        nbf,           // nbf present & passed
+        iat,           // iat validated
+        iss,           // iss matched expected
+        aud,           // aud matched one of expected audiences
+        sub,           // sub matched expected
+        kid,           // key selected/verified via header.kid
+        typ,           // typ enforced == "JWT"
+    }
+
+    /// Identity information from authentication.
+    /// A flag is set only if the check was enforced and passed.
+    @since(version = 0.1.2)
+    record identity {
+        /// Raw bearer token as received.
+        jwt: string,
+
+        /// Checks the authenticator enforced successfully.
+        checks: validation-check,
+
+        // Optional, minimal typed claims (decoded from the token):
+        subject:  option<string>,          // sub
+        issuer:   option<string>,          // iss
+        audience: option<list<string>>,    // aud (array-safe)
+        expires-at: option<u64>,           // exp (UTC seconds) — optional but very useful
+
+        // Optional header crumbs:
+        header-alg: option<jwt-alg>,
+        header-kid: option<string>,
+        header-typ: option<string>,
+    }
+
+    /// Session information from the transport.
+    @since(version = 0.1.2)
+    record session {
+        /// The session ID from Mcp-Session-Id header.
+        session-id: string,
+        /// The ID of the session's underlying key-value store.
+        store-id: string,
+    }
+
     /// Request context passed to handlers.
     ///
     /// Contains authentication, session, streaming, and protocol information
     /// extracted from the transport layer.
     @since(version = 0.1.0)
     record request-ctx {
-        request-id: request-id,
-        jwt: option<string>,
-        session-id: option<string>,
-        message-stream: option<borrow<output-stream>>,
+        /// Unique ID for correlating requests and responses
+        id: request-id,
+        /// MCP protocol version expected by the client
         protocol-version: string,
+        /// Output stream for sending server-sent messages
+        messages: option<borrow<output-stream>>,
+        /// Authenticated user identity, if available
+        session: option<session>,
+        /// User identity information, if available
+        user: option<identity>,
     }
 
     /// Handle a client request.
@@ -51,10 +113,14 @@ interface server-handler {
     /// Used when the client responds to a server-initiated request.
     @since(version = 0.1.0)
     record result-ctx {
-        request-id: request-id,
-        jwt: option<string>,
-        session-id: option<string>,
+        /// Unique ID for correlating requests and responses
+        id: request-id,
+        /// MCP protocol version expected by the client
         protocol-version: string,
+        /// Authenticated user identity, if available
+        session: option<session>,
+        /// User identity information, if available
+        user: option<identity>,
     }
 
     /// Handle a client response to a server-initiated request.
@@ -69,10 +135,15 @@ interface server-handler {
     /// Used when the client returns an error to a server-initiated request.
     @since(version = 0.1.0)
     record error-ctx {
-        request-id: option<request-id>,
-        jwt: option<string>,
-        session-id: option<string>,
+        /// Unique ID for correlating requests and responses.
+        /// Per JSON-RPC spec, this may be null for some errors.
+        id: option<request-id>,
+        /// MCP protocol version expected by the client
         protocol-version: string,
+        /// Authenticated user identity, if available
+        session: option<session>,
+        /// User identity information, if available
+        user: option<identity>,
     }
 
     /// Handle a client error response.
@@ -88,9 +159,11 @@ interface server-handler {
     /// notifications from the client.
     @since(version = 0.1.0)
     record notification-ctx {
-        jwt: option<string>,
-        session-id: option<string>,
         protocol-version: string,
+        /// Authenticated user identity, if available
+        session: option<session>,
+        /// User identity information, if available
+        user: option<identity>,
     }
 
     /// Handle a client notification.

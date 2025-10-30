@@ -19,10 +19,6 @@ interface sessions {
     use wasi:io/poll@0.2.3.{
         pollable,
     };
-    use wasi:keyvalue/store@0.2.0-draft.{
-        bucket,
-        error as store-error,
-    };
     use mcp.{
         elicit-request,
         elicit-result,
@@ -34,7 +30,7 @@ interface sessions {
         /// An I/O error occurred in communication with the client
         io(stream-error),
         /// An error occurred in the underlying key-value store
-        store(store-error),
+        store(string),
         /// The specified session does not exist
         no-such-session,
         /// An unexpected error occurred
@@ -66,33 +62,11 @@ interface sessions {
     /// A bucket-backed session keyed by the Mcp-Session-Id HTTP header
     ///
     /// Sessions provide persistent storage and client communication primitives.
-    /// Each session is backed by a WASI key-value bucket and identified by a
-    /// cryptographically unique ID that's passed in the Mcp-Session-Id header.
-    ///
-    /// Session lifecycle:
-    /// 1. initialize() - Create new session with unique ID
-    /// 2. open() - Resume existing session by ID
-    /// 3. set()/get() - Persist data across requests
-    /// 4. elicit() - Request information from client
-    /// 5. terminate() - Mark session as ended (keeps data)
-    /// 6. delete() - Remove session and all data
+    /// Each session is identified by a cryptographically unique ID that's passed in the Mcp-Session-Id header.
     ///
     /// <https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management>
     @since(version = 0.1.0)
     resource session {
-        /// Initialize a new session in the given bucket
-        ///
-        /// A cryptographically unique session ID is generated automatically.
-        /// The caller should extract the ID and return it to the client via
-        /// the Mcp-Session-Id response header.
-        ///
-        /// The bucket is consumed and owned by the session resource.
-        @since(version = 0.1.0)
-        initialize: static func(
-            /// WASI key-value bucket for session storage
-            bucket: bucket,
-        ) -> result<session, session-error>;
-
         /// Open an existing session by ID in the given bucket
         ///
         /// This is called when a client provides an Mcp-Session-Id header
@@ -102,33 +76,20 @@ interface sessions {
         /// The bucket is consumed and owned by the session resource.
         @since(version = 0.1.0)
         open: static func(
-            /// WASI key-value bucket containing the session
-            bucket: bucket,
             /// The session ID from Mcp-Session-Id header
-            id: string,
+            session-id: string,
+            /// The ID of the session's underlying key-value store
+            store-id: string,
         ) -> result<session, session-error>;
-
-        /// Close the session and return the underlying bucket
-        ///
-        /// This releases the session resource but keeps all data in the bucket.
-        /// The returned bucket can be used to create new sessions or passed to
-        /// other components.
-        @since(version = 0.1.0)
-        close: static func(
-            /// The session to close
-            session: session,
-        ) -> bucket;
 
         /// Delete the session and all associated data in the bucket
         ///
         /// This permanently removes the session ID and all key-value pairs.
-        /// The bucket is returned for reuse. If deletion fails, returns both
-        /// the bucket and the error so the caller can recover.
         @since(version = 0.1.0)
         delete: static func(
             /// The session to delete
             session: session,
-        ) -> result<bucket, session-error>;
+        ) -> result<_, session-error>;
 
         /// Get the session ID
         ///
