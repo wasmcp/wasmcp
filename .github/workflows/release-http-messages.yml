@@ -1,4 +1,4 @@
-name: Release HTTP Notifications
+name: Release HTTP Messages
 
 on:
   workflow_dispatch:
