@@ -46,9 +46,9 @@ export default {
   },
   externalsType: "module",
   externals: {
-    "wasmcp:mcp-v20250618/mcp@0.1.1": "wasmcp:mcp-v20250618/mcp@0.1.1",
-    "wasmcp:mcp-v20250618/tools@0.1.1": "wasmcp:mcp-v20250618/tools@0.1.1",
-    "wasmcp:mcp-v20250618/server-messages@0.1.1": "wasmcp:mcp-v20250618/server-messages@0.1.1",
+    "wasmcp:mcp-v20250618/mcp@0.1.3": "wasmcp:mcp-v20250618/mcp@0.1.3",
+    "wasmcp:mcp-v20250618/tools@0.1.3": "wasmcp:mcp-v20250618/tools@0.1.3",
+    "wasmcp:mcp-v20250618/server-messages@0.1.3": "wasmcp:mcp-v20250618/server-messages@0.1.3",
   },
   optimization: {
     minimize: false,

@@ -12,9 +12,9 @@ import type {
   CallToolRequest,
   CallToolResult,
   Tool,
-} from 'wasmcp:mcp-v20250618/mcp@0.1.1';
-import type { RequestCtx } from 'wasmcp:mcp-v20250618/tools@0.1.1';
-import { notify } from 'wasmcp:mcp-v20250618/server-messages@0.1.1';
+} from 'wasmcp:mcp-v20250618/mcp@0.1.3';
+import type { RequestCtx } from 'wasmcp:mcp-v20250618/tools@0.1.3';
+import { notify } from 'wasmcp:mcp-v20250618/server-messages@0.1.3';
 
 // Tool input schemas
 const GetWeatherSchema = z.object({
@@ -70,8 +70,8 @@ async function callTool(
   request: CallToolRequest
 ): Promise<CallToolResult | undefined> {
   const log = (message: string) => {
-    if (ctx.messageStream) {
-      notify(ctx.messageStream, {
+    if (ctx.messages) {
+      notify(ctx.messages, {
         tag: 'log',
         val: {
           data: message,
@@ -84,10 +84,10 @@ async function callTool(
 
   switch (request.name) {
     case 'get_weather':
-      return await handleGetWeather(request.arguments, ctx.messageStream);
+      return await handleGetWeather(request.arguments);
     case 'multi_weather':
       log(`Fetching weather concurrently for ${request.arguments}`);
-      return await handleMultiWeather(request.arguments, ctx.messageStream);
+      return await handleMultiWeather(request.arguments);
     default:
       return undefined; // We don't handle this tool
   }

@@ -172,7 +172,7 @@ fn execute_factorial(
         }
     };
 
-    let log = |msg| if let Some(stream) = ctx.message_stream {
+    let log = |msg| if let Some(stream) = ctx.messages {
         let _ = server_messages::notify(
             stream,
             &ServerNotification::Log(LoggingMessageNotification {

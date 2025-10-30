@@ -14,55 +14,39 @@ pub fn list() -> Vec<Annotated<RawResource>> {
     vec![
         Annotated {
             raw: RawResource {
-                uri: "wasmcp://wit/protocol/mcp".into(),
+                uri: "wasmcp://wit/mcp".into(),
                 name: "MCP Protocol Types".into(),
                 mime_type: Some("text/plain".into()),
                 title: None,
-                description: Some("Complete MCP protocol type definitions (JSON-RPC, requests, responses, errors). Answers: what MCP message types exist, protocol wire format, request/response structure. Contains: all MCP types that components handle. Skip: for handler chaining, see 'server/handler'.".into()),
+                description: Some("Complete MCP protocol type definitions including JSON-RPC, requests, responses, errors, and capability interfaces (tools, resources, prompts). Answers: what MCP message types exist, protocol wire format, request/response structure, what capability interfaces exist. Contains: all MCP types and capability interface definitions. Skip: for handler chaining and server interfaces, see 'server'.".into()),
                 size: None,
                 icons: None,
             },
             annotations: Some(Annotations {
                 audience: Some(vec![Role::Assistant]),
-                priority: Some(0.5),
+                priority: Some(0.9),
                 last_modified: None,
             }),
         },
         Annotated {
             raw: RawResource {
-                uri: "wasmcp://wit/protocol/features".into(),
-                name: "MCP Capability Interfaces".into(),
+                uri: "wasmcp://wit/server".into(),
+                name: "Server Interfaces".into(),
                 mime_type: Some("text/plain".into()),
                 title: None,
-                description: Some("MCP capability interfaces (tools, resources, prompts) that components export. Answers: what capability interfaces exist, what methods components implement. Contains: tools/resources/prompts interface definitions. Skip: for handler interface, see 'server/handler'.".into()),
+                description: Some("Server interfaces including handler chaining, notification/messages. Answers: what is server-handler interface, why 'does not export server-handler' error occurs, how components chain together, how to send notifications. Contains: server-handler interface, server-messages interface for notifications. Skip: for protocol message types, see 'mcp'.".into()),
                 size: None,
                 icons: None,
             },
             annotations: Some(Annotations {
                 audience: Some(vec![Role::Assistant]),
-                priority: Some(0.4),
+                priority: Some(0.8),
                 last_modified: None,
             }),
         },
         Annotated {
             raw: RawResource {
-                uri: "wasmcp://wit/server/handler".into(),
-                name: "Server Handler Interface".into(),
-                mime_type: Some("text/plain".into()),
-                title: None,
-                description: Some("WIT interface that all middleware/transport components must export. Answers: what is server-handler interface, why 'does not export server-handler' error occurs, how components chain together. Contains: interface definition, import/export requirements. Skip: for protocol message types, see 'protocol/mcp'.".into()),
-                size: None,
-                icons: None,
-            },
-            annotations: Some(Annotations {
-                audience: Some(vec![Role::Assistant]),
-                priority: Some(0.6),
-                last_modified: None,
-            }),
-        },
-        Annotated {
-            raw: RawResource {
-                uri: "wasmcp://wit/server/sessions".into(),
+                uri: "wasmcp://wit/sessions".into(),
                 name: "Session Management Interface".into(),
                 mime_type: Some("text/plain".into()),
                 title: None,
@@ -76,36 +60,18 @@ pub fn list() -> Vec<Annotated<RawResource>> {
                 last_modified: None,
             }),
         },
-        Annotated {
-            raw: RawResource {
-                uri: "wasmcp://wit/server/messages".into(),
-                name: "Notification Interface".into(),
-                mime_type: Some("text/plain".into()),
-                title: None,
-                description: Some("Server-to-client notification interfaces (progress, logs, resource updates). Answers: how to send messages, what notification types exist. Contains: notification interface definitions. Skip: for basic composition, not needed unless building notification middleware.".into()),
-                size: None,
-                icons: None,
-            },
-            annotations: Some(Annotations {
-                audience: Some(vec![Role::Assistant]),
-                priority: Some(0.3),
-                last_modified: None,
-            }),
-        },
     ]
 }
 
-/// Read a WIT interface resource by wit path (e.g., "protocol/mcp")
+/// Read a WIT interface resource by wit path (e.g., "mcp", "server", "sessions")
 pub async fn read(
     client: &reqwest::Client,
     wit_path: &str,
 ) -> Option<Result<ReadResourceResult, McpError>> {
     let path = match wit_path {
-        "protocol/mcp" => "wit/protocol/mcp.wit",
-        "protocol/features" => "wit/protocol/features.wit",
-        "server/handler" => "wit/server/handler.wit",
-        "server/sessions" => "wit/server/sessions.wit",
-        "server/messages" => "wit/server/messages.wit",
+        "mcp" => "spec/2025-06-18/wit/mcp.wit",
+        "server" => "spec/2025-06-18/wit/server.wit",
+        "sessions" => "spec/2025-06-18/wit/sessions.wit",
         _ => return None,
     };
 
@@ -116,21 +82,11 @@ pub async fn read(
 pub fn list_templates() -> Vec<RawResourceTemplate> {
     vec![
         RawResourceTemplate {
-            uri_template: "wasmcp://wit/{branch}/protocol/{resource}".into(),
-            name: "Branch-specific WIT Protocol Interfaces".into(),
+            uri_template: "wasmcp://wit/{branch}/{resource}".into(),
+            name: "Branch-specific WIT Interfaces".into(),
             title: None,
             description: Some(
-                "Access WIT protocol interfaces from specific Git branches. Available resources: mcp, features"
-                    .into(),
-            ),
-            mime_type: Some("text/plain".into()),
-        },
-        RawResourceTemplate {
-            uri_template: "wasmcp://wit/{branch}/server/{resource}".into(),
-            name: "Branch-specific WIT Server Interfaces".into(),
-            title: None,
-            description: Some(
-                "Access WIT server interfaces from specific Git branches. Available resources: handler, sessions, messages"
+                "Access WIT interfaces from specific Git branches. Available resources: mcp (protocol types and capabilities), server (handler and messages), sessions (state management)"
                     .into(),
             ),
             mime_type: Some("text/plain".into()),
