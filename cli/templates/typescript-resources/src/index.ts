@@ -12,14 +12,12 @@ import type {
   ListResourceTemplatesRequest,
   ListResourceTemplatesResult,
   McpResource,
-} from './generated/interfaces/wasmcp-protocol-mcp.js';
-import type { Context } from './generated/interfaces/wasmcp-protocol-server-messages.js';
-import type { OutputStream } from './generated/interfaces/wasi-io-streams.js';
+} from './generated/interfaces/wasmcp-mcp-v20250618-mcp.js';
+import type { RequestCtx } from './generated/interfaces/wasmcp-mcp-v20250618-resources.js';
 
 function listResources(
-  _ctx: Context,
-  _request: ListResourcesRequest,
-  _clientStream: OutputStream | null
+  _ctx: RequestCtx,
+  _request: ListResourcesRequest
 ): ListResourcesResult {
   const resources: McpResource[] = [
     {
@@ -44,10 +42,9 @@ function listResources(
 }
 
 async function readResource(
-  _ctx: Context,
-  request: ReadResourceRequest,
-  _clientStream: OutputStream | null
-): Promise<ReadResourceResult | null> {
+  _ctx: RequestCtx,
+  request: ReadResourceRequest
+): Promise<ReadResourceResult | undefined> {
   switch (request.uri) {
     case 'text://greeting':
       return textResource('Hello from wasmcp resources!');
@@ -57,14 +54,13 @@ async function readResource(
         'It provides static text content via custom URIs.'
       );
     default:
-      return null; // We don't handle this URI
+      return undefined; // We don't handle this URI
   }
 }
 
 async function listResourceTemplates(
-  _ctx: Context,
-  _request: ListResourceTemplatesRequest,
-  _clientStream: OutputStream | null
+  _ctx: RequestCtx,
+  _request: ListResourceTemplatesRequest
 ): Promise<ListResourceTemplatesResult> {
   // No templates for static resources
   return { resourceTemplates: [] };

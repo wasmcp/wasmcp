@@ -5,5 +5,5 @@ package wasmcp:{{project_name}}@{{wasmcp_version}};
 /// This component exports the resources interface.
 /// The CLI will automatically wrap it with resources-middleware for composition.
 world {{project_name}} {
-    export wasmcp:protocol/resources@{{wasmcp_version}};
+    export wasmcp:mcp-v20250618/resources@0.1.0;
 }

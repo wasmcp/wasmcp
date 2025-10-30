@@ -3,7 +3,6 @@
 //! These tests verify that the command-line interface correctly parses
 //! and executes registry commands using the hierarchical structure.
 
-use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::prelude::*;
 use tempfile::TempDir;
@@ -11,7 +10,7 @@ use tempfile::TempDir;
 /// Helper to create a command with a temporary config directory
 fn cmd_with_temp_config() -> (Command, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     // Set HOME to temp directory so config goes to a test location
     cmd.env("HOME", temp_dir.path());
@@ -21,7 +20,7 @@ fn cmd_with_temp_config() -> (Command, TempDir) {
 
 #[test]
 fn test_registry_help() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     cmd.args(["registry", "--help"])
         .assert()
@@ -33,7 +32,7 @@ fn test_registry_help() {
 
 #[test]
 fn test_registry_component_help() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     cmd.args(["registry", "component", "--help"])
         .assert()
@@ -45,7 +44,7 @@ fn test_registry_component_help() {
 
 #[test]
 fn test_registry_profile_help() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     cmd.args(["registry", "profile", "--help"])
         .assert()
@@ -57,7 +56,7 @@ fn test_registry_profile_help() {
 
 #[test]
 fn test_registry_component_add_requires_args() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     cmd.args(["registry", "component", "add"])
         .assert()
@@ -67,7 +66,7 @@ fn test_registry_component_add_requires_args() {
 
 #[test]
 fn test_registry_component_add_requires_both_alias_and_spec() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     cmd.args(["registry", "component", "add", "myalias"])
         .assert()
@@ -77,7 +76,7 @@ fn test_registry_component_add_requires_both_alias_and_spec() {
 
 #[test]
 fn test_registry_profile_add_requires_args() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     cmd.args(["registry", "profile", "add"])
         .assert()
@@ -87,7 +86,7 @@ fn test_registry_profile_add_requires_args() {
 
 #[test]
 fn test_registry_profile_add_requires_output_flag() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     cmd.args(["registry", "profile", "add", "myprofile", "comp1"])
         .assert()
@@ -141,7 +140,7 @@ fn test_registry_info_profiles_filter() {
 
 #[test]
 fn test_registry_info_filters_are_mutually_exclusive() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     cmd.args(["registry", "info", "--components", "--profiles"])
         .assert()
@@ -173,7 +172,7 @@ fn test_registry_profile_list_empty() {
 
 #[test]
 fn test_old_register_command_does_not_exist() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     // The old flat command should not work anymore
     cmd.args(["registry", "register"]).assert().failure();
@@ -181,7 +180,7 @@ fn test_old_register_command_does_not_exist() {
 
 #[test]
 fn test_old_unregister_command_does_not_exist() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     // The old flat command should not work anymore
     cmd.args(["registry", "unregister"]).assert().failure();
@@ -189,7 +188,7 @@ fn test_old_unregister_command_does_not_exist() {
 
 #[test]
 fn test_old_profile_create_command_does_not_exist() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     // The old dashed command should not work anymore
     cmd.args(["registry", "profile-create"]).assert().failure();
@@ -197,7 +196,7 @@ fn test_old_profile_create_command_does_not_exist() {
 
 #[test]
 fn test_old_profile_delete_command_does_not_exist() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     // The old dashed command should not work anymore
     cmd.args(["registry", "profile-delete"]).assert().failure();
@@ -205,7 +204,7 @@ fn test_old_profile_delete_command_does_not_exist() {
 
 #[test]
 fn test_old_list_command_does_not_exist() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     // The old separate list command should not work anymore
     cmd.args(["registry", "list"]).assert().failure();
@@ -267,7 +266,7 @@ fn test_registry_info_short_flag_p() {
 
 #[test]
 fn test_registry_info_short_flags_are_mutually_exclusive() {
-    let mut cmd = cargo_bin_cmd!("wasmcp");
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("wasmcp"));
 
     cmd.args(["registry", "info", "-c", "-p"])
         .assert()

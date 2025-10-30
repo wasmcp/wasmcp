@@ -3,17 +3,17 @@
 A prompts capability that provides example prompt templates.
 """
 
+import json
 from typing import Optional
 from wit_world import exports
-from wit_world.imports import mcp, server_messages, streams
+from wit_world.imports import mcp, server_handler
 
 
 class ExamplePrompts(exports.Prompts):
     def list_prompts(
         self,
-        ctx: server_messages.Context,
+        ctx: server_handler.RequestCtx,
         request: mcp.ListPromptsRequest,
-        client_stream: Optional[streams.OutputStream],
     ) -> mcp.ListPromptsResult:
         return mcp.ListPromptsResult(
             prompts=[
@@ -62,13 +62,11 @@ class ExamplePrompts(exports.Prompts):
 
     def get_prompt(
         self,
-        ctx: server_messages.Context,
+        ctx: server_handler.RequestCtx,
         request: mcp.GetPromptRequest,
-        client_stream: Optional[streams.OutputStream],
     ) -> Optional[mcp.GetPromptResult]:
         if request.name == "code-review":
             # Parse arguments (would be JSON in real implementation)
-            import json
             args = json.loads(request.arguments) if request.arguments else {}
             language = args.get("language", "unknown")
             code = args.get("code", "")
@@ -79,24 +77,19 @@ class ExamplePrompts(exports.Prompts):
                 messages=[
                     mcp.PromptMessage(
                         role=mcp.Role.USER,
-                        content=mcp.ContentBlock(
-                            text=mcp.TextContent(
-                                text=mcp.TextData(
-                                    text=f"Please review this {language} code for best practices, "
-                                    f"potential bugs, and suggest improvements:\n\n{code}",
-                                    text_stream=None,
+                        content=mcp.ContentBlock_Text(
+                            mcp.TextContent(
+                                text=mcp.TextData_Text(
+                                    f"Please review this {language} code for best practices, "
+                                    f"potential bugs, and suggest improvements:\n\n{code}"
                                 ),
                                 options=None,
-                            ),
-                            image=None,
-                            embedded_resource=None,
-                            resource=None,
+                            )
                         ),
                     ),
                 ],
             )
         elif request.name == "greeting":
-            import json
             args = json.loads(request.arguments) if request.arguments else {}
             name = args.get("name", "there")
 
@@ -106,17 +99,13 @@ class ExamplePrompts(exports.Prompts):
                 messages=[
                     mcp.PromptMessage(
                         role=mcp.Role.USER,
-                        content=mcp.ContentBlock(
-                            text=mcp.TextContent(
-                                text=mcp.TextData(
-                                    text=f"Greet {name} in a friendly and welcoming way.",
-                                    text_stream=None,
+                        content=mcp.ContentBlock_Text(
+                            mcp.TextContent(
+                                text=mcp.TextData_Text(
+                                    f"Greet {name} in a friendly and welcoming way."
                                 ),
                                 options=None,
-                            ),
-                            image=None,
-                            embedded_resource=None,
-                            resource=None,
+                            )
                         ),
                     ),
                 ],

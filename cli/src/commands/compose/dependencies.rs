@@ -23,22 +23,22 @@ pub mod interfaces {
 
     /// Generate the server handler interface name with version
     pub fn server_handler(version: &str) -> String {
-        format!("wasmcp:server/handler@{}", version)
+        format!("wasmcp:mcp-v20250618/server-handler@{}", version)
     }
 
     /// Generate the tools capability interface name with version
     pub fn tools(version: &str) -> String {
-        format!("wasmcp:protocol/tools@{}", version)
+        format!("wasmcp:mcp-v20250618/tools@{}", version)
     }
 
     /// Generate the resources capability interface name with version
     pub fn resources(version: &str) -> String {
-        format!("wasmcp:protocol/resources@{}", version)
+        format!("wasmcp:mcp-v20250618/resources@{}", version)
     }
 
     /// Generate the prompts capability interface name with version
     pub fn prompts(version: &str) -> String {
-        format!("wasmcp:protocol/prompts@{}", version)
+        format!("wasmcp:mcp-v20250618/prompts@{}", version)
     }
 
     /// Generate a versioned package name for wasmcp components
@@ -146,18 +146,24 @@ mod tests {
     fn test_interface_naming_server_handler() {
         assert_eq!(
             interfaces::server_handler("0.1.0"),
-            "wasmcp:server/handler@0.1.0"
+            "wasmcp:mcp-v20250618/server-handler@0.1.0"
         );
         assert_eq!(
             interfaces::server_handler("1.0.0"),
-            "wasmcp:server/handler@1.0.0"
+            "wasmcp:mcp-v20250618/server-handler@1.0.0"
         );
     }
 
     #[test]
     fn test_interface_naming_tools() {
-        assert_eq!(interfaces::tools("0.1.0"), "wasmcp:protocol/tools@0.1.0");
-        assert_eq!(interfaces::tools("1.0.0"), "wasmcp:protocol/tools@1.0.0");
+        assert_eq!(
+            interfaces::tools("0.1.0"),
+            "wasmcp:mcp-v20250618/tools@0.1.0"
+        );
+        assert_eq!(
+            interfaces::tools("1.0.0"),
+            "wasmcp:mcp-v20250618/tools@1.0.0"
+        );
     }
 
     #[test]

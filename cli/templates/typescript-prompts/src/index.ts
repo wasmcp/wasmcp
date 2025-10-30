@@ -16,14 +16,12 @@ import type {
   Role,
   ContentBlock,
   TextData,
-} from './generated/interfaces/wasmcp-protocol-mcp.js';
-import type { Context } from './generated/interfaces/wasmcp-protocol-server-messages.js';
-import type { OutputStream } from './generated/interfaces/wasi-io-streams.js';
+} from './generated/interfaces/wasmcp-mcp-v20250618-mcp.js';
+import type { RequestCtx } from './generated/interfaces/wasmcp-mcp-v20250618-prompts.js';
 
 function listPrompts(
-  _ctx: Context,
-  _request: ListPromptsRequest,
-  _clientStream: OutputStream | null
+  _ctx: RequestCtx,
+  _request: ListPromptsRequest
 ): ListPromptsResult {
   const prompts: Prompt[] = [
     {
@@ -74,10 +72,9 @@ function listPrompts(
 }
 
 async function getPrompt(
-  _ctx: Context,
-  request: GetPromptRequest,
-  _clientStream: OutputStream | null
-): Promise<GetPromptResult | null> {
+  _ctx: RequestCtx,
+  request: GetPromptRequest
+): Promise<GetPromptResult | undefined> {
   if (request.name === 'code-review') {
     // Parse arguments
     const args = request.arguments ? JSON.parse(request.arguments) : {};
@@ -128,7 +125,7 @@ async function getPrompt(
     };
   }
 
-  return null; // We don't handle this prompt
+  return undefined; // We don't handle this prompt
 }
 
 export const prompts = {

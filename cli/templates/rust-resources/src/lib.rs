@@ -9,17 +9,15 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::protocol::resources::Guest;
-use bindings::wasmcp::protocol::mcp::*;
-use bindings::wasi::io::streams::OutputStream;
+use bindings::exports::wasmcp::mcp_v20250618::resources::{Guest, RequestCtx};
+use bindings::wasmcp::mcp_v20250618::mcp::*;
 
 struct TextResources;
 
 impl Guest for TextResources {
     fn list_resources(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: RequestCtx,
         _request: ListResourcesRequest,
-        _client_stream: Option<&OutputStream>,
     ) -> Result<ListResourcesResult, ErrorCode> {
         Ok(ListResourcesResult {
             resources: vec![
@@ -54,24 +52,22 @@ impl Guest for TextResources {
     }
 
     fn read_resource(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: RequestCtx,
         request: ReadResourceRequest,
-        _client_stream: Option<&OutputStream>,
-    ) -> Option<ReadResourceResult> {
+    ) -> Result<Option<ReadResourceResult>, ErrorCode> {
         match request.uri.as_str() {
-            "text://greeting" => Some(success_result("Hello from wasmcp resources!")),
-            "text://info" => Some(success_result(
+            "text://greeting" => Ok(Some(success_result("Hello from wasmcp resources!"))),
+            "text://info" => Ok(Some(success_result(
                 "This is a simple resources capability component. \
                  It provides static text content via custom URIs.",
-            )),
-            _ => None, // We don't handle this URI
+            ))),
+            _ => Ok(None), // We don't handle this URI
         }
     }
 
     fn list_resource_templates(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: RequestCtx,
         _request: ListResourceTemplatesRequest,
-        _client_stream: Option<&OutputStream>,
     ) -> Result<ListResourceTemplatesResult, ErrorCode> {
         // No templates for static resources
         Ok(ListResourceTemplatesResult {

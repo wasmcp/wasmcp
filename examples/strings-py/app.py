@@ -6,15 +6,14 @@ A tools capability that provides string manipulation operations with notificatio
 import json
 from typing import Optional
 from wit_world import exports
-from wit_world.imports import mcp, server_messages, streams, notifications
+from wit_world.imports import mcp, server_handler, streams, notifications
 
 
 class StringsTools(exports.Tools):
     def list_tools(
         self,
-        ctx: server_messages.Context,
+        ctx: server_handler.RequestCtx,
         request: mcp.ListToolsRequest,
-        client_stream: Optional[streams.OutputStream],
     ) -> mcp.ListToolsResult:
         return mcp.ListToolsResult(
             tools=[
@@ -55,9 +54,8 @@ class StringsTools(exports.Tools):
 
     def call_tool(
         self,
-        ctx: server_messages.Context,
+        ctx: server_handler.RequestCtx,
         request: mcp.CallToolRequest,
-        client_stream: Optional[streams.OutputStream],
     ) -> Optional[mcp.CallToolResult]:
         if not request.arguments:
             return error_result("Missing tool arguments")
@@ -74,7 +72,7 @@ class StringsTools(exports.Tools):
                 text=args.get("text"),
                 start=args.get("start"),
                 end=args.get("end"),
-                client_stream=client_stream,
+                message_stream=ctx.message_stream,
             )
         else:
             return None  # We don't handle this tool
@@ -87,7 +85,7 @@ def reverse_string(text: str) -> mcp.CallToolResult:
     return success_result(text[::-1])
 
 
-def slice_string(text: str, start: int, end: Optional[int], client_stream: Optional[streams.OutputStream] = None) -> mcp.CallToolResult:
+def slice_string(text: str, start: int, end: Optional[int], message_stream: Optional[streams.OutputStream] = None) -> mcp.CallToolResult:
     if not isinstance(text, str):
         return error_result("Missing or invalid parameter 'text'")
     if not isinstance(start, int):
@@ -96,10 +94,10 @@ def slice_string(text: str, start: int, end: Optional[int], client_stream: Optio
         return error_result("Invalid parameter 'end'")
 
     # Send notification about the slicing operation
-    if client_stream:
+    if message_stream:
         end_str = str(end) if end is not None else "end"
         msg = f"Slicing text from index {start} to {end_str}"
-        notifications.log(client_stream, msg, mcp.LogLevel.DEBUG, "slice")
+        notifications.log(message_stream, msg, mcp.LogLevel.DEBUG, "slice")
 
     result = text[start:end] if end is not None else text[start:]
     return success_result(result)

@@ -389,11 +389,11 @@ mod tests {
     fn test_interface_names() {
         assert_eq!(
             dependencies::interfaces::server_handler("0.1.0"),
-            "wasmcp:server/handler@0.1.0"
+            "wasmcp:mcp-v20250618/server-handler@0.1.0"
         );
         assert_eq!(
             dependencies::interfaces::tools("0.1.0"),
-            "wasmcp:protocol/tools@0.1.0"
+            "wasmcp:mcp-v20250618/tools@0.1.0"
         );
         assert_eq!(
             dependencies::interfaces::WASI_HTTP_HANDLER,
@@ -564,7 +564,12 @@ mod tests {
         assert!(!options.force);
         assert!(!options.skip_download);
         // Version comes from embedded versions.toml
-        assert!(options.version_resolver.get_version("server").is_ok());
+        assert!(
+            options
+                .version_resolver
+                .get_version("mcp-v20250618")
+                .is_ok()
+        );
     }
 
     /// Test http notifications path handling
@@ -592,7 +597,12 @@ mod tests {
             .unwrap();
 
         // Version comes from embedded versions.toml
-        assert!(options.version_resolver.get_version("server").is_ok());
+        assert!(
+            options
+                .version_resolver
+                .get_version("mcp-v20250618")
+                .is_ok()
+        );
         assert_eq!(
             options.override_transport,
             Some("custom-transport.wasm".to_string())

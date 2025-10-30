@@ -9,17 +9,15 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::protocol::tools::Guest;
-use bindings::wasmcp::protocol::mcp::*;
-use bindings::wasi::io::streams::OutputStream;
+use bindings::exports::wasmcp::mcp_v20250618::tools::{Guest, RequestCtx};
+use bindings::wasmcp::mcp_v20250618::mcp::*;
 
 struct Calculator;
 
 impl Guest for Calculator {
     fn list_tools(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: RequestCtx,
         _request: ListToolsRequest,
-        _client_stream: Option<&OutputStream>,
     ) -> Result<ListToolsResult, ErrorCode> {
         Ok(ListToolsResult {
             tools: vec![
@@ -62,14 +60,13 @@ impl Guest for Calculator {
     }
 
     fn call_tool(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: RequestCtx,
         request: CallToolRequest,
-        _client_stream: Option<&OutputStream>,
-    ) -> Option<CallToolResult> {
+    ) -> Result<Option<CallToolResult>, ErrorCode> {
         match request.name.as_str() {
-            "add" => Some(execute_operation(&request.arguments, |a, b| a + b)),
-            "subtract" => Some(execute_operation(&request.arguments, |a, b| a - b)),
-            _ => None, // We don't handle this tool
+            "add" => Ok(Some(execute_operation(&request.arguments, |a, b| a + b))),
+            "subtract" => Ok(Some(execute_operation(&request.arguments, |a, b| a - b))),
+            _ => Ok(None), // We don't handle this tool
         }
     }
 }

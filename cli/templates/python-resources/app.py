@@ -5,15 +5,14 @@ A resources capability that provides simple text resources.
 
 from typing import Optional
 from wit_world import exports
-from wit_world.imports import mcp, server_messages, streams
+from wit_world.imports import mcp, server_handler
 
 
 class TextResources(exports.Resources):
     def list_resources(
         self,
-        ctx: server_messages.Context,
+        ctx: server_handler.RequestCtx,
         request: mcp.ListResourcesRequest,
-        client_stream: Optional[streams.OutputStream],
     ) -> mcp.ListResourcesResult:
         return mcp.ListResourcesResult(
             resources=[
@@ -48,9 +47,8 @@ class TextResources(exports.Resources):
 
     def read_resource(
         self,
-        ctx: server_messages.Context,
+        ctx: server_handler.RequestCtx,
         request: mcp.ReadResourceRequest,
-        client_stream: Optional[streams.OutputStream],
     ) -> Optional[mcp.ReadResourceResult]:
         if request.uri == "text://greeting":
             return success_result("Hello from wasmcp resources!")
@@ -64,9 +62,8 @@ class TextResources(exports.Resources):
 
     def list_resource_templates(
         self,
-        ctx: server_messages.Context,
+        ctx: server_handler.RequestCtx,
         request: mcp.ListResourceTemplatesRequest,
-        client_stream: Optional[streams.OutputStream],
     ) -> mcp.ListResourceTemplatesResult:
         # No templates for static resources
         return mcp.ListResourceTemplatesResult(

@@ -19,8 +19,8 @@ setup: $(VENV)
 # Generate bindings and build the component
 build:
 	@rm -rf wit_world
-	@$(COMPONENTIZE_PY) --wit-path wit --world strings bindings .
-	@$(COMPONENTIZE_PY) --wit-path wit --world strings componentize app -o $(COMPONENT_NAME).wasm
+	@. $(VENV)/bin/activate && componentize-py --wit-path wit --world strings bindings .
+	@. $(VENV)/bin/activate && componentize-py --wit-path wit --world strings componentize app -o $(COMPONENT_NAME).wasm
 
 # Clean build artifacts
 clean:

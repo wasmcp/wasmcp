@@ -13,10 +13,10 @@ import type {
   CallToolResult,
   Tool,
   LogLevel,
-} from 'wasmcp:protocol/mcp@0.1.0';
-import type { Context } from 'wasmcp:protocol/server-messages@0.1.0';
-import type { OutputStream } from 'wasi:io/streams@0.2.3';
-import { log } from 'wasmcp:server/notifications@0.1.1';
+} from './generated/interfaces/wasmcp-mcp-v20250618-mcp.js';
+import type { RequestCtx } from './generated/interfaces/wasmcp-mcp-v20250618-tools.js';
+import type { OutputStream } from './generated/interfaces/wasi-io-streams.js';
+import { log } from 'wasmcp:mcp-v20250618/notifications@0.1.0';
 
 // Tool input schemas
 const GetWeatherSchema = z.object({
@@ -34,9 +34,8 @@ type GetWeatherArgs = z.infer<typeof GetWeatherSchema>;
 type MultiWeatherArgs = z.infer<typeof MultiWeatherSchema>;
 
 function listTools(
-  _ctx: Context,
-  _request: ListToolsRequest,
-  _clientStream: OutputStream | null
+  _ctx: RequestCtx,
+  _request: ListToolsRequest
 ): ListToolsResult {
   const tools: Tool[] = [
     {
@@ -69,21 +68,20 @@ function listTools(
 }
 
 async function callTool(
-  _ctx: Context,
-  request: CallToolRequest,
-  clientStream: OutputStream | null
-): Promise<CallToolResult | null> {
+  ctx: RequestCtx,
+  request: CallToolRequest
+): Promise<CallToolResult | undefined> {
   switch (request.name) {
     case 'get_weather':
-      return await handleGetWeather(request.arguments, clientStream);
+      return await handleGetWeather(request.arguments, ctx.messageStream);
     case 'multi_weather':
-      return await handleMultiWeather(request.arguments, clientStream);
+      return await handleMultiWeather(request.arguments, ctx.messageStream);
     default:
-      return null; // We don't handle this tool
+      return undefined; // We don't handle this tool
   }
 }
 
-async function handleGetWeather(args?: string, clientStream?: OutputStream | null): Promise<CallToolResult> {
+async function handleGetWeather(args?: string, messageStream?: OutputStream): Promise<CallToolResult> {
   try {
     if (!args) {
       return errorResult('Arguments are required');
@@ -92,9 +90,9 @@ async function handleGetWeather(args?: string, clientStream?: OutputStream | nul
     const parsed: GetWeatherArgs = GetWeatherSchema.parse(JSON.parse(args));
 
     // Send notification about starting weather fetch
-    if (clientStream) {
+    if (messageStream) {
       log(
-        clientStream,
+        messageStream,
         `Fetching weather for ${parsed.location}...`,
         'info' as LogLevel,
         'weather'
@@ -113,7 +111,7 @@ async function handleGetWeather(args?: string, clientStream?: OutputStream | nul
   }
 }
 
-async function handleMultiWeather(args?: string, clientStream?: OutputStream | null): Promise<CallToolResult> {
+async function handleMultiWeather(args?: string, messageStream?: OutputStream): Promise<CallToolResult> {
   try {
     if (!args) {
       return errorResult('Arguments are required');
@@ -126,9 +124,9 @@ async function handleMultiWeather(args?: string, clientStream?: OutputStream | n
     }
 
     // Send notification about concurrent fetch
-    if (clientStream) {
+    if (messageStream) {
       log(
-        clientStream,
+        messageStream,
         `Fetching weather for ${parsed.cities.length} cities concurrently...`,
         'info' as LogLevel,
         'weather'
@@ -139,9 +137,9 @@ async function handleMultiWeather(args?: string, clientStream?: OutputStream | n
     const results = await Promise.all(
       parsed.cities.map(async (city) => {
         try {
-          if (clientStream) {
+          if (messageStream) {
             log(
-              clientStream,
+              messageStream,
               `Processing ${city}...`,
               'debug' as LogLevel,
               'weather'
@@ -154,9 +152,9 @@ async function handleMultiWeather(args?: string, clientStream?: OutputStream | n
       })
     );
 
-    if (clientStream) {
+    if (messageStream) {
       log(
-        clientStream,
+        messageStream,
         'All weather requests completed',
         'info' as LogLevel,
         'weather'
