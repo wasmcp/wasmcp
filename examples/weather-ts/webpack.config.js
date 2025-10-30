@@ -48,11 +48,7 @@ export default {
   externals: {
     "wasmcp:mcp-v20250618/mcp@0.1.1": "wasmcp:mcp-v20250618/mcp@0.1.1",
     "wasmcp:mcp-v20250618/tools@0.1.1": "wasmcp:mcp-v20250618/tools@0.1.1",
-    "wasmcp:mcp-v20250618/server-handler@0.1.1": "wasmcp:mcp-v20250618/server-handler@0.1.1",
     "wasmcp:mcp-v20250618/server-messages@0.1.1": "wasmcp:mcp-v20250618/server-messages@0.1.1",
-    "wasi:io/streams@0.2.3": "wasi:io/streams@0.2.3",
-    "wasi:http/types@0.2.3": "wasi:http/types@0.2.3",
-    "wasi:http/outgoing-handler@0.2.3": "wasi:http/outgoing-handler@0.2.3",
   },
   optimization: {
     minimize: false,

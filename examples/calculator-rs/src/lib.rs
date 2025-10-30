@@ -14,8 +14,6 @@ use bindings::wasmcp::mcp_v20250618::mcp::*;
 use bindings::wasmcp::mcp_v20250618::server_messages;
 use bindings::wasmcp::mcp_v20250618::server_handler::RequestCtx;
 
-use crate::bindings::wasi::io::streams::OutputStream;
-
 struct Calculator;
 
 impl Guest for Calculator {
@@ -174,7 +172,7 @@ fn execute_factorial(
         }
     };
 
-    let log = |stream: Option<&OutputStream>, msg: String| if let Some(stream) = stream {
+    let log = |msg| if let Some(stream) = ctx.message_stream {
         let _ = server_messages::notify(
             stream,
             &ServerNotification::Log(LoggingMessageNotification {
@@ -186,7 +184,7 @@ fn execute_factorial(
     };
 
     // Send initial progress notification if stream is available
-    log(ctx.message_stream, format!("Starting factorial calculation for {n}!"));
+    log(format!("Starting factorial calculation for {n}!"));
 
     // Calculate factorial with progress updates
     let mut result: u64 = 1;
@@ -200,18 +198,12 @@ fn execute_factorial(
 
         // Send progress notification every few steps (to avoid overwhelming)
         if i % 3 == 0 || i == n {
-            log(
-                ctx.message_stream,
-                format!("Computing: {i} * {} = {result}", result / i),
-            );
+            log(format!("Computing: {i} * {} = {result}", result / i));
         }
     }
 
     // Send completion notification
-    log(
-        ctx.message_stream,
-        format!("Factorial calculation complete: {n}! = {result}"),
-    );
+    log(format!("Factorial calculation complete: {n}! = {result}"));
 
     success_result(result.to_string())
 }

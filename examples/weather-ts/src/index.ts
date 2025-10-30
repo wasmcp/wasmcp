@@ -14,7 +14,6 @@ import type {
   Tool,
 } from 'wasmcp:mcp-v20250618/mcp@0.1.1';
 import type { RequestCtx } from 'wasmcp:mcp-v20250618/tools@0.1.1';
-import type { OutputStream } from 'wasi:io/streams@0.2.3';
 import { notify } from 'wasmcp:mcp-v20250618/server-messages@0.1.1';
 
 // Tool input schemas
@@ -94,7 +93,7 @@ async function callTool(
   }
 }
 
-async function handleGetWeather(args?: string, messageStream?: OutputStream): Promise<CallToolResult> {
+async function handleGetWeather(args?: string): Promise<CallToolResult> {
   try {
     if (!args) {
       return errorResult('Arguments are required');
@@ -114,7 +113,7 @@ async function handleGetWeather(args?: string, messageStream?: OutputStream): Pr
   }
 }
 
-async function handleMultiWeather(args?: string, messageStream?: OutputStream): Promise<CallToolResult> {
+async function handleMultiWeather(args?: string): Promise<CallToolResult> {
   try {
     if (!args) {
       return errorResult('Arguments are required');
