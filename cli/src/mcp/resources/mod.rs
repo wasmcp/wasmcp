@@ -241,7 +241,7 @@ async fn read_local_resource(uri: &str, repo_root: &Path) -> Result<ReadResource
                 "protocol/features" => repo_root.join("wit/protocol/features.wit"),
                 "server/handler" => repo_root.join("wit/server/handler.wit"),
                 "server/sessions" => repo_root.join("wit/server/sessions.wit"),
-                "server/notifications" => repo_root.join("wit/server/notifications.wit"),
+                "server/messages" => repo_root.join("wit/server/messages.wit"),
                 _ => {
                     return Err(McpError::resource_not_found(
                         format!("Unknown WIT resource: {}", wit_path),

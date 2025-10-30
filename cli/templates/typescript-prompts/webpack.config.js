@@ -1,42 +1,59 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from "path";
+import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default {
-  entry: './src/index.ts',
-  target: 'webworker',
-  mode: 'production',
+  mode: "development",
+  devtool: false,
+  stats: "errors-only",
+  entry: "./src/index.ts",
+  target: "webworker",
+  experiments: {
+    outputModule: true,
+  },
   module: {
     rules: [
       {
-        test: /\.ts$/,
-        use: 'ts-loader',
+        test: /\.tsx?$/,
+        use: {
+          loader: "ts-loader",
+          options: {
+            // Skip type checking in webpack - we do it separately with tsc
+            transpileOnly: true,
+          },
+        },
         exclude: /node_modules/,
       },
     ],
   },
   resolve: {
-    extensions: ['.ts', '.js'],
-  },
-  output: {
-    filename: 'bundled.js',
-    path: path.resolve(__dirname, 'build'),
-    library: {
-      type: 'module',
+    extensions: [".tsx", ".ts", ".js"],
+    extensionAlias: {
+      ".js": [".ts", ".js"],
     },
   },
-  experiments: {
-    outputModule: true,
+  output: {
+    path: path.resolve(__dirname, "build"),
+    filename: "bundled.js",
+    module: true,
+    library: {
+      type: "module",
+    },
+    environment: {
+      module: true,
+    },
   },
-  externalsType: 'module',
+  externalsType: "module",
   externals: {
-    'wasmcp:mcp-v20250618/mcp@0.1.0': 'wasmcp:mcp-v20250618/mcp@0.1.0',
-    'wasmcp:mcp-v20250618/prompts@0.1.0': 'wasmcp:mcp-v20250618/prompts@0.1.0',
-    'wasmcp:mcp-v20250618/server-handler@0.1.0': 'wasmcp:mcp-v20250618/server-handler@0.1.0',
+    "wasmcp:mcp-v20250618/mcp@{{wasmcp_version}}": "wasmcp:mcp-v20250618/mcp@{{wasmcp_version}}",
+    "wasmcp:mcp-v20250618/prompts@{{wasmcp_version}}": "wasmcp:mcp-v20250618/prompts@{{wasmcp_version}}",
+    "wasmcp:mcp-v20250618/server-messages@{{wasmcp_version}}": "wasmcp:mcp-v20250618/server-messages@{{wasmcp_version}}",
   },
   optimization: {
     minimize: false,
+  },
+  performance: {
+    hints: false,
   },
 };

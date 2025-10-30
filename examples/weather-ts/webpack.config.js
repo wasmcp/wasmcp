@@ -46,13 +46,9 @@ export default {
   },
   externalsType: "module",
   externals: {
-    "wasmcp:mcp-v20250618/mcp@0.1.0": "wasmcp:mcp-v20250618/mcp@0.1.0",
-    "wasmcp:mcp-v20250618/tools@0.1.0": "wasmcp:mcp-v20250618/tools@0.1.0",
-    "wasmcp:mcp-v20250618/server-handler@0.1.0": "wasmcp:mcp-v20250618/server-handler@0.1.0",
-    "wasmcp:mcp-v20250618/notifications@0.1.0": "wasmcp:mcp-v20250618/notifications@0.1.0",
-    "wasi:io/streams@0.2.3": "wasi:io/streams@0.2.3",
-    "wasi:http/types@0.2.3": "wasi:http/types@0.2.3",
-    "wasi:http/outgoing-handler@0.2.3": "wasi:http/outgoing-handler@0.2.3",
+    "wasmcp:mcp-v20250618/mcp@0.1.1": "wasmcp:mcp-v20250618/mcp@0.1.1",
+    "wasmcp:mcp-v20250618/tools@0.1.1": "wasmcp:mcp-v20250618/tools@0.1.1",
+    "wasmcp:mcp-v20250618/server-messages@0.1.1": "wasmcp:mcp-v20250618/server-messages@0.1.1",
   },
   optimization: {
     minimize: false,

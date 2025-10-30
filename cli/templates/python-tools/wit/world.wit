@@ -1,9 +1,9 @@
-package wasmcp:{{project_name}}@{{wasmcp_version}};
+package wasmcp:{{project_name}}@0.1.0;
 
 /// {{project_name}} MCP tools capability component
 ///
 /// This component exports the tools interface.
 /// The CLI will automatically wrap it with tools-middleware for composition.
 world {{project_name}} {
-    export wasmcp:mcp-v20250618/tools@0.1.0;
+    export wasmcp:mcp-v20250618/tools@{{wasmcp_version}};
 }
