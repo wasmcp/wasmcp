@@ -160,13 +160,13 @@ fn handle_json_rpc_request(
     let body = response.body().map_err(|_| "Failed to get response body")?;
     let output_stream = body.write().map_err(|_| "Failed to get output stream")?;
 
-    // Create context (stateless: no session, no JWT)
+    // Create context (stateless: no session, no user identity)
     let ctx = RequestCtx {
-        request_id: request_id.clone(),
-        jwt: None,
-        session_id: None,
-        message_stream: Some(&output_stream),
+        id: request_id.clone(),
         protocol_version,
+        messages: Some(&output_stream),
+        session: None,
+        user: None,
     };
 
     // Delegate to server-handler (may send notifications via output stream)
@@ -348,11 +348,11 @@ fn discover_capabilities() -> bindings::wasmcp::mcp_v20250618::mcp::ServerCapabi
     // Try list-tools
     let req = ClientRequest::ToolsList(ListToolsRequest { cursor: None });
     let ctx = RequestCtx {
-        request_id: RequestId::Number(0),
-        jwt: None,
-        session_id: None,
-        message_stream: None,
+        id: RequestId::Number(0),
         protocol_version: "2025-06-18".to_string(),
+        messages: None,
+        session: None,
+        user: None,
     };
     if handle_request(&ctx, &req).is_ok() {
         list_flags |= ServerLists::TOOLS;
@@ -361,11 +361,11 @@ fn discover_capabilities() -> bindings::wasmcp::mcp_v20250618::mcp::ServerCapabi
     // Try list-resources
     let req = ClientRequest::ResourcesList(ListResourcesRequest { cursor: None });
     let ctx = RequestCtx {
-        request_id: RequestId::Number(1),
-        jwt: None,
-        session_id: None,
-        message_stream: None,
+        id: RequestId::Number(1),
         protocol_version: "2025-06-18".to_string(),
+        messages: None,
+        session: None,
+        user: None,
     };
     if handle_request(&ctx, &req).is_ok() {
         list_flags |= ServerLists::RESOURCES;
@@ -375,11 +375,11 @@ fn discover_capabilities() -> bindings::wasmcp::mcp_v20250618::mcp::ServerCapabi
     let mut has_completions = false;
     let req = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
     let ctx = RequestCtx {
-        request_id: RequestId::Number(2),
-        jwt: None,
-        session_id: None,
-        message_stream: None,
+        id: RequestId::Number(2),
         protocol_version: "2025-06-18".to_string(),
+        messages: None,
+        session: None,
+        user: None,
     };
     if let Ok(ServerResult::PromptsList(prompts_result)) = handle_request(&ctx, &req) {
         list_flags |= ServerLists::PROMPTS;
@@ -408,11 +408,11 @@ fn discover_capabilities() -> bindings::wasmcp::mcp_v20250618::mcp::ServerCapabi
                         // Test if completions are supported
                         let req = ClientRequest::CompletionComplete(completion_request);
                         let ctx = RequestCtx {
-                            request_id: RequestId::Number(3),
-                            jwt: None,
-                            session_id: None,
-                            message_stream: None,
+                            id: RequestId::Number(3),
                             protocol_version: "2025-06-18".to_string(),
+                            messages: None,
+                            session: None,
+                            user: None,
                         };
                         match handle_request(&ctx, &req) {
                             Ok(_) => has_completions = true,
@@ -545,11 +545,11 @@ fn handle_json_rpc_notification(
     // Parse notification from JSON
     let notification = parser::parse_client_notification(json_rpc)?;
 
-    // Create context (stateless: no session, no JWT)
+    // Create context (stateless: no session, no user identity)
     let ctx = NotificationCtx {
-        jwt: None,
-        session_id: None,
         protocol_version,
+        session: None,
+        user: None,
     };
 
     // Forward to server-handler (no response expected)
@@ -579,20 +579,20 @@ fn handle_json_rpc_response(
         Ok(client_result) => {
             // Success response
             let ctx = ResultCtx {
-                request_id,
-                jwt: None,
-                session_id: None,
+                id: request_id,
                 protocol_version: protocol_version.clone(),
+                session: None,
+                user: None,
             };
             handle_result(&ctx, client_result);
         }
         Err(error_code) => {
             // Error response
             let ctx = ErrorCtx {
-                request_id: Some(request_id),
-                jwt: None,
-                session_id: None,
+                id: Some(request_id),
                 protocol_version,
+                session: None,
+                user: None,
             };
             handle_error(&ctx, &error_code);
         }

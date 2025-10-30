@@ -1,9 +1,9 @@
 //! Prompts Middleware Component
 //!
 //! A reusable middleware that bridges the MCP protocol (server-handler)
-//! with the clean prompts-capability interface. This component:
+//! with the prompts interface. This component:
 //! - Detects prompts/list and prompts/get requests
-//! - Calls the imported prompts-capability functions
+//! - Calls the imported prompts interface functions
 //! - Merges results with downstream handlers
 //! - Delegates all other requests downstream
 
@@ -17,12 +17,13 @@ mod bindings {
 }
 
 use bindings::exports::wasmcp::mcp_v20250618::server_handler::{
-    ErrorCtx as ExportErrorCtx, Guest, NotificationCtx as ExportNotificationCtx,
-    RequestCtx as ExportRequestCtx, ResultCtx as ExportResultCtx,
+    ErrorCtx as ExportErrorCtx, Guest, Identity as ExportIdentity,
+    NotificationCtx as ExportNotificationCtx, RequestCtx as ExportRequestCtx,
+    ResultCtx as ExportResultCtx, Session as ExportSession,
 };
 use bindings::wasi::io::streams::OutputStream;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::prompts as capability;
+use bindings::wasmcp::mcp_v20250618::prompts;
 use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
 
 struct PromptsMiddleware;
@@ -39,11 +40,17 @@ impl Guest for PromptsMiddleware {
                 // Delegate all other requests to downstream handler
                 downstream::handle_request(
                     &downstream::RequestCtx {
-                        request_id: ctx.request_id.clone(),
-                        jwt: ctx.jwt.clone(),
-                        session_id: ctx.session_id.clone(),
-                        message_stream: ctx.message_stream,
+                        id: ctx.id.clone(),
                         protocol_version: ctx.protocol_version.clone(),
+                        messages: ctx.messages,
+                        session: ctx.session.as_ref().map(|s| downstream::Session {
+                            session_id: s.session_id.clone(),
+                            store_id: s.store_id.clone(),
+                        }),
+                        user: ctx.user.as_ref().map(|u| downstream::Identity {
+                            jwt: u.jwt.clone(),
+                            claims: u.claims.clone(),
+                        }),
                     },
                     &request,
                 )
@@ -55,9 +62,15 @@ impl Guest for PromptsMiddleware {
         // Forward to downstream handler
         downstream::handle_notification(
             &downstream::NotificationCtx {
-                jwt: ctx.jwt.clone(),
-                session_id: ctx.session_id.clone(),
                 protocol_version: ctx.protocol_version.clone(),
+                session: ctx.session.as_ref().map(|s| downstream::Session {
+                    session_id: s.session_id.clone(),
+                    store_id: s.store_id.clone(),
+                }),
+                user: ctx.user.as_ref().map(|u| downstream::Identity {
+                    jwt: u.jwt.clone(),
+                    claims: u.claims.clone(),
+                }),
             },
             &notification,
         );
@@ -67,10 +80,16 @@ impl Guest for PromptsMiddleware {
         // Forward to downstream handler
         downstream::handle_result(
             &downstream::ResultCtx {
-                request_id: ctx.request_id.clone(),
-                jwt: ctx.jwt.clone(),
-                session_id: ctx.session_id.clone(),
+                id: ctx.id.clone(),
                 protocol_version: ctx.protocol_version.clone(),
+                session: ctx.session.as_ref().map(|s| downstream::Session {
+                    session_id: s.session_id.clone(),
+                    store_id: s.store_id.clone(),
+                }),
+                user: ctx.user.as_ref().map(|u| downstream::Identity {
+                    jwt: u.jwt.clone(),
+                    claims: u.claims.clone(),
+                }),
             },
             result,
         );
@@ -80,10 +99,16 @@ impl Guest for PromptsMiddleware {
         // Forward to downstream handler
         downstream::handle_error(
             &downstream::ErrorCtx {
-                request_id: ctx.request_id.clone(),
-                jwt: ctx.jwt.clone(),
-                session_id: ctx.session_id.clone(),
+                id: ctx.id.clone(),
                 protocol_version: ctx.protocol_version.clone(),
+                session: ctx.session.as_ref().map(|s| downstream::Session {
+                    session_id: s.session_id.clone(),
+                    store_id: s.store_id.clone(),
+                }),
+                user: ctx.user.as_ref().map(|u| downstream::Identity {
+                    jwt: u.jwt.clone(),
+                    claims: u.claims.clone(),
+                }),
             },
             &error,
         );
@@ -94,25 +119,31 @@ fn handle_prompts_list(
     req: ListPromptsRequest,
     ctx: ExportRequestCtx,
 ) -> Result<ServerResult, ErrorCode> {
-    // Try to get prompts from our capability
-    let our_result = match capability::list_prompts(
-        &capability::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+    // Try to get prompts from imported prompts interface
+    let our_result = match prompts::list_prompts(
+        &downstream::RequestCtx {
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &req,
     ) {
         Ok(result) => Some(result),
         Err(ErrorCode::MethodNotFound(_)) => {
-            // Capability doesn't implement prompts interface - skip it
+            // Component doesn't implement prompts interface - skip it
             None
         }
         Err(e) => {
             // Real error (InvalidParams, InternalError, etc.) - return it
-            // Don't hide capability errors by silently falling back to downstream
+            // Don't hide errors by silently falling back to downstream
             return Err(e);
         }
     };
@@ -121,11 +152,17 @@ fn handle_prompts_list(
     let downstream_req = ClientRequest::PromptsList(req.clone());
     match downstream::handle_request(
         &downstream::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &downstream_req,
     ) {
@@ -166,11 +203,11 @@ fn handle_prompts_list(
             // Downstream returned a real error
             match our_result {
                 Some(our) => {
-                    // We have capability prompts, return them despite downstream error
+                    // We have prompts from imported interface, return them despite downstream error
                     Ok(ServerResult::PromptsList(our))
                 }
                 None => {
-                    // No capability prompts, propagate downstream error
+                    // No prompts from imported interface, propagate downstream error
                     Err(e)
                 }
             }
@@ -196,31 +233,43 @@ fn handle_prompt_get(
     req: GetPromptRequest,
     ctx: ExportRequestCtx,
 ) -> Result<ServerResult, ErrorCode> {
-    // Try getting from our capability first
-    match capability::get_prompt(
-        &capability::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+    // Try getting from imported prompts interface first
+    match prompts::get_prompt(
+        &downstream::RequestCtx {
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &req,
     ) {
         Ok(Some(result)) => {
-            // Capability handled it - return the result
+            // Imported interface handled it - return the result
             Ok(ServerResult::PromptsGet(result))
         }
         Ok(None) => {
-            // Capability doesn't handle this prompt - try downstream
+            // Imported interface doesn't handle this prompt - try downstream
             let downstream_req = ClientRequest::PromptsGet(req.clone());
             match downstream::handle_request(
                 &downstream::RequestCtx {
-                    request_id: ctx.request_id.clone(),
-                    jwt: ctx.jwt.clone(),
-                    session_id: ctx.session_id.clone(),
-                    message_stream: ctx.message_stream,
+                    id: ctx.id.clone(),
                     protocol_version: ctx.protocol_version.clone(),
+                    messages: ctx.messages,
+                    session: ctx.session.as_ref().map(|s| downstream::Session {
+                        session_id: s.session_id.clone(),
+                        store_id: s.store_id.clone(),
+                    }),
+                    user: ctx.user.as_ref().map(|u| downstream::Identity {
+                        jwt: u.jwt.clone(),
+                        claims: u.claims.clone(),
+                    }),
                 },
                 &downstream_req,
             ) {
@@ -238,7 +287,7 @@ fn handle_prompt_get(
             }
         }
         Err(e) => {
-            // Capability returned an error - propagate it
+            // Imported interface returned an error - propagate it
             Err(e)
         }
     }

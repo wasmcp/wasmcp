@@ -1,9 +1,9 @@
 //! Resources Middleware Component
 //!
 //! A reusable middleware that bridges the MCP protocol (server-handler)
-//! with the clean resources-capability interface. This component:
+//! with the resources interface. This component:
 //! - Detects resources/list, resources/read, and resources/templates/list requests
-//! - Calls the imported resources-capability functions
+//! - Calls the imported resources interface functions
 //! - Merges results with downstream handlers
 //! - Delegates all other requests downstream
 
@@ -17,12 +17,13 @@ mod bindings {
 }
 
 use bindings::exports::wasmcp::mcp_v20250618::server_handler::{
-    ErrorCtx as ExportErrorCtx, Guest, NotificationCtx as ExportNotificationCtx,
-    RequestCtx as ExportRequestCtx, ResultCtx as ExportResultCtx,
+    ErrorCtx as ExportErrorCtx, Guest, Identity as ExportIdentity,
+    NotificationCtx as ExportNotificationCtx, RequestCtx as ExportRequestCtx,
+    ResultCtx as ExportResultCtx, Session as ExportSession,
 };
 use bindings::wasi::io::streams::OutputStream;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::resources as capability;
+use bindings::wasmcp::mcp_v20250618::resources;
 use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
 
 struct ResourcesMiddleware;
@@ -42,11 +43,17 @@ impl Guest for ResourcesMiddleware {
                 // Delegate all other requests to downstream handler
                 downstream::handle_request(
                     &downstream::RequestCtx {
-                        request_id: ctx.request_id.clone(),
-                        jwt: ctx.jwt.clone(),
-                        session_id: ctx.session_id.clone(),
-                        message_stream: ctx.message_stream,
+                        id: ctx.id.clone(),
                         protocol_version: ctx.protocol_version.clone(),
+                        messages: ctx.messages,
+                        session: ctx.session.as_ref().map(|s| downstream::Session {
+                            session_id: s.session_id.clone(),
+                            store_id: s.store_id.clone(),
+                        }),
+                        user: ctx.user.as_ref().map(|u| downstream::Identity {
+                            jwt: u.jwt.clone(),
+                            claims: u.claims.clone(),
+                        }),
                     },
                     &request,
                 )
@@ -58,9 +65,15 @@ impl Guest for ResourcesMiddleware {
         // Forward to downstream handler
         downstream::handle_notification(
             &downstream::NotificationCtx {
-                jwt: ctx.jwt.clone(),
-                session_id: ctx.session_id.clone(),
                 protocol_version: ctx.protocol_version.clone(),
+                session: ctx.session.as_ref().map(|s| downstream::Session {
+                    session_id: s.session_id.clone(),
+                    store_id: s.store_id.clone(),
+                }),
+                user: ctx.user.as_ref().map(|u| downstream::Identity {
+                    jwt: u.jwt.clone(),
+                    claims: u.claims.clone(),
+                }),
             },
             &notification,
         );
@@ -70,10 +83,16 @@ impl Guest for ResourcesMiddleware {
         // Forward to downstream handler
         downstream::handle_result(
             &downstream::ResultCtx {
-                request_id: ctx.request_id.clone(),
-                jwt: ctx.jwt.clone(),
-                session_id: ctx.session_id.clone(),
+                id: ctx.id.clone(),
                 protocol_version: ctx.protocol_version.clone(),
+                session: ctx.session.as_ref().map(|s| downstream::Session {
+                    session_id: s.session_id.clone(),
+                    store_id: s.store_id.clone(),
+                }),
+                user: ctx.user.as_ref().map(|u| downstream::Identity {
+                    jwt: u.jwt.clone(),
+                    claims: u.claims.clone(),
+                }),
             },
             result,
         );
@@ -83,10 +102,16 @@ impl Guest for ResourcesMiddleware {
         // Forward to downstream handler
         downstream::handle_error(
             &downstream::ErrorCtx {
-                request_id: ctx.request_id.clone(),
-                jwt: ctx.jwt.clone(),
-                session_id: ctx.session_id.clone(),
+                id: ctx.id.clone(),
                 protocol_version: ctx.protocol_version.clone(),
+                session: ctx.session.as_ref().map(|s| downstream::Session {
+                    session_id: s.session_id.clone(),
+                    store_id: s.store_id.clone(),
+                }),
+                user: ctx.user.as_ref().map(|u| downstream::Identity {
+                    jwt: u.jwt.clone(),
+                    claims: u.claims.clone(),
+                }),
             },
             &error,
         );
@@ -97,25 +122,31 @@ fn handle_resources_list(
     req: ListResourcesRequest,
     ctx: ExportRequestCtx,
 ) -> Result<ServerResult, ErrorCode> {
-    // Try to get resources from our capability
-    let our_result = match capability::list_resources(
-        &capability::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+    // Try to get resources from imported resources interface
+    let our_result = match resources::list_resources(
+        &downstream::RequestCtx {
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &req,
     ) {
         Ok(result) => Some(result),
         Err(ErrorCode::MethodNotFound(_)) => {
-            // Capability doesn't implement resources interface - skip it
+            // Component doesn't implement resources interface - skip it
             None
         }
         Err(e) => {
             // Real error (InvalidParams, InternalError, etc.) - return it
-            // Don't hide capability errors by silently falling back to downstream
+            // Don't hide errors by silently falling back to downstream
             return Err(e);
         }
     };
@@ -124,11 +155,17 @@ fn handle_resources_list(
     let downstream_req = ClientRequest::ResourcesList(req.clone());
     match downstream::handle_request(
         &downstream::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &downstream_req,
     ) {
@@ -156,7 +193,7 @@ fn handle_resources_list(
             match our_result {
                 Some(our) => Ok(ServerResult::ResourcesList(our)),
                 None => {
-                    // Neither capability nor downstream implements resources - return MethodNotFound
+                    // Neither component nor downstream implements resources - return MethodNotFound
                     Err(ErrorCode::MethodNotFound(Error {
                         code: -32601,
                         message: "Method not found: resources/list".to_string(),
@@ -169,11 +206,11 @@ fn handle_resources_list(
             // Downstream returned a real error
             match our_result {
                 Some(our) => {
-                    // We have capability resources, return them despite downstream error
+                    // We have resources from imported interface, return them despite downstream error
                     Ok(ServerResult::ResourcesList(our))
                 }
                 None => {
-                    // No capability resources, propagate downstream error
+                    // No resources from imported interface, propagate downstream error
                     Err(e)
                 }
             }
@@ -199,31 +236,43 @@ fn handle_resources_read(
     req: ReadResourceRequest,
     ctx: ExportRequestCtx,
 ) -> Result<ServerResult, ErrorCode> {
-    // Try reading from our capability first
-    match capability::read_resource(
-        &capability::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+    // Try reading from imported resources interface first
+    match resources::read_resource(
+        &downstream::RequestCtx {
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &req,
     ) {
         Ok(Some(result)) => {
-            // Capability handled it - return the result
+            // Imported interface handled it - return the result
             Ok(ServerResult::ResourcesRead(result))
         }
         Ok(None) => {
-            // Capability doesn't handle this URI - try downstream
+            // Imported interface doesn't handle this URI - try downstream
             let downstream_req = ClientRequest::ResourcesRead(req.clone());
             match downstream::handle_request(
                 &downstream::RequestCtx {
-                    request_id: ctx.request_id.clone(),
-                    jwt: ctx.jwt.clone(),
-                    session_id: ctx.session_id.clone(),
-                    message_stream: ctx.message_stream,
+                    id: ctx.id.clone(),
                     protocol_version: ctx.protocol_version.clone(),
+                    messages: ctx.messages,
+                    session: ctx.session.as_ref().map(|s| downstream::Session {
+                        session_id: s.session_id.clone(),
+                        store_id: s.store_id.clone(),
+                    }),
+                    user: ctx.user.as_ref().map(|u| downstream::Identity {
+                        jwt: u.jwt.clone(),
+                        claims: u.claims.clone(),
+                    }),
                 },
                 &downstream_req,
             ) {
@@ -241,7 +290,7 @@ fn handle_resources_read(
             }
         }
         Err(e) => {
-            // Capability returned an error - propagate it
+            // Imported interface returned an error - propagate it
             Err(e)
         }
     }
@@ -251,20 +300,26 @@ fn handle_templates_list(
     req: ListResourceTemplatesRequest,
     ctx: ExportRequestCtx,
 ) -> Result<ServerResult, ErrorCode> {
-    // Try to get templates from our capability
-    let our_result = match capability::list_resource_templates(
-        &capability::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+    // Try to get templates from imported resources interface
+    let our_result = match resources::list_resource_templates(
+        &downstream::RequestCtx {
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &req,
     ) {
         Ok(result) => Some(result),
         Err(ErrorCode::MethodNotFound(_)) => {
-            // Capability doesn't implement templates - skip it
+            // Component doesn't implement templates - skip it
             None
         }
         Err(e) => {
@@ -277,11 +332,17 @@ fn handle_templates_list(
     let downstream_req = ClientRequest::ResourcesTemplatesList(req.clone());
     match downstream::handle_request(
         &downstream::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &downstream_req,
     ) {
@@ -311,7 +372,7 @@ fn handle_templates_list(
             match our_result {
                 Some(our) => Ok(ServerResult::ResourcesTemplatesList(our)),
                 None => {
-                    // Neither capability nor downstream implements templates - return MethodNotFound
+                    // Neither component nor downstream implements templates - return MethodNotFound
                     Err(ErrorCode::MethodNotFound(Error {
                         code: -32601,
                         message: "Method not found: resources/templates/list".to_string(),
@@ -324,11 +385,11 @@ fn handle_templates_list(
             // Downstream returned a real error
             match our_result {
                 Some(our) => {
-                    // We have capability templates, return them despite downstream error
+                    // We have templates from imported interface, return them despite downstream error
                     Ok(ServerResult::ResourcesTemplatesList(our))
                 }
                 None => {
-                    // No capability templates, propagate downstream error
+                    // No templates from imported interface, propagate downstream error
                     Err(e)
                 }
             }
