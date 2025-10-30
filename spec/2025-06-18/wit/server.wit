@@ -18,52 +18,13 @@ interface server-handler {
         client-notification,
     };
 
-    // JWT signature algorithm
-    @since(version = 0.1.2)
-    enum jwt-alg {
-        hs256, hs384, hs512,
-        rs256, rs384, rs512,
-        ps256, ps384, ps512,
-        es256, es384,
-        eddsa,
-    }
-
-    /// Validation checks for identity information.
-    /// A flag is set only if the check was enforced and passed.
-    @since(version = 0.1.2)
-    flags validation-check {
-        signature,     // JWS signature verified
-        alg-allowed,   // header.alg matched the allowlist
-        exp,           // exp required & passed
-        nbf,           // nbf present & passed
-        iat,           // iat validated
-        iss,           // iss matched expected
-        aud,           // aud matched one of expected audiences
-        sub,           // sub matched expected
-        kid,           // key selected/verified via header.kid
-        typ,           // typ enforced == "JWT"
-    }
-
     /// Identity information from authentication.
-    /// A flag is set only if the check was enforced and passed.
     @since(version = 0.1.2)
     record identity {
         /// Raw bearer token as received.
         jwt: string,
-
-        /// Checks the authenticator enforced successfully.
-        checks: validation-check,
-
-        // Optional, minimal typed claims (decoded from the token):
-        subject:  option<string>,          // sub
-        issuer:   option<string>,          // iss
-        audience: option<list<string>>,    // aud (array-safe)
-        expires-at: option<u64>,           // exp (UTC seconds) — optional but very useful
-
-        // Optional header crumbs:
-        header-alg: option<jwt-alg>,
-        header-kid: option<string>,
-        header-typ: option<string>,
+        /// Validated claims from the JWT payload.
+        claims: list<tuple<string, string>>,
     }
 
     /// Session information from the transport.
