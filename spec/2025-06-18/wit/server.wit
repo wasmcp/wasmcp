@@ -147,18 +147,6 @@ interface server-messages {
 
     /// Send a request to the client on the current SSE response stream
     ///
-    /// Servers can request information from clients using the elicitation mechanism.
-    /// The request is sent on the HTTP SSE stream, but the client's JSON-RPC response
-    /// arrives as a new HTTP POST request.
-    ///
-    /// To await responses:
-    /// 1. Send the request using this function
-    /// 2. Use sessions interface to track pending requests
-    /// 3. Match incoming HTTP requests to pending elicitations
-    ///
-    /// Note: Client MCP/JSON-RPC responses arrive as new HTTP requests.
-    /// Use sessions to await client responses within a handler instance.
-    ///
     /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
     @since(version = 0.1.1)
     request: func(
@@ -169,17 +157,7 @@ interface server-messages {
     ) -> result<_, message-error>;
 }
 
-/// MCP server-side capability interfaces and request handling utilities.
-///
-/// This file defines:
-/// - Request option types for passing context between components
-/// - Capability interfaces (tools, resources, prompts, completions)
-///
-/// <https://modelcontextprotocol.io>
-
-/// Tools interface.
-///
-/// Export this interface to provide MCP tools functionality.
+/// MCP tools feature
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
 @since(version = 0.1.0)
@@ -214,9 +192,7 @@ interface tools {
     ) -> result<option<call-tool-result>, error-code>;
 }
 
-/// Resources interface.
-///
-/// Export this interface to provide MCP resources functionality.
+/// MCP resources feature
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
 @since(version = 0.1.0)
@@ -259,9 +235,7 @@ interface resources {
     ) -> result<list-resource-templates-result, error-code>;
 }
 
-/// Prompts interface.
-///
-/// Export this interface to provide MCP prompts functionality.
+/// MCP prompts feature
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
 @since(version = 0.1.0)
@@ -295,9 +269,7 @@ interface prompts {
     ) -> result<option<get-prompt-result>, error-code>;
 }
 
-/// Completions interface.
-///
-/// Export this interface to provide argument completions for prompts and resources.
+/// MCP completions feature
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
 @since(version = 0.1.0)

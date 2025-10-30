@@ -1,5 +1,0 @@
-package wasmcp:http-notifications@0.1.2;
-
-world http-notifications {
-    export wasmcp:mcp-v20250618/notifications@0.1.0;
-}

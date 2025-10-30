@@ -116,13 +116,13 @@ Automatically adds:
   - http: Exports wasi:http/incoming-handler, serves on :8080/mcp
   - stdio: Exports wasi:cli/run, reads stdin/writes stdout
 - Method-not-found terminal handler (returns JSON-RPC -32601 error)
-- HTTP-notifications (http transport only, for server-to-client notifications)
+- http-messages (http transport only, for server-to-client notifications)
 
 Framework components downloaded from ghcr.io/wasmcp:
 - wasmcp:http-transport@{version}
 - wasmcp:stdio-transport@{version}
 - wasmcp:method-not-found@{version}
-- wasmcp:http-notifications@{version}
+- wasmcp:http-messages@{version}
 - wasmcp:tools-middleware@{version}
 - wasmcp:resources-middleware@{version}
 - wasmcp:prompts-middleware@{version}
@@ -141,7 +141,7 @@ Command: `wasmcp compose handler [opts] components...`
 Does NOT include:
 - Transport (no HTTP/stdio server)
 - Method-not-found terminal
-- HTTP-notifications
+- http-messages
 
 Only includes:
 - Handler chain from user components
