@@ -243,7 +243,12 @@ mod tests {
         assert!(!options.force);
         assert!(!options.skip_download);
         // Version comes from embedded versions.toml
-        assert!(options.version_resolver.get_version("server").is_ok());
+        assert!(
+            options
+                .version_resolver
+                .get_version("mcp-v20250618")
+                .is_ok()
+        );
     }
 
     #[test]
@@ -257,7 +262,12 @@ mod tests {
             .unwrap();
 
         // Version comes from embedded versions.toml
-        assert!(options.version_resolver.get_version("server").is_ok());
+        assert!(
+            options
+                .version_resolver
+                .get_version("mcp-v20250618")
+                .is_ok()
+        );
         assert_eq!(
             options.override_transport,
             Some("custom-transport.wasm".to_string())

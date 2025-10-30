@@ -1,7 +1,7 @@
-package wasmcp:{{project_name}};
+package wasmcp:{{project_name}}@{{wasmcp_version}};
 
 /// MCP tools for {{project_name}}
 world {{project_name}} {
     /// Export MCP tools interface
-    export wasmcp:protocol/tools@{{wasmcp_version}};
+    export wasmcp:mcp-v20250618/tools@0.1.0;
 }

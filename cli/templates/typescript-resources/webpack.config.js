@@ -30,6 +30,12 @@ export default {
   experiments: {
     outputModule: true,
   },
+  externalsType: 'module',
+  externals: {
+    'wasmcp:mcp-v20250618/mcp@0.1.0': 'wasmcp:mcp-v20250618/mcp@0.1.0',
+    'wasmcp:mcp-v20250618/resources@0.1.0': 'wasmcp:mcp-v20250618/resources@0.1.0',
+    'wasmcp:mcp-v20250618/server-handler@0.1.0': 'wasmcp:mcp-v20250618/server-handler@0.1.0',
+  },
   optimization: {
     minimize: false,
   },

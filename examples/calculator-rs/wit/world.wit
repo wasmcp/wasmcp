@@ -1,6 +1,6 @@
 package wasmcp:calculator@0.1.0;
 
 world calculator {
-    import wasmcp:server/notifications@0.1.1;
-    export wasmcp:protocol/tools@0.1.0;
+    import wasmcp:mcp-v20250618/notifications@0.1.0;
+    export wasmcp:mcp-v20250618/tools@0.1.0;
 }

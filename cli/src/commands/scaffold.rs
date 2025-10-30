@@ -37,8 +37,8 @@ pub async fn create_project(
     // Get wasmcp version from version resolver
     let resolver = VersionResolver::new().context("Failed to create version resolver")?;
     let wasmcp_version = resolver
-        .get_version("server")
-        .context("Failed to get server version")?;
+        .get_version("mcp-v20250618")
+        .context("Failed to get mcp-v20250618 version")?;
 
     // Create template context
     let package_name = name.replace('-', "_");

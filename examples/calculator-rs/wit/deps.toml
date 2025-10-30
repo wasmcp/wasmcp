@@ -1,6 +1,5 @@
 # WIT dependencies for calculator example
 # Note: Must list all transitive dependencies explicitly (wit-deps doesn't resolve them recursively)
 
-server = "https://github.com/wasmcp/wasmcp/releases/download/server-v0.1.1/wasmcp-server-0.1.1-source.tar.gz"
-protocol = "https://github.com/wasmcp/wasmcp/releases/download/protocol-v0.1.0/wasmcp-protocol-0.1.0-source.tar.gz"
+mcp-v20250618 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.0/wasmcp-mcp-v2025-06-18-0.1.0-source.tar.gz"
 io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.3.tar.gz"

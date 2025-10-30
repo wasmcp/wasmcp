@@ -41,14 +41,15 @@ pub async fn build_composition(
 ) -> Result<Vec<u8>> {
     // Discover interface versions from actual components before building graph
     // This decouples composition from our version manifest
-    let server_handler_interface =
-        find_component_export(method_not_found_path, "wasmcp:server/handler@").context(
-            "Failed to discover server-handler interface from method-not-found component",
-        )?;
+    let server_handler_interface = find_component_export(
+        method_not_found_path,
+        "wasmcp:mcp-v20250618/server-handler@",
+    )
+    .context("Failed to discover server-handler interface from method-not-found component")?;
 
     let notifications_interface = if let Some(path) = http_notifications_path {
         Some(
-            find_component_export(path, "wasmcp:server/notifications@").context(
+            find_component_export(path, "wasmcp:mcp-v20250618/notifications@").context(
                 "Failed to discover notifications interface from http-notifications component",
             )?,
         )
@@ -387,7 +388,7 @@ pub fn load_package(
 /// Find an interface export from a component by prefix pattern
 ///
 /// Inspects the component binary to find an export matching the given prefix.
-/// For example, prefix "wasmcp:server/handler@" will match "wasmcp:server/handler@0.1.0".
+/// For example, prefix "wasmcp:mcp-v20250618/server-handler@" will match "wasmcp:mcp-v20250618/server-handler@0.1.0".
 ///
 /// Returns the full interface name if found.
 fn find_component_export(component_path: &Path, prefix: &str) -> Result<String> {
@@ -535,8 +536,8 @@ mod tests {
         let version = "0.1.0";
         let interface = interfaces::server_handler(version);
 
-        assert_eq!(interface, "wasmcp:server/handler@0.1.0");
-        assert!(interface.starts_with("wasmcp:server/handler@"));
+        assert_eq!(interface, "wasmcp:mcp-v20250618/server-handler@0.1.0");
+        assert!(interface.starts_with("wasmcp:mcp-v20250618/server-handler@"));
     }
 
     /// Test notifications interface construction

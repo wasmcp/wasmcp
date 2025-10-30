@@ -6,15 +6,14 @@ A tools capability that provides string manipulation operations.
 import json
 from typing import Optional
 from wit_world import exports
-from wit_world.imports import mcp, server_messages, streams
+from wit_world.imports import mcp, server_handler
 
 
 class StringsTools(exports.Tools):
     def list_tools(
         self,
-        ctx: server_messages.Context,
+        ctx: server_handler.RequestCtx,
         request: mcp.ListToolsRequest,
-        client_stream: Optional[streams.OutputStream],
     ) -> mcp.ListToolsResult:
         return mcp.ListToolsResult(
             tools=[
@@ -53,9 +52,8 @@ class StringsTools(exports.Tools):
 
     def call_tool(
         self,
-        ctx: server_messages.Context,
+        ctx: server_handler.RequestCtx,
         request: mcp.CallToolRequest,
-        client_stream: Optional[streams.OutputStream],
     ) -> Optional[mcp.CallToolResult]:
         if not request.arguments:
             return error_result("Missing tool arguments")

@@ -103,8 +103,7 @@ mod tests {
         let resolver = VersionResolver::new().unwrap();
 
         // Should have default versions
-        assert!(resolver.get_version("server").is_ok());
-        assert!(resolver.get_version("protocol").is_ok());
+        assert!(resolver.get_version("mcp-v20250618").is_ok());
         assert!(resolver.get_version("http-transport").is_ok());
     }
 

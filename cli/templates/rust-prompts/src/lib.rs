@@ -9,17 +9,15 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::protocol::prompts::Guest;
-use bindings::wasmcp::protocol::mcp::*;
-use bindings::wasi::io::streams::OutputStream;
+use bindings::exports::wasmcp::mcp_v20250618::prompts::{Guest, RequestCtx};
+use bindings::wasmcp::mcp_v20250618::mcp::*;
 
 struct ExamplePrompts;
 
 impl Guest for ExamplePrompts {
     fn list_prompts(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: RequestCtx,
         _request: ListPromptsRequest,
-        _client_stream: Option<&OutputStream>,
     ) -> Result<ListPromptsResult, ErrorCode> {
         Ok(ListPromptsResult {
             prompts: vec![
@@ -68,10 +66,9 @@ impl Guest for ExamplePrompts {
     }
 
     fn get_prompt(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: RequestCtx,
         request: GetPromptRequest,
-        _client_stream: Option<&OutputStream>,
-    ) -> Option<GetPromptResult> {
+    ) -> Result<Option<GetPromptResult>, ErrorCode> {
         match request.name.as_str() {
             "code-review" => {
                 // Parse arguments (simplified - would use serde_json in real implementation)
@@ -88,7 +85,7 @@ impl Guest for ExamplePrompts {
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
 
-                Some(GetPromptResult {
+                Ok(Some(GetPromptResult {
                     meta: None,
                     description: Some(format!("Code review for {}", language)),
                     messages: vec![
@@ -103,7 +100,7 @@ impl Guest for ExamplePrompts {
                             }),
                         },
                     ],
-                })
+                }))
             }
             "greeting" => {
                 let args: serde_json::Value = request
@@ -116,7 +113,7 @@ impl Guest for ExamplePrompts {
                     .and_then(|v| v.as_str())
                     .unwrap_or("there");
 
-                Some(GetPromptResult {
+                Ok(Some(GetPromptResult {
                     meta: None,
                     description: Some("A friendly greeting".to_string()),
                     messages: vec![
@@ -131,9 +128,9 @@ impl Guest for ExamplePrompts {
                             }),
                         },
                     ],
-                })
+                }))
             }
-            _ => None, // We don't handle this prompt
+            _ => Ok(None), // We don't handle this prompt
         }
     }
 }

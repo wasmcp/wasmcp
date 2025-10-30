@@ -9,18 +9,17 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::protocol::tools::Guest;
-use bindings::wasmcp::protocol::mcp::*;
-use bindings::wasmcp::server::notifications;
-use bindings::wasi::io::streams::OutputStream;
+use bindings::exports::wasmcp::mcp_v20250618::tools::Guest;
+use bindings::wasmcp::mcp_v20250618::mcp::*;
+use bindings::wasmcp::mcp_v20250618::notifications;
+use bindings::wasmcp::mcp_v20250618::server_handler::RequestCtx;
 
 struct Calculator;
 
 impl Guest for Calculator {
     fn list_tools(
-        _ctx: bindings::wasmcp::protocol::server_messages::Context,
+        _ctx: RequestCtx,
         _request: ListToolsRequest,
-        _client_stream: Option<&OutputStream>,
     ) -> Result<ListToolsResult, ErrorCode> {
 
         Ok(ListToolsResult {
@@ -87,16 +86,16 @@ impl Guest for Calculator {
     }
 
     fn call_tool(
-        ctx: bindings::wasmcp::protocol::server_messages::Context,
+        ctx: RequestCtx,
         request: CallToolRequest,
-        client_stream: Option<&OutputStream>,
-    ) -> Option<CallToolResult> {
-        match request.name.as_str() {
+    ) -> Result<Option<CallToolResult>, ErrorCode> {
+        let result = match request.name.as_str() {
             "add" => Some(execute_operation(&request.arguments, |a, b| a + b)),
             "subtract" => Some(execute_operation(&request.arguments, |a, b| a - b)),
-            "factorial" => Some(execute_factorial(&ctx, &request, client_stream)),
+            "factorial" => Some(execute_factorial(&ctx, &request)),
             _ => None, // We don't handle this tool
-        }
+        };
+        Ok(result)
     }
 }
 
@@ -162,9 +161,8 @@ fn error_result(message: String) -> CallToolResult {
 // Note: When running with wasmtime serve, use `-S http-outgoing-body-buffer-chunks=10`
 // to ensure sufficient buffer for streaming multiple notifications plus the final response.
 fn execute_factorial(
-    _ctx: &bindings::wasmcp::protocol::server_messages::Context,
+    ctx: &RequestCtx,
     request: &CallToolRequest,
-    client_stream: Option<&OutputStream>,
 ) -> CallToolResult {
     // Parse the argument to get n
     let n = match parse_factorial_arg(&request.arguments) {
@@ -175,7 +173,7 @@ fn execute_factorial(
     };
 
     // Send initial progress notification if stream is available
-    if let Some(stream) = client_stream {
+    if let Some(stream) = &ctx.message_stream {
         let msg = format!("Starting factorial calculation for {}!", n);
         let _ = notifications::log(
             stream,
@@ -196,7 +194,7 @@ fn execute_factorial(
         }
 
         // Send progress notification every few steps (to avoid overwhelming)
-        if let Some(stream) = client_stream {
+        if let Some(stream) = &ctx.message_stream {
             if i % 3 == 0 || i == n {
                 let msg = format!("Computing: {} * {} = {}", i, result / i, result);
                 let _ = notifications::log(
@@ -210,7 +208,7 @@ fn execute_factorial(
     }
 
     // Send completion notification
-    if let Some(stream) = client_stream {
+    if let Some(stream) = &ctx.message_stream {
         let msg = format!("Factorial calculation complete: {}! = {}", n, result);
         let _ = notifications::log(
             stream,

@@ -17,7 +17,7 @@ const WRAPPED_COMPONENT_PREFIX: &str = ".wrapped-";
 /// Discover the server-handler interface that a middleware component exports
 ///
 /// Inspects a middleware component's exports to find the server-handler interface version.
-/// For example, tools-middleware exports wasmcp:server/handler@VERSION.
+/// For example, tools-middleware exports wasmcp:mcp-v20250618/server-handler@VERSION.
 fn discover_server_handler_interface(middleware_path: &Path) -> Result<String> {
     use wit_component::DecodedWasm;
 
@@ -58,7 +58,7 @@ fn discover_server_handler_interface(middleware_path: &Path) -> Result<String> {
                         .unwrap_or_else(|| "0.0.0".to_string())
                 );
 
-                if full_name.starts_with("wasmcp:server/handler@") {
+                if full_name.starts_with("wasmcp:mcp-v20250618/server-handler@") {
                     return Ok(full_name);
                 }
             }
@@ -74,7 +74,7 @@ fn discover_server_handler_interface(middleware_path: &Path) -> Result<String> {
 /// Discover the capability interface that a middleware component expects
 ///
 /// Inspects a middleware component's imports to find which capability interface it wraps.
-/// For example, tools-middleware imports wasmcp:protocol/tools@VERSION.
+/// For example, tools-middleware imports wasmcp:mcp-v20250618/tools@VERSION.
 fn discover_capability_interface(middleware_path: &Path, prefix: &str) -> Result<String> {
     use wit_component::DecodedWasm;
 
@@ -155,13 +155,15 @@ pub async fn wrap_capabilities(
         .context("Failed to discover server-handler interface from middleware")?;
 
     let tools_interface =
-        discover_capability_interface(&tools_middleware_path, "wasmcp:protocol/tools@")
+        discover_capability_interface(&tools_middleware_path, "wasmcp:mcp-v20250618/tools@")
             .context("Failed to discover tools interface from tools-middleware")?;
-    let resources_interface =
-        discover_capability_interface(&resources_middleware_path, "wasmcp:protocol/resources@")
-            .context("Failed to discover resources interface from resources-middleware")?;
+    let resources_interface = discover_capability_interface(
+        &resources_middleware_path,
+        "wasmcp:mcp-v20250618/resources@",
+    )
+    .context("Failed to discover resources interface from resources-middleware")?;
     let prompts_interface =
-        discover_capability_interface(&prompts_middleware_path, "wasmcp:protocol/prompts@")
+        discover_capability_interface(&prompts_middleware_path, "wasmcp:mcp-v20250618/prompts@")
             .context("Failed to discover prompts interface from prompts-middleware")?;
 
     if verbose {
@@ -472,10 +474,10 @@ mod tests {
         let prompts = dependencies::interfaces::prompts(DEFAULT_WASMCP_VERSION);
 
         // Verify format
-        assert!(server_handler.starts_with("wasmcp:server/handler@"));
-        assert!(tools.starts_with("wasmcp:protocol/tools@"));
-        assert!(resources.starts_with("wasmcp:protocol/resources@"));
-        assert!(prompts.starts_with("wasmcp:protocol/prompts@"));
+        assert!(server_handler.starts_with("wasmcp:mcp-v20250618/server-handler@"));
+        assert!(tools.starts_with("wasmcp:mcp-v20250618/tools@"));
+        assert!(resources.starts_with("wasmcp:mcp-v20250618/resources@"));
+        assert!(prompts.starts_with("wasmcp:mcp-v20250618/prompts@"));
     }
 
     /// Test verbose message formats for component detection

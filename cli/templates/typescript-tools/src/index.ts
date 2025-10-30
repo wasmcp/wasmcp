@@ -11,9 +11,8 @@ import type {
   CallToolRequest,
   CallToolResult,
   Tool,
-} from './generated/interfaces/wasmcp-protocol-mcp.js';
-import type { Context } from './generated/interfaces/wasmcp-protocol-server-messages.js';
-import type { OutputStream } from './generated/interfaces/wasi-io-streams.js';
+} from './generated/interfaces/wasmcp-mcp-v20250618-mcp.js';
+import type { RequestCtx } from './generated/interfaces/wasmcp-mcp-v20250618-tools.js';
 
 // Tool input schemas
 const ExampleToolSchema = z.object({
@@ -23,9 +22,8 @@ const ExampleToolSchema = z.object({
 type ExampleToolArgs = z.infer<typeof ExampleToolSchema>;
 
 function listTools(
-  _ctx: Context,
-  _request: ListToolsRequest,
-  _clientStream: OutputStream | null
+  _ctx: RequestCtx,
+  _request: ListToolsRequest
 ): ListToolsResult {
   const tools: Tool[] = [
     {
@@ -42,15 +40,14 @@ function listTools(
 }
 
 async function callTool(
-  _ctx: Context,
-  request: CallToolRequest,
-  _clientStream: OutputStream | null
-): Promise<CallToolResult | null> {
+  _ctx: RequestCtx,
+  request: CallToolRequest
+): Promise<CallToolResult | undefined> {
   switch (request.name) {
     case 'example-tool':
       return await handleExampleTool(request.arguments);
     default:
-      return null; // We don't handle this tool
+      return undefined; // We don't handle this tool
   }
 }
 
