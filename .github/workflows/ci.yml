@@ -126,7 +126,7 @@ jobs:
           cache-key: components
           # Cache all component crates (7 framework components)
           workspaces: |
-            crates/http-notifications
+            crates/http-messages
             crates/http-transport
             crates/method-not-found
             crates/prompts-middleware

@@ -16,9 +16,9 @@ jobs:
       packages: write
     uses: ./.github/workflows/reusable-release-component.yml
     with:
-      component-name: http-notifications
-      component-crate: http-notifications
+      component-name: http-messages
+      component-crate: http-messages
       version: ${{ inputs.version }}
-      wkg-package: wasmcp:http-notifications
-      tag-prefix: http-notifications-v
+      wkg-package: wasmcp:http-messages
+      tag-prefix: http-messages-v
     secrets: inherit
