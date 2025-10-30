@@ -10,7 +10,7 @@ on:
 
 jobs:
   release:
-    name: Release HTTP Notifications
+    name: Release HTTP Messages
     permissions:
       contents: write
       packages: write

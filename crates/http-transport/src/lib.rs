@@ -9,8 +9,6 @@
 //! - Returns SSE streams for all responses
 //! - Stateless: No session management (sessions are optional per world.wit)
 
-#![allow(warnings)]
-
 mod bindings {
     wit_bindgen::generate!({
         world: "http-transport",
@@ -27,11 +25,8 @@ use bindings::wasi::cli::environment::get_environment;
 use bindings::wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
-use bindings::wasi::io::poll::poll;
-use bindings::wasi::io::streams::{OutputStream, Pollable};
-use bindings::wasmcp::mcp_v20250618::mcp::{
-    ClientNotification, ClientRequest, ClientResult, RequestId, ServerResult,
-};
+use bindings::wasi::io::streams::OutputStream;
+use bindings::wasmcp::mcp_v20250618::mcp::{ClientRequest, RequestId, ServerResult};
 use bindings::wasmcp::mcp_v20250618::server_handler::{
     handle_error, handle_notification, handle_request, handle_result, ErrorCtx, NotificationCtx,
     RequestCtx, ResultCtx,
@@ -148,13 +143,10 @@ fn handle_json_rpc_request(
     // Create headers FIRST
     let headers = Fields::new();
     headers
-        .set(
-            &"content-type".to_string(),
-            &[b"text/event-stream".to_vec()],
-        )
+        .set("content-type", &[b"text/event-stream".to_vec()])
         .map_err(|_| "Failed to set content-type")?;
     headers
-        .set(&"cache-control".to_string(), &[b"no-cache".to_vec()])
+        .set("cache-control", &[b"no-cache".to_vec()])
         .map_err(|_| "Failed to set cache-control")?;
     // Note: Transfer-Encoding is managed by the WASI HTTP runtime, don't set it manually
 
@@ -194,10 +186,7 @@ fn handle_initialize_request(
     json_rpc: &serde_json::Value,
     request_id: RequestId,
 ) -> Result<OutgoingResponse, String> {
-    use bindings::wasmcp::mcp_v20250618::mcp::{
-        ClientCapabilities, Implementation, InitializeRequest, InitializeResult, ProtocolVersion,
-        ServerCapabilities,
-    };
+    use bindings::wasmcp::mcp_v20250618::mcp::ProtocolVersion;
 
     // Parse initialize request parameters
     let params = json_rpc
@@ -234,7 +223,7 @@ fn handle_initialize_request(
     // Write JSON response (not SSE - no notifier, no events)
     let headers = Fields::new();
     headers
-        .set(&"content-type".to_string(), &[b"application/json".to_vec()])
+        .set("content-type", &[b"application/json".to_vec()])
         .map_err(|_| "Failed to set content-type")?;
     let response = OutgoingResponse::new(headers);
     response
@@ -280,7 +269,7 @@ fn handle_ping_request(request_id: RequestId) -> Result<OutgoingResponse, String
     // Ping is a no-op - just return empty success as plain JSON
     let headers = Fields::new();
     headers
-        .set(&"content-type".to_string(), &[b"application/json".to_vec()])
+        .set("content-type", &[b"application/json".to_vec()])
         .map_err(|_| "Failed to set content-type")?;
     let response = OutgoingResponse::new(headers);
     response
@@ -315,7 +304,7 @@ fn handle_set_level_request(request_id: RequestId) -> Result<OutgoingResponse, S
     // We can't maintain logging level state across requests
     let headers = Fields::new();
     headers
-        .set(&"content-type".to_string(), &[b"application/json".to_vec()])
+        .set("content-type", &[b"application/json".to_vec()])
         .map_err(|_| "Failed to set content-type")?;
     let response = OutgoingResponse::new(headers);
     response
@@ -365,7 +354,7 @@ fn discover_capabilities() -> bindings::wasmcp::mcp_v20250618::mcp::ServerCapabi
         message_stream: None,
         protocol_version: "2025-06-18".to_string(),
     };
-    if let Ok(_) = handle_request(&ctx, &req) {
+    if handle_request(&ctx, &req).is_ok() {
         list_flags |= ServerLists::TOOLS;
     }
 
@@ -378,7 +367,7 @@ fn discover_capabilities() -> bindings::wasmcp::mcp_v20250618::mcp::ServerCapabi
         message_stream: None,
         protocol_version: "2025-06-18".to_string(),
     };
-    if let Ok(_) = handle_request(&ctx, &req) {
+    if handle_request(&ctx, &req).is_ok() {
         list_flags |= ServerLists::RESOURCES;
     }
 
@@ -505,7 +494,7 @@ fn serialize_capabilities(
             .get_mut("resources")
             .and_then(|v| v.as_object_mut())
             .map(|o| o.clone())
-            .unwrap_or_else(|| serde_json::Map::new());
+            .unwrap_or_default();
         resources_caps.insert("subscribe".to_string(), serde_json::json!(true));
         result.insert(
             "resources".to_string(),
@@ -623,7 +612,7 @@ fn validate_accept_header(request: &IncomingRequest) -> Result<(), String> {
     // https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#sending-messages-to-the-server
 
     let headers = request.headers();
-    let accept_values = headers.get(&"accept".to_string());
+    let accept_values = headers.get("accept");
 
     if accept_values.is_empty() {
         return Err("Missing Accept header".to_string());
@@ -650,7 +639,7 @@ fn validate_protocol_version(request: &IncomingRequest) -> Result<String, String
     // https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#protocol-version-header
 
     let headers = request.headers();
-    let version_values = headers.get(&"mcp-protocol-version".to_string());
+    let version_values = headers.get("mcp-protocol-version");
 
     if version_values.is_empty() {
         // No version header - assume 2025-03-26 for backwards compatibility
@@ -682,7 +671,7 @@ fn validate_protocol_version(request: &IncomingRequest) -> Result<String, String
 fn validate_origin(request: &IncomingRequest) -> Result<(), String> {
     // Get the Origin header
     let headers = request.headers();
-    let origin_values = headers.get(&"origin".to_string());
+    let origin_values = headers.get("origin");
 
     // Get environment variables
     let env_vars = get_environment();
@@ -806,8 +795,7 @@ fn write_sse_response(
     use bindings::wasi::io::streams::StreamError;
 
     // Serialize to JSON-RPC
-    let json_rpc =
-        serializer::serialize_jsonrpc_response(&request_id, result.as_ref().map_err(|e| e));
+    let json_rpc = serializer::serialize_jsonrpc_response(&request_id, result.as_ref());
 
     // Format as SSE event
     let event_data = serializer::format_sse_event(&json_rpc);
@@ -846,7 +834,7 @@ fn create_error_response(error: String) -> OutgoingResponse {
     // Set Content-Type header for JSON error
     let headers = response.headers();
     headers
-        .set(&"content-type".to_string(), &[b"application/json".to_vec()])
+        .set("content-type", &[b"application/json".to_vec()])
         .ok();
 
     // Write error message to body
