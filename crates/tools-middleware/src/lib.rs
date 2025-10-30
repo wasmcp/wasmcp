@@ -1,9 +1,9 @@
 //! Tools Middleware Component
 //!
 //! A reusable middleware that bridges the MCP protocol (server-handler)
-//! with the clean tools-capability interface. This component:
+//! with the tools interface. This component:
 //! - Detects tools/list and tools/call requests
-//! - Calls the imported tools-capability functions
+//! - Calls the imported tools interface functions
 //! - Merges results with downstream handlers
 //! - Delegates all other requests downstream
 
@@ -17,13 +17,14 @@ mod bindings {
 }
 
 use bindings::exports::wasmcp::mcp_v20250618::server_handler::{
-    ErrorCtx as ExportErrorCtx, Guest, NotificationCtx as ExportNotificationCtx,
-    RequestCtx as ExportRequestCtx, ResultCtx as ExportResultCtx,
+    ErrorCtx as ExportErrorCtx, Guest, Identity as ExportIdentity,
+    NotificationCtx as ExportNotificationCtx, RequestCtx as ExportRequestCtx,
+    ResultCtx as ExportResultCtx, Session as ExportSession,
 };
 use bindings::wasi::io::streams::OutputStream;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
 use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
-use bindings::wasmcp::mcp_v20250618::tools as capability;
+use bindings::wasmcp::mcp_v20250618::tools;
 
 struct ToolsMiddleware;
 
@@ -39,11 +40,17 @@ impl Guest for ToolsMiddleware {
                 // Delegate all other requests to downstream handler
                 downstream::handle_request(
                     &downstream::RequestCtx {
-                        request_id: ctx.request_id.clone(),
-                        jwt: ctx.jwt.clone(),
-                        session_id: ctx.session_id.clone(),
-                        message_stream: ctx.message_stream,
+                        id: ctx.id.clone(),
                         protocol_version: ctx.protocol_version.clone(),
+                        messages: ctx.messages,
+                        session: ctx.session.as_ref().map(|s| downstream::Session {
+                            session_id: s.session_id.clone(),
+                            store_id: s.store_id.clone(),
+                        }),
+                        user: ctx.user.as_ref().map(|u| downstream::Identity {
+                            jwt: u.jwt.clone(),
+                            claims: u.claims.clone(),
+                        }),
                     },
                     &request,
                 )
@@ -55,9 +62,15 @@ impl Guest for ToolsMiddleware {
         // Forward to downstream handler
         downstream::handle_notification(
             &downstream::NotificationCtx {
-                jwt: ctx.jwt.clone(),
-                session_id: ctx.session_id.clone(),
                 protocol_version: ctx.protocol_version.clone(),
+                session: ctx.session.as_ref().map(|s| downstream::Session {
+                    session_id: s.session_id.clone(),
+                    store_id: s.store_id.clone(),
+                }),
+                user: ctx.user.as_ref().map(|u| downstream::Identity {
+                    jwt: u.jwt.clone(),
+                    claims: u.claims.clone(),
+                }),
             },
             &notification,
         );
@@ -67,10 +80,16 @@ impl Guest for ToolsMiddleware {
         // Forward to downstream handler
         downstream::handle_result(
             &downstream::ResultCtx {
-                request_id: ctx.request_id.clone(),
-                jwt: ctx.jwt.clone(),
-                session_id: ctx.session_id.clone(),
+                id: ctx.id.clone(),
                 protocol_version: ctx.protocol_version.clone(),
+                session: ctx.session.as_ref().map(|s| downstream::Session {
+                    session_id: s.session_id.clone(),
+                    store_id: s.store_id.clone(),
+                }),
+                user: ctx.user.as_ref().map(|u| downstream::Identity {
+                    jwt: u.jwt.clone(),
+                    claims: u.claims.clone(),
+                }),
             },
             result,
         );
@@ -80,10 +99,16 @@ impl Guest for ToolsMiddleware {
         // Forward to downstream handler
         downstream::handle_error(
             &downstream::ErrorCtx {
-                request_id: ctx.request_id.clone(),
-                jwt: ctx.jwt.clone(),
-                session_id: ctx.session_id.clone(),
+                id: ctx.id.clone(),
                 protocol_version: ctx.protocol_version.clone(),
+                session: ctx.session.as_ref().map(|s| downstream::Session {
+                    session_id: s.session_id.clone(),
+                    store_id: s.store_id.clone(),
+                }),
+                user: ctx.user.as_ref().map(|u| downstream::Identity {
+                    jwt: u.jwt.clone(),
+                    claims: u.claims.clone(),
+                }),
             },
             &error,
         );
@@ -94,25 +119,31 @@ fn handle_tools_list(
     req: ListToolsRequest,
     ctx: ExportRequestCtx,
 ) -> Result<ServerResult, ErrorCode> {
-    // Try to get tools from our capability
-    let our_result = match capability::list_tools(
-        &capability::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+    // Try to get tools from imported tools interface
+    let our_result = match tools::list_tools(
+        &downstream::RequestCtx {
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &req,
     ) {
         Ok(result) => Some(result),
         Err(ErrorCode::MethodNotFound(_)) => {
-            // Capability doesn't implement tools interface - skip it
+            // Component doesn't implement tools interface - skip it
             None
         }
         Err(e) => {
             // Real error (InvalidParams, InternalError, etc.) - return it
-            // Don't hide capability errors by silently falling back to downstream
+            // Don't hide errors by silently falling back to downstream
             return Err(e);
         }
     };
@@ -121,11 +152,17 @@ fn handle_tools_list(
     let downstream_req = ClientRequest::ToolsList(req.clone());
     match downstream::handle_request(
         &downstream::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &downstream_req,
     ) {
@@ -153,7 +190,7 @@ fn handle_tools_list(
             match our_result {
                 Some(our) => Ok(ServerResult::ToolsList(our)),
                 None => {
-                    // Neither capability nor downstream implements tools - return MethodNotFound
+                    // Neither component nor downstream implements tools - return MethodNotFound
                     Err(ErrorCode::MethodNotFound(Error {
                         code: -32601,
                         message: "Method not found: tools/list".to_string(),
@@ -166,11 +203,11 @@ fn handle_tools_list(
             // Downstream returned a real error
             match our_result {
                 Some(our) => {
-                    // We have capability tools, return them despite downstream error
+                    // We have tools from imported interface, return them despite downstream error
                     Ok(ServerResult::ToolsList(our))
                 }
                 None => {
-                    // No capability tools, propagate downstream error
+                    // No tools from imported interface, propagate downstream error
                     Err(e)
                 }
             }
@@ -196,31 +233,43 @@ fn handle_tools_call(
     req: CallToolRequest,
     ctx: ExportRequestCtx,
 ) -> Result<ServerResult, ErrorCode> {
-    // Try calling our capability first
-    match capability::call_tool(
-        &capability::RequestCtx {
-            request_id: ctx.request_id.clone(),
-            jwt: ctx.jwt.clone(),
-            session_id: ctx.session_id.clone(),
-            message_stream: ctx.message_stream,
+    // Try calling imported tools interface first
+    match tools::call_tool(
+        &downstream::RequestCtx {
+            id: ctx.id.clone(),
             protocol_version: ctx.protocol_version.clone(),
+            messages: ctx.messages,
+            session: ctx.session.as_ref().map(|s| downstream::Session {
+                session_id: s.session_id.clone(),
+                store_id: s.store_id.clone(),
+            }),
+            user: ctx.user.as_ref().map(|u| downstream::Identity {
+                jwt: u.jwt.clone(),
+                claims: u.claims.clone(),
+            }),
         },
         &req,
     ) {
         Ok(Some(result)) => {
-            // Capability handled it - return the result
+            // Imported interface handled it - return the result
             Ok(ServerResult::ToolsCall(result))
         }
         Ok(None) => {
-            // Capability doesn't handle this tool - try downstream
+            // Imported interface doesn't handle this tool - try downstream
             let downstream_req = ClientRequest::ToolsCall(req.clone());
             match downstream::handle_request(
                 &downstream::RequestCtx {
-                    request_id: ctx.request_id.clone(),
-                    jwt: ctx.jwt.clone(),
-                    session_id: ctx.session_id.clone(),
-                    message_stream: ctx.message_stream,
+                    id: ctx.id.clone(),
                     protocol_version: ctx.protocol_version.clone(),
+                    messages: ctx.messages,
+                    session: ctx.session.as_ref().map(|s| downstream::Session {
+                        session_id: s.session_id.clone(),
+                        store_id: s.store_id.clone(),
+                    }),
+                    user: ctx.user.as_ref().map(|u| downstream::Identity {
+                        jwt: u.jwt.clone(),
+                        claims: u.claims.clone(),
+                    }),
                 },
                 &downstream_req,
             ) {
@@ -238,7 +287,7 @@ fn handle_tools_call(
             }
         }
         Err(e) => {
-            // Capability returned an error - propagate it
+            // Imported interface returned an error - propagate it
             Err(e)
         }
     }
