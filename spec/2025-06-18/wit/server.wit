@@ -251,3 +251,20 @@ interface completions {
         request: complete-request,
     ) -> result<option<complete-result>, error-code>;
 }
+
+/// Server transport world.
+///
+/// Import server-handler interface to delegate MCP message processing.
+@since(version = 0.1.0)
+world server-transport {
+    import server-handler;
+}
+
+/// Server middleware world.
+///
+/// Import and export handler interface to enable composition.
+@since(version = 0.1.0)
+world server-middleware {
+    import server-handler;
+    export server-handler;
+}
