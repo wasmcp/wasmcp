@@ -9,7 +9,7 @@
 /// Sessions are identified by unique IDs and can span multiple HTTP requests,
 /// allowing servers to maintain state and context across interactions.
 ///
-/// <https://spec.modelcontextprotocol.io/specification/2025-06-18/session>
+/// <https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management>
 @since(version = 0.1.0)
 interface sessions {
     use wasi:io/streams@0.2.3.{
@@ -77,7 +77,7 @@ interface sessions {
     /// 5. terminate() - Mark session as ended (keeps data)
     /// 6. delete() - Remove session and all data
     ///
-    /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/session>
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management>
     @since(version = 0.1.0)
     resource session {
         /// Initialize a new session in the given bucket
@@ -168,7 +168,7 @@ interface sessions {
         /// The request is sent immediately on the provided output stream.
         /// The future should be stored and polled later to retrieve the response.
         ///
-        /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
+        /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
         @since(version = 0.1.0)
         elicit: func(
             /// Output stream to send the elicitation request
