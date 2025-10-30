@@ -123,9 +123,11 @@ pub async fn read(
         info!("has_branch: {}, slash_count: {}", has_branch, slash_count);
 
         // If it's a namespace with potential branch, check if it has branch syntax
+        // For WIT: wit/{branch}/{resource} needs >=2 slashes
+        // For resources/claude: same pattern
         if has_branch && slash_count >= 2 {
             info!("Routing to branch-specific handler");
-            // Has format like resources/{branch}/{resource} or wit/{branch}/server/{resource}
+            // Has format like resources/{branch}/{resource} or wit/{branch}/{resource}
             return github::read_branch_resource(http_client, uri).await;
         } else {
             info!(
@@ -222,13 +224,13 @@ async fn read_local_resource(uri: &str, repo_root: &Path) -> Result<ReadResource
         uri if uri.starts_with("wasmcp://wit/") => {
             info!("[LOCAL] Matched wit URI pattern");
             let remainder = uri.strip_prefix("wasmcp://wit/").unwrap();
-            // For branch-specific: wit/{branch}/protocol/{resource} → protocol/{resource}
-            let wit_path = if remainder.starts_with("protocol/") || remainder.starts_with("server/")
+            // For branch-specific: wit/{branch}/{resource} → {resource}
+            let wit_path = if remainder.starts_with("mcp") || remainder.starts_with("server") || remainder.starts_with("sessions")
             {
-                // No branch: wit/protocol/mcp → protocol/mcp
+                // No branch: wit/mcp → mcp
                 remainder
             } else {
-                // Has branch: wit/feat/downstream/protocol/mcp → protocol/mcp
+                // Has branch: wit/feat/downstream/mcp → mcp
                 // Skip first part (branch), take everything after first '/'
                 remainder
                     .split_once('/')
@@ -237,11 +239,9 @@ async fn read_local_resource(uri: &str, repo_root: &Path) -> Result<ReadResource
             };
 
             match wit_path {
-                "protocol/mcp" => repo_root.join("wit/protocol/mcp.wit"),
-                "protocol/features" => repo_root.join("wit/protocol/features.wit"),
-                "server/handler" => repo_root.join("wit/server/handler.wit"),
-                "server/sessions" => repo_root.join("wit/server/sessions.wit"),
-                "server/messages" => repo_root.join("wit/server/messages.wit"),
+                "mcp" => repo_root.join("spec/2025-06-18/wit/mcp.wit"),
+                "server" => repo_root.join("spec/2025-06-18/wit/server.wit"),
+                "sessions" => repo_root.join("spec/2025-06-18/wit/sessions.wit"),
                 _ => {
                     return Err(McpError::resource_not_found(
                         format!("Unknown WIT resource: {}", wit_path),

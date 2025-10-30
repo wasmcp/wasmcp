@@ -84,8 +84,7 @@ pub async fn read_branch_resource(
     // Parse URI patterns:
     // wasmcp://resources/{branch}/{resource}
     // wasmcp://claude/{branch}/agents/{agent}
-    // wasmcp://wit/{branch}/protocol/{resource}
-    // wasmcp://wit/{branch}/server/{resource}
+    // wasmcp://wit/{branch}/{resource}
 
     let path = uri.strip_prefix("wasmcp://").ok_or_else(|| {
         error!("Invalid URI prefix");
@@ -182,26 +181,11 @@ pub async fn read_branch_resource(
             }
         }
         "wit" => {
-            // resource is like "protocol/mcp" or "server/handler"
-            let mut wit_parts = resource.split('/');
-            let wit_namespace = wit_parts.next().ok_or_else(|| {
-                McpError::invalid_params(
-                    format!("WIT resource must include protocol or server: {}", uri),
-                    None,
-                )
-            })?;
-            let wit_resource = wit_parts.next().ok_or_else(|| {
-                McpError::invalid_params(
-                    format!("WIT resource must include resource name: {}", uri),
-                    None,
-                )
-            })?;
-            match (wit_namespace, wit_resource) {
-                ("protocol", "mcp") => "wit/protocol/mcp.wit",
-                ("protocol", "features") => "wit/protocol/features.wit",
-                ("server", "handler") => "wit/server/handler.wit",
-                ("server", "sessions") => "wit/server/sessions.wit",
-                ("server", "messages") => "wit/server/messages.wit",
+            // resource is like "mcp", "server", or "sessions"
+            match resource.as_str() {
+                "mcp" => "spec/2025-06-18/wit/mcp.wit",
+                "server" => "spec/2025-06-18/wit/server.wit",
+                "sessions" => "spec/2025-06-18/wit/sessions.wit",
                 _ => return Err(McpError::resource_not_found(uri.to_string(), None)),
             }
         }

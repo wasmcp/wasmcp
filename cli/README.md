@@ -213,10 +213,9 @@ The server provides read-only access to:
 - `wasmcp://docs/wit-interfaces` - Complete WIT interface documentation
 
 **WIT Interfaces** (fetched from GitHub):
-- `wasmcp://wit/protocol/mcp` - MCP protocol type definitions
-- `wasmcp://wit/protocol/features` - Capability interfaces (tools, resources, prompts)
-- `wasmcp://wit/server/handler` - Core handler interface for middleware
-- `wasmcp://wit/server/sessions` - Session management interfaces
+- `wasmcp://wit/mcp` - Complete MCP protocol types and capability interfaces
+- `wasmcp://wit/server` - Server interfaces (handler and messages)
+- `wasmcp://wit/sessions` - Session management interfaces
 
 **Registry** (from local configuration):
 - `wasmcp://registry/components` - Component aliases (JSON)

@@ -60,7 +60,7 @@ class StringsTools(exports.Tools):
         if not request.arguments:
             return error_result("Missing tool arguments")
 
-        log = lambda message: server_messages.notify(ctx.message_stream, mcp.ServerNotification_Log(value=mcp.LoggingMessageNotification(data=message, level=mcp.LogLevel.INFO, logger="python-tools")))
+        log = lambda message: server_messages.notify(ctx.messages, mcp.ServerNotification_Log(value=mcp.LoggingMessageNotification(data=message, level=mcp.LogLevel.INFO, logger="python-tools")))
 
         try:
             args = json.loads(request.arguments)
