@@ -35,9 +35,10 @@ use bindings::wasmcp::mcp_v20250618::mcp::{ClientRequest, RequestId, ServerResul
 use bindings::wasmcp::mcp_v20250618::server_handler::{
     handle_error, handle_notification, handle_request, handle_result, ErrorCtx, NotificationCtx,
     RequestCtx, ResultCtx,
+    Session as SessionInfo,  // Rename to avoid collision with SessionManager
 };
 
-use session::{Session, SessionError, validate_session_id_format};
+use session::{SessionManager, SessionError, validate_session_id_format};
 
 /// Session configuration from environment variables
 struct SessionConfig {
@@ -133,17 +134,26 @@ fn handle_post(
         .map(|m| m == "initialize")
         .unwrap_or(false);
 
-    // Validate session for non-initialize requests
-    if !is_initialize {
+    // Validate session for non-initialize requests and build SessionInfo
+    let session_info = if !is_initialize {
         validate_session_for_request(session_id_from_header.as_deref())?;
-    }
+        session_id_from_header.map(|id| {
+            let config = SessionConfig::from_env();
+            SessionInfo {
+                session_id: id,
+                store_id: config.bucket_name,
+            }
+        })
+    } else {
+        None
+    };
 
     // Determine message type (request, notification, or response)
     if json_rpc.get("method").is_some() {
         // It's a request or notification
         if let Some(id) = json_rpc.get("id") {
             // Request - handle and return SSE stream
-            handle_json_rpc_request(&json_rpc, id, protocol_version)
+            handle_json_rpc_request(&json_rpc, id, protocol_version, session_info)
         } else {
             // Notification - accept and return 202
             handle_json_rpc_notification(&json_rpc, protocol_version)
@@ -188,7 +198,7 @@ fn handle_delete(request: IncomingRequest) -> Result<OutgoingResponse, String> {
     };
 
     // Open session and terminate it
-    match Session::open(&config.bucket_name, &session_id) {
+    match SessionManager::open(&config.bucket_name, &session_id) {
         Ok(mut session) => {
             // Terminate the session
             match session.terminate(Some("client_requested".to_string())) {
@@ -221,7 +231,7 @@ fn handle_json_rpc_request(
     json_rpc: &serde_json::Value,
     id: &serde_json::Value,
     protocol_version: String,
-    session_id: Option<String>,
+    session_info: Option<SessionInfo>,
 ) -> Result<OutgoingResponse, String> {
     // Parse request ID
     let request_id = parse_request_id(id)?;
@@ -234,7 +244,7 @@ fn handle_json_rpc_request(
 
     // Handle transport-level methods directly
     match method {
-        "initialize" => return handle_initialize_request(json_rpc, request_id, session_id),
+        "initialize" => return handle_initialize_request(json_rpc, request_id, session_info.as_ref().map(|s| s.session_id.clone())),
         "ping" => return handle_ping_request(request_id),
         "logging/setLevel" => return handle_set_level_request(request_id),
         _ => {
@@ -320,10 +330,10 @@ fn handle_initialize_request(
     // at initialization time, by including it in an Mcp-Session-Id header on the HTTP response"
     let config = SessionConfig::from_env();
     let new_session_id = if config.enabled {
-        match Session::initialize(&config.bucket_name) {
+        match SessionManager::initialize(&config.bucket_name) {
             Ok(session) => {
                 let id = session.id().to_string();
-                // Session resource owns the bucket, it will be dropped here but metadata is persisted
+                // SessionManager resource owns the bucket, it will be dropped here but metadata is persisted
                 drop(session);
                 Some(id)
             }
@@ -794,7 +804,7 @@ fn validate_session_for_request(session_id: Option<&str>) -> Result<(), String> 
     })?;
 
     // Validate session exists and is not terminated
-    match Session::open(&config.bucket_name, session_id) {
+    match SessionManager::open(&config.bucket_name, session_id) {
         Ok(session) => {
             // Check if session is terminated
             match session.is_terminated() {

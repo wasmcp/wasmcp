@@ -44,17 +44,19 @@ impl From<StoreError> for SessionError {
     }
 }
 
-/// Session resource following wasmcp:server/sessions pattern
+/// Session manager for http-transport internal session lifecycle management
 ///
-/// Each session owns a WASI KV bucket handle. The bucket is used for:
-/// - `__meta__`: Internal session metadata (JSON)
-/// - `{component}:{key}`: Application data (binary, component-managed)
-pub struct Session {
+/// This manages session metadata in WASI KV for the transport layer.
+/// The bucket is used for storing session metadata under `__meta__` key.
+///
+/// Note: This is distinct from server_handler::Session which is the record
+/// passed to downstream components via RequestCtx.
+pub struct SessionManager {
     id: String,
     bucket: Bucket,
 }
 
-impl Session {
+impl SessionManager {
     /// Creates a new session with cryptographically secure UUID v4
     ///
     /// Per MCP spec:
@@ -66,9 +68,9 @@ impl Session {
     /// * `bucket_name` - Name of WASI KV bucket to use (e.g., "mcp-sessions")
     ///
     /// # Returns
-    /// * `Ok(Session)` - New session with unique ID
+    /// * `Ok(SessionManager)` - New session with unique ID
     /// * `Err(SessionError)` - If bucket open fails or metadata store fails
-    pub fn initialize(bucket_name: &str) -> Result<Session, SessionError> {
+    pub fn initialize(bucket_name: &str) -> Result<SessionManager, SessionError> {
         // Open KV bucket
         let bucket = store::open(bucket_name)
             .map_err(|e| SessionError::Store(format!("Failed to open bucket '{}': {:?}", bucket_name, e)))?;
@@ -89,7 +91,7 @@ impl Session {
 
         bucket.set("__meta__", &metadata_json)?;
 
-        Ok(Session {
+        Ok(SessionManager {
             id: session_id,
             bucket,
         })
@@ -106,10 +108,10 @@ impl Session {
     /// * `id` - Session ID from Mcp-Session-Id header
     ///
     /// # Returns
-    /// * `Ok(Session)` - Existing session
+    /// * `Ok(SessionManager)` - Existing session
     /// * `Err(SessionError::NoSuchSession)` - If metadata doesn't exist
     /// * `Err(SessionError::Store)` - If bucket open fails
-    pub fn open(bucket_name: &str, id: &str) -> Result<Session, SessionError> {
+    pub fn open(bucket_name: &str, id: &str) -> Result<SessionManager, SessionError> {
         // Open KV bucket
         let bucket = store::open(bucket_name)
             .map_err(|e| SessionError::Store(format!("Failed to open bucket '{}': {:?}", bucket_name, e)))?;
@@ -120,7 +122,7 @@ impl Session {
             return Err(SessionError::NoSuchSession);
         }
 
-        Ok(Session {
+        Ok(SessionManager {
             id: id.to_string(),
             bucket,
         })
