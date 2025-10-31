@@ -1,337 +1,29 @@
-//! JSON-RPC and SSE serialization for MCP protocol
+//! Server response serialization
 //!
-//! This module handles conversion from WIT types to JSON-RPC 2.0 format
-//! and SSE event formatting.
+//! Main serialization functions for converting MCP server responses to JSON-RPC format.
 
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{
-    Annotations, BlobData, CallToolResult, CompleteResult, ContentBlock, ErrorCode,
-    GetPromptResult, Implementation, InitializeResult, ListPromptsResult,
-    ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, McpResource, Prompt,
-    PromptMessage, ProtocolVersion, ReadResourceResult, RequestId, ResourceContents,
-    ResourceTemplate, Role, ServerCapabilities, ServerResult, TextData, Tool,
+    CallToolResult, CompleteResult, ErrorCode, GetPromptResult, Implementation, InitializeResult,
+    ListPromptsResult, ListResourceTemplatesResult, ListResourcesResult, ListToolsResult,
+    McpResource, Prompt, PromptMessage, ReadResourceResult, RequestId, ResourceContents,
+    ResourceTemplate, ServerCapabilities, ServerResult, Tool,
 };
-use crate::stream_reader::{read_blob_stream, read_text_stream, StreamConfig};
-use serde::{Deserialize, Serialize};
+use crate::serializer::content::convert_content_block;
+use crate::serializer::types::{
+    convert_blob_data, convert_text_data, protocol_version_to_string, role_to_string,
+    JsonBlobResourceContents, JsonCallToolResult, JsonCompleteResult, JsonGetPromptResult,
+    JsonImplementation, JsonInitializeResult, JsonListPromptsResult,
+    JsonListResourceTemplatesResult, JsonListResourcesResult, JsonListToolsResult, JsonPrompt,
+    JsonPromptArgument, JsonPromptCapability, JsonPromptMessage, JsonReadResourceResult,
+    JsonRequestId, JsonResource, JsonResourceCapability, JsonResourceContents, JsonResourceTemplate,
+    JsonServerCapabilities, JsonTextResourceContents, JsonTool, JsonToolAnnotations,
+    JsonToolCapability,
+};
 use serde_json::{json, Value};
-
-// =============================================================================
-// SHADOW TYPES FOR SERIALIZATION
-// =============================================================================
-// These mirror WIT types but are serializable to JSON
-
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-enum JsonRequestId {
-    Number(i64),
-    String(String),
-}
-
-impl From<&RequestId> for JsonRequestId {
-    fn from(id: &RequestId) -> Self {
-        match id {
-            RequestId::Number(n) => JsonRequestId::Number(*n),
-            RequestId::String(s) => JsonRequestId::String(s.clone()),
-        }
-    }
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonInitializeResult {
-    protocol_version: String,
-    capabilities: JsonServerCapabilities,
-    server_info: JsonImplementation,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    instructions: Option<String>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonServerCapabilities {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    completions: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    experimental: Option<Vec<(String, Value)>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    logging: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    prompts: Option<JsonPromptCapability>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    resources: Option<JsonResourceCapability>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tools: Option<JsonToolCapability>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonPromptCapability {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    list_changed: Option<bool>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonResourceCapability {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    list_changed: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    subscribe: Option<bool>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonToolCapability {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    list_changed: Option<bool>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonImplementation {
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    title: Option<String>,
-    version: String,
-}
-
-// Content-related shadow types for streaming support
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonAnnotations {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    audience: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    last_modified: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    priority: Option<f64>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonTextContent {
-    text: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    annotations: Option<JsonAnnotations>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonImageContent {
-    data: String, // base64-encoded
-    mime_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    annotations: Option<JsonAnnotations>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonResourceContent {
-    uri: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    text: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    blob: Option<String>, // base64-encoded
-    #[serde(skip_serializing_if = "Option::is_none")]
-    mime_type: Option<String>,
-}
-
-#[derive(Serialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
-enum JsonContentBlock {
-    Text(JsonTextContent),
-    Image(JsonImageContent),
-    Audio(JsonImageContent), // Audio has same structure as Image (data + mimeType)
-    Resource(JsonResourceContent),
-}
-
-// Tool-related shadow types
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonToolAnnotations {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    title: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    read_only_hint: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    destructive_hint: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    idempotent_hint: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    open_world_hint: Option<bool>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonTool {
-    name: String,
-    input_schema: Value,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    title: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    annotations: Option<JsonToolAnnotations>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonListToolsResult {
-    tools: Vec<JsonTool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    next_cursor: Option<String>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonCallToolResult {
-    content: Vec<JsonContentBlock>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    is_error: Option<bool>,
-}
-
-// Resource-related shadow types
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonResource {
-    uri: String,
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    mime_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    size: Option<u64>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonListResourcesResult {
-    resources: Vec<JsonResource>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    next_cursor: Option<String>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonTextResourceContents {
-    uri: String,
-    mime_type: Option<String>,
-    text: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonBlobResourceContents {
-    uri: String,
-    mime_type: Option<String>,
-    blob: String, // base64-encoded
-}
-
-#[derive(Serialize)]
-#[serde(untagged)]
-enum JsonResourceContents {
-    Text(JsonTextResourceContents),
-    Blob(JsonBlobResourceContents),
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonReadResourceResult {
-    contents: Vec<JsonResourceContents>,
-}
-
-// Prompt-related shadow types
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonPromptArgument {
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    required: Option<bool>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonPrompt {
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    arguments: Option<Vec<JsonPromptArgument>>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonListPromptsResult {
-    prompts: Vec<JsonPrompt>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    next_cursor: Option<String>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonPromptMessage {
-    role: String,
-    content: JsonContentBlock,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonGetPromptResult {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    messages: Vec<JsonPromptMessage>,
-}
-
-// Resource template shadow types
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonResourceTemplate {
-    uri_template: String,
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    mime_type: Option<String>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonListResourceTemplatesResult {
-    resource_templates: Vec<JsonResourceTemplate>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    next_cursor: Option<String>,
-}
-
-// Completion shadow types
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonCompleteResult {
-    values: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    total: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    has_more: Option<bool>,
-}
 
 // =============================================================================
 // CONVERSION FUNCTIONS
 // =============================================================================
-
-fn protocol_version_to_string(version: &ProtocolVersion) -> String {
-    match version {
-        ProtocolVersion::V20250618 => "2025-06-18".to_string(),
-        ProtocolVersion::V20250326 => "2025-03-26".to_string(),
-        ProtocolVersion::V20241105 => "2024-11-05".to_string(),
-    }
-}
 
 fn convert_server_capabilities(caps: &ServerCapabilities) -> JsonServerCapabilities {
     use crate::bindings::wasmcp::mcp_v20250618::mcp::{ServerLists, ServerSubscriptions};
@@ -401,52 +93,6 @@ fn convert_initialize_result(result: &InitializeResult) -> JsonInitializeResult 
         capabilities: convert_server_capabilities(&result.capabilities),
         server_info: convert_implementation(&result.server_info),
         instructions: result.options.as_ref().and_then(|o| o.instructions.clone()),
-    }
-}
-
-fn role_to_string(role: &Role) -> String {
-    match role {
-        Role::User => "user".to_string(),
-        Role::Assistant => "assistant".to_string(),
-    }
-}
-
-fn convert_annotations(annotations: &Annotations) -> JsonAnnotations {
-    JsonAnnotations {
-        audience: annotations
-            .audience
-            .as_ref()
-            .map(|roles| roles.iter().map(role_to_string).collect()),
-        last_modified: annotations.last_modified.clone(),
-        priority: annotations.priority,
-    }
-}
-
-/// Convert TextData (string or stream) to String
-///
-/// For text-stream, reads the stream in chunks with bounded memory.
-fn convert_text_data(data: &TextData) -> Result<String, String> {
-    match data {
-        TextData::Text(s) => Ok(s.clone()),
-        TextData::TextStream(stream) => {
-            let config = StreamConfig::default();
-            read_text_stream(stream, &config)
-        }
-    }
-}
-
-/// Convert BlobData (bytes or stream) to base64 String
-///
-/// For blob-stream, reads the stream in chunks with bounded memory.
-fn convert_blob_data(data: &BlobData) -> Result<String, String> {
-    use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-
-    match data {
-        BlobData::Blob(bytes) => Ok(BASE64.encode(bytes)),
-        BlobData::BlobStream(stream) => {
-            let config = StreamConfig::default();
-            read_blob_stream(stream, &config)
-        }
     }
 }
 
@@ -628,79 +274,6 @@ fn convert_complete_result(result: &CompleteResult) -> JsonCompleteResult {
     }
 }
 
-/// Convert ContentBlock with streaming support
-///
-/// This demonstrates the streaming infrastructure in action.
-/// Handles text-stream and blob-stream variants with bounded memory.
-fn convert_content_block(block: &ContentBlock) -> Result<JsonContentBlock, String> {
-    match block {
-        ContentBlock::Text(text_content) => {
-            let text = convert_text_data(&text_content.text)?;
-            Ok(JsonContentBlock::Text(JsonTextContent {
-                text,
-                annotations: text_content
-                    .options
-                    .as_ref()
-                    .and_then(|o| o.annotations.as_ref())
-                    .map(convert_annotations),
-            }))
-        }
-        ContentBlock::Image(image_content) => {
-            let data = convert_blob_data(&image_content.data)?;
-            Ok(JsonContentBlock::Image(JsonImageContent {
-                data,
-                mime_type: image_content.mime_type.clone(),
-                annotations: image_content
-                    .options
-                    .as_ref()
-                    .and_then(|o| o.annotations.as_ref())
-                    .map(convert_annotations),
-            }))
-        }
-        ContentBlock::Audio(audio_content) => {
-            let data = convert_blob_data(&audio_content.data)?;
-            Ok(JsonContentBlock::Audio(JsonImageContent {
-                data,
-                mime_type: audio_content.mime_type.clone(),
-                annotations: audio_content
-                    .options
-                    .as_ref()
-                    .and_then(|o| o.annotations.as_ref())
-                    .map(convert_annotations),
-            }))
-        }
-        ContentBlock::ResourceLink(link) => Ok(JsonContentBlock::Resource(JsonResourceContent {
-            uri: link.uri.clone(),
-            text: None,
-            blob: None,
-            mime_type: link.options.as_ref().and_then(|o| o.mime_type.clone()),
-        })),
-        ContentBlock::EmbeddedResource(embedded) => {
-            use crate::bindings::wasmcp::mcp_v20250618::mcp::ResourceContents;
-            match &embedded.resource {
-                ResourceContents::Text(text_res) => {
-                    let text = convert_text_data(&text_res.text)?;
-                    Ok(JsonContentBlock::Resource(JsonResourceContent {
-                        uri: text_res.uri.clone(),
-                        text: Some(text),
-                        blob: None,
-                        mime_type: text_res.options.as_ref().and_then(|o| o.mime_type.clone()),
-                    }))
-                }
-                ResourceContents::Blob(blob_res) => {
-                    let blob = convert_blob_data(&blob_res.blob)?;
-                    Ok(JsonContentBlock::Resource(JsonResourceContent {
-                        uri: blob_res.uri.clone(),
-                        text: None,
-                        blob: Some(blob),
-                        mime_type: blob_res.options.as_ref().and_then(|o| o.mime_type.clone()),
-                    }))
-                }
-            }
-        }
-    }
-}
-
 // =============================================================================
 // PUBLIC API
 // =============================================================================
@@ -737,7 +310,7 @@ pub fn serialize_jsonrpc_response(
 ///
 /// Handles all MCP server response types with proper error propagation.
 /// Stream data is read with bounded memory via the streaming infrastructure.
-fn serialize_server_response(response: &ServerResult) -> Value {
+pub fn serialize_server_response(response: &ServerResult) -> Value {
     match response {
         ServerResult::Initialize(init_result) => {
             serde_json::to_value(convert_initialize_result(init_result)).unwrap_or_else(|e| {
@@ -824,7 +397,7 @@ fn serialize_server_response(response: &ServerResult) -> Value {
 }
 
 /// Convert ErrorCode to JSON-RPC error code and message
-fn serialize_error_code(error: &ErrorCode) -> (i64, String) {
+pub fn serialize_error_code(error: &ErrorCode) -> (i64, String) {
     match error {
         ErrorCode::ParseError(e) => {
             let msg = e.message.clone();
@@ -863,6 +436,10 @@ pub fn format_sse_event(data: &Value) -> String {
     )
 }
 
+// =============================================================================
+// TESTS
+// =============================================================================
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -881,6 +458,7 @@ mod tests {
 
     #[test]
     fn test_protocol_version_conversion() {
+        use crate::bindings::wasmcp::mcp_v20250618::mcp::ProtocolVersion;
         assert_eq!(
             protocol_version_to_string(&ProtocolVersion::V20250618),
             "2025-06-18"

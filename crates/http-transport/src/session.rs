@@ -12,6 +12,7 @@
 /// - Clients SHOULD send DELETE to terminate sessions
 
 use serde::{Deserialize, Serialize};
+use crate::bindings::wasi::clocks::wall_clock;
 use crate::bindings::wasi::keyvalue::store::{self, Bucket, Error as StoreError};
 use crate::bindings::wasi::random::random;
 
@@ -55,7 +56,12 @@ pub enum SessionError {
 
 impl From<StoreError> for SessionError {
     fn from(e: StoreError) -> Self {
-        SessionError::Store(format!("{:?}", e))
+        // Use Display trait to avoid exposing internal structure
+        match e {
+            StoreError::NoSuchStore => SessionError::Store("key-value store not found".to_string()),
+            StoreError::AccessDenied => SessionError::Store("access denied to session store".to_string()),
+            StoreError::Other(msg) => SessionError::Store(format!("storage error: {}", msg)),
+        }
     }
 }
 
@@ -92,18 +98,11 @@ impl SessionManager {
     /// * `Ok(SessionManager)` - New session with unique ID
     /// * `Err(SessionError)` - If bucket open fails or metadata store fails
     pub fn initialize(bucket_name: &str) -> Result<SessionManager, SessionError> {
-        eprintln!("[SESSION_INIT] Initializing new session with bucket '{}'", bucket_name);
         // Open KV bucket
-        let bucket = store::open(bucket_name)
-            .map_err(|e| {
-                eprintln!("[SESSION_INIT] Failed to open bucket: {:?}", e);
-                SessionError::Store(format!("Failed to open bucket '{}': {:?}", bucket_name, e))
-            })?;
-        eprintln!("[SESSION_INIT] Bucket opened successfully");
+        let bucket = store::open(bucket_name)?;
 
         // Generate cryptographically secure UUID v4
         let session_id = generate_uuid_v4()?;
-        eprintln!("[SESSION_INIT] Generated session ID: {}", session_id);
 
         // Create initial session data
         let session_data = SessionData {
@@ -118,14 +117,8 @@ impl SessionManager {
         // Serialize and store with session ID as the key
         let session_json = serde_json::to_vec(&session_data)
             .map_err(|e| SessionError::Unexpected(format!("Failed to serialize session data: {}", e)))?;
-        eprintln!("[SESSION_INIT] Serialized session data, writing to key '{}'", session_id);
 
         bucket.set(&session_id, &session_json)?;
-        eprintln!("[SESSION_INIT] Session data written successfully");
-
-        // Verify it was written
-        let exists = bucket.exists(&session_id)?;
-        eprintln!("[SESSION_INIT] Verification: session '{}' exists = {}", session_id, exists);
 
         Ok(SessionManager {
             id: session_id,
@@ -148,25 +141,15 @@ impl SessionManager {
     /// * `Err(SessionError::NoSuchSession)` - If metadata doesn't exist
     /// * `Err(SessionError::Store)` - If bucket open fails
     pub fn open(bucket_name: &str, id: &str) -> Result<SessionManager, SessionError> {
-        eprintln!("[SESSION_OPEN] Opening session '{}' with bucket '{}'", id, bucket_name);
         // Open KV bucket
-        let bucket = store::open(bucket_name)
-            .map_err(|e| {
-                eprintln!("[SESSION_OPEN] Failed to open bucket: {:?}", e);
-                SessionError::Store(format!("Failed to open bucket '{}': {:?}", bucket_name, e))
-            })?;
-        eprintln!("[SESSION_OPEN] Bucket opened successfully");
+        let bucket = store::open(bucket_name)?;
 
         // Check if session exists using session ID as key
-        eprintln!("[SESSION_OPEN] Checking if session '{}' exists", id);
         let exists = bucket.exists(id)?;
-        eprintln!("[SESSION_OPEN] Session '{}' exists: {}", id, exists);
         if !exists {
-            eprintln!("[SESSION_OPEN] Session '{}' not found, returning NoSuchSession", id);
             return Err(SessionError::NoSuchSession);
         }
 
-        eprintln!("[SESSION_OPEN] Session opened successfully");
         Ok(SessionManager {
             id: id.to_string(),
             bucket,
@@ -266,14 +249,14 @@ fn generate_uuid_v4() -> Result<String, SessionError> {
 
 /// Returns current Unix timestamp in milliseconds
 ///
-/// Note: WASI doesn't provide a monotonic clock in all environments.
-/// This uses a simple counter-based approach for MVP.
-/// In production, this should use wasi:clocks/wall-clock.
+/// Uses WASI wall-clock to get the current time as seconds since Unix epoch.
+/// The returned value is in milliseconds for consistency with JavaScript/web standards.
+///
+/// Note: Wall clock is not monotonic and may be affected by system time changes.
 fn current_timestamp_ms() -> u64 {
-    // For MVP, use a simple counter since we don't have reliable wall-clock access
-    // In production, use: wasi::clocks::wall_clock::now()
-    // For now, return 0 as placeholder - timestamps are not critical for session functionality
-    0
+    let datetime = wall_clock::now();
+    // Convert to milliseconds: seconds * 1000 + nanoseconds / 1_000_000
+    datetime.seconds * 1000 + (datetime.nanoseconds as u64 / 1_000_000)
 }
 
 /// Validates that a session ID contains only visible ASCII characters

@@ -21,36 +21,17 @@ impl SessionConfig {
         let env_vars = get_environment();
         let env_map: std::collections::HashMap<String, String> = env_vars.into_iter().collect();
 
-        eprintln!("[SESSION_CONFIG] Environment variables:");
-        for (key, value) in &env_map {
-            if key.starts_with("MCP_") {
-                eprintln!("[SESSION_CONFIG]   {}={}", key, value);
-            }
-        }
-
         let enabled = env_map
             .get("MCP_SESSION_ENABLED")
             .map(|v| v.to_lowercase() == "true")
             .unwrap_or(false);
 
-        let runtime = env_map
-            .get("MCP_RUNTIME")
-            .map(|v| v.to_lowercase())
+        // Default to empty string if MCP_SESSION_BUCKET not set
+        // (allows wasmtime's default bucket behavior)
+        let bucket_name = env_map
+            .get("MCP_SESSION_BUCKET")
+            .cloned()
             .unwrap_or_default();
-
-        // Wasmtime only supports empty string as bucket name
-        let bucket_name = if runtime == "wasmtime" {
-            eprintln!("[SESSION_CONFIG] Runtime is wasmtime, using empty bucket name");
-            String::new()
-        } else {
-            env_map
-                .get("MCP_SESSION_BUCKET")
-                .cloned()
-                .unwrap_or_else(|| "mcp-sessions".to_string())
-        };
-
-        eprintln!("[SESSION_CONFIG] Final config: enabled={}, bucket_name='{}', runtime={}",
-                  enabled, bucket_name, runtime);
 
         SessionConfig {
             enabled,

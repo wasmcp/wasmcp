@@ -53,13 +53,9 @@ pub fn handle_post(
     let config = SessionConfig::from_env();
     let session_info = if config.enabled {
         if is_initialize {
-            // Create new session for initialize request
-            let manager = SessionManager::initialize(&config.bucket_name)
-                .map_err(|e| format!("Failed to create session: {:?}", e))?;
-            Some(SessionInfo {
-                session_id: manager.id().to_string(),
-                store_id: config.bucket_name.clone(),
-            })
+            // Initialize requests don't have existing sessions
+            // Session creation handled by handle_initialize_request
+            None
         } else if let Some(session_id) = session_id_from_header {
             // Validate existing session
             eprintln!("[SESSION_VALIDATE] Validating session ID: {}", session_id);

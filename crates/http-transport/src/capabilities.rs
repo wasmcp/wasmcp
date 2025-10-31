@@ -12,11 +12,35 @@ use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
     handle_request, RequestCtx, RequestId,
 };
 
+/// Helper to create a RequestCtx for capability discovery probes
+///
+/// All discovery requests use the same basic context with no session,
+/// no user, and no message stream.
+///
+/// # Arguments
+/// * `id` - Request ID number for this probe
+/// * `protocol_version` - Negotiated protocol version string
+///
+/// # Returns
+/// RequestCtx configured for discovery
+fn create_discovery_ctx<'a>(id: i64, protocol_version: &'a str) -> RequestCtx<'a> {
+    RequestCtx {
+        id: RequestId::Number(id),
+        protocol_version: protocol_version.to_string(),
+        messages: None,
+        session: None,
+        user: None,
+    }
+}
+
 /// Discover capabilities by probing downstream handler
 ///
 /// Makes test calls to list-tools, list-resources, list-prompts, and completion/complete
 /// to determine what the downstream handler supports. This allows the transport to
 /// accurately advertise capabilities during initialization.
+///
+/// # Arguments
+/// * `protocol_version` - The negotiated protocol version string (e.g., "2025-06-18")
 ///
 /// # Returns
 /// ServerCapabilities structure with discovered capabilities:
@@ -24,33 +48,21 @@ use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
 /// - `logging`: Always supported (transport provides logging)
 /// - `list_changed`: Which list types are supported (tools, resources, prompts)
 /// - `subscriptions`: None (stateless transport)
-pub fn discover_capabilities() -> ServerCapabilities {
+pub fn discover_capabilities(protocol_version: &str) -> ServerCapabilities {
     // Try to discover what the downstream handler supports by calling list methods
     // With optional output stream, we can pass None for discovery calls
     let mut list_flags = ServerLists::empty();
 
     // Try list-tools
     let req = ClientRequest::ToolsList(ListToolsRequest { cursor: None });
-    let ctx = RequestCtx {
-        id: RequestId::Number(0),
-        protocol_version: "2025-06-18".to_string(),
-        messages: None,
-        session: None,
-        user: None,
-    };
+    let ctx = create_discovery_ctx(0, protocol_version);
     if handle_request(&ctx, &req).is_ok() {
         list_flags |= ServerLists::TOOLS;
     }
 
     // Try list-resources
     let req = ClientRequest::ResourcesList(ListResourcesRequest { cursor: None });
-    let ctx = RequestCtx {
-        id: RequestId::Number(1),
-        protocol_version: "2025-06-18".to_string(),
-        messages: None,
-        session: None,
-        user: None,
-    };
+    let ctx = create_discovery_ctx(1, protocol_version);
     if handle_request(&ctx, &req).is_ok() {
         list_flags |= ServerLists::RESOURCES;
     }
@@ -58,13 +70,7 @@ pub fn discover_capabilities() -> ServerCapabilities {
     // Try list-prompts and use result to test completions
     let mut has_completions = false;
     let req = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
-    let ctx = RequestCtx {
-        id: RequestId::Number(2),
-        protocol_version: "2025-06-18".to_string(),
-        messages: None,
-        session: None,
-        user: None,
-    };
+    let ctx = create_discovery_ctx(2, protocol_version);
     if let Ok(ServerResult::PromptsList(prompts_result)) = handle_request(&ctx, &req) {
         list_flags |= ServerLists::PROMPTS;
 
@@ -91,13 +97,7 @@ pub fn discover_capabilities() -> ServerCapabilities {
 
                         // Test if completions are supported
                         let req = ClientRequest::CompletionComplete(completion_request);
-                        let ctx = RequestCtx {
-                            id: RequestId::Number(3),
-                            protocol_version: "2025-06-18".to_string(),
-                            messages: None,
-                            session: None,
-                            user: None,
-                        };
+                        let ctx = create_discovery_ctx(3, protocol_version);
                         match handle_request(&ctx, &req) {
                             Ok(_) => has_completions = true,
                             Err(

@@ -14,28 +14,25 @@ use crate::bindings::wasi::keyvalue::store::{self as kv_store, Bucket};
 pub struct SessionImpl {
     bucket: Bucket,
     session_id: String,
-    store_id: String,
 }
 
 impl SessionImpl {
     /// Create a new session by opening the KV bucket
     pub fn new(session_id: String, store_id: String) -> Result<Self, SessionError> {
-        // Open the KV bucket
+        // Open the KV bucket (store_id only used here, not stored)
         let bucket = kv_store::open(&store_id).map_err(map_kv_error)?;
 
         // Session IDs come pre-validated from http-transport
         Ok(SessionImpl {
             bucket,
             session_id,
-            store_id,
         })
     }
 
     /// Delete session data
     pub fn cleanup(self) -> Result<(), SessionError> {
-        // Delete terminated metadata if it exists
-        let metadata_key = format!("session:{}:terminated", self.session_id);
-        let _ = self.bucket.delete(&metadata_key);
+        // Middleware-level cleanup is a no-op
+        // Transport owns session lifecycle and cleanup
         Ok(())
     }
 }
@@ -56,25 +53,15 @@ impl GuestSession for SessionImpl {
     }
 
     fn get(&self, key: String) -> Result<Option<Vec<u8>>, SessionError> {
-        // Check if session is terminated
-        if self.is_terminated()? {
-            return Err(SessionError::Store(
-                "session is terminated".to_string(),
-            ));
-        }
-
+        // Transport validates session before calling downstream
+        // No need to check termination here
         let storage_key = format!("session:{}:{}", self.session_id, key);
         self.bucket.get(&storage_key).map_err(map_kv_error)
     }
 
     fn set(&self, key: String, value: Vec<u8>) -> Result<(), SessionError> {
-        // Check if session is terminated
-        if self.is_terminated()? {
-            return Err(SessionError::Store(
-                "session is terminated".to_string(),
-            ));
-        }
-
+        // Transport validates session before calling downstream
+        // No need to check termination here
         let storage_key = format!("session:{}:{}", self.session_id, key);
         self.bucket.set(&storage_key, &value).map_err(map_kv_error)
     }
@@ -90,24 +77,16 @@ impl GuestSession for SessionImpl {
         ))
     }
 
-    fn terminate(&self, reason: Option<String>) -> Result<(), SessionError> {
-        // Mark session as terminated in KV store
-        let metadata_key = format!("session:{}:terminated", self.session_id);
-        let terminated_value = reason.unwrap_or_else(|| "terminated".to_string());
-
-        self.bucket
-            .set(&metadata_key, terminated_value.as_bytes())
-            .map_err(map_kv_error)
+    fn terminate(&self, _reason: Option<String>) -> Result<(), SessionError> {
+        // Transport owns session lifecycle - this is a no-op at middleware level
+        // Termination state is managed by transport layer
+        Ok(())
     }
 
     fn is_terminated(&self) -> Result<bool, SessionError> {
-        // Check KV store for terminated flag
-        let metadata_key = format!("session:{}:terminated", self.session_id);
-
-        match self.bucket.exists(&metadata_key) {
-            Ok(exists) => Ok(exists),
-            Err(e) => Err(map_kv_error(e)),
-        }
+        // Transport validates session before calling downstream
+        // This should never be called, but return false if it is
+        Ok(false)
     }
 }
 

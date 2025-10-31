@@ -84,7 +84,8 @@ pub fn handle_initialize_request(
     };
 
     // Discover capabilities by calling downstream handler's list methods
-    let capabilities = discover_capabilities();
+    // Use the negotiated protocol version so discovery probes use correct version
+    let capabilities = discover_capabilities(client_protocol_version);
 
     // Serialize capabilities before we move anything
     let capabilities_json = serialize_capabilities(&capabilities);

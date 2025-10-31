@@ -13,5 +13,6 @@ pub mod transport;
 
 // Re-export main entry points
 pub use http::{handle_delete, handle_get, handle_post};
+pub use initialize::handle_initialize_request;
 pub use jsonrpc::{handle_json_rpc_notification, handle_json_rpc_request, handle_json_rpc_response};
 pub use transport::{handle_ping_request, handle_set_level_request};

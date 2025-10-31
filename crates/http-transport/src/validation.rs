@@ -7,7 +7,7 @@
 //! - Origin header validation (DNS rebinding protection)
 
 use crate::bindings::wasi::cli::environment::get_environment;
-use crate::bindings::wasi::http::types::IncomingRequest;
+use crate::bindings::wasi::http::types::{Fields, IncomingRequest};
 use crate::session::validate_session_id_format;
 
 /// Extracts session ID from Mcp-Session-Id header
@@ -18,18 +18,15 @@ use crate::session::validate_session_id_format;
 /// - Returns error if header present but invalid format
 pub fn extract_session_id(request: &IncomingRequest) -> Result<Option<String>, String> {
     let headers = request.headers();
-    let session_values = headers.get(&"Mcp-Session-Id".to_string());
+    let session_id = get_header_value(&headers, "Mcp-Session-Id")?;
 
-    if session_values.is_empty() {
+    let Some(session_id) = session_id else {
         return Ok(None);
-    }
-
-    let session_id = String::from_utf8(session_values[0].clone())
-        .map_err(|_| "Invalid Mcp-Session-Id header encoding".to_string())?;
+    };
 
     // Validate format per MCP spec
     validate_session_id_format(&session_id)
-        .map_err(|e| format!("Invalid session ID format: {:?}", e))?;
+        .map_err(|e| format!("invalid session ID format: {:?}", e))?;
 
     Ok(Some(session_id))
 }
@@ -41,14 +38,8 @@ pub fn extract_session_id(request: &IncomingRequest) -> Result<Option<String>, S
 /// https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#sending-messages-to-the-server
 pub fn validate_accept_header(request: &IncomingRequest) -> Result<(), String> {
     let headers = request.headers();
-    let accept_values = headers.get("accept");
-
-    if accept_values.is_empty() {
-        return Err("Missing Accept header".to_string());
-    }
-
-    let accept_str = String::from_utf8(accept_values[0].clone())
-        .map_err(|_| "Invalid Accept header encoding".to_string())?;
+    let accept_str = get_header_value(&headers, "accept")?
+        .ok_or("missing Accept header")?;
 
     // Check if both required content types are present
     let has_json = accept_str.contains("application/json") || accept_str.contains("*/*");
@@ -56,7 +47,7 @@ pub fn validate_accept_header(request: &IncomingRequest) -> Result<(), String> {
 
     if !has_json || !has_sse {
         return Err(
-            "Accept header must include both application/json and text/event-stream".to_string(),
+            "accept header must include both application/json and text/event-stream".to_string(),
         );
     }
 
@@ -73,21 +64,21 @@ pub fn validate_accept_header(request: &IncomingRequest) -> Result<(), String> {
 /// * `Err(String)` - If version is unsupported
 pub fn validate_protocol_version(request: &IncomingRequest) -> Result<String, String> {
     let headers = request.headers();
-    let version_values = headers.get("mcp-protocol-version");
+    let version_str = get_header_value(&headers, "mcp-protocol-version")?;
 
-    if version_values.is_empty() {
-        // No version header - assume 2025-03-26 for backwards compatibility
-        // Per spec: "the server SHOULD assume protocol version 2025-03-26"
-        return Ok("2025-03-26".to_string());
-    }
-
-    let version_str = String::from_utf8(version_values[0].clone())
-        .map_err(|_| "Invalid MCP-Protocol-Version header encoding".to_string())?;
+    let version_str = match version_str {
+        Some(v) => v,
+        None => {
+            // No version header - assume 2025-03-26 for backwards compatibility
+            // Per spec: "the server SHOULD assume protocol version 2025-03-26"
+            return Ok("2025-03-26".to_string());
+        }
+    };
 
     // Validate supported versions
     match version_str.as_str() {
         "2025-06-18" | "2025-03-26" | "2024-11-05" => Ok(version_str),
-        _ => Err(format!("Unsupported MCP-Protocol-Version: {}", version_str)),
+        _ => Err(format!("unsupported MCP-Protocol-Version: {}", version_str)),
     }
 }
 
@@ -103,62 +94,81 @@ pub fn validate_protocol_version(request: &IncomingRequest) -> Result<String, St
 ///
 /// Default behavior: If MCP_ALLOWED_ORIGINS is not set, only localhost origins are allowed.
 pub fn validate_origin(request: &IncomingRequest) -> Result<(), String> {
-    // Get the Origin header
-    let headers = request.headers();
-    let origin_values = headers.get("origin");
+    let origin = extract_origin_header(request)?;
 
-    // Get environment variables
-    let env_vars = get_environment();
-    let require_origin = env_vars
-        .iter()
-        .find(|(k, _)| k == "MCP_REQUIRE_ORIGIN")
-        .map(|(_, v)| v.as_str())
-        .unwrap_or("false");
-
-    let allowed_origins = env_vars
-        .iter()
-        .find(|(k, _)| k == "MCP_ALLOWED_ORIGINS")
-        .map(|(_, v)| v.as_str());
-
-    // If no Origin header, check if we require it
-    let origin = if origin_values.is_empty() {
-        if require_origin == "true" {
-            return Err("Origin header required but not provided".to_string());
-        }
-        // No Origin header but not required - allow (non-browser clients)
+    // If no Origin header and not required, allow (non-browser clients)
+    let Some(origin_value) = origin else {
         return Ok(());
-    } else {
-        // Take first Origin value and decode
-        String::from_utf8(origin_values[0].clone())
-            .map_err(|_| "Invalid Origin header encoding".to_string())?
     };
 
-    // Check allowed origins
+    let env_vars = get_environment();
+    let allowed_origins = get_env_var(&env_vars, "MCP_ALLOWED_ORIGINS");
+
     match allowed_origins {
-        Some(allowed) => {
-            // Comma-separated list of allowed origins
-            let allowed_list: Vec<&str> = allowed.split(',').map(|s| s.trim()).collect();
+        Some(allowed) => check_allowed_origins(&origin_value, allowed),
+        None => validate_localhost_origin(&origin_value),
+    }
+}
 
-            // Special case: "*" means allow all (INSECURE - development only)
-            if allowed_list.contains(&"*") {
-                return Ok(());
-            }
+/// Extract and validate Origin header from request
+fn extract_origin_header(request: &IncomingRequest) -> Result<Option<String>, String> {
+    let headers = request.headers();
+    let origin = get_header_value(&headers, "origin")?;
 
-            // Check if origin is in allowed list
-            if allowed_list.contains(&origin.as_str()) {
-                Ok(())
-            } else {
-                Err(format!(
-                    "Origin '{}' not in allowed list. Set MCP_ALLOWED_ORIGINS environment variable.",
-                    origin
-                ))
-            }
-        }
-        None => {
-            // No configuration - default to localhost only for security
-            validate_localhost_origin(&origin)
+    if origin.is_none() {
+        let env_vars = get_environment();
+        let require_origin = get_env_var(&env_vars, "MCP_REQUIRE_ORIGIN").unwrap_or("false");
+
+        if require_origin == "true" {
+            return Err("origin header required but not provided".to_string());
         }
     }
+
+    Ok(origin)
+}
+
+/// Check if origin is in allowed origins list
+fn check_allowed_origins(origin: &str, allowed: &str) -> Result<(), String> {
+    let allowed_list: Vec<&str> = allowed.split(',').map(|s| s.trim()).collect();
+
+    // Special case: "*" means allow all (INSECURE - development only)
+    if allowed_list.contains(&"*") {
+        return Ok(());
+    }
+
+    // Check if origin is in allowed list
+    if allowed_list.contains(&origin) {
+        Ok(())
+    } else {
+        Err(format!(
+            "origin '{}' not in allowed list; set MCP_ALLOWED_ORIGINS environment variable",
+            origin
+        ))
+    }
+}
+
+/// Helper to get environment variable value
+fn get_env_var<'a>(env_vars: &'a [(String, String)], key: &str) -> Option<&'a str> {
+    env_vars
+        .iter()
+        .find(|(k, _)| k == key)
+        .map(|(_, v)| v.as_str())
+}
+
+/// Helper to extract and decode header value
+///
+/// Returns None if header is missing, or error if decoding fails.
+fn get_header_value(headers: &Fields, name: &str) -> Result<Option<String>, String> {
+    let values = headers.get(name);
+
+    if values.is_empty() {
+        return Ok(None);
+    }
+
+    let value = String::from_utf8(values[0].clone())
+        .map_err(|_| format!("invalid {} header encoding", name))?;
+
+    Ok(Some(value))
 }
 
 /// Validate that origin is a localhost origin (default secure behavior)
@@ -179,8 +189,8 @@ fn validate_localhost_origin(origin: &str) -> Result<(), String> {
     }
 
     Err(format!(
-        "Origin '{}' not allowed. By default, only localhost origins are permitted. \
-        Set MCP_ALLOWED_ORIGINS environment variable to allow other origins.",
+        "origin '{}' not allowed; by default, only localhost origins are permitted; \
+        set MCP_ALLOWED_ORIGINS environment variable to allow other origins",
         origin
     ))
 }

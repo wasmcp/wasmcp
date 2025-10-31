@@ -3,9 +3,9 @@
 use crate::bindings::wasi::http::types::{Fields, OutgoingBody, OutgoingResponse};
 use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
     handle_error, handle_notification, handle_request, handle_result, ErrorCtx, NotificationCtx,
-    RequestCtx, RequestId, ResultCtx, Session as SessionInfo,
+    RequestCtx, ResultCtx, Session as SessionInfo,
 };
-use crate::handlers::{handle_ping_request, handle_set_level_request};
+use crate::handlers::{handle_initialize_request, handle_ping_request, handle_set_level_request};
 use crate::parser;
 use crate::response::{parse_request_id, write_sse_response};
 
@@ -43,6 +43,13 @@ pub fn handle_json_rpc_request(
 
     // Handle transport-level methods directly
     match method {
+        "initialize" => {
+            return handle_initialize_request(
+                json_rpc,
+                request_id,
+                session_info.as_ref().map(|s| s.session_id.clone()),
+            )
+        }
         "ping" => return handle_ping_request(request_id),
         "logging/setLevel" => return handle_set_level_request(request_id),
         _ => {
