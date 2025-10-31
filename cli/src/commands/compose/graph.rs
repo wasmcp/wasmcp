@@ -16,6 +16,8 @@ struct CompositionPackages {
     user_ids: Vec<wac_graph::PackageId>,
     method_not_found_id: wac_graph::PackageId,
     http_messages_id: Option<wac_graph::PackageId>,
+    sessions_id: Option<wac_graph::PackageId>,
+    session_store_id: Option<wac_graph::PackageId>,
 }
 
 /// Build the component composition using wac-graph
@@ -35,6 +37,8 @@ pub async fn build_composition(
     component_paths: &[PathBuf],
     method_not_found_path: &Path,
     http_messages_path: Option<&Path>,
+    sessions_path: Option<&Path>,
+    session_store_path: Option<&Path>,
     transport_type: &str,
     _resolver: &VersionResolver,
     verbose: bool,
@@ -56,6 +60,24 @@ pub async fn build_composition(
         None
     };
 
+    let sessions_interface = if let Some(path) = sessions_path {
+        Some(
+            find_component_export(path, "wasmcp:mcp-v20250618/sessions@")
+                .context("Failed to discover sessions interface from sessions component")?,
+        )
+    } else {
+        None
+    };
+
+    let session_manager_interface = if let Some(path) = session_store_path {
+        Some(
+            find_component_export(path, "wasmcp:mcp-v20250618/session-manager@")
+                .context("Failed to discover session-manager interface from session-store component")?,
+        )
+    } else {
+        None
+    };
+
     if verbose {
         println!(
             "   Discovered server-handler interface: {}",
@@ -63,6 +85,12 @@ pub async fn build_composition(
         );
         if let Some(ref notif) = messages_interface {
             println!("   Discovered messages interface: {}", notif);
+        }
+        if let Some(ref sess) = sessions_interface {
+            println!("   Discovered sessions interface: {}", sess);
+        }
+        if let Some(ref mgr) = session_manager_interface {
+            println!("   Discovered session-manager interface: {}", mgr);
         }
     }
 
@@ -78,6 +106,8 @@ pub async fn build_composition(
         component_paths,
         method_not_found_path,
         http_messages_path,
+        sessions_path,
+        session_store_path,
     )?;
 
     // Instantiate http-messages first if present (provides messages interface)
@@ -97,6 +127,40 @@ pub async fn build_composition(
         None
     };
 
+    // Instantiate sessions if present (provides session management interface)
+    let sessions_export = if let Some(sessions_id) = packages.sessions_id {
+        if verbose {
+            println!("   Instantiating sessions...");
+        }
+        let sessions_inst = graph.instantiate(sessions_id);
+        let sess_interface = sessions_interface.as_ref().unwrap();
+
+        Some(
+            graph
+                .alias_instance_export(sessions_inst, sess_interface)
+                .context("Failed to get sessions export from sessions component")?,
+        )
+    } else {
+        None
+    };
+
+    // Instantiate session-store if present (provides session-manager interface)
+    let session_manager_export = if let Some(session_store_id) = packages.session_store_id {
+        if verbose {
+            println!("   Instantiating session-store...");
+        }
+        let session_store_inst = graph.instantiate(session_store_id);
+        let mgr_interface = session_manager_interface.as_ref().unwrap();
+
+        Some(
+            graph
+                .alias_instance_export(session_store_inst, mgr_interface)
+                .context("Failed to get session-manager export from session-store component")?,
+        )
+    } else {
+        None
+    };
+
     // Build the middleware chain
     if verbose {
         println!("   Building composition graph...");
@@ -107,6 +171,10 @@ pub async fn build_composition(
         &server_handler_interface,
         messages_export,
         messages_interface.as_deref(),
+        sessions_export,
+        sessions_interface.as_deref(),
+        session_manager_export,
+        session_manager_interface.as_deref(),
     )?;
 
     // Wire transport and export interface
@@ -118,6 +186,10 @@ pub async fn build_composition(
         transport_type,
         &server_handler_interface,
         messages_interface.as_deref(),
+        sessions_export,
+        sessions_interface.as_deref(),
+        session_manager_export,
+        session_manager_interface.as_deref(),
     )?;
 
     // Encode the composition
@@ -138,6 +210,8 @@ fn load_and_register_components(
     component_paths: &[PathBuf],
     method_not_found_path: &Path,
     http_messages_path: Option<&Path>,
+    sessions_path: Option<&Path>,
+    session_store_path: Option<&Path>,
 ) -> Result<CompositionPackages> {
     // Load packages
     let transport_pkg = load_package(graph, "transport", transport_path)?;
@@ -145,6 +219,14 @@ fn load_and_register_components(
 
     let http_messages_pkg = http_messages_path
         .map(|path| load_package(graph, "http-messages", path))
+        .transpose()?;
+
+    let sessions_pkg = sessions_path
+        .map(|path| load_package(graph, "sessions", path))
+        .transpose()?;
+
+    let session_store_pkg = session_store_path
+        .map(|path| load_package(graph, "session-store", path))
         .transpose()?;
 
     let mut user_packages = Vec::new();
@@ -161,6 +243,12 @@ fn load_and_register_components(
     let http_messages_id = http_messages_pkg
         .map(|pkg| graph.register_package(pkg))
         .transpose()?;
+    let sessions_id = sessions_pkg
+        .map(|pkg| graph.register_package(pkg))
+        .transpose()?;
+    let session_store_id = session_store_pkg
+        .map(|pkg| graph.register_package(pkg))
+        .transpose()?;
 
     let mut user_ids = Vec::new();
     for pkg in user_packages {
@@ -172,6 +260,8 @@ fn load_and_register_components(
         user_ids,
         method_not_found_id,
         http_messages_id,
+        sessions_id,
+        session_store_id,
     })
 }
 
@@ -184,6 +274,10 @@ fn build_middleware_chain(
     server_handler_interface: &str,
     messages_export: Option<wac_graph::NodeId>,
     messages_interface: Option<&str>,
+    sessions_export: Option<wac_graph::NodeId>,
+    sessions_interface: Option<&str>,
+    session_manager_export: Option<wac_graph::NodeId>,
+    session_manager_interface: Option<&str>,
 ) -> Result<wac_graph::NodeId> {
     // Start with method-not-found as the terminal handler
     let prev_inst = graph.instantiate(packages.method_not_found_id);
@@ -210,6 +304,20 @@ fn build_middleware_chain(
             let _ = graph.set_instantiation_argument(inst, notif_interface, messages_node);
         }
 
+        // Wire sessions import if sessions component is available
+        if let (Some(sessions_node), Some(sess_interface)) = (sessions_export, sessions_interface)
+        {
+            // Attempt to wire sessions - it's OK if the component doesn't import it
+            let _ = graph.set_instantiation_argument(inst, sess_interface, sessions_node);
+        }
+
+        // Wire session-manager import if session-store component is available
+        if let (Some(mgr_node), Some(mgr_interface)) = (session_manager_export, session_manager_interface)
+        {
+            // Attempt to wire session-manager - it's OK if the component doesn't import it
+            let _ = graph.set_instantiation_argument(inst, mgr_interface, mgr_node);
+        }
+
         // This component's export becomes the next input
         next_handler_export = graph
             .alias_instance_export(inst, server_handler_interface)
@@ -228,6 +336,10 @@ fn wire_transport(
     transport_type: &str,
     server_handler_interface: &str,
     messages_interface: Option<&str>,
+    sessions_export: Option<wac_graph::NodeId>,
+    sessions_interface: Option<&str>,
+    session_manager_export: Option<wac_graph::NodeId>,
+    session_manager_interface: Option<&str>,
 ) -> Result<()> {
     // Wire transport at the front of the chain
     let transport_inst = graph.instantiate(transport_id);
@@ -236,6 +348,16 @@ fn wire_transport(
     // Wire messages to transport if available (http-transport imports it)
     if let (Some(messages_node), Some(notif_interface)) = (messages_export, messages_interface) {
         let _ = graph.set_instantiation_argument(transport_inst, notif_interface, messages_node);
+    }
+
+    // Wire sessions to transport if available (http-transport imports it)
+    if let (Some(sessions_node), Some(sess_interface)) = (sessions_export, sessions_interface) {
+        let _ = graph.set_instantiation_argument(transport_inst, sess_interface, sessions_node);
+    }
+
+    // Wire session-manager to transport if available (http-transport imports it)
+    if let (Some(mgr_node), Some(mgr_interface)) = (session_manager_export, session_manager_interface) {
+        let _ = graph.set_instantiation_argument(transport_inst, mgr_interface, mgr_node);
     }
 
     // Export the appropriate WASI interface based on transport type

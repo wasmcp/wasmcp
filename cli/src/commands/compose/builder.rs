@@ -23,7 +23,7 @@
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 
-use super::{ComposeOptions, CompositionMode};
+use super::{ComposeOptions, CompositionMode, RuntimeTarget};
 use crate::config;
 use crate::versioning::VersionResolver;
 
@@ -41,6 +41,7 @@ use crate::versioning::VersionResolver;
 /// - `force`: false
 /// - `verbose`: false
 /// - `mode`: Server (complete MCP server)
+/// - `runtime_target`: Spin (default, as it's becoming the standard)
 #[derive(Debug, Clone)]
 #[allow(dead_code)] // Public API - used by external consumers, not internally yet
 pub struct ComposeOptionsBuilder {
@@ -49,10 +50,12 @@ pub struct ComposeOptionsBuilder {
     output: PathBuf,
     override_transport: Option<String>,
     override_method_not_found: Option<String>,
+    override_sessions: Option<String>,
     deps_dir: Option<PathBuf>,
     skip_download: bool,
     force: bool,
     verbose: bool,
+    runtime_target: RuntimeTarget,
 }
 
 #[allow(dead_code)] // Public API - used by external consumers, not internally yet
@@ -85,10 +88,12 @@ impl ComposeOptionsBuilder {
             output: PathBuf::from("server.wasm"),
             override_transport: None,
             override_method_not_found: None,
+            override_sessions: None,
             deps_dir: None,
             skip_download: false,
             force: false,
             verbose: false,
+            runtime_target: RuntimeTarget::default(), // Defaults to Spin
         }
     }
 
@@ -204,11 +209,13 @@ impl ComposeOptionsBuilder {
             version_resolver,
             override_transport: self.override_transport,
             override_method_not_found: self.override_method_not_found,
+            override_sessions: self.override_sessions,
             deps_dir,
             skip_download: self.skip_download,
             force: self.force,
             verbose: self.verbose,
             mode: CompositionMode::Server, // Builder defaults to server mode
+            runtime_target: self.runtime_target,
         })
     }
 }

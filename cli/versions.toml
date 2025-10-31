@@ -9,11 +9,19 @@
 [versions]
 # WIT package versions for scaffolding new components
 # These are embedded in generated wit/deps.toml files
-mcp-v20250618 = "0.1.3"
+mcp-v20250618 = "0.1.4"
 
-# Component versions for downloading from registry
-http-transport = "0.1.4"
+# Runtime-agnostic transports
+http-transport = "0.1.4"       # No longer uses wasi:keyvalue - imports session-manager instead
 stdio-transport = "0.1.4"
+
+# Runtime-specific components (wasi:keyvalue)
+sessions = "0.1.4"             # wasi:keyvalue/store@0.2.0-draft
+sessions-d2 = "0.1.4"          # wasi:keyvalue/store@0.2.0-draft2
+session-store = "0.1.4"        # wasi:keyvalue/store@0.2.0-draft (centralized session management)
+session-store-d2 = "0.1.4"     # wasi:keyvalue/store@0.2.0-draft2 (centralized session management)
+
+# Runtime-agnostic components
 method-not-found = "0.1.4"
 tools-middleware = "0.1.4"
 resources-middleware = "0.1.4"

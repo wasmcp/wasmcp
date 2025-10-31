@@ -164,6 +164,10 @@ enum ComposeCommand {
         #[arg(long)]
         override_method_not_found: Option<String>,
 
+        /// Override sessions component (path or package spec)
+        #[arg(long)]
+        override_sessions: Option<String>,
+
         /// Directory for dependency components
         #[arg(long, default_value_os_t = default_deps_dir())]
         deps_dir: PathBuf,
@@ -179,6 +183,25 @@ enum ComposeCommand {
         /// Enable verbose output (show detailed resolution and composition steps)
         #[arg(long, short = 'v')]
         verbose: bool,
+
+        /// Target Spin runtime (WASI draft2, @0.2.0-draft2)
+        ///
+        /// Uses draft2 variants of session components (sessions-d2, session-store-d2).
+        /// This is the default if no runtime flag is specified.
+        #[arg(long, group = "runtime")]
+        spin: bool,
+
+        /// Target wasmtime runtime (WASI draft, @0.2.3)
+        ///
+        /// Uses standard variants of session components (sessions, session-store).
+        #[arg(long, group = "runtime")]
+        wasmtime: bool,
+
+        /// Target wasmcloud runtime (WASI draft, @0.2.3)
+        ///
+        /// Uses standard variants of session components (sessions, session-store).
+        #[arg(long, group = "runtime")]
+        wasmcloud: bool,
     },
 
     /// Compose a handler component (composable middleware without transport)
@@ -492,11 +515,25 @@ async fn main() -> Result<()> {
                 version_overrides,
                 override_transport,
                 override_method_not_found,
+                override_sessions,
                 deps_dir,
                 skip_download,
                 force,
                 verbose,
+                spin: _,  // Included in the else branch below
+                wasmtime,
+                wasmcloud,
             } => {
+                // Determine runtime target from flags (defaults to Spin if none specified)
+                let runtime_target = if wasmtime {
+                    commands::compose::RuntimeTarget::Wasmtime
+                } else if wasmcloud {
+                    commands::compose::RuntimeTarget::Wasmcloud
+                } else {
+                    // Default to Spin (includes when --spin is explicitly set OR when no flag is set)
+                    commands::compose::RuntimeTarget::Spin
+                };
+
                 // Merge components from both sources (new unified approach)
                 // If -p flags are used, they're prepended to components list for backward compatibility
                 let mut all_specs = Vec::new();
@@ -546,11 +583,13 @@ async fn main() -> Result<()> {
                     version_resolver,
                     override_transport: final_override_transport,
                     override_method_not_found: final_override_method_not_found,
+                    override_sessions,
                     deps_dir,
                     skip_download,
                     force: final_force,
                     verbose,
                     mode: commands::compose::CompositionMode::Server,
+                    runtime_target,
                 };
 
                 commands::compose::compose(options).await
@@ -588,11 +627,13 @@ async fn main() -> Result<()> {
                     version_resolver,
                     override_transport: None,
                     override_method_not_found: None,
+                    override_sessions: None,
                     deps_dir,
                     skip_download: false, // Not applicable to handler mode
                     force,
                     verbose,
                     mode: commands::compose::CompositionMode::Handler,
+                    runtime_target: commands::compose::RuntimeTarget::default(), // TODO: Add CLI flags for handler mode too
                 };
 
                 commands::compose::compose(options).await

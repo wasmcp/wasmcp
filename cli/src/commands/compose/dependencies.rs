@@ -4,10 +4,23 @@
 //! such as transports, method-not-found handler, and tools-middleware.
 
 use anyhow::Result;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use super::wrapping::SessionsDraft;
 use crate::commands::pkg;
 use crate::versioning::VersionResolver;
+
+/// Optional framework components that may be needed based on detection
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OptionalComponent {
+    /// HTTP messages for progress/logging
+    HttpMessages,
+    /// Session management via WASI KV
+    Sessions,
+    /// Centralized session storage with session-manager interface
+    SessionStore,
+}
 
 /// Type alias for the package client used throughout composition
 pub type PackageClient =
@@ -50,12 +63,20 @@ pub mod interfaces {
 /// Download required framework dependencies (transport, method-not-found, and all middleware)
 pub async fn download_dependencies(
     transport: &str,
+    draft: SessionsDraft,
+    optional_components: &HashSet<OptionalComponent>,
     resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
 ) -> Result<()> {
+    // Apply draft suffix for runtime-specific components
+    let draft_suffix = match draft {
+        SessionsDraft::Draft => "",
+        SessionsDraft::Draft2 => "-d2",
+    };
+
     // Get component-specific versions from the resolver
-    let transport_component = format!("{}-transport", transport);
+    let transport_component = format!("{}-transport{}", transport, draft_suffix);
     let transport_version = resolver.get_version(&transport_component)?;
     let method_not_found_version = resolver.get_version("method-not-found")?;
     let tools_middleware_version = resolver.get_version("tools-middleware")?;
@@ -79,11 +100,25 @@ pub async fn download_dependencies(
         prompts_middleware_pkg,
     ];
 
-    // Download http-messages for http transport (provides messages interface)
-    if transport == "http" {
+    // Download optional components based on detection
+    if optional_components.contains(&OptionalComponent::HttpMessages) {
         let http_messages_version = resolver.get_version("http-messages")?;
         let http_messages_pkg = interfaces::package("http-messages", &http_messages_version);
         specs.push(http_messages_pkg);
+    }
+
+    if optional_components.contains(&OptionalComponent::Sessions) {
+        let sessions_component = format!("sessions{}", draft_suffix);
+        let sessions_version = resolver.get_version(&sessions_component)?;
+        let sessions_pkg = interfaces::package(&sessions_component, &sessions_version);
+        specs.push(sessions_pkg);
+    }
+
+    if optional_components.contains(&OptionalComponent::SessionStore) {
+        let session_store_component = format!("session-store{}", draft_suffix);
+        let session_store_version = resolver.get_version(&session_store_component)?;
+        let session_store_pkg = interfaces::package(&session_store_component, &session_store_version);
+        specs.push(session_store_pkg);
     }
 
     pkg::download_packages(client, &specs, deps_dir).await
