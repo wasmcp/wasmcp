@@ -1,4 +1,4 @@
-name: Release HTTP Transport
+name: Release Sessions
 
 on:
   workflow_dispatch:
@@ -42,8 +42,8 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           targets: wasm32-wasip2
-          cache-key: release-http-transport
-          workspaces: crates/http-transport
+          cache-key: release-sessions
+          workspaces: crates/session-store
 
       - name: Install wit-deps
         run: |
@@ -71,76 +71,76 @@ jobs:
 
       - name: Fetch WIT dependencies
         run: |
-          echo "Fetching WIT deps for http-transport..."
-          cd crates/http-transport
+          echo "Fetching WIT deps for sessions..."
+          cd crates/session-store
           wit-deps
 
-          echo "Fetching WIT deps for http-transport draft2..."
+          echo "Fetching WIT deps for sessions draft2..."
           WIT_DEPS_PATH=wit-draft2 wit-deps
 
       - name: Build draft2 variant
         run: |
-          echo "Building http-transport draft2..."
-          cd crates/http-transport
+          echo "Building sessions draft2..."
+          cd crates/session-store
           cargo build --release --target wasm32-wasip2 --features draft2
-          mv ../../target/wasm32-wasip2/release/http_transport.wasm ../../target/wasm32-wasip2/release/http_transport-d2.wasm
-          echo "✅ Built http-transport-d2"
-          ls -lh ../../target/wasm32-wasip2/release/http_transport-d2.wasm
+          mv ../../target/wasm32-wasip2/release/session_store.wasm ../../target/wasm32-wasip2/release/session_store-d2.wasm
+          echo "✅ Built sessions-d2"
+          ls -lh ../../target/wasm32-wasip2/release/session_store-d2.wasm
 
       - name: Build draft variant
         run: |
-          echo "Building http-transport draft..."
-          cd crates/http-transport
+          echo "Building sessions draft..."
+          cd crates/session-store
           cargo build --release --target wasm32-wasip2
-          echo "✅ Built http-transport"
-          ls -lh ../../target/wasm32-wasip2/release/http_transport.wasm
+          echo "✅ Built sessions"
+          ls -lh ../../target/wasm32-wasip2/release/session_store.wasm
 
       - name: Check if draft variant already exists
         id: check-draft
         run: |
-          if wkg get wasmcp:http-transport@${{ inputs.version }} >/dev/null 2>&1; then
+          if wkg get wasmcp:sessions@${{ inputs.version }} >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Component wasmcp:http-transport@${{ inputs.version }} already exists"
+            echo "⚠️ Component wasmcp:sessions@${{ inputs.version }} already exists"
             exit 1
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "📦 Component wasmcp:http-transport@${{ inputs.version }} not found, will publish"
+            echo "📦 Component wasmcp:sessions@${{ inputs.version }} not found, will publish"
           fi
 
       - name: Check if draft2 variant already exists
         id: check-draft2
         run: |
-          if wkg get wasmcp:http-transport-d2@${{ inputs.version }} >/dev/null 2>&1; then
+          if wkg get wasmcp:sessions-d2@${{ inputs.version }} >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Component wasmcp:http-transport-d2@${{ inputs.version }} already exists"
+            echo "⚠️ Component wasmcp:sessions-d2@${{ inputs.version }} already exists"
             exit 1
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "📦 Component wasmcp:http-transport-d2@${{ inputs.version }} not found, will publish"
+            echo "📦 Component wasmcp:sessions-d2@${{ inputs.version }} not found, will publish"
           fi
 
       - name: Publish draft variant
         run: |
-          wkg publish --package 'wasmcp:http-transport@${{ inputs.version }}' target/wasm32-wasip2/release/http_transport.wasm
-          echo "✅ Published wasmcp:http-transport@${{ inputs.version }}"
+          wkg publish --package 'wasmcp:sessions@${{ inputs.version }}' target/wasm32-wasip2/release/session_store.wasm
+          echo "✅ Published wasmcp:sessions@${{ inputs.version }}"
 
       - name: Publish draft2 variant
         run: |
-          wkg publish --package 'wasmcp:http-transport-d2@${{ inputs.version }}' target/wasm32-wasip2/release/http_transport-d2.wasm
-          echo "✅ Published wasmcp:http-transport-d2@${{ inputs.version }}"
+          wkg publish --package 'wasmcp:sessions-d2@${{ inputs.version }}' target/wasm32-wasip2/release/session_store-d2.wasm
+          echo "✅ Published wasmcp:sessions-d2@${{ inputs.version }}"
 
       - name: Upload component artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: http-transport-${{ inputs.version }}
-          path: target/wasm32-wasip2/release/http_transport*.wasm
+          name: sessions-${{ inputs.version }}
+          path: target/wasm32-wasip2/release/session_store*.wasm
 
       - name: Summary
         run: |
-          echo "## 🎉 HTTP Transport Components Published" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Sessions Components Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Draft Variant:** \`wasmcp:http-transport@${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Draft2 Variant:** \`wasmcp:http-transport-d2@${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Draft Variant:** \`wasmcp:sessions@${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Draft2 Variant:** \`wasmcp:sessions-d2@${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Registry:** \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -158,8 +158,8 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: sbom-http-transport
-          workspaces: crates/http-transport
+          cache-key: sbom-sessions
+          workspaces: crates/session-store
 
       - name: Install cargo-cyclonedx
         uses: taiki-e/install-action@v2
@@ -169,30 +169,30 @@ jobs:
       - name: Download component artifacts
         uses: actions/download-artifact@v4
         with:
-          name: http-transport-${{ inputs.version }}
+          name: sessions-${{ inputs.version }}
           path: components
 
       - name: Generate component SBOM
         run: |
-          cd crates/http-transport
-          cargo cyclonedx --format json --override-filename http-transport-sbom
-          cargo cyclonedx --format xml --override-filename http-transport-sbom
+          cd crates/session-store
+          cargo cyclonedx --format json --override-filename sessions-sbom
+          cargo cyclonedx --format xml --override-filename sessions-sbom
           echo "✅ Generated component SBOM"
           ls -la *.{json,xml}
 
       - name: Generate component checksums
         run: |
           cd components
-          sha256sum *.wasm > ../http-transport-checksums.txt
+          sha256sum *.wasm > ../sessions-checksums.txt
           echo "✅ Generated component checksums"
 
       - name: Upload SBOM and checksums
         uses: actions/upload-artifact@v4
         with:
-          name: http-transport-security-${{ inputs.version }}
+          name: sessions-security-${{ inputs.version }}
           path: |
-            crates/http-transport/http-transport-sbom.*
-            http-transport-checksums.txt
+            crates/session-store/sessions-sbom.*
+            sessions-checksums.txt
 
   create-release:
     name: Create GitHub Release
@@ -214,28 +214,28 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: http-transport-v${{ inputs.version }}
-          name: http-transport v${{ inputs.version }}
+          tag_name: sessions-v${{ inputs.version }}
+          name: sessions v${{ inputs.version }}
           draft: false
           prerelease: ${{ contains(inputs.version, '-') }}
           files: |
-            artifacts/http-transport-${{ inputs.version }}/*.wasm
-            artifacts/http-transport-security-${{ inputs.version }}/*
+            artifacts/sessions-${{ inputs.version }}/*.wasm
+            artifacts/sessions-security-${{ inputs.version }}/*
           body: |
-            # http-transport v${{ inputs.version }}
+            # sessions v${{ inputs.version }}
 
             ## Framework Components Released
 
-            This release publishes BOTH runtime variants of the http-transport component to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}`.
+            This release publishes BOTH runtime variants of the sessions component to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}`.
 
             ### Draft Variant (wasmtime/wasmcloud)
-            **Component:** `wasmcp:http-transport@${{ inputs.version }}`
-            **Registry:** `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/http-transport:${{ inputs.version }}`
+            **Component:** `wasmcp:sessions@${{ inputs.version }}`
+            **Registry:** `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/sessions:${{ inputs.version }}`
             **Target:** wasmtime, wasmcloud (WASI draft @0.2.3)
 
             ### Draft2 Variant (Spin)
-            **Component:** `wasmcp:http-transport-d2@${{ inputs.version }}`
-            **Registry:** `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/http-transport-d2:${{ inputs.version }}`
+            **Component:** `wasmcp:sessions-d2@${{ inputs.version }}`
+            **Registry:** `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/sessions-d2:${{ inputs.version }}`
             **Target:** Spin (WASI draft2 @0.2.0-draft2)
 
             ## 🔒 Supply Chain Security
@@ -248,7 +248,7 @@ jobs:
 
             ```bash
             # Download checksum file
-            curl -fsSL https://github.com/${{ github.repository }}/releases/download/http-transport-v${{ inputs.version }}/http-transport-checksums.txt -o checksums.txt
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/sessions-v${{ inputs.version }}/sessions-checksums.txt -o checksums.txt
 
             # Verify downloaded components
             sha256sum -c checksums.txt
@@ -269,7 +269,7 @@ jobs:
             wasmcp compose server your-component.wasm --wasmcloud -o server.wasm
             ```
 
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/http-transport-v${{ inputs.version }}
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/sessions-v${{ inputs.version }}
 
   all-jobs-complete:
     name: All Jobs Complete
@@ -286,12 +286,12 @@ jobs:
             echo "One or more jobs failed"
             exit 1
           fi
-          echo "✅ HTTP Transport release (both variants) completed successfully!"
+          echo "✅ Sessions release (both variants) completed successfully!"
           echo ""
           echo "Published components:"
-          echo "  - wasmcp:http-transport@${{ inputs.version }} (draft)"
-          echo "  - wasmcp:http-transport-d2@${{ inputs.version }} (draft2)"
+          echo "  - wasmcp:sessions@${{ inputs.version }} (draft)"
+          echo "  - wasmcp:sessions-d2@${{ inputs.version }} (draft2)"
           echo ""
           echo "Next steps:"
           echo "  1. Make packages public at https://github.com/orgs/${{ env.REGISTRY_NAMESPACE }}/packages"
-          echo "  2. Update release notes at https://github.com/${{ github.repository }}/releases/tag/http-transport-v${{ inputs.version }}"
+          echo "  2. Update release notes at https://github.com/${{ github.repository }}/releases/tag/sessions-v${{ inputs.version }}"

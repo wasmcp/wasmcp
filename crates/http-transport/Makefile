@@ -26,8 +26,8 @@ build-draft:
 build-draft2:
 	@echo "Building http-transport for spin (draft2)..."
 	@cargo build --target wasm32-wasip2 --release --features draft2
-	@mv $(OUT_DIR)/$(COMPONENT_NAME).wasm $(OUT_DIR)/$(COMPONENT_NAME)_draft2.wasm
-	@echo "✓ Draft2 version built: $(OUT_DIR)/$(COMPONENT_NAME)_draft2.wasm"
+	@mv $(OUT_DIR)/$(COMPONENT_NAME).wasm $(OUT_DIR)/$(COMPONENT_NAME)-d2.wasm
+	@echo "✓ Draft2 version built: $(OUT_DIR)/$(COMPONENT_NAME)-d2.wasm"
 
 # Alias for backward compatibility
 build: build-draft

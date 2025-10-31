@@ -1,4 +1,4 @@
-package wasmcp:sessions@0.1.4;
+package wasmcp:sessions-d2@0.1.4;
 
 world sessions-draft2 {
     export wasmcp:mcp-v20250618/sessions@0.1.3;

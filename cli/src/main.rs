@@ -183,6 +183,25 @@ enum ComposeCommand {
         /// Enable verbose output (show detailed resolution and composition steps)
         #[arg(long, short = 'v')]
         verbose: bool,
+
+        /// Target Spin runtime (WASI draft2, @0.2.0-draft2)
+        ///
+        /// Uses draft2 variants of framework components (http-transport-d2, sessions-d2).
+        /// This is the default if no runtime flag is specified.
+        #[arg(long, group = "runtime")]
+        spin: bool,
+
+        /// Target wasmtime runtime (WASI draft, @0.2.3)
+        ///
+        /// Uses standard variants of framework components (http-transport, sessions).
+        #[arg(long, group = "runtime")]
+        wasmtime: bool,
+
+        /// Target wasmcloud runtime (WASI draft, @0.2.3)
+        ///
+        /// Uses standard variants of framework components (http-transport, sessions).
+        #[arg(long, group = "runtime")]
+        wasmcloud: bool,
     },
 
     /// Compose a handler component (composable middleware without transport)
@@ -501,7 +520,20 @@ async fn main() -> Result<()> {
                 skip_download,
                 force,
                 verbose,
+                spin: _,  // Included in the else branch below
+                wasmtime,
+                wasmcloud,
             } => {
+                // Determine runtime target from flags (defaults to Spin if none specified)
+                let runtime_target = if wasmtime {
+                    commands::compose::RuntimeTarget::Wasmtime
+                } else if wasmcloud {
+                    commands::compose::RuntimeTarget::Wasmcloud
+                } else {
+                    // Default to Spin (includes when --spin is explicitly set OR when no flag is set)
+                    commands::compose::RuntimeTarget::Spin
+                };
+
                 // Merge components from both sources (new unified approach)
                 // If -p flags are used, they're prepended to components list for backward compatibility
                 let mut all_specs = Vec::new();
@@ -557,6 +589,7 @@ async fn main() -> Result<()> {
                     force: final_force,
                     verbose,
                     mode: commands::compose::CompositionMode::Server,
+                    runtime_target,
                 };
 
                 commands::compose::compose(options).await
@@ -600,6 +633,7 @@ async fn main() -> Result<()> {
                     force,
                     verbose,
                     mode: commands::compose::CompositionMode::Handler,
+                    runtime_target: commands::compose::RuntimeTarget::default(), // TODO: Add CLI flags for handler mode too
                 };
 
                 commands::compose::compose(options).await

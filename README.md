@@ -22,6 +22,16 @@ cargo install --git https://github.com/wasmcp/wasmcp
 
 Requires [`wasmtime`](https://wasmtime.dev/), [`wash`](https://github.com/wasmCloud/wash), [`spin`](https://github.com/spinframework/spin), or another component-capable runtime to run composed servers.
 
+## Runtime Compatibility
+
+wasmcp supports multiple WebAssembly runtimes. Composed servers are automatically configured for your target runtime:
+
+- **Spin** (default) - Uses WASI draft2 components (`@0.2.0-draft2`)
+- **wasmtime** - Uses WASI draft components (`@0.2.3`)
+- **wasmcloud** - Uses WASI draft components (`@0.2.3`)
+
+The CLI automatically selects the correct framework component variants during composition based on your `--spin`, `--wasmtime`, or `--wasmcloud` flag.
+
 ## Quick Start
 
 Create and run your first MCP tool component:
@@ -33,9 +43,25 @@ cd time-tools && make && cd ..
 # Register it with a short alias
 wasmcp registry component add time time-tools/time-tools.wasm
 
-# Compose into an MCP server and run
+# Compose into an MCP server
 wasmcp compose server time -o server.wasm
-wasmtime serve -Scli server.wasm  # http://0.0.0.0:8080/mcp
+
+# Run with your target runtime:
+spin up server.wasm              # Spin (default)
+wasmtime serve -Scli server.wasm # wasmtime
+wash up server.wasm              # wasmcloud
+```
+
+**Target specific runtimes during composition:**
+```bash
+# Spin (default - uses draft2 variants)
+wasmcp compose server time -o server.wasm
+
+# wasmtime (uses draft variants)
+wasmcp compose server time --wasmtime -o server.wasm
+
+# wasmcloud (uses draft variants)
+wasmcp compose server time --wasmcloud -o server.wasm
 ```
 
 Combine multiple tool components - they automatically merge into a unified catalog:
@@ -45,9 +71,9 @@ wasmcp new math-tools --language rust
 cd math-tools && make && cd ..
 wasmcp registry component add math math-tools/target/wasm32-wasip2/release/math_tools.wasm
 
-# Compose both together
+# Compose both together (Spin is default)
 wasmcp compose server time math -o combined-server.wasm
-wasmtime serve -Scli combined-server.wasm
+spin up combined-server.wasm
 ```
 
 See [examples/](examples/) for more.
@@ -123,6 +149,185 @@ wasmcp compose server ./logger.wasm wasmcp:calculator@1.0 weather -o server.wasm
 ```
 
 When a client requests `tools/list`, each component that offers tools contributes their tools, creating a unified catalog automatically.
+
+### Runtime Targeting
+
+wasmcp automatically selects the correct component variants based on your target runtime.
+
+#### CLI Flags
+
+Specify your target runtime with mutually exclusive flags:
+
+```bash
+# Spin runtime (WASI draft2 @0.2.0-draft2) - DEFAULT
+wasmcp compose server components... -o server.wasm
+wasmcp compose server components... --spin -o server.wasm
+
+# wasmtime runtime (WASI draft @0.2.3)
+wasmcp compose server components... --wasmtime -o server.wasm
+
+# wasmcloud runtime (WASI draft @0.2.3)
+wasmcp compose server components... --wasmcloud -o server.wasm
+```
+
+#### Component Variants
+
+Framework components are published in two variants:
+
+| Component | Draft Variant | Draft2 Variant | Auto-Selected By |
+|-----------|---------------|----------------|------------------|
+| http-transport | `wasmcp:http-transport@X.X.X` | `wasmcp:http-transport-d2@X.X.X` | `--wasmtime`, `--wasmcloud` \| `--spin` (default) |
+| sessions | `wasmcp:sessions@X.X.X` | `wasmcp:sessions-d2@X.X.X` | `--wasmtime`, `--wasmcloud` \| `--spin` (default) |
+
+The CLI automatically downloads the correct variant based on your runtime flag. You never need to specify the `-d2` suffix manually.
+
+#### Session Support
+
+If your components import the sessions interface, wasmcp automatically:
+1. Detects session usage by inspecting component imports
+2. Includes the matching sessions variant in composition
+3. Validates consistent WASI draft usage across all components
+
+**Example:**
+```bash
+# Component imports wasmcp:mcp-v20250618/sessions@0.1.3
+# CLI detects session usage and includes sessions-d2 (because Spin is default)
+wasmcp compose server my-stateful-component.wasm -o server.wasm
+
+# Override to wasmtime - CLI includes sessions (draft variant)
+wasmcp compose server my-stateful-component.wasm --wasmtime -o server.wasm
+```
+
+#### Mixed Draft Error
+
+Components using different WASI draft versions cannot be composed together:
+
+```bash
+# ERROR: Component A uses draft2, Component B uses draft
+wasmcp compose server componentA.wasm componentB.wasm
+
+# Error output:
+# Mixed WASI draft versions detected:
+# Previous component used Draft2, but componentB uses Draft
+# All components must use the same WASI draft version.
+```
+
+Rebuild incompatible components targeting the same WASI version.
+
+## Migration Guide
+
+### Upgrading from v0.4.x (Pre-Sessions Branch)
+
+**Breaking Change:** The default runtime target has changed from **wasmtime → Spin**.
+
+#### If You Previously Used wasmtime (Default Before v0.5.0)
+
+**Old behavior (v0.4.x):**
+```bash
+wasmcp compose server components... -o server.wasm
+# Used draft variants automatically (wasmtime assumed)
+wasmtime serve -Scli server.wasm
+```
+
+**New behavior (v0.5.0+):**
+```bash
+# Now defaults to Spin (draft2 variants)
+wasmcp compose server components... -o server.wasm
+spin up server.wasm
+
+# To preserve wasmtime behavior, use --wasmtime flag
+wasmcp compose server components... --wasmtime -o server.wasm
+wasmtime serve -Scli server.wasm
+```
+
+**Action Required:** Add `--wasmtime` flag to existing workflows if you target wasmtime runtime.
+
+#### If You Deploy to Spin
+
+**Old behavior (v0.4.x):**
+```bash
+wasmcp compose server components... -o server.wasm
+# May have failed if components used draft WASI versions
+# Had to manually rebuild components for draft2
+```
+
+**New behavior (v0.5.0+):**
+```bash
+# Automatically uses draft2 variants for Spin
+wasmcp compose server components... -o server.wasm  # Or --spin
+spin up server.wasm  # Just works!
+```
+
+**Action Required:** None - Spin is now the default and will "just work".
+
+#### If You Use OCI Registry Packages
+
+**Component naming has changed:**
+
+**Old (v0.4.x):**
+- Single variant: `wasmcp:http-transport@0.1.3`
+- Ambiguous which WASI draft version
+
+**New (v0.5.0+):**
+- Draft variant: `wasmcp:http-transport@0.1.4` (for wasmtime/wasmcloud)
+- Draft2 variant: `wasmcp:http-transport-d2@0.1.4` (for Spin)
+- CLI automatically selects based on runtime flag
+
+**Action Required:** Update package specs to include version, let CLI handle variant selection:
+```bash
+# Old (ambiguous)
+wasmcp compose server wasmcp:http-transport
+
+# New (explicit version, automatic variant)
+wasmcp compose server --wasmtime ...  # Auto-downloads http-transport@0.1.4
+wasmcp compose server --spin ...      # Auto-downloads http-transport-d2@0.1.4
+```
+
+You never manually specify `-d2` suffix - the CLI handles it based on runtime flags.
+
+#### Session Support (New Feature)
+
+**What's New:**
+- Automatic detection of session imports
+- Transparent inclusion of correct sessions variant
+- No manual configuration required
+
+**If your components import sessions:**
+```wit
+import wasmcp:mcp-v20250618/sessions@0.1.3;
+```
+
+The CLI automatically:
+1. Detects the sessions import
+2. Includes `sessions` (draft) or `sessions-d2` (draft2) based on runtime flag
+3. Validates consistent WASI draft usage
+
+**No action required** - sessions work automatically.
+
+#### Summary of Changes
+
+| Change | v0.4.x Behavior | v0.5.0+ Behavior | Migration Action |
+|--------|-----------------|------------------|------------------|
+| Default runtime | wasmtime (implicit) | Spin (explicit) | Add `--wasmtime` if needed |
+| Component variants | Single variant | Draft + Draft2 | Let CLI auto-select |
+| Session support | Manual | Automatic | None - automatic detection |
+| Package naming | `component@version` | `component@version` + `component-d2@version` | Use runtime flags, not suffixes |
+
+#### Testing Your Migration
+
+```bash
+# Test Spin (new default)
+wasmcp compose server your-component.wasm -o server.wasm -v
+spin up server.wasm
+
+# Test wasmtime (preserve old behavior)
+wasmcp compose server your-component.wasm --wasmtime -o server.wasm -v
+wasmtime serve -Scli server.wasm
+
+# Verify correct variant in verbose output
+# Spin should show: "Downloading wasmcp:http-transport-d2@..."
+# wasmtime should show: "Downloading wasmcp:http-transport@..."
+```
 
 ## Registry
 
@@ -212,13 +417,25 @@ Generated templates demonstrate the capability pattern with working tool impleme
 
 ### Framework Components
 
-Published to [ghcr.io/wasmcp](https://github.com/orgs/wasmcp/packages):
+Published to [ghcr.io/wasmcp](https://github.com/orgs/wasmcp/packages) in two variants:
 
-- **http-transport** - HTTP server (for `wasmtime serve`)
-- **stdio-transport** - Stdio integration (for local clients)
-- **method-not-found** - Terminal handler for unhandled methods
+**Draft variants (wasmtime, wasmcloud - WASI @0.2.3):**
+- **http-transport** - HTTP server transport
+- **stdio-transport** - Stdio transport
+- **sessions** - Session management (WASI KV backed)
+- **tools-middleware** - Tools capability wrapper
+- **resources-middleware** - Resources capability wrapper
+- **prompts-middleware** - Prompts capability wrapper
+- **method-not-found** - Terminal handler
 
-The CLI automatically downloads these when composing.
+**Draft2 variants (Spin - WASI @0.2.0-draft2):**
+- **http-transport-d2** - HTTP server transport
+- **sessions-d2** - Session management (WASI KV backed)
+
+**Runtime-agnostic components (single variant):**
+- **stdio-transport**, **tools-middleware**, **resources-middleware**, **prompts-middleware**, **method-not-found**
+
+The CLI automatically downloads the correct variant based on `--spin`, `--wasmtime`, or `--wasmcloud` flags.
 
 ## License
 

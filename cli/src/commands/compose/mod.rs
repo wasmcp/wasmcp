@@ -55,6 +55,7 @@ use self::output::{
     print_success_message,
 };
 use self::validation::{resolve_output_path, validate_output_file, validate_transport};
+use self::wrapping::SessionsDraft;
 
 /// Composition mode: Server (complete) or Handler (intermediate)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +64,24 @@ pub enum CompositionMode {
     Server,
     /// Handler component without transport/terminal (composable)
     Handler,
+}
+
+/// Runtime target for WASI component composition
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeTarget {
+    /// wasmtime runtime (WASI draft, @0.2.3)
+    Wasmtime,
+    /// wasmcloud runtime (WASI draft, @0.2.3)
+    Wasmcloud,
+    /// Spin runtime (WASI draft2, @0.2.0-draft2)
+    Spin,
+}
+
+impl Default for RuntimeTarget {
+    fn default() -> Self {
+        // Default to Spin as it's becoming the standard
+        Self::Spin
+    }
 }
 
 /// Configuration options for component composition
@@ -103,6 +122,9 @@ pub struct ComposeOptions {
 
     /// Composition mode (Server or Handler)
     pub mode: CompositionMode,
+
+    /// Runtime target for WASI component selection
+    pub runtime_target: RuntimeTarget,
 }
 
 /// Compose MCP server components into a complete WASM component
@@ -136,6 +158,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         force,
         verbose,
         mode,
+        runtime_target,
     } = options;
 
     // Branch based on composition mode
@@ -153,6 +176,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 skip_download,
                 force,
                 verbose,
+                runtime_target,
             )
             .await
         }
@@ -184,6 +208,7 @@ async fn compose_server(
     skip_download: bool,
     force: bool,
     verbose: bool,
+    runtime_target: RuntimeTarget,
 ) -> Result<()> {
     // Validate transport type early (before any expensive operations)
     validate_transport(&transport)?;
@@ -228,6 +253,20 @@ async fn compose_server(
         println!("\nDetecting framework component requirements...");
     }
     let sessions_needed = wrapping::detect_sessions_usage(&component_paths, verbose)?;
+
+    // Determine draft version from runtime flag (or default)
+    let draft = match runtime_target {
+        RuntimeTarget::Wasmtime | RuntimeTarget::Wasmcloud => SessionsDraft::Draft,
+        RuntimeTarget::Spin => SessionsDraft::Draft2,
+    };
+
+    if verbose {
+        println!("\nUsing runtime: {:?}", runtime_target);
+        match draft {
+            SessionsDraft::Draft => println!("   Framework components: draft (wasmtime/wasmcloud)"),
+            SessionsDraft::Draft2 => println!("   Framework components: draft2 (Spin)"),
+        }
+    }
     let http_messages_needed = transport == "http";
 
     // Download all framework dependencies in one batch
@@ -241,6 +280,7 @@ async fn compose_server(
 
         framework::download_framework_dependencies(
             &transport,
+            draft,
             download_sessions,
             download_http_messages,
             &version_resolver,
@@ -254,6 +294,7 @@ async fn compose_server(
     let transport_component_name = format!("{}-transport", transport);
     let transport_path = framework::resolve_component_path(
         &transport_component_name,
+        draft,
         override_transport.as_deref(),
         &version_resolver,
         &deps_dir,
@@ -264,6 +305,7 @@ async fn compose_server(
 
     let method_not_found_path = framework::resolve_component_path(
         "method-not-found",
+        draft,
         override_method_not_found.as_deref(),
         &version_resolver,
         &deps_dir,
@@ -276,6 +318,7 @@ async fn compose_server(
         Some(
             framework::resolve_component_path(
                 "http-messages",
+                draft,
                 None,
                 &version_resolver,
                 &deps_dir,
@@ -291,7 +334,8 @@ async fn compose_server(
     let sessions_path = if sessions_needed {
         Some(
             framework::resolve_component_path(
-                "session-store",
+                "sessions",
+                draft,
                 override_sessions.as_deref(),
                 &version_resolver,
                 &deps_dir,
@@ -408,6 +452,47 @@ async fn compose_handler(
     print_handler_success_message(&output_path);
 
     Ok(())
+}
+
+/// Validate that runtime flag matches component requirements
+///
+/// Ensures the user-specified runtime target (via CLI flags) is compatible
+/// with the detected WASI draft version from component imports.
+///
+/// Returns the final SessionsDraft to use for component selection.
+fn validate_runtime_consistency(
+    runtime_flag: RuntimeTarget,
+    detected_draft: Option<SessionsDraft>,
+) -> Result<SessionsDraft> {
+    use SessionsDraft::*;
+    use RuntimeTarget::*;
+
+    match (runtime_flag, detected_draft) {
+        // Spin + draft2 detected = OK
+        (Spin, Some(Draft2)) | (Spin, None) => Ok(Draft2),
+
+        // Wasmtime/Wasmcloud + draft detected = OK
+        (Wasmtime | Wasmcloud, Some(Draft)) | (Wasmtime | Wasmcloud, None) => Ok(Draft),
+
+        // Mismatch errors with helpful messages
+        (Spin, Some(Draft)) => {
+            anyhow::bail!(
+                "Runtime mismatch: --spin flag specified but component imports WASI draft (wasmtime/wasmcloud)\n\
+                 Solutions:\n\
+                 • Remove --spin flag to use wasmtime/wasmcloud runtime\n\
+                 • Rebuild component targeting Spin runtime with WASI draft2"
+            )
+        }
+        (Wasmtime | Wasmcloud, Some(Draft2)) => {
+            anyhow::bail!(
+                "Runtime mismatch: --wasmtime/--wasmcloud flag specified but component imports WASI draft2 (Spin)\n\
+                 Solutions:\n\
+                 • Remove flag to use Spin runtime (default)\n\
+                 • Use --spin flag explicitly\n\
+                 • Rebuild component targeting wasmtime/wasmcloud"
+            )
+        }
+    }
 }
 
 /// Resolve all user component specs to local paths

@@ -1,7 +1,7 @@
 .PHONY: work setup wit build build-draft build-draft2 clean
 
 OUT_DIR = ../../target/wasm32-wasip2/release
-COMPONENT_NAME = sessions
+COMPONENT_NAME = session_store
 
 work: setup wit build-draft2 build-draft
 
@@ -20,8 +20,8 @@ build-draft:
 build-draft2:
 	@echo "Building sessions for spin (draft2)..."
 	@cargo build --target wasm32-wasip2 --release --features draft2
-	@mv $(OUT_DIR)/$(COMPONENT_NAME).wasm $(OUT_DIR)/$(COMPONENT_NAME)_draft2.wasm
-	@echo "✓ Draft2 version built: $(OUT_DIR)/$(COMPONENT_NAME)_draft2.wasm"
+	@mv $(OUT_DIR)/$(COMPONENT_NAME).wasm $(OUT_DIR)/$(COMPONENT_NAME)-d2.wasm
+	@echo "✓ Draft2 version built: $(OUT_DIR)/$(COMPONENT_NAME)-d2.wasm"
 
 build: build-draft
 

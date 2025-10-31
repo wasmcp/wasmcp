@@ -16,7 +16,14 @@ curl -fsSL https://raw.githubusercontent.com/wasmcp/wasmcp/main/install.sh | bas
 
 Alternatively, download binaries from [releases](https://github.com/wasmcp/wasmcp/releases) or build from source with `cargo build --release`.
 
-Requires a runtime like [Wasmtime](https://wasmtime.dev/) to run composed servers.
+Requires a runtime like [Wasmtime](https://wasmtime.dev/), [Spin](https://www.fermyon.com/spin), or [wasmcloud](https://wasmcloud.com/) to run composed servers.
+
+**Runtime Compatibility:**
+- **Spin** - Default target, uses WASI draft2 components (`@0.2.0-draft2`)
+- **wasmtime** - Uses WASI draft components (`@0.2.3`)
+- **wasmcloud** - Uses WASI draft components (`@0.2.3`)
+
+The CLI automatically selects the correct component variants during composition based on your `--spin`, `--wasmtime`, or `--wasmcloud` flag.
 
 ## Usage
 
@@ -142,15 +149,114 @@ wasmcp compose server calc --override-method-not-found custom-handler.wasm
 
 The CLI automatically detects component types and wraps them with appropriate middleware.
 
+####Runtime Targeting
+
+Target specific WebAssembly runtimes with mutually exclusive flags:
+
+```bash
+# Spin (default - WASI draft2)
+wasmcp compose server component.wasm -o server.wasm
+wasmcp compose server component.wasm --spin -o server.wasm
+
+# wasmtime (WASI draft)
+wasmcp compose server component.wasm --wasmtime -o server.wasm
+
+# wasmcloud (WASI draft)
+wasmcp compose server component.wasm --wasmcloud -o server.wasm
+```
+
+**What it does:**
+- Selects draft (`@0.2.3`) vs draft2 (`@0.2.0-draft2`) framework components
+- Downloads `http-transport` or `http-transport-d2` automatically
+- Downloads `sessions` or `sessions-d2` if session support is detected
+- Validates consistent WASI draft usage across components
+
+**Example with verbose output:**
+```bash
+wasmcp compose server calc.wasm --wasmtime -v
+
+# Output shows variant selection:
+#   Downloading wasmcp:http-transport@0.1.4...
+#   Downloading wasmcp:method-not-found@0.1.2...
+#   Composing MCP server pipeline...
+```
+
+#### Session Management
+
+wasmcp automatically includes session support when your components import the sessions interface.
+
+**Automatic Session Detection:**
+
+The CLI inspects component imports and includes the sessions component if needed:
+
+```bash
+# Component imports wasmcp:mcp-v20250618/sessions@0.1.3
+wasmcp compose server stateful-component.wasm -v
+
+# Output shows automatic detection:
+#   stateful-component imports sessions interface → sessions component needed
+#   Downloading wasmcp:sessions-d2@0.1.3... (Spin is default)
+```
+
+No manual configuration required - just import the sessions interface in your component.
+
+**Session Support by Runtime:**
+
+| Runtime | Sessions Variant | WASI KV Version |
+|---------|------------------|-----------------|
+| Spin (default) | `wasmcp:sessions-d2@X.X.X` | `@0.2.0-draft2` |
+| wasmtime | `wasmcp:sessions@X.X.X` | `@0.2.3` |
+| wasmcloud | `wasmcp:sessions@X.X.X` | `@0.2.3` |
+
+**Draft Version Validation:**
+
+Components must use consistent WASI draft versions:
+
+```bash
+# ERROR: Mixed draft versions
+wasmcp compose server \
+  draft-component.wasm \    # Uses wasi:keyvalue@0.2.3
+  draft2-component.wasm     # Uses wasi:keyvalue@0.2.0-draft2
+
+# Error output:
+# Mixed WASI draft versions detected:
+# Previous component used Draft, but draft2-component uses Draft2
+# All components must use the same WASI draft version.
+```
+
+**Fix:** Rebuild all components targeting the same WASI draft version.
+
+**Session Interface:**
+
+Components access sessions via:
+```wit
+import wasmcp:mcp-v20250618/sessions@0.1.3;
+```
+
+See [Session WIT Interface](../spec/2025-06-18/wit/sessions.wit) for full API documentation.
+
 ### Run the server
 
 ```bash
-# HTTP (default)
+# Spin (default target)
+spin up server.wasm
+
+# wasmtime
 wasmtime serve -Scli server.wasm
 
-# Stdio
+# wasmcloud
+wash up server.wasm
+
+# Stdio transport (any runtime)
 wasmtime run server.wasm
 ```
+
+**Troubleshooting:**
+
+If you get WASI interface errors:
+1. Verify you composed for the correct runtime (`--spin`, `--wasmtime`, or `--wasmcloud`)
+2. Check your component's WASI imports match the target runtime
+3. Rebuild with the correct runtime flag
 
 ### MCP Server for AI-Assisted Development
 

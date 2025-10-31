@@ -7,6 +7,7 @@ use anyhow::Result;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use super::wrapping::SessionsDraft;
 use crate::commands::pkg;
 use crate::versioning::VersionResolver;
 
@@ -60,13 +61,20 @@ pub mod interfaces {
 /// Download required framework dependencies (transport, method-not-found, and all middleware)
 pub async fn download_dependencies(
     transport: &str,
+    draft: SessionsDraft,
     optional_components: &HashSet<OptionalComponent>,
     resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
 ) -> Result<()> {
+    // Apply draft suffix for runtime-specific components
+    let draft_suffix = match draft {
+        SessionsDraft::Draft => "",
+        SessionsDraft::Draft2 => "-d2",
+    };
+
     // Get component-specific versions from the resolver
-    let transport_component = format!("{}-transport", transport);
+    let transport_component = format!("{}-transport{}", transport, draft_suffix);
     let transport_version = resolver.get_version(&transport_component)?;
     let method_not_found_version = resolver.get_version("method-not-found")?;
     let tools_middleware_version = resolver.get_version("tools-middleware")?;
@@ -98,8 +106,9 @@ pub async fn download_dependencies(
     }
 
     if optional_components.contains(&OptionalComponent::Sessions) {
-        let sessions_version = resolver.get_version("sessions")?;
-        let sessions_pkg = interfaces::package("sessions", &sessions_version);
+        let sessions_component = format!("sessions{}", draft_suffix);
+        let sessions_version = resolver.get_version(&sessions_component)?;
+        let sessions_pkg = interfaces::package(&sessions_component, &sessions_version);
         specs.push(sessions_pkg);
     }
 

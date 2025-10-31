@@ -23,7 +23,7 @@
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 
-use super::{ComposeOptions, CompositionMode};
+use super::{ComposeOptions, CompositionMode, RuntimeTarget};
 use crate::config;
 use crate::versioning::VersionResolver;
 
@@ -41,6 +41,7 @@ use crate::versioning::VersionResolver;
 /// - `force`: false
 /// - `verbose`: false
 /// - `mode`: Server (complete MCP server)
+/// - `runtime_target`: Spin (default, as it's becoming the standard)
 #[derive(Debug, Clone)]
 #[allow(dead_code)] // Public API - used by external consumers, not internally yet
 pub struct ComposeOptionsBuilder {
@@ -54,6 +55,7 @@ pub struct ComposeOptionsBuilder {
     skip_download: bool,
     force: bool,
     verbose: bool,
+    runtime_target: RuntimeTarget,
 }
 
 #[allow(dead_code)] // Public API - used by external consumers, not internally yet
@@ -91,6 +93,7 @@ impl ComposeOptionsBuilder {
             skip_download: false,
             force: false,
             verbose: false,
+            runtime_target: RuntimeTarget::default(), // Defaults to Spin
         }
     }
 
@@ -212,6 +215,7 @@ impl ComposeOptionsBuilder {
             force: self.force,
             verbose: self.verbose,
             mode: CompositionMode::Server, // Builder defaults to server mode
+            runtime_target: self.runtime_target,
         })
     }
 }

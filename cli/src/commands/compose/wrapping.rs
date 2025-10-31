@@ -14,6 +14,15 @@ use crate::versioning::VersionResolver;
 /// Prefix for temporary wrapped component files
 const WRAPPED_COMPONENT_PREFIX: &str = ".wrapped-";
 
+/// WASI draft version detected from component imports
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionsDraft {
+    /// WASI preview2 draft (@0.2.3 - wasmtime, wasmcloud)
+    Draft,
+    /// WASI preview2 draft2 (@0.2.0-draft2 - Spin)
+    Draft2,
+}
+
 /// Discover the server-handler interface that a middleware component exports
 ///
 /// Inspects a middleware component's exports to find the server-handler interface version.
@@ -160,6 +169,122 @@ pub fn detect_sessions_usage(component_paths: &[PathBuf], verbose: bool) -> Resu
     Ok(false)
 }
 
+/// Detect which WASI draft version components use based on their imports
+///
+/// Inspects component WASI imports to determine if they target draft (@0.2.3)
+/// or draft2 (@0.2.0-draft2) WASI interfaces. This is used to select the
+/// correct framework component variants (http-transport vs http-transport-d2).
+///
+/// Returns None if no components import sessions (no draft detection needed).
+/// Returns Some(Draft) or Some(Draft2) based on detected WASI versions.
+/// Returns error if components use mixed draft versions.
+pub fn detect_sessions_draft_version(
+    component_paths: &[PathBuf],
+    verbose: bool,
+) -> Result<Option<SessionsDraft>> {
+    use wit_component::DecodedWasm;
+
+    let mut detected_draft: Option<SessionsDraft> = None;
+
+    for path in component_paths {
+        let component_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("component");
+
+        // Only check components that import sessions
+        if !component_imports_interface(path, "wasmcp:", "/sessions@")? {
+            continue;
+        }
+
+        // Decode component to inspect WASI imports
+        let bytes = std::fs::read(path).with_context(|| {
+            format!("Failed to read component from {}", path.display())
+        })?;
+
+        let decoded = wit_component::decode(&bytes).with_context(|| {
+            format!("Failed to decode component at {}", path.display())
+        })?;
+
+        let (resolve, world_id) = match decoded {
+            DecodedWasm::Component(r, w) => (r, w),
+            _ => continue, // Skip non-component files
+        };
+
+        let world = &resolve.worlds[world_id];
+
+        // Check WASI imports to determine draft version
+        let component_draft = detect_wasi_draft_from_imports(&resolve, world)?;
+
+        // Validate consistency across components
+        match (detected_draft, component_draft) {
+            (None, _) => {
+                detected_draft = Some(component_draft);
+                if verbose {
+                    println!("   {} uses WASI {:?}", component_name, component_draft);
+                }
+            }
+            (Some(prev), current) if prev == current => {
+                // Consistent - OK
+                if verbose {
+                    println!("   {} uses WASI {:?} (consistent)", component_name, current);
+                }
+            }
+            (Some(prev), current) => {
+                anyhow::bail!(
+                    "Mixed WASI draft versions detected:\n\
+                     Previous component used {:?}, but {} uses {:?}\n\
+                     All components must use the same WASI draft version.",
+                    prev,
+                    component_name,
+                    current
+                );
+            }
+        }
+    }
+
+    Ok(detected_draft)
+}
+
+/// Detect WASI draft version from component world imports
+///
+/// Inspects WASI interface imports to determine if the component uses
+/// draft (@0.2.3) or draft2 (@0.2.0-draft2) WASI interfaces.
+fn detect_wasi_draft_from_imports(
+    resolve: &wit_parser::Resolve,
+    world: &wit_parser::World,
+) -> Result<SessionsDraft> {
+    use wit_parser::WorldKey;
+
+    // Look for WASI keyvalue imports as the indicator
+    // Sessions component uses wasi:keyvalue which differs between draft versions
+    for (key, _item) in &world.imports {
+        if let WorldKey::Interface(id) = key {
+            let interface = &resolve.interfaces[*id];
+            if let Some(package_id) = interface.package {
+                let package = &resolve.packages[package_id];
+
+                // Check for wasi:keyvalue - key indicator of draft version
+                if package.name.namespace == "wasi" && package.name.name == "keyvalue" {
+                    if let Some(ref version) = package.name.version {
+                        let version_str = version.to_string();
+                        // Draft2 uses 0.2.0-draft2, Draft uses 0.2.0-draft
+                        if version_str.contains("draft2") {
+                            return Ok(SessionsDraft::Draft2);
+                        } else {
+                            return Ok(SessionsDraft::Draft);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Default to Draft if no clear indicator found
+    // This maintains backward compatibility
+    Ok(SessionsDraft::Draft)
+}
+
 /// Auto-detect and wrap capability components with appropriate middleware
 ///
 /// This function inspects each component to determine if it exports capability
@@ -227,6 +352,8 @@ pub async fn wrap_capabilities(
                 );
             }
 
+            eprintln!("   [DETECTION] Component '{}' detected as tools-capability", component_name);
+            eprintln!("      Path: {}", path.display());
             let wrapped_bytes = wrap_with_middleware(
                 &tools_middleware_path,
                 &path,
@@ -251,6 +378,8 @@ pub async fn wrap_capabilities(
                 );
             }
 
+            eprintln!("   [DETECTION] Component '{}' detected as resources-capability", component_name);
+            eprintln!("      Path: {}", path.display());
             let wrapped_bytes = wrap_with_middleware(
                 &resources_middleware_path,
                 &path,
@@ -275,6 +404,8 @@ pub async fn wrap_capabilities(
                 );
             }
 
+            eprintln!("   [DETECTION] Component '{}' detected as prompts-capability", component_name);
+            eprintln!("      Path: {}", path.display());
             let wrapped_bytes = wrap_with_middleware(
                 &prompts_middleware_path,
                 &path,
@@ -331,6 +462,84 @@ fn component_exports_interface(path: &Path, interface: &str) -> Result<bool> {
     Ok(false)
 }
 
+/// Dump WIT interfaces from a component for debugging
+///
+/// This extracts and prints all imports and exports from a component to help
+/// diagnose version mismatches and interface compatibility issues.
+fn dump_component_wit(path: &Path, indent: &str) -> Result<()> {
+    use wit_component::DecodedWasm;
+
+    let bytes = std::fs::read(path)
+        .with_context(|| format!("Failed to read component: {}", path.display()))?;
+
+    let decoded = wit_component::decode(&bytes)
+        .context("Failed to decode component")?;
+
+    let (resolve, world_id) = match decoded {
+        DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
+        DecodedWasm::WitPackage(_, _) => {
+            eprintln!("{}(WIT package, not a component)", indent);
+            return Ok(());
+        }
+    };
+
+    let world = &resolve.worlds[world_id];
+
+    // Dump imports
+    eprintln!("{}Imports:", indent);
+    for (key, _item) in &world.imports {
+        match key {
+            wit_parser::WorldKey::Interface(id) => {
+                let interface = &resolve.interfaces[*id];
+                if let Some(package_id) = interface.package {
+                    let package = &resolve.packages[package_id];
+                    let version_str = package.name.version.as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "no-version".to_string());
+                    eprintln!("{}  - {}:{}/{}@{}",
+                        indent,
+                        package.name.namespace,
+                        package.name.name,
+                        interface.name.as_ref().unwrap_or(&"unknown".to_string()),
+                        version_str
+                    );
+                }
+            }
+            wit_parser::WorldKey::Name(name) => {
+                eprintln!("{}  - {} (named import)", indent, name);
+            }
+        }
+    }
+
+    // Dump exports
+    eprintln!("{}Exports:", indent);
+    for (key, _item) in &world.exports {
+        match key {
+            wit_parser::WorldKey::Interface(id) => {
+                let interface = &resolve.interfaces[*id];
+                if let Some(package_id) = interface.package {
+                    let package = &resolve.packages[package_id];
+                    let version_str = package.name.version.as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "no-version".to_string());
+                    eprintln!("{}  - {}:{}/{}@{}",
+                        indent,
+                        package.name.namespace,
+                        package.name.name,
+                        interface.name.as_ref().unwrap_or(&"unknown".to_string()),
+                        version_str
+                    );
+                }
+            }
+            wit_parser::WorldKey::Name(name) => {
+                eprintln!("{}  - {} (named export)", indent, name);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// Check if a component imports a specific interface
 ///
 /// This loads the component and inspects its imports to determine if it uses
@@ -382,36 +591,68 @@ fn wrap_with_middleware(
     middleware_name: &str,
     capability_name: &str,
 ) -> Result<Vec<u8>> {
+    eprintln!("   [WRAPPING] Attempting to wrap:");
+    eprintln!("      Middleware: {} ({})", middleware_name, middleware_path.display());
+    eprintln!("      Capability: {} ({})", capability_name, capability_path.display());
+    eprintln!("      Interface:  {}", capability_interface);
+
+    // Dump WIT interfaces from both components for debugging
+    eprintln!("\n   [WIT DUMP] Middleware component interfaces:");
+    if let Err(e) = dump_component_wit(middleware_path, "      ") {
+        eprintln!("      Failed to dump middleware WIT: {}", e);
+    }
+
+    eprintln!("\n   [WIT DUMP] Capability component interfaces:");
+    if let Err(e) = dump_component_wit(capability_path, "      ") {
+        eprintln!("      Failed to dump capability WIT: {}", e);
+    }
+    eprintln!();
+
     let mut graph = CompositionGraph::new();
 
+    eprintln!("   [WRAPPING] Loading middleware component...");
     // Load both components
-    let middleware_pkg = super::graph::load_package(&mut graph, middleware_name, middleware_path)?;
-    let capability_pkg = super::graph::load_package(&mut graph, capability_name, capability_path)?;
+    let middleware_pkg = super::graph::load_package(&mut graph, middleware_name, middleware_path)
+        .with_context(|| format!("Failed to load middleware from {}", middleware_path.display()))?;
+
+    eprintln!("   [WRAPPING] Loading capability component...");
+    let capability_pkg = super::graph::load_package(&mut graph, capability_name, capability_path)
+        .with_context(|| format!("Failed to load capability from {}", capability_path.display()))?;
 
     // Register packages
-    let middleware_id = graph.register_package(middleware_pkg)?;
-    let capability_id = graph.register_package(capability_pkg)?;
+    eprintln!("   [WRAPPING] Registering packages in composition graph...");
+    let middleware_id = graph.register_package(middleware_pkg)
+        .with_context(|| format!("Failed to register middleware package {}", middleware_name))?;
+    let capability_id = graph.register_package(capability_pkg)
+        .with_context(|| format!("Failed to register capability package {}", capability_name))?;
 
     // Discover server-handler interface from middleware component exports
+    eprintln!("   [WRAPPING] Discovering server-handler interface...");
     let server_handler_interface = discover_server_handler_interface(middleware_path)?;
+    eprintln!("      Server-handler interface: {}", server_handler_interface);
 
     // Instantiate capability component
+    eprintln!("   [WRAPPING] Instantiating capability component...");
     let capability_inst = graph.instantiate(capability_id);
 
     // Get its capability export (tools, resources, etc.)
+    eprintln!("   [WRAPPING] Getting capability export '{}'...", capability_interface);
     let capability_export = graph
         .alias_instance_export(capability_inst, capability_interface)
-        .with_context(|| format!("Failed to get {} export", capability_name))?;
+        .with_context(|| format!("Failed to get {} export from capability component", capability_name))?;
 
     // Instantiate middleware
+    eprintln!("   [WRAPPING] Instantiating middleware component...");
     let middleware_inst = graph.instantiate(middleware_id);
 
     // Wire middleware's capability import to the capability's export
+    eprintln!("   [WRAPPING] Wiring middleware import '{}' to capability export...", capability_interface);
     graph
         .set_instantiation_argument(middleware_inst, capability_interface, capability_export)
-        .with_context(|| format!("Failed to wire {} interface", capability_name))?;
+        .with_context(|| format!("Failed to wire {} interface from capability to middleware", capability_name))?;
 
     // Export the middleware's server-handler export
+    eprintln!("   [WRAPPING] Exporting server-handler from wrapped component...");
     let server_handler_export = graph
         .alias_instance_export(middleware_inst, &server_handler_interface)
         .context("Failed to get server-handler export from middleware")?;
@@ -421,9 +662,25 @@ fn wrap_with_middleware(
         .context("Failed to export server-handler")?;
 
     // Encode the wrapped component
+    eprintln!("   [WRAPPING] Encoding wrapped component...");
     let bytes = graph
         .encode(EncodeOptions::default())
-        .context("Failed to encode wrapped component")?;
+        .with_context(|| {
+            format!(
+                "Failed to encode wrapped component\n\
+                 Middleware: {} ({})\n\
+                 Capability: {} ({})\n\
+                 Interface: {}\n\
+                 \n\
+                 This error often indicates version mismatches in WASI imports.\n\
+                 Check that both middleware and capability use the same WASI versions.",
+                middleware_name, middleware_path.display(),
+                capability_name, capability_path.display(),
+                capability_interface
+            )
+        })?;
+
+    eprintln!("   [WRAPPING] Successfully wrapped! Output size: {} bytes", bytes.len());
 
     Ok(bytes)
 }
