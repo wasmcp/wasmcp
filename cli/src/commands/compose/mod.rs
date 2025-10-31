@@ -86,6 +86,9 @@ pub struct ComposeOptions {
     /// Override method-not-found component (path or package spec)
     pub override_method_not_found: Option<String>,
 
+    /// Override sessions component (path or package spec)
+    pub override_sessions: Option<String>,
+
     /// Directory for downloaded dependencies
     pub deps_dir: PathBuf,
 
@@ -127,6 +130,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         version_resolver,
         override_transport,
         override_method_not_found,
+        override_sessions,
         deps_dir,
         skip_download,
         force,
@@ -144,6 +148,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 version_resolver,
                 override_transport,
                 override_method_not_found,
+                override_sessions,
                 deps_dir,
                 skip_download,
                 force,
@@ -174,6 +179,7 @@ async fn compose_server(
     version_resolver: VersionResolver,
     override_transport: Option<String>,
     override_method_not_found: Option<String>,
+    override_sessions: Option<String>,
     deps_dir: PathBuf,
     skip_download: bool,
     force: bool,
@@ -256,6 +262,24 @@ async fn compose_server(
         None
     };
 
+    // Resolve sessions component for http transport
+    let sessions_path = if transport == "http" {
+        Some(
+            framework::resolve_framework_component(
+                framework::FrameworkComponent::Sessions,
+                override_sessions.as_deref(),
+                &version_resolver,
+                &deps_dir,
+                &client,
+                skip_download,
+                verbose,
+            )
+            .await?,
+        )
+    } else {
+        None
+    };
+
     // Auto-detect and wrap capability components (tools, resources, etc.)
     if verbose {
         println!("\nDetecting component types...");
@@ -275,6 +299,7 @@ async fn compose_server(
         &wrapped_components,
         &method_not_found_path,
         http_messages_path.as_deref(),
+        sessions_path.as_deref(),
         &transport,
         &version_resolver,
         verbose,

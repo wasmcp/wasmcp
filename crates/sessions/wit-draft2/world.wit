@@ -1,0 +1,8 @@
+package wasmcp:sessions@0.1.4;
+
+world sessions-draft2 {
+    export wasmcp:mcp-v20250618/sessions@0.1.3;
+    import wasi:keyvalue/store@0.2.0-draft2;
+    import wasi:io/streams@0.2.3;
+    import wasi:io/poll@0.2.3;
+}

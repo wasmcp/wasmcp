@@ -51,6 +51,11 @@ pub enum FrameworkComponent<'a> {
     ///
     /// Adds progress/log notification support for HTTP servers.
     Httpmessages,
+
+    /// Sessions provider
+    ///
+    /// Provides MCP session management backed by WASI KV.
+    Sessions,
 }
 
 impl FrameworkComponent<'_> {
@@ -74,6 +79,7 @@ impl FrameworkComponent<'_> {
             Self::Transport(transport) => format!("{}-transport", transport),
             Self::MethodNotFound => "method-not-found".to_string(),
             Self::Httpmessages => "http-messages".to_string(),
+            Self::Sessions => "sessions".to_string(),
         }
     }
 
@@ -96,6 +102,7 @@ impl FrameworkComponent<'_> {
             Self::Transport(_) => "transport",
             Self::MethodNotFound => "method-not-found",
             Self::Httpmessages => "http-messages",
+            Self::Sessions => "sessions",
         }
     }
 
@@ -134,7 +141,7 @@ impl FrameworkComponent<'_> {
                 }
                 dependencies::download_dependencies(transport, resolver, deps_dir, client).await
             }
-            Self::MethodNotFound | Self::Httpmessages => {
+            Self::MethodNotFound | Self::Httpmessages | Self::Sessions => {
                 // Check if already exists (transport download includes it)
                 let version = resolver.get_version(&self.component_name())?;
                 let pkg =
@@ -292,6 +299,30 @@ pub async fn resolve_http_messages_component(
     .await
 }
 
+/// Resolve sessions component (default only, no override)
+///
+/// Convenience wrapper for resolving the sessions component.
+/// This component does not support overrides as it's tightly coupled
+/// to the session management implementation.
+pub async fn resolve_sessions_component(
+    resolver: &VersionResolver,
+    deps_dir: &Path,
+    client: &PackageClient,
+    skip_download: bool,
+    verbose: bool,
+) -> Result<PathBuf> {
+    resolve_framework_component(
+        FrameworkComponent::Sessions,
+        None,
+        resolver,
+        deps_dir,
+        client,
+        skip_download,
+        verbose,
+    )
+    .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -310,6 +341,9 @@ mod tests {
 
         let messages = FrameworkComponent::Httpmessages;
         assert_eq!(messages.component_name(), "http-messages");
+
+        let sessions = FrameworkComponent::Sessions;
+        assert_eq!(sessions.component_name(), "sessions");
     }
 
     /// Test FrameworkComponent::display_name()
@@ -323,6 +357,9 @@ mod tests {
 
         let messages = FrameworkComponent::Httpmessages;
         assert_eq!(messages.display_name(), "http-messages");
+
+        let sessions = FrameworkComponent::Sessions;
+        assert_eq!(sessions.display_name(), "sessions");
     }
 
     /// Test framework download message format

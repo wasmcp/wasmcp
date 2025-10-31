@@ -86,6 +86,13 @@ pub async fn download_dependencies(
         specs.push(http_messages_pkg);
     }
 
+    // Download sessions component (provides session management via WASI KV)
+    if transport == "http" {
+        let sessions_version = resolver.get_version("sessions")?;
+        let sessions_pkg = interfaces::package("sessions", &sessions_version);
+        specs.push(sessions_pkg);
+    }
+
     pkg::download_packages(client, &specs, deps_dir).await
 }
 

@@ -164,6 +164,10 @@ enum ComposeCommand {
         #[arg(long)]
         override_method_not_found: Option<String>,
 
+        /// Override sessions component (path or package spec)
+        #[arg(long)]
+        override_sessions: Option<String>,
+
         /// Directory for dependency components
         #[arg(long, default_value_os_t = default_deps_dir())]
         deps_dir: PathBuf,
@@ -492,6 +496,7 @@ async fn main() -> Result<()> {
                 version_overrides,
                 override_transport,
                 override_method_not_found,
+                override_sessions,
                 deps_dir,
                 skip_download,
                 force,
@@ -546,6 +551,7 @@ async fn main() -> Result<()> {
                     version_resolver,
                     override_transport: final_override_transport,
                     override_method_not_found: final_override_method_not_found,
+                    override_sessions,
                     deps_dir,
                     skip_download,
                     force: final_force,
@@ -588,6 +594,7 @@ async fn main() -> Result<()> {
                     version_resolver,
                     override_transport: None,
                     override_method_not_found: None,
+                    override_sessions: None,
                     deps_dir,
                     skip_download: false, // Not applicable to handler mode
                     force,

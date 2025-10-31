@@ -1,0 +1,184 @@
+/// MCP session management and related features
+///
+/// This interface provides stateful session management for MCP servers, enabling:
+/// - Persistent session data storage using WASI key-value stores
+/// - Client elicitation (requesting information from clients)
+/// - Session lifecycle management (initialize, terminate, delete)
+/// - Async operations with pollable futures
+///
+/// Sessions are identified by unique IDs and can span multiple HTTP requests,
+/// allowing servers to maintain state and context across interactions.
+///
+/// <https://spec.modelcontextprotocol.io/specification/2025-06-18/session>
+interface sessions {
+    use wasi:io/streams@0.2.3.{
+        output-stream,
+        stream-error,
+    };
+    use wasi:io/poll@0.2.3.{
+        pollable,
+    };
+    use wasi:keyvalue/store@0.2.0-draft2.{
+        bucket,
+        error as store-error,
+    };
+    use wasmcp:protocol/mcp@0.1.0.{
+        elicit-request,
+        elicit-result,
+    };
+
+    /// Errors that can occur during session operations
+    variant session-error {
+        /// An I/O error occurred in communication with the client
+        io(stream-error),
+        /// An error occurred in the underlying key-value store
+        store(store-error),
+        /// The specified session does not exist
+        no-such-session,
+        /// An unexpected error occurred
+        unexpected(string),
+    }
+
+    /// A future representing a pending elicit result
+    ///
+    /// The elicit result is ready when the pollable indicates readiness.
+    /// This enables async/await style operations where handlers can request
+    /// information from clients and continue processing when the response arrives.
+    resource future-elicit-result {
+        /// Create a pollable to wait for the elicit result
+        ///
+        /// The pollable becomes ready when the client responds to the elicitation.
+        /// Use WASI poll to wait for readiness before calling elicit-result().
+        subscribe: func() -> pollable;
+
+        /// Get the elicit result
+        ///
+        /// Precondition: Only call this after subscribe() indicates readiness.
+        /// Calling before the result is ready may trap or return invalid data.
+        elicit-result: func() -> elicit-result;
+    }
+
+    /// A bucket-backed session keyed by the Mcp-Session-Id HTTP header
+    ///
+    /// Sessions provide persistent storage and client communication primitives.
+    /// Each session is backed by a WASI key-value bucket and identified by a
+    /// cryptographically unique ID that's passed in the Mcp-Session-Id header.
+    ///
+    /// Session lifecycle:
+    /// 1. initialize() - Create new session with unique ID
+    /// 2. open() - Resume existing session by ID
+    /// 3. set()/get() - Persist data across requests
+    /// 4. elicit() - Request information from client
+    /// 5. terminate() - Mark session as ended (keeps data)
+    /// 6. delete() - Remove session and all data
+    ///
+    /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/session>
+    resource session {
+        /// Initialize a new session in the given bucket
+        ///
+        /// A cryptographically unique session ID is generated automatically.
+        /// The caller should extract the ID and return it to the client via
+        /// the Mcp-Session-Id response header.
+        ///
+        /// The bucket is consumed and owned by the session resource.
+        initialize: static func(
+            /// WASI key-value bucket for session storage
+            bucket: bucket,
+        ) -> result<session, session-error>;
+
+        /// Open an existing session by ID in the given bucket
+        ///
+        /// This is called when a client provides an Mcp-Session-Id header
+        /// to resume a previous session. Returns an error if the session
+        /// ID doesn't exist in the bucket.
+        ///
+        /// The bucket is consumed and owned by the session resource.
+        open: static func(
+            /// WASI key-value bucket containing the session
+            bucket: bucket,
+            /// The session ID from Mcp-Session-Id header
+            id: string,
+        ) -> result<session, session-error>;
+
+        /// Close the session and return the underlying bucket
+        ///
+        /// This releases the session resource but keeps all data in the bucket.
+        /// The returned bucket can be used to create new sessions or passed to
+        /// other components.
+        close: static func(
+            /// The session to close
+            session: session,
+        ) -> bucket;
+
+        /// Delete the session and all associated data in the bucket
+        ///
+        /// This permanently removes the session ID and all key-value pairs.
+        /// The bucket is returned for reuse. If deletion fails, returns both
+        /// the bucket and the error so the caller can recover.
+        delete: static func(
+            /// The session to delete
+            session: session,
+        ) -> result<bucket, tuple<bucket, session-error>>;
+
+        /// Get the session ID
+        ///
+        /// This ID should be returned to clients in the Mcp-Session-Id header
+        /// so they can resume the session in future requests.
+        id: func() -> string;
+
+        /// Get a persistent session value by key
+        ///
+        /// Returns None if the key doesn't exist. Session data persists across
+        /// HTTP requests as long as the session exists.
+        get: func(
+            /// The key to retrieve
+            key: string,
+        ) -> result<option<list<u8>>, session-error>;
+
+        /// Set a persistent session value by key
+        ///
+        /// The value is immediately persisted to the underlying key-value store.
+        /// Overwriting an existing key replaces the previous value.
+        set: func(
+            /// The key to store under
+            key: string,
+            /// The value to store (arbitrary binary data)
+            value: list<u8>,
+        ) -> result<_, session-error>;
+
+        /// Elicit information from the client
+        ///
+        /// This sends a request to the client asking for specific information
+        /// (roots, sampling, etc.). The result is a future that can be polled
+        /// to check when the client responds.
+        ///
+        /// The request is sent immediately on the provided output stream.
+        /// The future should be stored and polled later to retrieve the response.
+        ///
+        /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
+        elicit: func(
+            /// Output stream to send the elicitation request
+            client: borrow<output-stream>,
+            /// The elicitation request to send
+            elicitation: elicit-request,
+        ) -> result<future-elicit-result, session-error>;
+
+        /// Terminate the session, optionally providing a reason
+        ///
+        /// Termination marks the session as ended but does NOT delete session data.
+        /// Clients can detect termination and stop sending requests. Use delete()
+        /// to remove all session data.
+        ///
+        /// This operation is idempotent - calling multiple times has no effect.
+        terminate: func(
+            /// Optional reason for termination (shown to client)
+            reason: option<string>,
+        ) -> result<_, session-error>;
+
+        /// Check if the session is terminated
+        ///
+        /// Returns true if terminate() was previously called on this session.
+        /// Terminated sessions can still read data but should not accept new operations.
+        is-terminated: func() -> result<bool, session-error>;
+    }
+}
