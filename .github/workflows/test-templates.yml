@@ -6,6 +6,7 @@ on:
     branches: [ main ]
     paths:
       - 'cli/**'
+      - '.github/workflows/test-templates.yml'
   push:
     branches: [ main ]
     paths:
@@ -77,9 +78,10 @@ jobs:
 
       - name: Install language tooling (Rust)
         if: matrix.language == 'rust'
-        run: |
-          rustup update stable
-          rustup target add wasm32-wasip2
+        uses: ./.github/actions/setup-rust
+        with:
+          targets: wasm32-wasip2
+          cache-key: templates-tools
 
       - name: Install language tooling (Python)
         if: matrix.language == 'python'
@@ -294,9 +296,10 @@ jobs:
 
       - name: Install language tooling (Rust)
         if: matrix.language == 'rust'
-        run: |
-          rustup update stable
-          rustup target add wasm32-wasip2
+        uses: ./.github/actions/setup-rust
+        with:
+          targets: wasm32-wasip2
+          cache-key: templates-resources
 
       - name: Install language tooling (Python)
         if: matrix.language == 'python'
