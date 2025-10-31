@@ -6,12 +6,12 @@
 //! - Discovers capabilities by probing downstream handler
 //! - Returns server info and capabilities
 
-use crate::bindings::wasi::http::types::{Fields, OutgoingBody, OutgoingResponse};
+use crate::bindings::wasi::http::types::{Fields, OutgoingResponse};
 use crate::bindings::wasmcp::mcp_v20250618::mcp::ProtocolVersion;
 use crate::bindings::wasmcp::mcp_v20250618::server_handler::RequestId;
 use crate::capabilities::{discover_capabilities, serialize_capabilities};
 use crate::config::SessionConfig;
-use crate::response::write_chunked;
+use crate::response::write_json_rpc_response;
 use crate::session::SessionManager;
 
 /// Handle initialize request
@@ -72,10 +72,40 @@ pub fn handle_initialize_request(
                 Some(id)
             }
             Err(e) => {
-                // Session creation failed - log and continue without session
-                // In production, this might be a fatal error depending on requirements
-                eprintln!("[INIT] Failed to create session: {:?}", e);
-                None
+                // Session creation failed - log detailed warning and continue without session
+                // Per MCP spec, sessions are OPTIONAL, so this is acceptable behavior
+                // IMPORTANT: Return None here to ensure no Mcp-Session-Id header is sent to client
+                use crate::session::SessionError;
+                match e {
+                    SessionError::Store(msg) => {
+                        eprintln!(
+                            "[INIT] WARNING: Session creation failed due to storage error: {}",
+                            msg
+                        );
+                        eprintln!("[INIT] Check that:");
+                        eprintln!(
+                            "[INIT]   - MCP_SESSION_BUCKET='{}' is valid",
+                            config.bucket_name
+                        );
+                        eprintln!("[INIT]   - Key-value store is properly configured");
+                        eprintln!("[INIT]   - Runtime has necessary permissions");
+                    }
+                    SessionError::Unexpected(msg) => {
+                        eprintln!(
+                            "[INIT] WARNING: Session creation failed unexpectedly: {}",
+                            msg
+                        );
+                    }
+                    SessionError::NoSuchSession => {
+                        // This shouldn't happen during initialize (creating new session)
+                        eprintln!(
+                            "[INIT] WARNING: Unexpected error - NoSuchSession during session creation"
+                        );
+                    }
+                }
+                eprintln!("[INIT] Continuing without session support for this connection");
+                eprintln!("[INIT] No Mcp-Session-Id header will be sent in response");
+                None // Ensures no session ID is sent to client
             }
         }
     } else {
@@ -95,67 +125,36 @@ pub fn handle_initialize_request(
     let server_title = Some("wasmcp HTTP Transport".to_string());
     let server_version = env!("CARGO_PKG_VERSION").to_string();
 
-    // Write JSON response (not SSE - no notifier, no events)
-    let headers = Fields::new();
-    headers
-        .set("content-type", &[b"application/json".to_vec()])
-        .map_err(|_| "Failed to set content-type")?;
-
-    // Set Mcp-Session-Id header if session was created
-    // Per MCP spec: Session ID communicated via Mcp-Session-Id header
-    if let Some(ref session_id) = new_session_id {
-        eprintln!("[INIT] Setting Mcp-Session-Id header: {}", session_id);
-        headers
-            .set(
-                &"Mcp-Session-Id".to_string(),
-                &[session_id.as_bytes().to_vec()],
-            )
-            .map_err(|_| "Failed to set Mcp-Session-Id header")?;
-        eprintln!("[INIT] Header set successfully");
-    } else {
-        eprintln!("[INIT] No session ID to set in header");
-    }
-
-    let response = OutgoingResponse::new(headers);
-    response
-        .set_status_code(200)
-        .map_err(|_| "Failed to set status")?;
-
-    let body = response
-        .body()
-        .map_err(|_| "Failed to get response body")?;
-    let output_stream = body
-        .write()
-        .map_err(|_| "Failed to get output stream")?;
-
-    // Write initialize result as plain JSON-RPC response
-    let json_result = serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": match &request_id {
-            RequestId::Number(n) => serde_json::Value::Number(serde_json::Number::from(*n)),
-            RequestId::String(s) => serde_json::Value::String(s.clone()),
+    // Build initialize result
+    let result = serde_json::json!({
+        "protocolVersion": match protocol_version {
+            ProtocolVersion::V20250618 => "2025-06-18",
+            ProtocolVersion::V20250326 => "2025-03-26",
+            ProtocolVersion::V20241105 => "2024-11-05",
         },
-        "result": {
-            "protocolVersion": match protocol_version {
-                ProtocolVersion::V20250618 => "2025-06-18",
-                ProtocolVersion::V20250326 => "2025-03-26",
-                ProtocolVersion::V20241105 => "2024-11-05",
-            },
-            "capabilities": capabilities_json,
-            "serverInfo": {
-                "name": server_name,
-                "title": server_title,
-                "version": server_version,
-            }
+        "capabilities": capabilities_json,
+        "serverInfo": {
+            "name": server_name,
+            "title": server_title,
+            "version": server_version,
         }
     });
 
-    let json_str =
-        serde_json::to_string(&json_result).map_err(|e| format!("Failed to serialize JSON: {}", e))?;
-    write_chunked(&output_stream, json_str.as_bytes())?;
+    // Set Mcp-Session-Id header if session was created
+    // Per MCP spec: Session ID communicated via Mcp-Session-Id header
+    let additional_headers = if let Some(ref session_id) = new_session_id {
+        eprintln!("[INIT] Setting Mcp-Session-Id header: {}", session_id);
+        let headers = Fields::new();
+        headers
+            .set("Mcp-Session-Id", &[session_id.as_bytes().to_vec()])
+            .map_err(|_| "Failed to set Mcp-Session-Id header")?;
+        eprintln!("[INIT] Header set successfully");
+        Some(headers)
+    } else {
+        eprintln!("[INIT] No session ID to set in header");
+        None
+    };
 
-    drop(output_stream);
-    OutgoingBody::finish(body, None).map_err(|_| "Failed to finish body")?;
-
-    Ok(response)
+    // Write JSON-RPC response with optional session header
+    write_json_rpc_response(&request_id, result, additional_headers.as_ref())
 }

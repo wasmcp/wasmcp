@@ -15,8 +15,10 @@ impl SessionConfig {
     ///
     /// Environment variables:
     /// - `MCP_SESSION_ENABLED`: "true"/"false" (default: "false")
-    /// - `MCP_SESSION_BUCKET`: Bucket name (default: "mcp-sessions")
-    /// - `MCP_RUNTIME`: "wasmtime" uses empty bucket name, others use configured name
+    /// - `MCP_SESSION_BUCKET`: Bucket name (default: "")
+    ///   - If set, must be "default"
+    ///   - If not set, defaults to empty string (wasmtime's default bucket)
+    ///   - Ignored if MCP_SESSION_ENABLED is not "true"
     pub fn from_env() -> Self {
         let env_vars = get_environment();
         let env_map: std::collections::HashMap<String, String> = env_vars.into_iter().collect();
@@ -27,7 +29,7 @@ impl SessionConfig {
             .unwrap_or(false);
 
         // Default to empty string if MCP_SESSION_BUCKET not set
-        // (allows wasmtime's default bucket behavior)
+        // If set, it must be "default" (or empty string for wasmtime's default bucket)
         let bucket_name = env_map
             .get("MCP_SESSION_BUCKET")
             .cloned()

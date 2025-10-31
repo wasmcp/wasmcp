@@ -37,6 +37,45 @@ interface sessions {
         unexpected(string),
     }
 
+    /// Session metadata stored internally by the transport layer
+    ///
+    /// This is managed by the transport and NOT exposed to user tools.
+    /// Stored as arbitrary JSON to allow extensibility for future metadata fields
+    /// without breaking changes to the schema.
+    ///
+    /// Standard fields (defined by MCP spec):
+    /// - terminated: bool - Whether session has been terminated
+    /// - reason: string? - Optional termination reason
+    /// - created_at: u64 - Unix timestamp in milliseconds
+    ///
+    /// Implementations may add additional metadata fields as needed.
+    @since(version = 0.1.0)
+    record session-metadata {
+        /// Arbitrary JSON object for metadata storage
+        /// Allows adding new fields without schema changes
+        json: string,
+    }
+
+    /// Complete session storage schema
+    ///
+    /// This defines the unified storage format used by both:
+    /// - Transport layer (full read/write access to metadata + data)
+    /// - User-facing session API (controlled access to data field only)
+    ///
+    /// Storage key: {session-id}
+    /// Storage value: Serialized session-data record
+    ///
+    /// The metadata field is reserved for internal transport use.
+    /// User tools access the data field through controlled get/set operations.
+    @since(version = 0.1.0)
+    record session-data {
+        /// Internal metadata (transport layer only - NOT accessible to user tools)
+        metadata: session-metadata,
+        /// Application data storage (arbitrary key-value pairs as JSON object)
+        /// User tools can read/write this through session.get()/set() with validation
+        data: string, // JSON object serialized as string
+    }
+
     /// A future representing a pending elicit result
     ///
     /// The elicit result is ready when the pollable indicates readiness.

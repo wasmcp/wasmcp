@@ -1,3 +1,6 @@
+use crate::bindings::wasi::clocks::wall_clock;
+use crate::bindings::wasi::keyvalue::store::{self, Bucket, Error as StoreError};
+use crate::bindings::wasi::random::random;
 /// Session management implementation following MCP spec 2025-06-18
 ///
 /// Implements the session resource pattern from wasmcp:server/sessions WIT interface.
@@ -10,29 +13,14 @@
 /// - Servers that require sessions SHOULD return 400 for missing session IDs
 /// - Servers MUST return 404 for terminated/invalid sessions
 /// - Clients SHOULD send DELETE to terminate sessions
-
 use serde::{Deserialize, Serialize};
-use crate::bindings::wasi::clocks::wall_clock;
-use crate::bindings::wasi::keyvalue::store::{self, Bucket, Error as StoreError};
-use crate::bindings::wasi::random::random;
 
-/// Session data stored in KV with session ID as key
+/// Session metadata helper for working with the JSON-based metadata from WIT
 ///
-/// The entire session is stored as a single JSON object containing
-/// both metadata (__meta__) and application data (data).
+/// This provides a typed interface to the metadata JSON blob defined in the WIT spec.
+/// The WIT type uses arbitrary JSON to allow extensibility.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct SessionData {
-    /// Session metadata (termination status, timestamps, etc.)
-    #[serde(rename = "__meta__")]
-    meta: SessionMetadata,
-    /// Application data storage (arbitrary JSON object)
-    #[serde(default)]
-    data: serde_json::Value,
-}
-
-/// Session metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct SessionMetadata {
+struct SessionMetadataJson {
     /// Whether the session has been terminated
     terminated: bool,
     /// Optional reason for termination
@@ -59,7 +47,9 @@ impl From<StoreError> for SessionError {
         // Use Display trait to avoid exposing internal structure
         match e {
             StoreError::NoSuchStore => SessionError::Store("key-value store not found".to_string()),
-            StoreError::AccessDenied => SessionError::Store("access denied to session store".to_string()),
+            StoreError::AccessDenied => {
+                SessionError::Store("access denied to session store".to_string())
+            }
             StoreError::Other(msg) => SessionError::Store(format!("storage error: {}", msg)),
         }
     }
@@ -104,21 +94,35 @@ impl SessionManager {
         // Generate cryptographically secure UUID v4
         let session_id = generate_uuid_v4()?;
 
-        // Create initial session data
-        let session_data = SessionData {
-            meta: SessionMetadata {
-                terminated: false,
-                reason: None,
-                created_at: current_timestamp_ms(),
-            },
-            data: serde_json::Value::Object(serde_json::Map::new()), // Empty data object
+        // Create initial metadata (follows unified schema from WIT)
+        let metadata_json = SessionMetadataJson {
+            terminated: false,
+            reason: None,
+            created_at: current_timestamp_ms(),
         };
 
-        // Serialize and store with session ID as the key
-        let session_json = serde_json::to_vec(&session_data)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize session data: {}", e)))?;
+        // Serialize metadata to JSON string
+        let metadata_str = serde_json::to_string(&metadata_json).map_err(|e| {
+            SessionError::Unexpected(format!("Failed to serialize metadata: {}", e))
+        })?;
 
-        bucket.set(&session_id, &session_json)?;
+        // Create unified session storage structure
+        // {
+        //   "metadata": {"json": "{\"terminated\":false,...}"},
+        //   "data": "{}"
+        // }
+        let storage_value = serde_json::json!({
+            "metadata": {
+                "json": metadata_str
+            },
+            "data": "{}" // Empty JSON object for user data
+        });
+
+        let storage_bytes = serde_json::to_vec(&storage_value).map_err(|e| {
+            SessionError::Unexpected(format!("Failed to serialize session storage: {}", e))
+        })?;
+
+        bucket.set(&session_id, &storage_bytes)?;
 
         Ok(SessionManager {
             id: session_id,
@@ -170,8 +174,8 @@ impl SessionManager {
     /// * `Ok(false)` - Session is active
     /// * `Err(SessionError)` - If metadata read fails
     pub fn is_terminated(&self) -> Result<bool, SessionError> {
-        let session_data = self.read_session_data()?;
-        Ok(session_data.meta.terminated)
+        let metadata = self.read_metadata()?;
+        Ok(metadata.terminated)
     }
 
     /// Deletes session and all associated data
@@ -190,13 +194,33 @@ impl SessionManager {
         Ok(self.bucket)
     }
 
-    /// Helper: Read session data from storage
-    fn read_session_data(&self) -> Result<SessionData, SessionError> {
-        let bytes = self.bucket.get(&self.id)?
+    /// Helper: Read metadata from unified session storage
+    fn read_metadata(&self) -> Result<SessionMetadataJson, SessionError> {
+        let bytes = self
+            .bucket
+            .get(&self.id)?
             .ok_or(SessionError::NoSuchSession)?;
 
-        serde_json::from_slice(&bytes)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to deserialize session data: {}", e)))
+        // Parse the unified storage structure
+        let storage: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| {
+            SessionError::Unexpected(format!("Failed to parse session storage: {}", e))
+        })?;
+
+        // Extract metadata.json field
+        let metadata_json_str = storage
+            .get("metadata")
+            .and_then(|m| m.get("json"))
+            .and_then(|j| j.as_str())
+            .ok_or_else(|| {
+                SessionError::Unexpected(
+                    "Missing metadata.json field in session storage".to_string(),
+                )
+            })?;
+
+        // Deserialize the metadata JSON string
+        serde_json::from_str(metadata_json_str).map_err(|e| {
+            SessionError::Unexpected(format!("Failed to deserialize metadata JSON: {}", e))
+        })
     }
 }
 
@@ -221,9 +245,10 @@ fn generate_uuid_v4() -> Result<String, SessionError> {
     let random_bytes = random::get_random_bytes(16);
 
     if random_bytes.len() != 16 {
-        return Err(SessionError::Unexpected(
-            format!("Expected 16 random bytes, got {}", random_bytes.len())
-        ));
+        return Err(SessionError::Unexpected(format!(
+            "Expected 16 random bytes, got {}",
+            random_bytes.len()
+        )));
     }
 
     // Convert to array for easier manipulation
@@ -276,9 +301,10 @@ pub fn validate_session_id_format(session_id: &str) -> Result<(), SessionError> 
 
     for ch in session_id.chars() {
         if ch < '\x21' || ch > '\x7E' {
-            return Err(SessionError::Unexpected(
-                format!("Session ID contains invalid character: {:?} (must be visible ASCII 0x21-0x7E)", ch)
-            ));
+            return Err(SessionError::Unexpected(format!(
+                "Session ID contains invalid character: {:?} (must be visible ASCII 0x21-0x7E)",
+                ch
+            )));
         }
     }
 
@@ -307,8 +333,12 @@ mod tests {
 
         // Check variant (17th character should be 8, 9, a, or b)
         let variant_char = uuid.chars().nth(19).unwrap();
-        assert!(variant_char == '8' || variant_char == '9' ||
-                variant_char == 'a' || variant_char == 'b');
+        assert!(
+            variant_char == '8'
+                || variant_char == '9'
+                || variant_char == 'a'
+                || variant_char == 'b'
+        );
     }
 
     #[test]
@@ -317,8 +347,11 @@ mod tests {
 
         // All characters must be visible ASCII (0x21-0x7E)
         for ch in uuid.chars() {
-            assert!(ch >= '\x21' && ch <= '\x7E',
-                    "Character {:?} not in visible ASCII range", ch);
+            assert!(
+                ch >= '\x21' && ch <= '\x7E',
+                "Character {:?} not in visible ASCII range",
+                ch
+            );
         }
     }
 
@@ -339,25 +372,37 @@ mod tests {
     }
 
     #[test]
-    fn test_session_data_serialization() {
-        let session_data = SessionData {
-            meta: SessionMetadata {
-                terminated: false,
-                reason: None,
-                created_at: 1234567890,
-            },
-            data: serde_json::json!({}),
+    fn test_unified_schema_serialization() {
+        // Test metadata JSON serialization
+        let metadata = SessionMetadataJson {
+            terminated: false,
+            reason: None,
+            created_at: 1234567890,
         };
 
-        let json = serde_json::to_string(&session_data).unwrap();
-        assert!(json.contains("\"__meta__\""));
-        assert!(json.contains("\"terminated\":false"));
-        assert!(json.contains("\"created_at\":1234567890"));
-        assert!(json.contains("\"data\""));
+        let metadata_str = serde_json::to_string(&metadata).unwrap();
+        assert!(metadata_str.contains("\"terminated\":false"));
+        assert!(metadata_str.contains("\"created_at\":1234567890"));
 
-        // Deserialize and verify
-        let deserialized: SessionData = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.meta.terminated, false);
-        assert_eq!(deserialized.meta.created_at, 1234567890);
+        // Test unified storage structure
+        let storage = serde_json::json!({
+            "metadata": {
+                "json": metadata_str
+            },
+            "data": "{}"
+        });
+
+        let storage_str = serde_json::to_string(&storage).unwrap();
+        assert!(storage_str.contains("\"metadata\""));
+        assert!(storage_str.contains("\"json\""));
+        assert!(storage_str.contains("\"data\""));
+        assert!(storage_str.contains("\"terminated\":false"));
+
+        // Verify we can deserialize back
+        let parsed: serde_json::Value = serde_json::from_str(&storage_str).unwrap();
+        let metadata_json_str = parsed["metadata"]["json"].as_str().unwrap();
+        let deserialized: SessionMetadataJson = serde_json::from_str(metadata_json_str).unwrap();
+        assert_eq!(deserialized.terminated, false);
+        assert_eq!(deserialized.created_at, 1234567890);
     }
 }

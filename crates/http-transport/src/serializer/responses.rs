@@ -15,9 +15,9 @@ use crate::serializer::types::{
     JsonImplementation, JsonInitializeResult, JsonListPromptsResult,
     JsonListResourceTemplatesResult, JsonListResourcesResult, JsonListToolsResult, JsonPrompt,
     JsonPromptArgument, JsonPromptCapability, JsonPromptMessage, JsonReadResourceResult,
-    JsonRequestId, JsonResource, JsonResourceCapability, JsonResourceContents, JsonResourceTemplate,
-    JsonServerCapabilities, JsonTextResourceContents, JsonTool, JsonToolAnnotations,
-    JsonToolCapability,
+    JsonRequestId, JsonResource, JsonResourceCapability, JsonResourceContents,
+    JsonResourceTemplate, JsonServerCapabilities, JsonTextResourceContents, JsonTool,
+    JsonToolAnnotations, JsonToolCapability,
 };
 use serde_json::{json, Value};
 

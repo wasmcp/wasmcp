@@ -6,9 +6,7 @@
 //! - Chunked writing that respects stream budgets
 //! - Reading request bodies
 
-use crate::bindings::wasi::http::types::{
-    Fields, IncomingBody, OutgoingBody, OutgoingResponse,
-};
+use crate::bindings::wasi::http::types::{Fields, IncomingBody, OutgoingBody, OutgoingResponse};
 use crate::bindings::wasi::io::streams::{OutputStream, StreamError};
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{ErrorCode, ServerResult};
 use crate::bindings::wasmcp::mcp_v20250618::server_handler::RequestId;
@@ -40,6 +38,75 @@ pub fn write_sse_response(
 
     // Write using check_write() to respect budget
     write_chunked(output_stream, event_data.as_bytes())
+}
+
+/// Write JSON-RPC response as plain JSON (not SSE)
+///
+/// Used for transport-level methods (initialize, ping, logging/setLevel)
+/// that return plain JSON instead of Server-Sent Events.
+///
+/// # Arguments
+/// * `request_id` - Request ID from client request
+/// * `result` - Result value to serialize (use `serde_json::json!({})` for empty result)
+/// * `additional_headers` - Optional additional headers (e.g., Mcp-Session-Id)
+///
+/// # Returns
+/// * `Ok(OutgoingResponse)` - HTTP response with JSON body
+/// * `Err(String)` - If response creation or writing fails
+pub fn write_json_rpc_response(
+    request_id: &RequestId,
+    result: serde_json::Value,
+    additional_headers: Option<&Fields>,
+) -> Result<OutgoingResponse, String> {
+    // Create headers with content-type
+    let headers = Fields::new();
+    headers
+        .set("content-type", &[b"application/json".to_vec()])
+        .map_err(|_| "Failed to set content-type")?;
+
+    // Add any additional headers (e.g., Mcp-Session-Id)
+    if let Some(extra_headers) = additional_headers {
+        // Copy all headers from extra_headers to headers
+        for header_name in extra_headers.entries() {
+            let values = extra_headers.get(&header_name.0);
+            if !values.is_empty() {
+                headers
+                    .set(&header_name.0, &values)
+                    .map_err(|_| format!("Failed to set header: {}", header_name.0))?;
+            }
+        }
+    }
+
+    // Create response
+    let response = OutgoingResponse::new(headers);
+    response
+        .set_status_code(200)
+        .map_err(|_| "Failed to set status")?;
+
+    // Get body and output stream
+    let body = response.body().map_err(|_| "Failed to get response body")?;
+    let output_stream = body.write().map_err(|_| "Failed to get output stream")?;
+
+    // Build JSON-RPC response
+    let json_result = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": match request_id {
+            RequestId::Number(n) => serde_json::Value::Number(serde_json::Number::from(*n)),
+            RequestId::String(s) => serde_json::Value::String(s.clone()),
+        },
+        "result": result
+    });
+
+    // Serialize and write
+    let json_str = serde_json::to_string(&json_result)
+        .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+    write_chunked(&output_stream, json_str.as_bytes())?;
+
+    // Finish body
+    drop(output_stream);
+    OutgoingBody::finish(body, None).map_err(|_| "Failed to finish body")?;
+
+    Ok(response)
 }
 
 /// Write bytes to output stream respecting budget

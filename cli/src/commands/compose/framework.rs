@@ -299,30 +299,6 @@ pub async fn resolve_http_messages_component(
     .await
 }
 
-/// Resolve sessions component (default only, no override)
-///
-/// Convenience wrapper for resolving the sessions component.
-/// This component does not support overrides as it's tightly coupled
-/// to the session management implementation.
-pub async fn resolve_sessions_component(
-    resolver: &VersionResolver,
-    deps_dir: &Path,
-    client: &PackageClient,
-    skip_download: bool,
-    verbose: bool,
-) -> Result<PathBuf> {
-    resolve_framework_component(
-        FrameworkComponent::Sessions,
-        None,
-        resolver,
-        deps_dir,
-        client,
-        skip_download,
-        verbose,
-    )
-    .await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

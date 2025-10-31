@@ -10,9 +10,7 @@ use crate::parser::content::parse_content_block;
 use serde_json::Value;
 
 /// Parse a JSON-RPC response (result or error) into Result<ClientResult, ErrorCode>
-pub fn parse_client_response(
-    json: &Value,
-) -> Result<Result<ClientResult, ErrorCode>, String> {
+pub fn parse_client_response(json: &Value) -> Result<Result<ClientResult, ErrorCode>, String> {
     // Check if it's an error response
     if let Some(error_obj) = json.get("error") {
         let code = error_obj
@@ -158,7 +156,9 @@ fn parse_list_roots_result(result: &Value) -> Result<ListRootsResult, String> {
     Ok(ListRootsResult { meta, roots })
 }
 
-fn parse_sampling_create_message_result(result: &Value) -> Result<SamplingCreateMessageResult, String> {
+fn parse_sampling_create_message_result(
+    result: &Value,
+) -> Result<SamplingCreateMessageResult, String> {
     let meta = result
         .get("_meta")
         .and_then(|m| serde_json::to_string(m).ok());

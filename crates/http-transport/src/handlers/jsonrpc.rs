@@ -77,12 +77,8 @@ pub fn handle_json_rpc_request(
         .map_err(|_| "Failed to set status")?;
 
     // Get body and output stream
-    let body = response
-        .body()
-        .map_err(|_| "Failed to get response body")?;
-    let output_stream = body
-        .write()
-        .map_err(|_| "Failed to get output stream")?;
+    let body = response.body().map_err(|_| "Failed to get response body")?;
+    let output_stream = body.write().map_err(|_| "Failed to get output stream")?;
 
     // Create context with session info if available
     let ctx = RequestCtx {

@@ -84,7 +84,9 @@ pub fn parse_client_notification(json: &Value) -> Result<ClientNotification, Str
 }
 
 /// Parse notification options (_meta and extras)
-pub(crate) fn parse_notification_options(params: Option<&Value>) -> Result<NotificationOptions, String> {
+pub(crate) fn parse_notification_options(
+    params: Option<&Value>,
+) -> Result<NotificationOptions, String> {
     if let Some(p) = params {
         let meta = p.get("_meta").and_then(|m| serde_json::to_string(m).ok());
 

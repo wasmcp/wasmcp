@@ -38,8 +38,7 @@ pub fn extract_session_id(request: &IncomingRequest) -> Result<Option<String>, S
 /// https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#sending-messages-to-the-server
 pub fn validate_accept_header(request: &IncomingRequest) -> Result<(), String> {
     let headers = request.headers();
-    let accept_str = get_header_value(&headers, "accept")?
-        .ok_or("missing Accept header")?;
+    let accept_str = get_header_value(&headers, "accept")?.ok_or("missing Accept header")?;
 
     // Check if both required content types are present
     let has_json = accept_str.contains("application/json") || accept_str.contains("*/*");

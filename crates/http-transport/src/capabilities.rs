@@ -5,8 +5,8 @@
 
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{
     ClientRequest, CompleteRequest, CompletionArgument, CompletionPromptReference,
-    CompletionReference, ListPromptsRequest, ListResourcesRequest, ListToolsRequest,
-    ServerCapabilities, ServerLists, ServerResult,
+    CompletionReference, ListPromptsRequest, ListPromptsResult, ListResourcesRequest,
+    ListToolsRequest, Prompt, ServerCapabilities, ServerLists, ServerResult,
 };
 use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
     handle_request, RequestCtx, RequestId,
@@ -33,6 +33,103 @@ fn create_discovery_ctx<'a>(id: i64, protocol_version: &'a str) -> RequestCtx<'a
     }
 }
 
+/// Find a prompt with arguments suitable for completion testing
+///
+/// Searches the prompts list for the first prompt that has arguments,
+/// which we can use to test completion support.
+///
+/// # Arguments
+/// * `prompts_result` - Result from list-prompts request
+///
+/// # Returns
+/// Reference to first prompt with arguments, or None if no suitable prompt found
+fn find_prompt_with_arguments(prompts_result: &ListPromptsResult) -> Option<&Prompt> {
+    prompts_result.prompts.iter().find(|prompt| {
+        prompt
+            .options
+            .as_ref()
+            .and_then(|opts| opts.arguments.as_ref())
+            .map(|args| !args.is_empty())
+            .unwrap_or(false)
+    })
+}
+
+/// Test if completion endpoint is supported by downstream handler
+///
+/// Makes a test completion request using a real prompt and argument.
+/// Per MCP spec, if the method is not implemented, we get MethodNotFound error.
+/// Other errors (InvalidParams, etc.) suggest the method exists but our test failed.
+///
+/// # Arguments
+/// * `prompt` - Prompt to use for testing (must have arguments)
+/// * `protocol_version` - Negotiated protocol version string
+///
+/// # Returns
+/// true if completions are supported, false otherwise
+fn test_completion_support(prompt: &Prompt, protocol_version: &str) -> bool {
+    // Get first argument from prompt (we know it exists from find_prompt_with_arguments)
+    let first_arg = prompt
+        .options
+        .as_ref()
+        .and_then(|opts| opts.arguments.as_ref())
+        .and_then(|args| args.first())
+        .expect("Prompt should have arguments");
+
+    let completion_request = CompleteRequest {
+        argument: CompletionArgument {
+            name: first_arg.name.clone(),
+            value: "".to_string(),
+        },
+        ref_: CompletionReference::Prompt(CompletionPromptReference {
+            name: prompt.name.clone(),
+            title: None,
+        }),
+        context: None,
+    };
+
+    let req = ClientRequest::CompletionComplete(completion_request);
+    let ctx = create_discovery_ctx(3, protocol_version);
+
+    match handle_request(&ctx, &req) {
+        Ok(_) => true,
+        Err(crate::bindings::wasmcp::mcp_v20250618::mcp::ErrorCode::MethodNotFound(_)) => false,
+        Err(_) => {
+            // Other errors (InvalidParams, etc.) suggest completions might be
+            // supported but our test failed - assume supported
+            true
+        }
+    }
+}
+
+/// Discover prompts support and optionally test completions
+///
+/// Makes list-prompts request to check if prompts are supported.
+/// If prompts are supported and contain arguments, also tests completion support.
+///
+/// # Arguments
+/// * `protocol_version` - Negotiated protocol version string
+///
+/// # Returns
+/// Tuple of (prompts_supported, completions_supported)
+fn discover_prompts_and_completions(protocol_version: &str) -> (bool, bool) {
+    let req = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
+    let ctx = create_discovery_ctx(2, protocol_version);
+
+    match handle_request(&ctx, &req) {
+        Ok(ServerResult::PromptsList(prompts_result)) => {
+            let prompts_supported = true;
+
+            // Try to discover completions support using a real prompt
+            let completions_supported = find_prompt_with_arguments(&prompts_result)
+                .map(|prompt| test_completion_support(prompt, protocol_version))
+                .unwrap_or(false);
+
+            (prompts_supported, completions_supported)
+        }
+        _ => (false, false),
+    }
+}
+
 /// Discover capabilities by probing downstream handler
 ///
 /// Makes test calls to list-tools, list-resources, list-prompts, and completion/complete
@@ -49,8 +146,6 @@ fn create_discovery_ctx<'a>(id: i64, protocol_version: &'a str) -> RequestCtx<'a
 /// - `list_changed`: Which list types are supported (tools, resources, prompts)
 /// - `subscriptions`: None (stateless transport)
 pub fn discover_capabilities(protocol_version: &str) -> ServerCapabilities {
-    // Try to discover what the downstream handler supports by calling list methods
-    // With optional output stream, we can pass None for discovery calls
     let mut list_flags = ServerLists::empty();
 
     // Try list-tools
@@ -68,53 +163,9 @@ pub fn discover_capabilities(protocol_version: &str) -> ServerCapabilities {
     }
 
     // Try list-prompts and use result to test completions
-    let mut has_completions = false;
-    let req = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
-    let ctx = create_discovery_ctx(2, protocol_version);
-    if let Ok(ServerResult::PromptsList(prompts_result)) = handle_request(&ctx, &req) {
+    let (prompts_supported, has_completions) = discover_prompts_and_completions(protocol_version);
+    if prompts_supported {
         list_flags |= ServerLists::PROMPTS;
-
-        // Try to discover completions support using a real prompt
-        if !prompts_result.prompts.is_empty() {
-            let first_prompt = &prompts_result.prompts[0];
-
-            // Check if prompt has arguments to complete
-            if let Some(ref options) = first_prompt.options {
-                if let Some(ref args) = options.arguments {
-                    if !args.is_empty() {
-                        // Try completion with real prompt name and first argument
-                        let completion_request = CompleteRequest {
-                            argument: CompletionArgument {
-                                name: args[0].name.clone(),
-                                value: "".to_string(),
-                            },
-                            ref_: CompletionReference::Prompt(CompletionPromptReference {
-                                name: first_prompt.name.clone(),
-                                title: None,
-                            }),
-                            context: None,
-                        };
-
-                        // Test if completions are supported
-                        let req = ClientRequest::CompletionComplete(completion_request);
-                        let ctx = create_discovery_ctx(3, protocol_version);
-                        match handle_request(&ctx, &req) {
-                            Ok(_) => has_completions = true,
-                            Err(
-                                crate::bindings::wasmcp::mcp_v20250618::mcp::ErrorCode::MethodNotFound(_),
-                            ) => {
-                                has_completions = false;
-                            }
-                            Err(_) => {
-                                // Other errors (InvalidParams, etc.) suggest completions might be
-                                // supported but our test failed - assume supported
-                                has_completions = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     ServerCapabilities {

@@ -11,8 +11,7 @@
 //!
 //! Environment Variables:
 //! - MCP_SESSION_ENABLED: "true"/"false" (default: "false") - Enable session support
-//! - MCP_SESSION_BUCKET: Bucket name (default: "mcp-sessions") - KV storage location
-//! - MCP_RUNTIME: "wasmtime"/"spin" (affects bucket name handling)
+//! - MCP_SESSION_BUCKET: Bucket name (default: "") - Must be "default" if set, empty string otherwise
 //! - MCP_ALLOWED_ORIGINS: Comma-separated allowed origins (default: localhost only)
 //! - MCP_REQUIRE_ORIGIN: "true" to require Origin header (default: "false")
 

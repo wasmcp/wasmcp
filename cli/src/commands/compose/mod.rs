@@ -262,8 +262,15 @@ async fn compose_server(
         None
     };
 
-    // Resolve sessions component for http transport
-    let sessions_path = if transport == "http" {
+    // Detect if any components import sessions interface
+    // This must happen BEFORE wrapping since we need to check the original components
+    if verbose {
+        println!("\nDetecting sessions usage...");
+    }
+    let sessions_needed = wrapping::detect_sessions_usage(&component_paths, verbose)?;
+
+    // Resolve sessions component if needed
+    let sessions_path = if sessions_needed {
         Some(
             framework::resolve_framework_component(
                 framework::FrameworkComponent::Sessions,

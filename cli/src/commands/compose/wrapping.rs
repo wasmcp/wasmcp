@@ -129,6 +129,37 @@ fn discover_capability_interface(middleware_path: &Path, prefix: &str) -> Result
     )
 }
 
+/// Check if any components import the sessions interface
+///
+/// Inspects each component to determine if it imports wasmcp sessions interface.
+/// This is used to decide whether to include the sessions component in the composition.
+///
+/// Returns true if at least one component imports:
+/// - wasmcp:mcp-v20250618/sessions@X.X.X
+/// - wasmcp:mcp-v20250326/sessions@X.X.X
+/// - Any other wasmcp MCP version sessions interface
+pub fn detect_sessions_usage(component_paths: &[PathBuf], verbose: bool) -> Result<bool> {
+    for path in component_paths {
+        let component_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("component");
+
+        // Check if this component imports wasmcp sessions interface
+        if component_imports_interface(path, "wasmcp:", "/sessions@")? {
+            if verbose {
+                println!("   {} imports sessions interface → sessions component needed", component_name);
+            }
+            return Ok(true);
+        }
+    }
+
+    if verbose {
+        println!("   No components import sessions interface → sessions component not needed");
+    }
+    Ok(false)
+}
+
 /// Auto-detect and wrap capability components with appropriate middleware
 ///
 /// This function inspects each component to determine if it exports capability
@@ -291,6 +322,46 @@ fn component_exports_interface(path: &Path, interface: &str) -> Result<bool> {
             for export in exports {
                 let export = export.context("Failed to parse export")?;
                 if export.name.0 == interface {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+
+    Ok(false)
+}
+
+/// Check if a component imports a specific interface
+///
+/// This loads the component and inspects its imports to determine if it uses
+/// a particular interface (e.g., sessions interface for session support).
+///
+/// For sessions, this matches any MCP version by checking:
+/// - Starts with "wasmcp:" namespace
+/// - Contains the interface suffix (e.g., "/sessions@")
+///
+/// This matches: wasmcp:mcp-v20250618/sessions@0.1.3, wasmcp:mcp-v20250326/sessions@0.1.2, etc.
+/// But NOT: other:namespace/sessions@1.0.0
+fn component_imports_interface(path: &Path, namespace: &str, interface_suffix: &str) -> Result<bool> {
+    use wasmparser::{Parser, Payload};
+
+    let bytes = std::fs::read(path)
+        .with_context(|| format!("Failed to read component: {}", path.display()))?;
+
+    // Parse the component to find imports
+    for payload in Parser::new(0).parse_all(&bytes) {
+        let payload = payload.context("Failed to parse component")?;
+
+        if let Payload::ComponentImportSection(imports) = payload {
+            for import in imports {
+                let import = import.context("Failed to parse import")?;
+                let import_name = import.name.0;
+
+                // Check if import:
+                // 1. Starts with the namespace (e.g., "wasmcp:")
+                // 2. Contains the interface suffix (e.g., "/sessions@")
+                // This ensures we only match wasmcp sessions interfaces, not other packages
+                if import_name.starts_with(namespace) && import_name.contains(interface_suffix) {
                     return Ok(true);
                 }
             }

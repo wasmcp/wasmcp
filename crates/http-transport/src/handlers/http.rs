@@ -7,8 +7,51 @@ use crate::handlers::{
     handle_json_rpc_notification, handle_json_rpc_request, handle_json_rpc_response,
 };
 use crate::response::{create_method_not_allowed_response, read_request_body};
-use crate::session::{validate_session_id_format, SessionError, SessionManager};
+use crate::session::{SessionError, SessionManager};
 use crate::validation::{extract_session_id, validate_accept_header};
+
+/// Resolve session for incoming request
+///
+/// Opens and validates an existing session based on session ID from headers.
+///
+/// # Arguments
+/// * `session_id_from_header` - Session ID extracted from Mcp-Session-Id header
+/// * `config` - Session configuration
+///
+/// # Returns
+/// * `Ok(Some(SessionInfo))` - Valid session found and opened
+/// * `Ok(None)` - No session (sessions disabled or no session ID provided)
+/// * `Err(String)` - Session error (not found, terminated, or storage error)
+fn resolve_session_for_request(
+    session_id_from_header: Option<String>,
+    config: &SessionConfig,
+) -> Result<Option<SessionInfo>, String> {
+    if !config.enabled {
+        return Ok(None);
+    }
+
+    let Some(session_id) = session_id_from_header else {
+        return Ok(None);
+    };
+
+    let manager = SessionManager::open(&config.bucket_name, &session_id).map_err(|e| match e {
+        SessionError::NoSuchSession => "HTTP/404:Session not found".to_string(),
+        _ => format!("HTTP/500:Session error: {:?}", e),
+    })?;
+
+    // Check if session is terminated
+    if manager
+        .is_terminated()
+        .map_err(|e| format!("HTTP/500:{:?}", e))?
+    {
+        return Err("HTTP/404:Session terminated".to_string());
+    }
+
+    Ok(Some(SessionInfo {
+        session_id,
+        store_id: config.bucket_name.clone(),
+    }))
+}
 
 /// Handle HTTP POST requests
 ///
@@ -42,65 +85,15 @@ pub fn handle_post(
     let json_rpc: serde_json::Value =
         serde_json::from_slice(&body).map_err(|e| format!("Invalid JSON: {}", e))?;
 
-    // Check if this is an initialize request (session validation happens differently)
-    let is_initialize = json_rpc
-        .get("method")
-        .and_then(|m| m.as_str())
-        .map(|m| m == "initialize")
-        .unwrap_or(false);
-
-    // Handle session management
-    let config = SessionConfig::from_env();
-    let session_info = if config.enabled {
-        if is_initialize {
-            // Initialize requests don't have existing sessions
-            // Session creation handled by handle_initialize_request
-            None
-        } else if let Some(session_id) = session_id_from_header {
-            // Validate existing session
-            eprintln!("[SESSION_VALIDATE] Validating session ID: {}", session_id);
-            validate_session_id_format(&session_id)
-                .map_err(|e| format!("Invalid session ID: {:?}", e))?;
-
-            eprintln!(
-                "[SESSION_VALIDATE] Opening session with bucket: '{}'",
-                config.bucket_name
-            );
-            let manager = SessionManager::open(&config.bucket_name, &session_id).map_err(|e| {
-                eprintln!("[SESSION_VALIDATE] Failed to open session: {:?}", e);
-                match e {
-                    SessionError::NoSuchSession => "HTTP/404:Session not found".to_string(),
-                    _ => format!("HTTP/500:Session error: {:?}", e),
-                }
-            })?;
-
-            eprintln!("[SESSION_VALIDATE] Session opened, checking termination status");
-            // Check if session is terminated
-            if manager
-                .is_terminated()
-                .map_err(|e| format!("HTTP/500:{:?}", e))?
-            {
-                eprintln!("[SESSION_VALIDATE] Session is terminated");
-                return Err("HTTP/404:Session terminated".to_string());
-            }
-
-            eprintln!("[SESSION_VALIDATE] Session is valid");
-            Some(SessionInfo {
-                session_id,
-                store_id: config.bucket_name.clone(),
-            })
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    // Determine message type (request, notification, or response)
+    // Determine message type and route accordingly
     if json_rpc.get("method").is_some() {
         // It's a request or notification
         if let Some(id) = json_rpc.get("id") {
-            // Request - handle and return SSE stream
+            // Request - resolve session if provided
+            // Note: initialize requests never have session_id_from_header (client doesn't have one yet)
+            let config = SessionConfig::from_env();
+            let session_info = resolve_session_for_request(session_id_from_header, &config)?;
+
             handle_json_rpc_request(&json_rpc, id, protocol_version, session_info)
         } else {
             // Notification - accept and return 202
