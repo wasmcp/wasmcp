@@ -135,60 +135,108 @@ interface server-handler {
     );
 }
 
-/// Server-sent MCP messages
+/// Streaming I/O for MCP servers
 ///
-/// This interface provides convenience functions for servers to send MCP notifications and requests
-/// to clients over output streams. Notifications are one-way messages that don't expect responses.
-///
-/// Categories:
-/// - Progress: Real-time updates on long-running operations
-/// - Logging: Send log messages to client's logging system
-/// - List changes: Notify when tools/prompts/resources are added/removed
-/// - Subscriptions: Push updates to subscribed resources/prompts
-/// - Elicitation: Request information from the client (roots, sampling)
-@since(version = 0.1.1)
-interface server-messages {
+/// This interface enables servers to parse and send MCP messages over streams.
+@since(version = 0.1.4)
+interface server-io {
     use wasi:io/streams@0.2.3.{
+        input-stream,
         output-stream,
         stream-error,
     };
     use mcp.{
-        server-notification,
+        request-id,
+        error-code,
+        client-request,
+        client-result,
+        client-notification,
         server-request,
+        server-result,
+        server-notification,
     };
 
     /// Errors that can occur when sending messages to the client
-    @since(version = 0.1.1)
-    variant message-error {
+    @since(version = 0.1.4)
+    variant io-error {
         /// An I/O error occurred writing to the output stream
-        io(stream-error),
+        %stream(stream-error),
         /// Failed to serialize the notification to JSON-RPC format
         serialization(string),
         /// An unexpected error occurred
         unexpected(string),
     }
 
-    /// Send a notification to the client on the current SSE response stream
+/// Parse an incoming request from the client
+    @since(version = 0.1.4)
+    parse-request: func(
+        /// Input stream to read the request from
+        input: borrow<input-stream>,
+    ) -> result<tuple<request-id, client-request>, io-error>;
+
+    /// Send a request to the client
+    ///
+    /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
+    @since(version = 0.1.4)
+    write-request: func(
+        /// Output stream to send the request over
+        output: borrow<output-stream>,
+        /// The request to send to the client
+        request: server-request,
+    ) -> result<_, io-error>;
+
+    /// Parse incoming result response from the client
+    @since(version = 0.1.4)
+    parse-result: func(
+        /// Input stream to read the result from
+        input: borrow<input-stream>,
+    ) -> result<tuple<request-id, client-result>, io-error>;
+
+    /// Send a result response to the client
+    @since(version = 0.1.4)
+    write-result: func(
+        /// Output stream to send the result over
+        output: borrow<output-stream>,
+        /// The result to send to the client
+        id: request-id,
+        %result: server-result,
+    ) -> result<_, io-error>;
+     
+    /// Parse an incoming error response from the client
+    @since(version = 0.1.4)
+    parse-error: func(
+        /// Input stream to read the error from
+        input: borrow<input-stream>,
+    ) -> result<tuple<option<request-id>, error-code>, io-error>;
+
+    /// Send an error response to the client
+    @since(version = 0.1.4)
+    write-error: func(
+        /// Output stream to send the error over
+        output: borrow<output-stream>,
+        /// The request ID the error is responding to
+        id: option<request-id>,
+        /// The error code to send to the client
+        error: error-code,
+    ) -> result<_, io-error>;
+
+    /// Parse an incoming notification from the client
+    @since(version = 0.1.4)
+    parse-notification: func(
+        /// Input stream to read the notification from
+        input: borrow<input-stream>,
+    ) -> result<client-notification, io-error>;
+
+    /// Send a notification to the client
     ///
     /// Notifications are one-way messages that do not expect a response.
-    @since(version = 0.1.1)
-    notify: func(
+    @since(version = 0.1.4)
+    write-notification: func(
         /// Output stream (SSE stream) to send the notification
         output: borrow<output-stream>,
         /// The notification to send to the client
         notification: server-notification,
-    ) -> result<_, message-error>;
-
-    /// Send a request to the client on the current SSE response stream
-    ///
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
-    @since(version = 0.1.1)
-    request: func(
-        /// Output stream (SSE stream) to send the request
-        output: borrow<output-stream>,
-        /// The request to send to the client
-        request: server-request,
-    ) -> result<_, message-error>;
+    ) -> result<_, io-error>;
 }
 
 /// MCP tools feature
