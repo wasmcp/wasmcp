@@ -148,11 +148,11 @@ impl GuestSession for SessionImpl {
             .map_err(|e| SessionError::Unexpected(format!("Failed to parse data JSON: {}", e)))?;
 
         // Get the specific key from the data object
-        Ok(data_obj
+        data_obj
             .get(&key)
             .and_then(|v| v.as_str())
-            .map(|s| base64_decode(s))
-            .transpose()?)
+            .map(base64_decode)
+            .transpose()
     }
 
     fn set(&self, key: String, value: Vec<u8>) -> Result<(), SessionError> {

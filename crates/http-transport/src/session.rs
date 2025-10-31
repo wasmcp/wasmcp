@@ -300,7 +300,7 @@ pub fn validate_session_id_format(session_id: &str) -> Result<(), SessionError> 
     }
 
     for ch in session_id.chars() {
-        if ch < '\x21' || ch > '\x7E' {
+        if !('\x21'..='\x7E').contains(&ch) {
             return Err(SessionError::Unexpected(format!(
                 "Session ID contains invalid character: {:?} (must be visible ASCII 0x21-0x7E)",
                 ch
