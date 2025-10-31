@@ -9,8 +9,7 @@
 /// Sessions are identified by unique IDs and can span multiple HTTP requests,
 /// allowing servers to maintain state and context across interactions.
 ///
-/// <https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management>
-@since(version = 0.1.0)
+/// <https://spec.modelcontextprotocol.io/specification/2025-06-18/session>
 interface sessions {
     use wasi:io/streams@0.2.3.{
         output-stream,
@@ -19,18 +18,21 @@ interface sessions {
     use wasi:io/poll@0.2.3.{
         pollable,
     };
-    use mcp.{
+    use wasi:keyvalue/store@0.2.0-draft2.{
+        bucket,
+        error as store-error,
+    };
+    use wasmcp:protocol/mcp@0.1.0.{
         elicit-request,
         elicit-result,
     };
 
     /// Errors that can occur during session operations
-    @since(version = 0.1.0)
     variant session-error {
         /// An I/O error occurred in communication with the client
         io(stream-error),
         /// An error occurred in the underlying key-value store
-        store(string),
+        store(store-error),
         /// The specified session does not exist
         no-such-session,
         /// An unexpected error occurred
@@ -42,31 +44,48 @@ interface sessions {
     /// The elicit result is ready when the pollable indicates readiness.
     /// This enables async/await style operations where handlers can request
     /// information from clients and continue processing when the response arrives.
-    @since(version = 0.1.0)
     resource future-elicit-result {
         /// Create a pollable to wait for the elicit result
         ///
         /// The pollable becomes ready when the client responds to the elicitation.
         /// Use WASI poll to wait for readiness before calling elicit-result().
-        @since(version = 0.1.0)
         subscribe: func() -> pollable;
 
         /// Get the elicit result
         ///
         /// Precondition: Only call this after subscribe() indicates readiness.
         /// Calling before the result is ready may trap or return invalid data.
-        @since(version = 0.1.0)
         elicit-result: func() -> elicit-result;
     }
 
     /// A bucket-backed session keyed by the Mcp-Session-Id HTTP header
     ///
     /// Sessions provide persistent storage and client communication primitives.
-    /// Each session is identified by a cryptographically unique ID that's passed in the Mcp-Session-Id header.
+    /// Each session is backed by a WASI key-value bucket and identified by a
+    /// cryptographically unique ID that's passed in the Mcp-Session-Id header.
     ///
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management>
-    @since(version = 0.1.0)
+    /// Session lifecycle:
+    /// 1. initialize() - Create new session with unique ID
+    /// 2. open() - Resume existing session by ID
+    /// 3. set()/get() - Persist data across requests
+    /// 4. elicit() - Request information from client
+    /// 5. terminate() - Mark session as ended (keeps data)
+    /// 6. delete() - Remove session and all data
+    ///
+    /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/session>
     resource session {
+        /// Initialize a new session in the given bucket
+        ///
+        /// A cryptographically unique session ID is generated automatically.
+        /// The caller should extract the ID and return it to the client via
+        /// the Mcp-Session-Id response header.
+        ///
+        /// The bucket is consumed and owned by the session resource.
+        initialize: static func(
+            /// WASI key-value bucket for session storage
+            bucket: bucket,
+        ) -> result<session, session-error>;
+
         /// Open an existing session by ID in the given bucket
         ///
         /// This is called when a client provides an Mcp-Session-Id header
@@ -74,26 +93,43 @@ interface sessions {
         /// ID doesn't exist in the bucket.
         ///
         /// The bucket is consumed and owned by the session resource.
-        @since(version = 0.1.0)
         open: static func(
+            /// WASI key-value bucket containing the session
+            bucket: bucket,
             /// The session ID from Mcp-Session-Id header
-            session-id: string,
-            /// The ID of the session's underlying key-value store
-            store-id: string,
+            id: string,
         ) -> result<session, session-error>;
+
+        /// Close the session and return the underlying bucket
+        ///
+        /// This releases the session resource but keeps all data in the bucket.
+        /// The returned bucket can be used to create new sessions or passed to
+        /// other components.
+        close: static func(
+            /// The session to close
+            session: session,
+        ) -> bucket;
+
+        /// Delete the session and all associated data in the bucket
+        ///
+        /// This permanently removes the session ID and all key-value pairs.
+        /// The bucket is returned for reuse. If deletion fails, returns both
+        /// the bucket and the error so the caller can recover.
+        delete: static func(
+            /// The session to delete
+            session: session,
+        ) -> result<bucket, tuple<bucket, session-error>>;
 
         /// Get the session ID
         ///
         /// This ID should be returned to clients in the Mcp-Session-Id header
         /// so they can resume the session in future requests.
-        @since(version = 0.1.0)
         id: func() -> string;
 
         /// Get a persistent session value by key
         ///
         /// Returns None if the key doesn't exist. Session data persists across
         /// HTTP requests as long as the session exists.
-        @since(version = 0.1.0)
         get: func(
             /// The key to retrieve
             key: string,
@@ -103,7 +139,6 @@ interface sessions {
         ///
         /// The value is immediately persisted to the underlying key-value store.
         /// Overwriting an existing key replaces the previous value.
-        @since(version = 0.1.0)
         set: func(
             /// The key to store under
             key: string,
@@ -120,8 +155,7 @@ interface sessions {
         /// The request is sent immediately on the provided output stream.
         /// The future should be stored and polled later to retrieve the response.
         ///
-        /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
-        @since(version = 0.1.0)
+        /// <https://spec.modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
         elicit: func(
             /// Output stream to send the elicitation request
             client: borrow<output-stream>,
@@ -136,84 +170,15 @@ interface sessions {
         /// to remove all session data.
         ///
         /// This operation is idempotent - calling multiple times has no effect.
-        @since(version = 0.1.0)
         terminate: func(
             /// Optional reason for termination (shown to client)
             reason: option<string>,
         ) -> result<_, session-error>;
+
+        /// Check if the session is terminated
+        ///
+        /// Returns true if terminate() was previously called on this session.
+        /// Terminated sessions can still read data but should not accept new operations.
+        is-terminated: func() -> result<bool, session-error>;
     }
-}
-
-/// Transport-layer session lifecycle management interface
-///
-/// This interface is used by transport components (HTTP, stdio, etc.) to manage
-/// session lifecycle. User tools should NOT import this interface - they use
-/// the session resource instead.
-///
-/// Storage format is an implementation detail managed internally by the
-/// session-store component and is NOT exposed via this WIT interface.
-@since(version = 0.1.4)
-interface session-manager {
-    use sessions.{session-error};
-
-    /// Initialize a new session
-    ///
-    /// Creates a new session with generated UUID, stores initial metadata,
-    /// and returns the session ID for inclusion in response headers.
-    ///
-    /// # Arguments
-    /// * `store-id` - Name of the WASI KV bucket to use for storage
-    ///
-    /// # Returns
-    /// * `Ok(session-id)` - UUID v4 formatted session identifier
-    /// * `Err(session-error)` - Storage or generation error
-    ///
-    /// @since(version = 0.1.4)
-    initialize: func(store-id: string) -> result<string, session-error>;
-
-    /// Validate session exists and is not terminated
-    ///
-    /// Checks that:
-    /// 1. Session exists in storage
-    /// 2. Session is not marked as terminated
-    ///
-    /// # Returns
-    /// * `Ok(true)` - Session is valid and active
-    /// * `Ok(false)` - Session exists but is terminated
-    /// * `Err(no-such-session)` - Session does not exist
-    /// * `Err(session-error)` - Storage error
-    ///
-    /// @since(version = 0.1.4)
-    validate: func(session-id: string, store-id: string) -> result<bool, session-error>;
-
-    /// Mark session as terminated (soft delete)
-    ///
-    /// Updates session metadata to mark as terminated with optional reason.
-    /// Data remains in storage but session cannot be used for new requests.
-    ///
-    /// This is called by:
-    /// * Transport layer when client sends termination request
-    /// * User tools calling session.terminate()
-    ///
-    /// # Arguments
-    /// * `session-id` - Session to terminate
-    /// * `store-id` - WASI KV bucket name
-    /// * `reason` - Optional human-readable termination reason
-    ///
-    /// @since(version = 0.1.4)
-    mark-terminated: func(
-        session-id: string,
-        store-id: string,
-        reason: option<string>
-    ) -> result<_, session-error>;
-
-    /// Delete session from storage (hard delete)
-    ///
-    /// Completely removes session and all associated data from storage.
-    /// This is a destructive operation that cannot be undone.
-    ///
-    /// Typically called by transport layer during cleanup, not by user tools.
-    ///
-    /// @since(version = 0.1.4)
-    delete-session: func(session-id: string, store-id: string) -> result<_, session-error>;
 }
