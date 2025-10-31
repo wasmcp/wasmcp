@@ -124,13 +124,14 @@ jobs:
         with:
           targets: wasm32-wasip2
           cache-key: components
-          # Cache all component crates (7 framework components)
+          # Cache all component crates (8 framework components)
           workspaces: |
             crates/http-messages
             crates/http-transport
             crates/method-not-found
             crates/prompts-middleware
             crates/resources-middleware
+            crates/session-store
             crates/stdio-transport
             crates/tools-middleware
 
@@ -146,12 +147,33 @@ jobs:
           for crate in crates/*; do
             if [ -d "$crate/wit" ]; then
               echo "Fetching WIT deps for $crate..."
-              (cd "$crate" && wit-deps)
+              (cd "$crate" && wit-deps update)
+              # Also fetch draft2 WIT deps if they exist
+              if [ -d "$crate/wit-draft2" ]; then
+                echo "Fetching draft2 WIT deps for $crate..."
+                (cd "$crate" && WIT_DEPS_PATH=wit-draft2 wit-deps update)
+              fi
             fi
           done
 
-      - name: Build all components
-        run: cargo build --release
+      - name: Build all components (draft versions)
+        run: |
+          echo "Building all framework components (draft versions)..."
+          cargo build --release --target wasm32-wasip2
+
+      - name: Build draft2 versions
+        run: |
+          echo "Building http-transport draft2..."
+          cd crates/http-transport
+          cargo build --release --target wasm32-wasip2 --features draft2
+          mv ../../target/wasm32-wasip2/release/http_transport.wasm ../../target/wasm32-wasip2/release/http_transport_draft2.wasm
+          cd ../..
+
+          echo "Building sessions draft2..."
+          cd crates/session-store
+          cargo build --release --target wasm32-wasip2 --features draft2
+          mv ../../target/wasm32-wasip2/release/sessions.wasm ../../target/wasm32-wasip2/release/sessions_draft2.wasm
+          cd ../..
 
       - name: Upload component artifacts
         uses: actions/upload-artifact@v4

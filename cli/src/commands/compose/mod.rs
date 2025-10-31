@@ -251,8 +251,9 @@ async fn compose_server(
     }
 
     // Now resolve paths to the downloaded components
+    let transport_component_name = format!("{}-transport", transport);
     let transport_path = framework::resolve_component_path(
-        &transport,
+        &transport_component_name,
         override_transport.as_deref(),
         &version_resolver,
         &deps_dir,

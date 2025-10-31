@@ -14,7 +14,7 @@ setup:
 	@rustup target add wasm32-wasip2
 
 wit:
-	@wkg wit fetch
+	@wit-deps update
 
 # Build the component for wasmtime/wash (uses @0.2.0-draft)
 build-draft:
