@@ -15,7 +15,21 @@ use serde::{Deserialize, Serialize};
 use crate::bindings::wasi::keyvalue::store::{self, Bucket, Error as StoreError};
 use crate::bindings::wasi::random::random;
 
-/// Session metadata stored in KV under "__meta__" key
+/// Session data stored in KV with session ID as key
+///
+/// The entire session is stored as a single JSON object containing
+/// both metadata (__meta__) and application data (data).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SessionData {
+    /// Session metadata (termination status, timestamps, etc.)
+    #[serde(rename = "__meta__")]
+    meta: SessionMetadata,
+    /// Application data storage (arbitrary JSON object)
+    #[serde(default)]
+    data: serde_json::Value,
+}
+
+/// Session metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SessionMetadata {
     /// Whether the session has been terminated
@@ -29,6 +43,7 @@ struct SessionMetadata {
 
 /// Session errors following wasmcp:server/sessions::session-error
 #[derive(Debug)]
+#[allow(dead_code)] // Error details used for debugging/logging
 pub enum SessionError {
     /// Key-value store error
     Store(String),
@@ -51,7 +66,8 @@ impl From<StoreError> for SessionError {
 /// All sessions share the same bucket (one bucket per transport instance).
 ///
 /// Storage schema:
-/// - Key: `{session_id}` (e.g., "fef9e597-c392-41dd-bdec-d90223d5fd0a")
+/// - Bucket: Shared bucket for all sessions (e.g., "mcp-sessions" or "default")
+/// - Key: Session ID (e.g., "fef9e597-c392-41dd-bdec-d90223d5fd0a")
 /// - Value: JSON-serialized SessionMetadata
 ///
 /// Note: This is distinct from server_handler::Session which is the record
@@ -89,24 +105,27 @@ impl SessionManager {
         let session_id = generate_uuid_v4()?;
         eprintln!("[SESSION_INIT] Generated session ID: {}", session_id);
 
-        // Create initial metadata
-        let metadata = SessionMetadata {
-            terminated: false,
-            reason: None,
-            created_at: current_timestamp_ms(),
+        // Create initial session data
+        let session_data = SessionData {
+            meta: SessionMetadata {
+                terminated: false,
+                reason: None,
+                created_at: current_timestamp_ms(),
+            },
+            data: serde_json::Value::Object(serde_json::Map::new()), // Empty data object
         };
 
-        // Store metadata
-        let metadata_json = serde_json::to_vec(&metadata)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize metadata: {}", e)))?;
-        eprintln!("[SESSION_INIT] Serialized metadata, writing to __meta__");
+        // Serialize and store with session ID as the key
+        let session_json = serde_json::to_vec(&session_data)
+            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize session data: {}", e)))?;
+        eprintln!("[SESSION_INIT] Serialized session data, writing to key '{}'", session_id);
 
-        bucket.set("__meta__", &metadata_json)?;
-        eprintln!("[SESSION_INIT] Metadata written successfully");
+        bucket.set(&session_id, &session_json)?;
+        eprintln!("[SESSION_INIT] Session data written successfully");
 
         // Verify it was written
-        let exists = bucket.exists("__meta__")?;
-        eprintln!("[SESSION_INIT] Verification: __meta__ exists = {}", exists);
+        let exists = bucket.exists(&session_id)?;
+        eprintln!("[SESSION_INIT] Verification: session '{}' exists = {}", session_id, exists);
 
         Ok(SessionManager {
             id: session_id,
@@ -138,12 +157,12 @@ impl SessionManager {
             })?;
         eprintln!("[SESSION_OPEN] Bucket opened successfully");
 
-        // Check if session metadata exists
-        eprintln!("[SESSION_OPEN] Checking if __meta__ exists");
-        let exists = bucket.exists("__meta__")?;
-        eprintln!("[SESSION_OPEN] __meta__ exists: {}", exists);
+        // Check if session exists using session ID as key
+        eprintln!("[SESSION_OPEN] Checking if session '{}' exists", id);
+        let exists = bucket.exists(id)?;
+        eprintln!("[SESSION_OPEN] Session '{}' exists: {}", id, exists);
         if !exists {
-            eprintln!("[SESSION_OPEN] No __meta__ found, returning NoSuchSession");
+            eprintln!("[SESSION_OPEN] Session '{}' not found, returning NoSuchSession", id);
             return Err(SessionError::NoSuchSession);
         }
 
@@ -161,59 +180,6 @@ impl SessionManager {
         &self.id
     }
 
-    /// Retrieves application data from session storage
-    ///
-    /// # Arguments
-    /// * `key` - Key name (e.g., "counter:value", "weather:cache")
-    ///
-    /// # Returns
-    /// * `Ok(Some(bytes))` - Data found
-    /// * `Ok(None)` - Key doesn't exist
-    /// * `Err(SessionError)` - Storage error
-    pub fn get(&self, key: &str) -> Result<Option<Vec<u8>>, SessionError> {
-        self.bucket.get(key).map_err(SessionError::from)
-    }
-
-    /// Stores application data in session storage
-    ///
-    /// # Arguments
-    /// * `key` - Key name (e.g., "counter:value", "weather:cache")
-    /// * `value` - Binary data (component decides encoding)
-    ///
-    /// # Returns
-    /// * `Ok(())` - Data stored successfully
-    /// * `Err(SessionError)` - Storage error
-    pub fn set(&self, key: &str, value: &[u8]) -> Result<(), SessionError> {
-        self.bucket.set(key, value).map_err(SessionError::from)
-    }
-
-    /// Marks session as terminated
-    ///
-    /// Per MCP spec:
-    /// - Session data is preserved (not deleted)
-    /// - Future requests with this session ID MUST return 404
-    /// - Reason is stored for debugging/logging
-    ///
-    /// # Arguments
-    /// * `reason` - Optional reason for termination (e.g., "client_requested", "timeout")
-    ///
-    /// # Returns
-    /// * `Ok(())` - Session marked as terminated
-    /// * `Err(SessionError)` - If metadata update fails
-    pub fn terminate(&mut self, reason: Option<String>) -> Result<(), SessionError> {
-        // Read current metadata
-        let mut metadata = self.read_metadata()?;
-
-        // Update termination status
-        metadata.terminated = true;
-        metadata.reason = reason;
-
-        // Write back to storage
-        self.write_metadata(&metadata)?;
-
-        Ok(())
-    }
-
     /// Checks if session is terminated
     ///
     /// # Returns
@@ -221,45 +187,33 @@ impl SessionManager {
     /// * `Ok(false)` - Session is active
     /// * `Err(SessionError)` - If metadata read fails
     pub fn is_terminated(&self) -> Result<bool, SessionError> {
-        let metadata = self.read_metadata()?;
-        Ok(metadata.terminated)
+        let session_data = self.read_session_data()?;
+        Ok(session_data.meta.terminated)
     }
 
     /// Deletes session and all associated data
     ///
-    /// Per sessions.wit, this consumes the session and returns the bucket.
-    /// In practice, we'll just delete all keys in the bucket.
+    /// Removes the session ID key from the bucket, which contains all session data
+    /// (both metadata and application data).
     ///
     /// # Returns
     /// * `Ok(Bucket)` - Bucket handle after deletion
     /// * `Err(SessionError)` - If deletion fails
     pub fn delete(self) -> Result<Bucket, SessionError> {
-        // Delete metadata (main indicator of session existence)
-        self.bucket.delete("__meta__")?;
-
-        // Note: In a production implementation, we'd enumerate and delete all keys.
-        // For MVP, components are responsible for cleaning up their own keys,
-        // or we accept that orphaned keys may exist until bucket cleanup.
+        // Delete the session by removing the session ID key
+        // This removes both metadata and application data in one operation
+        self.bucket.delete(&self.id)?;
 
         Ok(self.bucket)
     }
 
-    /// Helper: Read session metadata from storage
-    fn read_metadata(&self) -> Result<SessionMetadata, SessionError> {
-        let bytes = self.bucket.get("__meta__")?
+    /// Helper: Read session data from storage
+    fn read_session_data(&self) -> Result<SessionData, SessionError> {
+        let bytes = self.bucket.get(&self.id)?
             .ok_or(SessionError::NoSuchSession)?;
 
         serde_json::from_slice(&bytes)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to deserialize metadata: {}", e)))
-    }
-
-    /// Helper: Write session metadata to storage
-    fn write_metadata(&self, metadata: &SessionMetadata) -> Result<(), SessionError> {
-        let bytes = serde_json::to_vec(metadata)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize metadata: {}", e)))?;
-
-        self.bucket.set("__meta__", &bytes)?;
-        Ok(())
+            .map_err(|e| SessionError::Unexpected(format!("Failed to deserialize session data: {}", e)))
     }
 }
 
@@ -402,20 +356,25 @@ mod tests {
     }
 
     #[test]
-    fn test_metadata_serialization() {
-        let metadata = SessionMetadata {
-            terminated: false,
-            reason: None,
-            created_at: 1234567890,
+    fn test_session_data_serialization() {
+        let session_data = SessionData {
+            meta: SessionMetadata {
+                terminated: false,
+                reason: None,
+                created_at: 1234567890,
+            },
+            data: serde_json::json!({}),
         };
 
-        let json = serde_json::to_string(&metadata).unwrap();
+        let json = serde_json::to_string(&session_data).unwrap();
+        assert!(json.contains("\"__meta__\""));
         assert!(json.contains("\"terminated\":false"));
         assert!(json.contains("\"created_at\":1234567890"));
+        assert!(json.contains("\"data\""));
 
         // Deserialize and verify
-        let deserialized: SessionMetadata = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.terminated, false);
-        assert_eq!(deserialized.created_at, 1234567890);
+        let deserialized: SessionData = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.meta.terminated, false);
+        assert_eq!(deserialized.meta.created_at, 1234567890);
     }
 }
