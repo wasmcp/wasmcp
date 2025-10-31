@@ -26,6 +26,7 @@
 //! ```
 
 use anyhow::Result;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use super::{PackageClient, dependencies, resolution};
@@ -139,7 +140,9 @@ impl FrameworkComponent<'_> {
                 if verbose {
                     println!("\nDownloading framework dependencies...");
                 }
-                dependencies::download_dependencies(transport, resolver, deps_dir, client).await
+                // Download all core components (no optionals yet - caller handles detection)
+                let optional_components = HashSet::new();
+                dependencies::download_dependencies(transport, &optional_components, resolver, deps_dir, client).await
             }
             Self::MethodNotFound | Self::Httpmessages | Self::Sessions => {
                 // Check if already exists (transport download includes it)
@@ -149,7 +152,15 @@ impl FrameworkComponent<'_> {
                 let filename = pkg.replace([':', '/'], "_") + ".wasm";
                 let path = deps_dir.join(&filename);
                 if !path.exists() {
-                    dependencies::download_dependencies("http", resolver, deps_dir, client).await?;
+                    // Component not found - need to download with appropriate optionals
+                    let mut optional_components = HashSet::new();
+                    if matches!(self, Self::Httpmessages) {
+                        optional_components.insert(dependencies::OptionalComponent::HttpMessages);
+                    }
+                    if matches!(self, Self::Sessions) {
+                        optional_components.insert(dependencies::OptionalComponent::Sessions);
+                    }
+                    dependencies::download_dependencies("http", &optional_components, resolver, deps_dir, client).await?;
                 }
                 Ok(())
             }
@@ -344,5 +355,49 @@ mod tests {
         let message = "Downloading framework dependencies...";
         assert!(message.contains("framework"));
         assert!(message.contains("dependencies"));
+    }
+}
+
+/// Download all framework dependencies in one batch
+///
+/// Detects what's needed and downloads everything at once.
+pub async fn download_framework_dependencies(
+    transport: &str,
+    sessions_needed: bool,
+    http_messages_needed: bool,
+    resolver: &VersionResolver,
+    deps_dir: &Path,
+    client: &PackageClient,
+) -> Result<()> {
+    // Build set of optional components
+    let mut optional_components = HashSet::new();
+    if sessions_needed {
+        optional_components.insert(dependencies::OptionalComponent::Sessions);
+    }
+    if http_messages_needed {
+        optional_components.insert(dependencies::OptionalComponent::HttpMessages);
+    }
+
+    dependencies::download_dependencies(transport, &optional_components, resolver, deps_dir, client).await
+}
+
+/// Resolve component path (override or cached)
+///
+/// Simple path resolution - download should happen separately.
+pub async fn resolve_component_path(
+    component_name: &str,
+    override_spec: Option<&str>,
+    resolver: &VersionResolver,
+    deps_dir: &Path,
+    client: &PackageClient,
+    verbose: bool,
+) -> Result<PathBuf> {
+    if let Some(spec) = override_spec {
+        if verbose {
+            println!("\nUsing override for {}: {}", component_name, spec);
+        }
+        resolution::resolve_component_spec(spec, deps_dir, client, verbose).await
+    } else {
+        dependencies::get_dependency_path(component_name, resolver, deps_dir)
     }
 }

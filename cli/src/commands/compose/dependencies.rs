@@ -4,10 +4,20 @@
 //! such as transports, method-not-found handler, and tools-middleware.
 
 use anyhow::Result;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::commands::pkg;
 use crate::versioning::VersionResolver;
+
+/// Optional framework components that may be needed based on detection
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OptionalComponent {
+    /// HTTP messages for progress/logging
+    HttpMessages,
+    /// Session management via WASI KV
+    Sessions,
+}
 
 /// Type alias for the package client used throughout composition
 pub type PackageClient =
@@ -50,6 +60,7 @@ pub mod interfaces {
 /// Download required framework dependencies (transport, method-not-found, and all middleware)
 pub async fn download_dependencies(
     transport: &str,
+    optional_components: &HashSet<OptionalComponent>,
     resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
@@ -79,15 +90,14 @@ pub async fn download_dependencies(
         prompts_middleware_pkg,
     ];
 
-    // Download http-messages for http transport (provides messages interface)
-    if transport == "http" {
+    // Download optional components based on detection
+    if optional_components.contains(&OptionalComponent::HttpMessages) {
         let http_messages_version = resolver.get_version("http-messages")?;
         let http_messages_pkg = interfaces::package("http-messages", &http_messages_version);
         specs.push(http_messages_pkg);
     }
 
-    // Download sessions component (provides session management via WASI KV)
-    if transport == "http" {
+    if optional_components.contains(&OptionalComponent::Sessions) {
         let sessions_version = resolver.get_version("sessions")?;
         let sessions_pkg = interfaces::package("sessions", &sessions_version);
         specs.push(sessions_pkg);

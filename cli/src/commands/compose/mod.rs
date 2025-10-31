@@ -223,37 +223,62 @@ async fn compose_server(
     // Resolve all component specs to local paths
     let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
 
-    // Resolve transport component
-    let transport_path = resolve_transport_component(
+    // Detect what framework components are needed
+    if verbose {
+        println!("\nDetecting framework component requirements...");
+    }
+    let sessions_needed = wrapping::detect_sessions_usage(&component_paths, verbose)?;
+    let http_messages_needed = transport == "http";
+
+    // Download all framework dependencies in one batch
+    // Skip downloading components that have overrides
+    if !skip_download {
+        if verbose {
+            println!("\nDownloading framework dependencies...");
+        }
+        let download_sessions = sessions_needed && override_sessions.is_none();
+        let download_http_messages = http_messages_needed; // http-messages doesn't support overrides
+
+        framework::download_framework_dependencies(
+            &transport,
+            download_sessions,
+            download_http_messages,
+            &version_resolver,
+            &deps_dir,
+            &client,
+        )
+        .await?;
+    }
+
+    // Now resolve paths to the downloaded components
+    let transport_path = framework::resolve_component_path(
         &transport,
         override_transport.as_deref(),
         &version_resolver,
         &deps_dir,
         &client,
-        skip_download,
         verbose,
     )
     .await?;
 
-    // Resolve method-not-found component
-    let method_not_found_path = resolve_method_not_found_component(
+    let method_not_found_path = framework::resolve_component_path(
+        "method-not-found",
         override_method_not_found.as_deref(),
         &version_resolver,
         &deps_dir,
         &client,
-        skip_download,
         verbose,
     )
     .await?;
 
-    // Resolve http-messages component for http transport
-    let http_messages_path = if transport == "http" {
+    let http_messages_path = if http_messages_needed {
         Some(
-            resolve_http_messages_component(
+            framework::resolve_component_path(
+                "http-messages",
+                None,
                 &version_resolver,
                 &deps_dir,
                 &client,
-                skip_download,
                 verbose,
             )
             .await?,
@@ -262,23 +287,14 @@ async fn compose_server(
         None
     };
 
-    // Detect if any components import sessions interface
-    // This must happen BEFORE wrapping since we need to check the original components
-    if verbose {
-        println!("\nDetecting sessions usage...");
-    }
-    let sessions_needed = wrapping::detect_sessions_usage(&component_paths, verbose)?;
-
-    // Resolve sessions component if needed
     let sessions_path = if sessions_needed {
         Some(
-            framework::resolve_framework_component(
-                framework::FrameworkComponent::Sessions,
+            framework::resolve_component_path(
+                "session-store",
                 override_sessions.as_deref(),
                 &version_resolver,
                 &deps_dir,
                 &client,
-                skip_download,
                 verbose,
             )
             .await?,
