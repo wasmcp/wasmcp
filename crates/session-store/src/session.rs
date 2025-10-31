@@ -4,10 +4,10 @@
 //! Implements both user-facing data access (sessions interface) and
 //! transport-layer lifecycle management (session-manager interface).
 
+use crate::bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError as ManagerError;
 use crate::bindings::exports::wasmcp::mcp_v20250618::sessions::{
     ElicitRequest, ElicitResult, GuestFutureElicitResult, GuestSession, Session, SessionError,
 };
-use crate::bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError as ManagerError;
 use crate::bindings::wasi::io::poll::Pollable;
 use crate::bindings::wasi::io::streams::OutputStream;
 use crate::bindings::wasi::keyvalue::store::{self as kv_store, Bucket};
@@ -94,8 +94,9 @@ impl SessionManager {
         eprintln!("[SessionManager] Initializing new session: {}", session_id);
 
         // Open bucket
-        let bucket = kv_store::open(&store_id)
-            .map_err(|e| ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e)))?;
+        let bucket = kv_store::open(&store_id).map_err(|e| {
+            ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e))
+        })?;
 
         // Create initial storage structure with empty data
         let storage = SessionStorage::default();
@@ -103,10 +104,14 @@ impl SessionManager {
             .map_err(|e| ManagerError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
 
         // Store in KV
-        bucket.set(&session_id, storage_json.as_bytes())
+        bucket
+            .set(&session_id, storage_json.as_bytes())
             .map_err(|e| ManagerError::Store(format!("Failed to store session: {:?}", e)))?;
 
-        eprintln!("[SessionManager] Session {} created successfully", session_id);
+        eprintln!(
+            "[SessionManager] Session {} created successfully",
+            session_id
+        );
         Ok(session_id)
     }
 
@@ -118,21 +123,28 @@ impl SessionManager {
     pub fn validate(session_id: String, store_id: String) -> Result<bool, ManagerError> {
         eprintln!("[SessionManager] Validating session: {}", session_id);
 
-        let bucket = kv_store::open(&store_id)
-            .map_err(|e| ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e)))?;
+        let bucket = kv_store::open(&store_id).map_err(|e| {
+            ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e))
+        })?;
 
         // Check if session exists
-        if !bucket.exists(&session_id)
-            .map_err(|e| ManagerError::Store(format!("Failed to check existence: {:?}", e)))? {
+        if !bucket
+            .exists(&session_id)
+            .map_err(|e| ManagerError::Store(format!("Failed to check existence: {:?}", e)))?
+        {
             eprintln!("[SessionManager] Session {} does not exist", session_id);
             return Err(ManagerError::NoSuchSession);
         }
 
         // Read storage and check termination status
-        let data = bucket.get(&session_id)
+        let data = bucket
+            .get(&session_id)
             .map_err(|e| ManagerError::Store(format!("Failed to read session: {:?}", e)))?
             .ok_or_else(|| {
-                eprintln!("[SessionManager] Session {} exists but has no data", session_id);
+                eprintln!(
+                    "[SessionManager] Session {} exists but has no data",
+                    session_id
+                );
                 ManagerError::NoSuchSession
             })?;
 
@@ -140,8 +152,11 @@ impl SessionManager {
             .map_err(|e| ManagerError::Unexpected(format!("Failed to parse storage: {}", e)))?;
 
         let is_active = !storage.meta.terminated;
-        eprintln!("[SessionManager] Session {} is {}", session_id,
-                  if is_active { "active" } else { "terminated" });
+        eprintln!(
+            "[SessionManager] Session {} is {}",
+            session_id,
+            if is_active { "active" } else { "terminated" }
+        );
 
         Ok(is_active)
     }
@@ -153,18 +168,23 @@ impl SessionManager {
     pub fn mark_terminated(
         session_id: String,
         store_id: String,
-        reason: Option<String>
+        reason: Option<String>,
     ) -> Result<(), ManagerError> {
-        eprintln!("[SessionManager] Marking session {} as terminated", session_id);
+        eprintln!(
+            "[SessionManager] Marking session {} as terminated",
+            session_id
+        );
         if let Some(ref r) = reason {
             eprintln!("[SessionManager] Reason: {}", r);
         }
 
-        let bucket = kv_store::open(&store_id)
-            .map_err(|e| ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e)))?;
+        let bucket = kv_store::open(&store_id).map_err(|e| {
+            ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e))
+        })?;
 
         // Read current storage
-        let data = bucket.get(&session_id)
+        let data = bucket
+            .get(&session_id)
             .map_err(|e| ManagerError::Store(format!("Failed to read session: {:?}", e)))?
             .ok_or(ManagerError::NoSuchSession)?;
 
@@ -179,10 +199,14 @@ impl SessionManager {
         let storage_json = serde_json::to_string(&storage)
             .map_err(|e| ManagerError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
 
-        bucket.set(&session_id, storage_json.as_bytes())
+        bucket
+            .set(&session_id, storage_json.as_bytes())
             .map_err(|e| ManagerError::Store(format!("Failed to update session: {:?}", e)))?;
 
-        eprintln!("[SessionManager] Session {} marked as terminated", session_id);
+        eprintln!(
+            "[SessionManager] Session {} marked as terminated",
+            session_id
+        );
         Ok(())
     }
 
@@ -193,13 +217,18 @@ impl SessionManager {
     pub fn delete_session(session_id: String, store_id: String) -> Result<(), ManagerError> {
         eprintln!("[SessionManager] Deleting session {}", session_id);
 
-        let bucket = kv_store::open(&store_id)
-            .map_err(|e| ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e)))?;
+        let bucket = kv_store::open(&store_id).map_err(|e| {
+            ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e))
+        })?;
 
-        bucket.delete(&session_id)
+        bucket
+            .delete(&session_id)
             .map_err(|e| ManagerError::Store(format!("Failed to delete session: {:?}", e)))?;
 
-        eprintln!("[SessionManager] Session {} deleted successfully", session_id);
+        eprintln!(
+            "[SessionManager] Session {} deleted successfully",
+            session_id
+        );
         Ok(())
     }
 }
@@ -212,7 +241,7 @@ impl SessionManager {
 pub struct SessionImpl {
     bucket: Bucket,
     session_id: String,
-    store_id: String,  // Needed for terminate() to call session-manager
+    store_id: String, // Needed for terminate() to call session-manager
 }
 
 /// Reserved key names that user tools cannot use
@@ -230,15 +259,17 @@ impl GuestSession for SessionImpl {
             .map_err(|e| SessionError::Store(format!("Failed to open store: {:?}", e)))?;
 
         // Validate session exists
-        if !bucket.exists(&session_id)
-            .map_err(|e| SessionError::Store(format!("Failed to check existence: {:?}", e)))? {
+        if !bucket
+            .exists(&session_id)
+            .map_err(|e| SessionError::Store(format!("Failed to check existence: {:?}", e)))?
+        {
             return Err(SessionError::NoSuchSession);
         }
 
         Ok(Session::new(SessionImpl {
             bucket,
             session_id,
-            store_id,  // Store for later use in terminate()
+            store_id, // Store for later use in terminate()
         }))
     }
 
@@ -251,7 +282,9 @@ impl GuestSession for SessionImpl {
         validate_user_key(&key)?;
 
         // Read storage
-        let data = self.bucket.get(&self.session_id)
+        let data = self
+            .bucket
+            .get(&self.session_id)
             .map_err(|e| SessionError::Store(format!("Failed to read session: {:?}", e)))?
             .ok_or(SessionError::NoSuchSession)?;
 
@@ -277,7 +310,9 @@ impl GuestSession for SessionImpl {
         validate_value_size(&value)?;
 
         // Read current storage
-        let data = self.bucket.get(&self.session_id)
+        let data = self
+            .bucket
+            .get(&self.session_id)
             .map_err(|e| SessionError::Store(format!("Failed to read session: {:?}", e)))?
             .ok_or(SessionError::NoSuchSession)?;
 
@@ -292,7 +327,8 @@ impl GuestSession for SessionImpl {
         let storage_json = serde_json::to_string(&storage)
             .map_err(|e| SessionError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
 
-        self.bucket.set(&self.session_id, storage_json.as_bytes())
+        self.bucket
+            .set(&self.session_id, storage_json.as_bytes())
             .map_err(|e| SessionError::Store(format!("Failed to update session: {:?}", e)))?;
 
         Ok(())
@@ -316,18 +352,20 @@ impl GuestSession for SessionImpl {
         // Call session-manager interface (self-import pattern)
         use crate::bindings::wasmcp::mcp_v20250618::session_manager;
 
-        eprintln!("[Session] Terminating session {} (user-initiated)", self.session_id);
+        eprintln!(
+            "[Session] Terminating session {} (user-initiated)",
+            self.session_id
+        );
 
-        session_manager::mark_terminated(
-            &self.session_id,
-            &self.store_id,
-            reason.as_deref()
-        ).map_err(|e| match e {
-            session_manager::SessionError::Store(msg) => SessionError::Store(msg),
-            session_manager::SessionError::NoSuchSession => SessionError::NoSuchSession,
-            session_manager::SessionError::Unexpected(msg) => SessionError::Unexpected(msg),
-            session_manager::SessionError::Io(_) => SessionError::Unexpected("IO error".to_string()),
-        })
+        session_manager::mark_terminated(&self.session_id, &self.store_id, reason.as_deref())
+            .map_err(|e| match e {
+                session_manager::SessionError::Store(msg) => SessionError::Store(msg),
+                session_manager::SessionError::NoSuchSession => SessionError::NoSuchSession,
+                session_manager::SessionError::Unexpected(msg) => SessionError::Unexpected(msg),
+                session_manager::SessionError::Io(_) => {
+                    SessionError::Unexpected("IO error".to_string())
+                }
+            })
     }
 }
 
@@ -409,8 +447,8 @@ fn generate_uuid_v4() -> String {
     // Set version bits (0100 for v4)
     let mut uuid_bytes = [0u8; 16];
     uuid_bytes.copy_from_slice(&bytes);
-    uuid_bytes[6] = (uuid_bytes[6] & 0x0F) | 0x40;  // Version 4
-    uuid_bytes[8] = (uuid_bytes[8] & 0x3F) | 0x80;  // Variant 10
+    uuid_bytes[6] = (uuid_bytes[6] & 0x0F) | 0x40; // Version 4
+    uuid_bytes[8] = (uuid_bytes[8] & 0x3F) | 0x80; // Variant 10
 
     // Format as lowercase hex with hyphens
     format!(
