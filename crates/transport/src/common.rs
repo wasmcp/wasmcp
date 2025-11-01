@@ -205,13 +205,13 @@ pub fn delegate_to_middleware(
     client_request: ClientRequest,
     protocol_version: ProtocolVersion,
     session_id: Option<&str>,
+    bucket_name: String,
     output_stream: &OutputStream,
 ) -> Result<ServerResult, ErrorCode> {
     // Create session if provided
-    const STORE_ID: &str = "wasmcp-sessions";
     let session = session_id.map(|id| Session {
         session_id: id.to_string(),
-        store_id: STORE_ID.to_string(),
+        store_id: bucket_name.clone(),
     });
 
     // Create request context
@@ -232,12 +232,12 @@ pub fn delegate_notification(
     client_notification: ClientNotification,
     protocol_version: ProtocolVersion,
     session_id: Option<&str>,
+    bucket_name: String,
 ) -> Result<(), ErrorCode> {
     // Create session if provided
-    const STORE_ID: &str = "wasmcp-sessions";
     let session = session_id.map(|id| Session {
         session_id: id.to_string(),
-        store_id: STORE_ID.to_string(),
+        store_id: bucket_name.clone(),
     });
 
     // Create notification context (no messages or id - notifications are one-way)

@@ -229,12 +229,21 @@ fn handle_mcp_request(
             Ok(())
         }
         _ => {
+            // Load session configuration
+            let session_config = SessionConfig::from_env();
+            let bucket = if session_config.bucket_name.is_empty() {
+                DEFAULT_SESSION_BUCKET.to_string()
+            } else {
+                session_config.bucket_name.clone()
+            };
+
             // Delegate all other methods to middleware
             let result = common::delegate_to_middleware(
                 request_id.clone(),
                 client_request,
                 proto_ver,
                 session_id,
+                bucket,
                 output_stream,
             )
             .map_err(|e| format!("Middleware delegation failed: {:?}", e))?;
@@ -255,8 +264,16 @@ fn handle_mcp_notification(
     // Parse protocol version
     let proto_ver = parse_protocol_version(&protocol_version)?;
 
+    // Load session configuration
+    let session_config = SessionConfig::from_env();
+    let bucket = if session_config.bucket_name.is_empty() {
+        DEFAULT_SESSION_BUCKET.to_string()
+    } else {
+        session_config.bucket_name.clone()
+    };
+
     // Delegate to middleware via notification context
-    common::delegate_notification(client_notification, proto_ver, session_id)
+    common::delegate_notification(client_notification, proto_ver, session_id, bucket)
         .map_err(|e| format!("Notification handling failed: {:?}", e))?;
 
     Ok(())
@@ -523,11 +540,21 @@ fn handle_mcp_result(
     protocol_version: String,
     session_id: Option<&str>,
 ) -> Result<(), String> {
+    // Load session configuration
+    let session_config = SessionConfig::from_env();
+
     // Create session if provided
-    const STORE_ID: &str = "wasmcp-sessions";
-    let session = session_id.map(|id| Session {
-        session_id: id.to_string(),
-        store_id: STORE_ID.to_string(),
+    let session = session_id.map(|id| {
+        let store_id = if session_config.bucket_name.is_empty() {
+            DEFAULT_SESSION_BUCKET.to_string()
+        } else {
+            session_config.bucket_name.clone()
+        };
+
+        Session {
+            session_id: id.to_string(),
+            store_id,
+        }
     });
 
     // Create result context
@@ -550,11 +577,21 @@ fn handle_mcp_error(
     protocol_version: String,
     session_id: Option<&str>,
 ) -> Result<(), String> {
+    // Load session configuration
+    let session_config = SessionConfig::from_env();
+
     // Create session if provided
-    const STORE_ID: &str = "wasmcp-sessions";
-    let session = session_id.map(|id| Session {
-        session_id: id.to_string(),
-        store_id: STORE_ID.to_string(),
+    let session = session_id.map(|id| {
+        let store_id = if session_config.bucket_name.is_empty() {
+            DEFAULT_SESSION_BUCKET.to_string()
+        } else {
+            session_config.bucket_name.clone()
+        };
+
+        Session {
+            session_id: id.to_string(),
+            store_id,
+        }
     });
 
     // Create error context

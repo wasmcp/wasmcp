@@ -71,7 +71,8 @@ impl Guest for StdioTransportGuest {
                         request_id.clone(),
                         client_request,
                         proto_ver,
-                        None, // TODO: Session support for stdio
+                        None, // No session support in stdio
+                        String::new(), // No session bucket in stdio
                         &stdout,
                     ) {
                         Ok(result) => {
@@ -89,7 +90,12 @@ impl Guest for StdioTransportGuest {
 
                 common::McpMessage::Notification(notification) => {
                     let proto_ver = ProtocolVersion::V20250618;
-                    if let Err(e) = common::delegate_notification(notification, proto_ver, None) {
+                    if let Err(e) = common::delegate_notification(
+                        notification,
+                        proto_ver,
+                        None, // No session support in stdio
+                        String::new(), // No session bucket in stdio
+                    ) {
                         eprintln!("[ERROR] Notification handling failed: {:?}", e);
                     }
                 }

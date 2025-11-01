@@ -6,25 +6,9 @@
 //! - Coordinates with middleware via server-handler
 //! - Handles transport-level MCP methods (initialize, ping, logging/setLevel)
 //!
-//! ## Build Variants
-//!
-//! **HTTP Transport** (default):
-//! - Exports: `wasi:http/incoming-handler`
-//! - Formatting: Server-Sent Events (SSE)
-//! - Build: `cargo build --target wasm32-wasip2`
-//!
-//! **Stdio Transport** (with `stdio` feature):
-//! - Exports: `wasi:cli/run`
-//! - Formatting: Newline-delimited JSON
-//! - Build: `cargo build --target wasm32-wasip2 --features stdio`
-
-#[cfg(feature = "stdio")]
-mod bindings {
-    wit_bindgen::generate!({
-        world: "transport-stdio",
-        generate_all,
-    });
-}
+// =============================================================================
+// HTTP Transport Variant (default)
+// =============================================================================
 
 #[cfg(not(feature = "stdio"))]
 mod bindings {
@@ -34,20 +18,29 @@ mod bindings {
     });
 }
 
-// HTTP transport implementation
 #[cfg(not(feature = "stdio"))]
 mod http;
 
-// Stdio transport implementation
+#[cfg(not(feature = "stdio"))]
+mod config;
+
+// =============================================================================
+// Stdio Transport Variant (--features stdio)
+// =============================================================================
+
+#[cfg(feature = "stdio")]
+mod bindings {
+    wit_bindgen::generate!({
+        path: "wit-stdio",
+        world: "transport-stdio",
+        generate_all,
+    });
+}
+
 #[cfg(feature = "stdio")]
 mod stdio;
 
-// Common transport logic (shared by both)
 mod common;
-
-// Configuration (HTTP only - sessions)
-#[cfg(not(feature = "stdio"))]
-mod config;
 
 bindings::export!(Component with_types_in bindings);
 
