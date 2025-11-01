@@ -10,112 +10,31 @@ interface server-handler {
     };
     use mcp.{
         error-code,
-        request-id,
+        client-message,
         server-result,
-        client-request,
-        client-result,
-        client-notification,
         identity,
         session,
     };
 
-    /// Request context passed to handlers.
-    ///
-    /// Contains authentication, session, streaming, and protocol information
-    /// extracted from the transport layer.
-    @since(version = 0.1.0)
-    record request-ctx {
-        /// Unique ID for correlating requests and responses
-        id: request-id,
-        /// MCP protocol version expected by the client
+    /// Incoming message from the client
+    @since(version = 0.1.4)
+    record message-context {
+        /// Output stream for sending messages to the client
+        client-stream: option<borrow<output-stream>>,
+        /// MCP protocol version
         protocol-version: string,
-        /// Output stream for sending server-sent messages
-        messages: option<borrow<output-stream>>,
-        /// Authenticated user identity, if available
+        /// Client session details, if available
         session: option<session>,
-        /// User identity information, if available
-        user: option<identity>,
+        /// User identity details, if available
+        identity: option<identity>,
     }
 
-    /// Handle a client request.
-    ///
-    /// Processes an MCP request from the client and returns a response.
-    ///
-    /// Parameters:
-    /// - `request`: Tuple of (request body, request ID for correlation)
-    /// - `options`: Context from transport (auth, session, streams, custom metadata)
-    ///
-    /// Returns the server response or an error code if processing fails.
-    @since(version = 0.1.0)
-    handle-request: func(
-        ctx: request-ctx,
-        request: client-request,
-    ) -> result<server-result, error-code>;
-
-    /// Result context for client responses.
-    ///
-    /// Used when the client responds to a server-initiated request.
-    @since(version = 0.1.0)
-    record result-ctx {
-        /// Unique ID for correlating requests and responses
-        id: request-id,
-        /// MCP protocol version expected by the client
-        protocol-version: string,
-        /// Authenticated user identity, if available
-        session: option<session>,
-        /// User identity information, if available
-        user: option<identity>,
-    }
-
-    /// Handle a client response to a server-initiated request.
-    @since(version = 0.1.0)
-    handle-result: func(
-        ctx: result-ctx,
-        %result: client-result,
-    );
-
-    /// Error context for client error responses.
-    ///
-    /// Used when the client returns an error to a server-initiated request.
-    @since(version = 0.1.0)
-    record error-ctx {
-        /// Unique ID for correlating requests and responses.
-        /// Per JSON-RPC spec, this may be null for some errors.
-        id: option<request-id>,
-        /// MCP protocol version expected by the client
-        protocol-version: string,
-        /// Authenticated user identity, if available
-        session: option<session>,
-        /// User identity information, if available
-        user: option<identity>,
-    }
-
-    /// Handle a client error response.
-    @since(version = 0.1.0)
-    handle-error: func(
-        ctx: error-ctx,
-        error: error-code,
-    );
-
-    /// Notification context for client-initiated notifications.
-    ///
-    /// Contains authentication and session information for handling
-    /// notifications from the client.
-    @since(version = 0.1.0)
-    record notification-ctx {
-        protocol-version: string,
-        /// Authenticated user identity, if available
-        session: option<session>,
-        /// User identity information, if available
-        user: option<identity>,
-    }
-
-    /// Handle a client notification.
-    @since(version = 0.1.0)
-    handle-notification: func(
-        ctx: notification-ctx,
-        notification: client-notification,
-    );
+    /// Handle an incoming message from the client
+    @since(version = 0.1.4)
+    handle: func(
+        ctx: message-context,
+        message: client-message,
+    ) -> option<result<server-result, error-code>>;
 }
 
 /// Streaming I/O for MCP servers
@@ -130,8 +49,6 @@ interface server-io {
     };
     use mcp.{
         client-message,
-        error-code,
-        request-id,
         server-message,
     };
 
@@ -144,15 +61,10 @@ interface server-io {
         serialization(string),
         /// An unexpected error occurred
         unexpected(string),
-    }
-
-    /// Errors that can occur when parsing messages from the client
-    @since(version = 0.1.4)
-    variant parse-error {
-        /// Failed to parse the message from JSON-RPC format
-        deserialization(string),
-        /// Failed to parse the message from JSON-RPC format
-        invalid(string),
+        /// Invalid JSON-RPC message
+        invalid-jsonrpc(string),
+        /// Invalid MCP message
+        invalid-mcp(string),
     }
 
     /// When to stop reading an input stream
@@ -173,7 +85,7 @@ interface server-io {
         suffix: list<u8>,
     }
 
-    /// Parse an incoming message from the client
+    /// Read and deserialize an incoming message from the client
     @since(version = 0.1.4)
     parse-message: func(
         /// Input stream to read the bytes from
@@ -182,13 +94,11 @@ interface server-io {
         limit: read-limit,
         /// The message frame
         frame: message-frame,
-    ) -> result<client-message, parse-error>;
+    ) -> result<client-message, io-error>;
 
-    /// Send a request to the client
-    ///
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
+    /// Serialize and write an outgoing message to the client
     @since(version = 0.1.4)
-    write-message: func(
+    send-message: func(
         /// Output stream to send the request over
         output: borrow<output-stream>,
         /// The message to send to the client
@@ -248,20 +158,20 @@ interface tools {
         call-tool-result,
     };
     use server-handler.{
-        request-ctx,
+        message-context,
     };
 
     /// List tools provided by this component.
     @since(version = 0.1.0)
     list-tools: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: list-tools-request,
     ) -> result<list-tools-result, error-code>;
 
     /// Execute a tool call. Return none for unrecognized tools.
     @since(version = 0.1.0)
     call-tool: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: call-tool-request,
     ) -> result<option<call-tool-result>, error-code>;
 }
@@ -284,27 +194,27 @@ interface resources {
         list-resource-templates-result,
     };
     use server-handler.{
-        request-ctx,
+        message-context,
     };
 
     /// List resources provided by this component.
     @since(version = 0.1.0)
     list-resources: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: list-resources-request,
     ) -> result<list-resources-result, error-code>;
 
     /// Read a resource by URI. Return none for unrecognized URIs.
     @since(version = 0.1.0)
     read-resource: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: read-resource-request,
     ) -> result<option<read-resource-result>, error-code>;
 
     /// List resource templates (RFC 6570 URI templates).
     @since(version = 0.1.0)
     list-resource-templates: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: list-resource-templates-request,
     ) -> result<list-resource-templates-result, error-code>;
 }
@@ -325,20 +235,20 @@ interface prompts {
         get-prompt-result,
     };
     use server-handler.{
-        request-ctx,
+        message-context,
     };
 
     /// List prompts provided by this component.
     @since(version = 0.1.0)
     list-prompts: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: list-prompts-request,
     ) -> result<list-prompts-result, error-code>;
 
     /// Get a prompt by name. Return none for unrecognized prompts.
     @since(version = 0.1.0)
     get-prompt: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: get-prompt-request,
     ) -> result<option<get-prompt-result>, error-code>;
 }
@@ -357,14 +267,14 @@ interface completions {
         complete-result,
     };
     use server-handler.{
-        request-ctx,
+        message-context,
     };
 
     /// Provide completion suggestions for prompt or resource arguments.
     /// Return none for unsupported references.
     @since(version = 0.1.0)
     complete: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: complete-request,
     ) -> result<option<complete-result>, error-code>;
 }
