@@ -17,7 +17,7 @@ interface server-handler {
     };
 
     /// Incoming message from the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     record message-context {
         /// Output stream for sending messages to the client
         client-stream: option<borrow<output-stream>>,
@@ -30,7 +30,7 @@ interface server-handler {
     }
 
     /// Handle an incoming message from the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     handle: func(
         ctx: message-context,
         message: client-message,
@@ -40,7 +40,7 @@ interface server-handler {
 /// Streaming I/O for MCP servers
 ///
 /// This interface enables servers to parse and send MCP messages over streams.
-@since(version = 0.1.4)
+@since(version = 0.1.4-beta.1)
 interface server-io {
     use wasi:io/streams@0.2.3.{
         input-stream,
@@ -53,7 +53,7 @@ interface server-io {
     };
 
     /// Errors that can occur when sending messages to the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     variant io-error {
         /// An I/O error occurred writing to the output stream
         %stream(stream-error),
@@ -68,7 +68,7 @@ interface server-io {
     }
 
     /// When to stop reading an input stream
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     variant read-limit {
         /// Delimiter chars
         delimiter(list<u8>),
@@ -77,7 +77,7 @@ interface server-io {
     }
 
     /// The prefix and suffix bytes to frame outgoing messages with
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     record message-frame {
         /// The prefix bytes to frame outgoing messages with
         prefix: list<u8>,
@@ -96,7 +96,7 @@ interface server-io {
     ) -> result<_, io-error>;
 
     /// Read and deserialize an incoming message from the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     parse-message: func(
         /// Input stream to read the bytes from
         input: borrow<input-stream>,
@@ -105,7 +105,7 @@ interface server-io {
     ) -> result<client-message, io-error>;
 
     /// Serialize and write an outgoing message to the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     send-message: func(
         /// Output stream to send the request over
         output: borrow<output-stream>,
@@ -115,7 +115,7 @@ interface server-io {
 }
 
 /// Decode and validate a JWT
-@since(version = 0.1.4)
+@since(version = 0.1.4-beta.1)
 interface server-auth {
     use mcp.{
         claims,
@@ -128,7 +128,7 @@ interface server-auth {
     /// Returns the decoded claims if successful.
     ///
     /// If the token or its signature is invalid or the claims fail validation, it will return an error.
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     decode: func(
         /// JWT from the Authorization header
         jwt: jwt,
@@ -136,7 +136,7 @@ interface server-auth {
 
     /// Authorize a request based on the provided claims.
     /// Returns true iff the request is authorized.
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     authorize: func(
         /// The incoming message
         request: client-message,

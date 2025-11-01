@@ -199,18 +199,17 @@ fn handle_post(
             drop(body_stream);
             create_accepted_response()
         }
-        // TODO: Re-enable Error handling once WIT error/error-code bug is fixed
-        // common::McpMessage::Error(error_id, error_code) => {
-        //     handle_mcp_error(
-        //         error_id,
-        //         error_code,
-        //         protocol_version,
-        //         session_id.as_deref(),
-        //     )?;
-        //     drop(input_stream);
-        //     drop(body_stream);
-        //     create_accepted_response()
-        // }
+        common::McpMessage::Error(error_id, error_code) => {
+            handle_mcp_error(
+                error_id,
+                error_code,
+                protocol_version,
+                session_id.as_deref(),
+            )?;
+            drop(input_stream);
+            drop(body_stream);
+            create_accepted_response()
+        }
     }
 }
 
