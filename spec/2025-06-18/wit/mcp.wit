@@ -1122,6 +1122,8 @@ interface mcp {
     /// Server responses (to client requests)
     @since(version = 0.1.0)
     variant server-result {
+        ping,
+        logging-set-level,
         initialize(initialize-result),
         tools-list(list-tools-result),
         tools-call(call-tool-result),
