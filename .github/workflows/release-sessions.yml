@@ -1,0 +1,297 @@
+name: Release Sessions
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Component version (e.g. 0.1.4 or 0.1.4-beta.2)'
+        required: true
+        type: string
+
+env:
+  RUST_VERSION: "1.89"
+  REGISTRY: ghcr.io
+  REGISTRY_NAMESPACE: wasmcp
+
+jobs:
+  validate:
+    name: Validate Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate version format
+        run: |
+          if ! echo "${{ inputs.version }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'; then
+            echo "Error: Invalid version format: ${{ inputs.version }}"
+            echo "Expected: X.Y.Z or X.Y.Z-prerelease"
+            exit 1
+          fi
+
+  build-and-publish:
+    name: Build and Publish Both Variants
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          targets: wasm32-wasip2
+          cache-key: release-sessions
+          workspaces: crates/session-store
+
+      - name: Install wit-deps
+        run: |
+          curl -sSL https://github.com/bytecodealliance/wit-deps/releases/download/v0.5.0/wit-deps-x86_64-unknown-linux-musl -o wit-deps
+          chmod +x wit-deps
+          sudo mv wit-deps /usr/local/bin/
+
+      - name: Install wkg
+        run: |
+          curl -sSL https://github.com/bytecodealliance/wasm-pkg-tools/releases/download/v0.12.0/wkg-x86_64-unknown-linux-gnu -o wkg
+          chmod +x wkg
+          sudo mv wkg /usr/local/bin/
+
+      - name: Configure wkg registry
+        run: |
+          mkdir -p ~/.config/wasm-pkg
+          cat > ~/.config/wasm-pkg/config.toml <<EOF
+          [namespace_registries]
+          wasmcp = "ghcr.io"
+
+          [registry."ghcr.io".oci.auth]
+          username = "${{ github.actor }}"
+          password = "${{ secrets.GHCR_TOKEN }}"
+          EOF
+
+      - name: Fetch WIT dependencies
+        run: |
+          echo "Fetching WIT deps for sessions..."
+          cd crates/session-store
+          wit-deps
+
+          echo "Fetching WIT deps for sessions draft2..."
+          WIT_DEPS_PATH=wit-draft2 wit-deps
+
+      - name: Build draft2 variant
+        run: |
+          echo "Building sessions draft2..."
+          cd crates/session-store
+          cargo build --release --target wasm32-wasip2 --features draft2
+          mv ../../target/wasm32-wasip2/release/session_store.wasm ../../target/wasm32-wasip2/release/session_store-d2.wasm
+          echo "✅ Built sessions-d2"
+          ls -lh ../../target/wasm32-wasip2/release/session_store-d2.wasm
+
+      - name: Build draft variant
+        run: |
+          echo "Building sessions draft..."
+          cd crates/session-store
+          cargo build --release --target wasm32-wasip2
+          echo "✅ Built sessions"
+          ls -lh ../../target/wasm32-wasip2/release/session_store.wasm
+
+      - name: Check if draft variant already exists
+        id: check-draft
+        run: |
+          if wkg get wasmcp:sessions@${{ inputs.version }} >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Component wasmcp:sessions@${{ inputs.version }} already exists"
+            exit 1
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "📦 Component wasmcp:sessions@${{ inputs.version }} not found, will publish"
+          fi
+
+      - name: Check if draft2 variant already exists
+        id: check-draft2
+        run: |
+          if wkg get wasmcp:sessions-d2@${{ inputs.version }} >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Component wasmcp:sessions-d2@${{ inputs.version }} already exists"
+            exit 1
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "📦 Component wasmcp:sessions-d2@${{ inputs.version }} not found, will publish"
+          fi
+
+      - name: Publish draft variant
+        run: |
+          wkg publish --package 'wasmcp:sessions@${{ inputs.version }}' target/wasm32-wasip2/release/session_store.wasm
+          echo "✅ Published wasmcp:sessions@${{ inputs.version }}"
+
+      - name: Publish draft2 variant
+        run: |
+          wkg publish --package 'wasmcp:sessions-d2@${{ inputs.version }}' target/wasm32-wasip2/release/session_store-d2.wasm
+          echo "✅ Published wasmcp:sessions-d2@${{ inputs.version }}"
+
+      - name: Upload component artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sessions-${{ inputs.version }}
+          path: target/wasm32-wasip2/release/session_store*.wasm
+
+      - name: Summary
+        run: |
+          echo "## 🎉 Sessions Components Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Draft Variant:** \`wasmcp:sessions@${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Draft2 Variant:** \`wasmcp:sessions-d2@${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Components will be automatically downloaded during composition" >> $GITHUB_STEP_SUMMARY
+          echo "2. Make packages public at https://github.com/orgs/${{ env.REGISTRY_NAMESPACE }}/packages" >> $GITHUB_STEP_SUMMARY
+
+  generate-sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    needs: build-and-publish
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: sbom-sessions
+          workspaces: crates/session-store
+
+      - name: Install cargo-cyclonedx
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-cyclonedx
+
+      - name: Download component artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: sessions-${{ inputs.version }}
+          path: components
+
+      - name: Generate component SBOM
+        run: |
+          cd crates/session-store
+          cargo cyclonedx --format json --override-filename sessions-sbom
+          cargo cyclonedx --format xml --override-filename sessions-sbom
+          echo "✅ Generated component SBOM"
+          ls -la *.{json,xml}
+
+      - name: Generate component checksums
+        run: |
+          cd components
+          sha256sum *.wasm > ../sessions-checksums.txt
+          echo "✅ Generated component checksums"
+
+      - name: Upload SBOM and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: sessions-security-${{ inputs.version }}
+          path: |
+            crates/session-store/sessions-sbom.*
+            sessions-checksums.txt
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: generate-sbom
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: sessions-v${{ inputs.version }}
+          name: sessions v${{ inputs.version }}
+          draft: false
+          prerelease: ${{ contains(inputs.version, '-') }}
+          files: |
+            artifacts/sessions-${{ inputs.version }}/*.wasm
+            artifacts/sessions-security-${{ inputs.version }}/*
+          body: |
+            # sessions v${{ inputs.version }}
+
+            ## Framework Components Released
+
+            This release publishes BOTH runtime variants of the sessions component to `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}`.
+
+            ### Draft Variant (wasmtime/wasmcloud)
+            **Component:** `wasmcp:sessions@${{ inputs.version }}`
+            **Registry:** `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/sessions:${{ inputs.version }}`
+            **Target:** wasmtime, wasmcloud (WASI draft @0.2.3)
+
+            ### Draft2 Variant (Spin)
+            **Component:** `wasmcp:sessions-d2@${{ inputs.version }}`
+            **Registry:** `${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/sessions-d2:${{ inputs.version }}`
+            **Target:** Spin (WASI draft2 @0.2.0-draft2)
+
+            ## 🔒 Supply Chain Security
+
+            This release includes:
+            - **SBOM** (CycloneDX format) in JSON and XML formats
+            - **SHA256 checksums** for both component artifacts
+
+            ### Verifying Component Download
+
+            ```bash
+            # Download checksum file
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/sessions-v${{ inputs.version }}/sessions-checksums.txt -o checksums.txt
+
+            # Verify downloaded components
+            sha256sum -c checksums.txt
+            ```
+
+            ## Usage
+
+            The correct variant is automatically selected during composition based on the runtime target:
+
+            ```bash
+            # Spin (default) - uses draft2 variant
+            wasmcp compose server your-component.wasm -o server.wasm
+
+            # wasmtime - uses draft variant
+            wasmcp compose server your-component.wasm --wasmtime -o server.wasm
+
+            # wasmcloud - uses draft variant
+            wasmcp compose server your-component.wasm --wasmcloud -o server.wasm
+            ```
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/sessions-v${{ inputs.version }}
+
+  all-jobs-complete:
+    name: All Jobs Complete
+    runs-on: ubuntu-latest
+    needs: [validate, build-and-publish, generate-sbom, create-release]
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.validate.result }}" != "success" ] || \
+             [ "${{ needs.build-and-publish.result }}" != "success" ] || \
+             [ "${{ needs.generate-sbom.result }}" != "success" ] || \
+             [ "${{ needs.create-release.result }}" != "success" ]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "✅ Sessions release (both variants) completed successfully!"
+          echo ""
+          echo "Published components:"
+          echo "  - wasmcp:sessions@${{ inputs.version }} (draft)"
+          echo "  - wasmcp:sessions-d2@${{ inputs.version }} (draft2)"
+          echo ""
+          echo "Next steps:"
+          echo "  1. Make packages public at https://github.com/orgs/${{ env.REGISTRY_NAMESPACE }}/packages"
+          echo "  2. Update release notes at https://github.com/${{ github.repository }}/releases/tag/sessions-v${{ inputs.version }}"

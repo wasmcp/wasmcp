@@ -10,6 +10,7 @@ exclude = [
     "cli/templates/*",
     "examples/*",
     "tmp/*",
+    "crates/wit",
 ]
 resolver = "2"
 
