@@ -9,7 +9,7 @@ use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
     NotificationCtx, RequestCtx, Session, handle_notification, handle_request,
 };
 use crate::bindings::wasmcp::mcp_v20250618::server_io::{
-    self, IoError, TransportType,
+    self, IoError,
 };
 
 /// Parsed MCP message from the wire
@@ -25,26 +25,25 @@ pub enum McpMessage {
 ///
 /// Tries to parse as request, notification, result, or error in that order
 pub fn parse_mcp_message(
-    transport: TransportType,
     input: &InputStream,
 ) -> Result<McpMessage, String> {
     // Try to parse as request
-    if let Ok((request_id, client_request)) = server_io::parse_request(transport, input) {
+    if let Ok((request_id, client_request)) = server_io::parse_request(input) {
         return Ok(McpMessage::Request(request_id, client_request));
     }
 
     // Try to parse as notification
-    if let Ok(client_notification) = server_io::parse_notification(transport, input) {
+    if let Ok(client_notification) = server_io::parse_notification(input) {
         return Ok(McpMessage::Notification(client_notification));
     }
 
     // Try to parse as result
-    if let Ok((result_id, client_result)) = server_io::parse_result(transport, input) {
+    if let Ok((result_id, client_result)) = server_io::parse_result(input) {
         return Ok(McpMessage::Result(result_id, client_result));
     }
 
     // Try to parse as error
-    if let Ok((error_id, error_code)) = server_io::parse_error(transport, input) {
+    if let Ok((error_id, error_code)) = server_io::parse_error(input) {
         return Ok(McpMessage::Error(error_id, error_code));
     }
 
@@ -53,12 +52,11 @@ pub fn parse_mcp_message(
 
 /// Write MCP result using server-io
 pub fn write_mcp_result(
-    transport: TransportType,
     output: &OutputStream,
     id: &RequestId,
     result: ServerResult,
 ) -> Result<(), IoError> {
-    server_io::write_result(transport, output, id, result)
+    server_io::write_result(output, id, result)
 }
 
 /// Discover capabilities for initialize response

@@ -27,11 +27,18 @@ mod stream_reader;
 #[cfg(test)]
 mod tests;
 
-use bindings::exports::wasmcp::mcp_v20250618::server_io::{Guest, IoError, TransportType};
+use bindings::exports::wasmcp::mcp_v20250618::server_io::{Guest, IoError};
 use bindings::wasi::io::streams::{InputStream, OutputStream, StreamError};
 use bindings::wasmcp::mcp_v20250618::mcp::*;
 
 use crate::stream_reader::StreamConfig;
+
+/// Compile-time transport type selection
+#[cfg(feature = "stdio")]
+const TRANSPORT_TYPE: &str = "stdio";
+
+#[cfg(not(feature = "stdio"))]
+const TRANSPORT_TYPE: &str = "http";
 
 struct ServerIo;
 
@@ -41,11 +48,10 @@ impl Guest for ServerIo {
     // =========================================================================
 
     fn parse_request(
-        transport: TransportType,
         input: &InputStream,
     ) -> Result<(RequestId, ClientRequest), IoError> {
         // Read JSON-RPC from input stream (transport-specific)
-        let json_str = read_transport_input(&transport, input)?;
+        let json_str = read_transport_input(input)?;
 
         // Parse as JSON
         let json: serde_json::Value = serde_json::from_str(&json_str)
@@ -64,11 +70,10 @@ impl Guest for ServerIo {
     }
 
     fn parse_result(
-        transport: TransportType,
         input: &InputStream,
     ) -> Result<(RequestId, ClientResult), IoError> {
         // Read JSON-RPC from input stream (transport-specific)
-        let json_str = read_transport_input(&transport, input)?;
+        let json_str = read_transport_input(input)?;
 
         // Parse as JSON
         let json: serde_json::Value = serde_json::from_str(&json_str)
@@ -92,11 +97,10 @@ impl Guest for ServerIo {
     }
 
     fn parse_error(
-        transport: TransportType,
         input: &InputStream,
     ) -> Result<(Option<RequestId>, ErrorCode), IoError> {
         // Read JSON-RPC from input stream (transport-specific)
-        let json_str = read_transport_input(&transport, input)?;
+        let json_str = read_transport_input(input)?;
 
         // Parse as JSON
         let json: serde_json::Value = serde_json::from_str(&json_str)
@@ -123,11 +127,10 @@ impl Guest for ServerIo {
     }
 
     fn parse_notification(
-        transport: TransportType,
         input: &InputStream,
     ) -> Result<ClientNotification, IoError> {
         // Read JSON-RPC from input stream (transport-specific)
-        let json_str = read_transport_input(&transport, input)?;
+        let json_str = read_transport_input(input)?;
 
         // Parse as JSON
         let json: serde_json::Value = serde_json::from_str(&json_str)
@@ -142,7 +145,6 @@ impl Guest for ServerIo {
     // =========================================================================
 
     fn write_request(
-        transport: TransportType,
         output: &OutputStream,
         request: ServerRequest,
     ) -> Result<(), IoError> {
@@ -160,21 +162,19 @@ impl Guest for ServerIo {
             "params": params
         });
 
-        write_transport_output(&transport, output, &json_rpc)
+        write_transport_output(output, &json_rpc)
     }
 
     fn write_result(
-        transport: TransportType,
         output: &OutputStream,
         id: RequestId,
         result: ServerResult,
     ) -> Result<(), IoError> {
         let json_rpc = serializer::serialize_jsonrpc_response(&id, Ok(&result));
-        write_transport_output(&transport, output, &json_rpc)
+        write_transport_output(output, &json_rpc)
     }
 
     fn write_error(
-        transport: TransportType,
         output: &OutputStream,
         id: Option<RequestId>,
         error: ErrorCode,
@@ -190,11 +190,10 @@ impl Guest for ServerIo {
             }
         });
 
-        write_transport_output(&transport, output, &json_rpc)
+        write_transport_output(output, &json_rpc)
     }
 
     fn write_notification(
-        transport: TransportType,
         output: &OutputStream,
         notification: ServerNotification,
     ) -> Result<(), IoError> {
@@ -206,7 +205,7 @@ impl Guest for ServerIo {
             "params": params
         });
 
-        write_transport_output(&transport, output, &json_rpc)
+        write_transport_output(output, &json_rpc)
     }
 }
 
@@ -215,11 +214,10 @@ impl Guest for ServerIo {
 // =============================================================================
 
 fn read_transport_input(
-    transport: &TransportType,
     stream: &InputStream,
 ) -> Result<String, IoError> {
-    match transport {
-        TransportType::Http => {
+    match TRANSPORT_TYPE {
+        "http" => {
             // HTTP: Read entire stream (SSE formatted)
             let config = StreamConfig::default();
             let bytes = stream_reader::read_bytes_chunked(stream, &config)
@@ -227,10 +225,11 @@ fn read_transport_input(
             String::from_utf8(bytes)
                 .map_err(|e| IoError::Unexpected(format!("Invalid UTF-8: {}", e)))
         }
-        TransportType::Stdio => {
+        "stdio" => {
             // Stdio: Read until newline delimiter
             read_line(stream)
         }
+        _ => unreachable!("Invalid TRANSPORT_TYPE constant"),
     }
 }
 
@@ -269,13 +268,13 @@ fn read_line(stream: &InputStream) -> Result<String, IoError> {
 }
 
 fn write_transport_output(
-    transport: &TransportType,
     stream: &OutputStream,
     data: &serde_json::Value,
 ) -> Result<(), IoError> {
-    let formatted = match transport {
-        TransportType::Http => serializer::format_sse_event(data),
-        TransportType::Stdio => serializer::format_json_line(data),
+    let formatted = match TRANSPORT_TYPE {
+        "http" => serializer::format_sse_event(data),
+        "stdio" => serializer::format_json_line(data),
+        _ => unreachable!("Invalid TRANSPORT_TYPE constant"),
     };
 
     let bytes = formatted.as_bytes();

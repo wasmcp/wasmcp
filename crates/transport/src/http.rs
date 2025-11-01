@@ -21,10 +21,6 @@ use crate::bindings::wasmcp::mcp_v20250618::mcp::{
 use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
     ErrorCtx, ResultCtx, Session, handle_error, handle_result,
 };
-use crate::bindings::wasmcp::mcp_v20250618::server_io::TransportType;
-
-/// HTTP transport always uses SSE formatting
-const TRANSPORT: TransportType = TransportType::Http;
 use crate::bindings::wasmcp::mcp_v20250618::session_manager::{
     SessionError, initialize as session_initialize, validate as session_validate,
 };
@@ -117,7 +113,7 @@ fn handle_post(
         .map_err(|_| "Failed to get input stream")?;
 
     // Parse MCP message
-    let message = common::parse_mcp_message(TRANSPORT, &input_stream)?;
+    let message = common::parse_mcp_message(&input_stream)?;
 
     match message {
         common::McpMessage::Request(request_id, client_request) => {
@@ -220,7 +216,7 @@ fn handle_mcp_request(
         }
         ClientRequest::Ping(_) => {
             common::handle_ping().map_err(|e| format!("Ping failed: {:?}", e))?;
-            common::write_mcp_result(TRANSPORT, output_stream, &request_id, ServerResult::Ping)
+            common::write_mcp_result(output_stream, &request_id, ServerResult::Ping)
                 .map_err(|e| format!("Failed to write ping result: {:?}", e))?;
             Ok(())
         }
@@ -228,7 +224,7 @@ fn handle_mcp_request(
             let level_str = log_level_to_string(level);
             common::handle_set_log_level(level_str)
                 .map_err(|e| format!("SetLevel failed: {:?}", e))?;
-            common::write_mcp_result(TRANSPORT, output_stream, &request_id, ServerResult::LoggingSetLevel)
+            common::write_mcp_result(output_stream, &request_id, ServerResult::LoggingSetLevel)
                 .map_err(|e| format!("Failed to write setLevel result: {:?}", e))?;
             Ok(())
         }
@@ -244,7 +240,7 @@ fn handle_mcp_request(
             .map_err(|e| format!("Middleware delegation failed: {:?}", e))?;
 
             // Write result via server-io (handles SSE formatting)
-            common::write_mcp_result(TRANSPORT, output_stream, &request_id, result)
+            common::write_mcp_result(output_stream, &request_id, result)
                 .map_err(|e| format!("Failed to write result: {:?}", e))?;
             Ok(())
         }

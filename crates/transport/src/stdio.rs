@@ -10,11 +10,7 @@ use crate::bindings::exports::wasi::cli::run::Guest;
 use crate::bindings::wasi::cli::stdin::get_stdin;
 use crate::bindings::wasi::cli::stdout::get_stdout;
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{ClientRequest, ErrorCode, ProtocolVersion, ServerResult};
-use crate::bindings::wasmcp::mcp_v20250618::server_io::TransportType;
 use crate::common;
-
-/// Stdio transport always uses newline-delimited JSON
-const TRANSPORT: TransportType = TransportType::Stdio;
 
 pub struct StdioTransportGuest;
 
@@ -27,7 +23,7 @@ impl Guest for StdioTransportGuest {
         // Event loop: read messages from stdin, process, write to stdout
         loop {
             // Parse incoming message
-            let message = match common::parse_mcp_message(TRANSPORT, &stdin) {
+            let message = match common::parse_mcp_message(&stdin) {
                 Ok(msg) => msg,
                 Err(e) => {
                     eprintln!("[ERROR] Failed to parse message: {}", e);
@@ -50,7 +46,7 @@ impl Guest for StdioTransportGuest {
                             write_error(&stdout, Some(request_id), e);
                             continue;
                         }
-                        if let Err(e) = common::write_mcp_result(TRANSPORT, &stdout, &request_id, ServerResult::Ping) {
+                        if let Err(e) = common::write_mcp_result(&stdout, &request_id, ServerResult::Ping) {
                             eprintln!("[ERROR] Failed to write ping result: {:?}", e);
                         }
                         continue;
@@ -63,7 +59,7 @@ impl Guest for StdioTransportGuest {
                             write_error(&stdout, Some(request_id.clone()), e);
                             continue;
                         }
-                        if let Err(e) = common::write_mcp_result(TRANSPORT, &stdout, &request_id, ServerResult::LoggingSetLevel) {
+                        if let Err(e) = common::write_mcp_result(&stdout, &request_id, ServerResult::LoggingSetLevel) {
                             eprintln!("[ERROR] Failed to write setLevel result: {:?}", e);
                         }
                         continue;
@@ -80,7 +76,7 @@ impl Guest for StdioTransportGuest {
                     ) {
                         Ok(result) => {
                             if let Err(e) =
-                                common::write_mcp_result(TRANSPORT, &stdout, &request_id, result)
+                                common::write_mcp_result(&stdout, &request_id, result)
                             {
                                 eprintln!("[ERROR] Failed to write result: {:?}", e);
                             }
@@ -158,7 +154,7 @@ fn handle_initialize(
         },
     );
 
-    if let Err(e) = common::write_mcp_result(TRANSPORT, stdout, &request_id, result) {
+    if let Err(e) = common::write_mcp_result(stdout, &request_id, result) {
         eprintln!("[ERROR] Failed to write initialize result: {:?}", e);
         return Err(());
     }
@@ -174,7 +170,7 @@ fn write_error(
 ) {
     use crate::bindings::wasmcp::mcp_v20250618::server_io;
 
-    if let Err(e) = server_io::write_error(TRANSPORT, stdout, id.as_ref(), &error) {
+    if let Err(e) = server_io::write_error(stdout, id.as_ref(), &error) {
         eprintln!("[ERROR] Failed to write error: {:?}", e);
     }
 }

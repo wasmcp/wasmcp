@@ -21,7 +21,6 @@
 #[cfg(feature = "stdio")]
 mod bindings {
     wit_bindgen::generate!({
-        path: "wit-stdio",
         world: "transport-stdio",
         generate_all,
     });

@@ -156,15 +156,6 @@ interface server-io {
         server-notification,
     };
 
-    /// Transport type selector for formatting
-    @since(version = 0.1.4)
-    variant transport-type {
-        /// HTTP transport using SSE formatting (data: {json}\n\n)
-        http,
-        /// Stdio transport using newline-delimited JSON ({json}\n)
-        stdio,
-    }
-
     /// Errors that can occur when sending messages to the client
     @since(version = 0.1.4)
     variant io-error {
@@ -179,8 +170,6 @@ interface server-io {
 /// Parse an incoming request from the client
     @since(version = 0.1.4)
     parse-request: func(
-        /// Transport type for format detection
-        transport: transport-type,
         /// Input stream to read the request from
         input: borrow<input-stream>,
     ) -> result<tuple<request-id, client-request>, io-error>;
@@ -190,8 +179,6 @@ interface server-io {
     /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
     @since(version = 0.1.4)
     write-request: func(
-        /// Transport type for formatting
-        transport: transport-type,
         /// Output stream to send the request over
         output: borrow<output-stream>,
         /// The request to send to the client
@@ -201,8 +188,6 @@ interface server-io {
     /// Parse incoming result response from the client
     @since(version = 0.1.4)
     parse-result: func(
-        /// Transport type for format detection
-        transport: transport-type,
         /// Input stream to read the result from
         input: borrow<input-stream>,
     ) -> result<tuple<request-id, client-result>, io-error>;
@@ -210,8 +195,6 @@ interface server-io {
     /// Send a result response to the client
     @since(version = 0.1.4)
     write-result: func(
-        /// Transport type for formatting
-        transport: transport-type,
         /// Output stream to send the result over
         output: borrow<output-stream>,
         /// The result to send to the client
@@ -222,8 +205,6 @@ interface server-io {
     /// Parse an incoming error response from the client
     @since(version = 0.1.4)
     parse-error: func(
-        /// Transport type for format detection
-        transport: transport-type,
         /// Input stream to read the error from
         input: borrow<input-stream>,
     ) -> result<tuple<option<request-id>, error-code>, io-error>;
@@ -231,8 +212,6 @@ interface server-io {
     /// Send an error response to the client
     @since(version = 0.1.4)
     write-error: func(
-        /// Transport type for formatting
-        transport: transport-type,
         /// Output stream to send the error over
         output: borrow<output-stream>,
         /// The request ID the error is responding to
@@ -244,8 +223,6 @@ interface server-io {
     /// Parse an incoming notification from the client
     @since(version = 0.1.4)
     parse-notification: func(
-        /// Transport type for format detection
-        transport: transport-type,
         /// Input stream to read the notification from
         input: borrow<input-stream>,
     ) -> result<client-notification, io-error>;
@@ -255,8 +232,6 @@ interface server-io {
     /// Notifications are one-way messages that do not expect a response.
     @since(version = 0.1.4)
     write-notification: func(
-        /// Transport type for formatting
-        transport: transport-type,
         /// Output stream to send the notification
         output: borrow<output-stream>,
         /// The notification to send to the client

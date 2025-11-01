@@ -6,6 +6,9 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+stdio = []
+
 [dependencies]
 wit-bindgen = "0.46"
 serde = { version = "1.0", features = ["derive"] }
