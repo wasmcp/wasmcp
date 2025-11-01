@@ -1,13 +1,13 @@
 //! Common transport logic shared between HTTP and stdio implementations
 
+use crate::bindings::wasi::io::streams::OutputStream;
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{
-    ClientNotification, ClientRequest, ErrorCode, ProtocolVersion, RequestId,
-    ServerCapabilities, ServerResult,
+    ClientNotification, ClientRequest, ErrorCode, ProtocolVersion, RequestId, ServerCapabilities,
+    ServerResult,
 };
 use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
-    handle_notification, handle_request, NotificationCtx, RequestCtx, Session,
+    NotificationCtx, RequestCtx, Session, handle_notification, handle_request,
 };
-use crate::bindings::wasi::io::streams::OutputStream;
 
 /// Discover capabilities for initialize response
 ///
@@ -79,7 +79,9 @@ fn discover_capabilities() -> ServerCapabilities {
         user: None,
     };
     let prompts_request = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
-    if let Ok(ServerResult::PromptsList(prompts_result)) = handle_request(&prompts_ctx, &prompts_request) {
+    if let Ok(ServerResult::PromptsList(prompts_result)) =
+        handle_request(&prompts_ctx, &prompts_request)
+    {
         list_changed_flags |= ServerLists::PROMPTS;
 
         // Try to discover completions support using a real prompt
@@ -167,8 +169,8 @@ pub fn delegate_to_middleware(
         id: request_id,
         protocol_version: protocol_version_to_string(protocol_version),
         messages: Some(output_stream),
-        session,  // Not .as_ref() - Option<Session> not Option<&Session>
-        user: None,  // TODO: Add user identity support
+        session,    // Not .as_ref() - Option<Session> not Option<&Session>
+        user: None, // TODO: Add user identity support
     };
 
     // Delegate to imported server-handler

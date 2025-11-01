@@ -8,22 +8,27 @@
 //!
 //! Delegates I/O to http-server-io via server-io interface
 
-use crate::config::SessionConfig;
 use crate::bindings::exports::wasi::http::incoming_handler::Guest;
 use crate::bindings::wasi::cli::environment::get_environment;
 use crate::bindings::wasi::http::types::{
     Fields, IncomingRequest, Method, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
 use crate::bindings::wasi::io::streams::OutputStream;
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{ClientNotification, ClientRequest, ClientResult, ErrorCode, LogLevel, ProtocolVersion, RequestId};
+use crate::bindings::wasmcp::mcp_v20250618::mcp::{
+    ClientNotification, ClientRequest, ClientResult, ErrorCode, LogLevel, ProtocolVersion,
+    RequestId,
+};
+use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
+    ErrorCtx, ResultCtx, Session, handle_error, handle_result,
+};
 use crate::bindings::wasmcp::mcp_v20250618::server_io::{
     parse_error, parse_notification, parse_request, parse_result, write_result,
 };
-use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
-    handle_error, handle_result, ErrorCtx, ResultCtx, Session,
+use crate::bindings::wasmcp::mcp_v20250618::session_manager::{
+    SessionError, initialize as session_initialize, validate as session_validate,
 };
-use crate::bindings::wasmcp::mcp_v20250618::session_manager::{initialize as session_initialize, validate as session_validate, SessionError};
 use crate::common;
+use crate::config::SessionConfig;
 
 /// Default session store ID for WASI key-value storage
 const DEFAULT_SESSION_BUCKET: &str = "";
@@ -91,7 +96,9 @@ fn handle_post(
             match session_validate(&session_str, &bucket) {
                 Ok(true) => Some(session_str),
                 Ok(false) => return Err("HTTP/404:Session terminated".to_string()),
-                Err(SessionError::NoSuchSession) => return Err("HTTP/404:Session not found".to_string()),
+                Err(SessionError::NoSuchSession) => {
+                    return Err("HTTP/404:Session not found".to_string());
+                }
                 Err(_) => return Err("HTTP/500:Session validation error".to_string()),
             }
         } else {
@@ -104,7 +111,9 @@ fn handle_post(
 
     // Get request body stream
     let body_stream = request.consume().map_err(|_| "Failed to consume request")?;
-    let input_stream = body_stream.stream().map_err(|_| "Failed to get input stream")?;
+    let input_stream = body_stream
+        .stream()
+        .map_err(|_| "Failed to get input stream")?;
 
     // Try to parse as request
     if let Ok((request_id, client_request)) = parse_request(&input_stream) {
@@ -124,17 +133,33 @@ fn handle_post(
 
         // Not initialize - create SSE response for all other requests
         let response = OutgoingResponse::new(Fields::new());
-        response.set_status_code(200).map_err(|_| "Failed to set status")?;
+        response
+            .set_status_code(200)
+            .map_err(|_| "Failed to set status")?;
 
         let response_headers = response.headers();
-        response_headers.set("content-type", &[b"text/event-stream".to_vec()]).map_err(|_| "Failed to set content-type")?;
-        response_headers.set("cache-control", &[b"no-cache".to_vec()]).map_err(|_| "Failed to set cache-control")?;
-        response_headers.set("connection", &[b"keep-alive".to_vec()]).map_err(|_| "Failed to set connection")?;
+        response_headers
+            .set("content-type", &[b"text/event-stream".to_vec()])
+            .map_err(|_| "Failed to set content-type")?;
+        response_headers
+            .set("cache-control", &[b"no-cache".to_vec()])
+            .map_err(|_| "Failed to set cache-control")?;
+        response_headers
+            .set("connection", &[b"keep-alive".to_vec()])
+            .map_err(|_| "Failed to set connection")?;
 
         let output_body = response.body().map_err(|_| "Failed to get response body")?;
-        let output_stream = output_body.write().map_err(|_| "Failed to get output stream")?;
+        let output_stream = output_body
+            .write()
+            .map_err(|_| "Failed to get output stream")?;
 
-        handle_mcp_request(request_id, client_request, protocol_version, session_id.as_deref(), &output_stream)?;
+        handle_mcp_request(
+            request_id,
+            client_request,
+            protocol_version,
+            session_id.as_deref(),
+            &output_stream,
+        )?;
 
         drop(input_stream);
         drop(body_stream);
@@ -153,7 +178,12 @@ fn handle_post(
 
     // Try to parse as result
     if let Ok((result_id, client_result)) = parse_result(&input_stream) {
-        handle_mcp_result(result_id, client_result, protocol_version, session_id.as_deref())?;
+        handle_mcp_result(
+            result_id,
+            client_result,
+            protocol_version,
+            session_id.as_deref(),
+        )?;
         drop(input_stream);
         drop(body_stream);
         return create_accepted_response();
@@ -161,7 +191,12 @@ fn handle_post(
 
     // Try to parse as error
     if let Ok((error_id, error_code)) = parse_error(&input_stream) {
-        handle_mcp_error(error_id, error_code, protocol_version, session_id.as_deref())?;
+        handle_mcp_error(
+            error_id,
+            error_code,
+            protocol_version,
+            session_id.as_deref(),
+        )?;
         drop(input_stream);
         drop(body_stream);
         return create_accepted_response();
@@ -190,11 +225,14 @@ fn handle_mcp_request(
             Err("Initialize must be handled before SSE response setup".to_string())
         }
         ClientRequest::Ping(_) => {
-            common::handle_ping()
-                .map_err(|e| format!("Ping failed: {:?}", e))?;
+            common::handle_ping().map_err(|e| format!("Ping failed: {:?}", e))?;
             // Delegate to server-io
-            write_result(output_stream, &request_id, crate::bindings::wasmcp::mcp_v20250618::mcp::ServerResult::Ping)
-                .map_err(|e| format!("Failed to write ping result: {:?}", e))?;
+            write_result(
+                output_stream,
+                &request_id,
+                crate::bindings::wasmcp::mcp_v20250618::mcp::ServerResult::Ping,
+            )
+            .map_err(|e| format!("Failed to write ping result: {:?}", e))?;
             Ok(())
         }
         ClientRequest::LoggingSetLevel(level) => {
@@ -202,8 +240,12 @@ fn handle_mcp_request(
             common::handle_set_log_level(level_str)
                 .map_err(|e| format!("SetLevel failed: {:?}", e))?;
             // Delegate to server-io
-            write_result(output_stream, &request_id, crate::bindings::wasmcp::mcp_v20250618::mcp::ServerResult::LoggingSetLevel)
-                .map_err(|e| format!("Failed to write setLevel result: {:?}", e))?;
+            write_result(
+                output_stream,
+                &request_id,
+                crate::bindings::wasmcp::mcp_v20250618::mcp::ServerResult::LoggingSetLevel,
+            )
+            .map_err(|e| format!("Failed to write setLevel result: {:?}", e))?;
             Ok(())
         }
         _ => {
@@ -213,8 +255,9 @@ fn handle_mcp_request(
                 client_request,
                 proto_ver,
                 session_id,
-                output_stream
-            ).map_err(|e| format!("Middleware delegation failed: {:?}", e))?;
+                output_stream,
+            )
+            .map_err(|e| format!("Middleware delegation failed: {:?}", e))?;
 
             // Write result via server-io (handles SSE formatting)
             write_result(output_stream, &request_id, result)
@@ -281,16 +324,13 @@ fn handle_delete(request: IncomingRequest) -> Result<OutgoingResponse, String> {
         Ok(_) => {
             // Return 200 OK
             let response = OutgoingResponse::new(Fields::new());
-            response.set_status_code(200)
+            response
+                .set_status_code(200)
                 .map_err(|_| "Failed to set status")?;
             Ok(response)
         }
-        Err(SessionError::NoSuchSession) => {
-            Err("HTTP/404:Session not found".to_string())
-        }
-        Err(_) => {
-            Err("HTTP/500:Failed to delete session".to_string())
-        }
+        Err(SessionError::NoSuchSession) => Err("HTTP/404:Session not found".to_string()),
+        Err(_) => Err("HTTP/500:Failed to delete session".to_string()),
     }
 }
 
@@ -587,17 +627,21 @@ fn handle_initialize_request(
 
     // Create plain JSON response with optional session header
     let headers = Fields::new();
-    headers.set("content-type", &[b"application/json".to_vec()])
+    headers
+        .set("content-type", &[b"application/json".to_vec()])
         .map_err(|_| "Failed to set content-type")?;
 
     // Set Mcp-Session-Id header if session was created
     if let Some(ref session_id) = new_session_id {
-        headers.set("mcp-session-id", &[session_id.as_bytes().to_vec()])
+        headers
+            .set("mcp-session-id", &[session_id.as_bytes().to_vec()])
             .map_err(|_| "Failed to set Mcp-Session-Id header")?;
     }
 
     let response = OutgoingResponse::new(headers);
-    response.set_status_code(200).map_err(|_| "Failed to set status")?;
+    response
+        .set_status_code(200)
+        .map_err(|_| "Failed to set status")?;
 
     let body = response.body().map_err(|_| "Failed to get response body")?;
     let output_stream = body.write().map_err(|_| "Failed to get output stream")?;
@@ -619,7 +663,8 @@ fn handle_initialize_request(
     let json_str = serde_json::to_string(&result_json)
         .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
 
-    output_stream.blocking_write_and_flush(json_str.as_bytes())
+    output_stream
+        .blocking_write_and_flush(json_str.as_bytes())
         .map_err(|_| "Failed to write initialize response".to_string())?;
 
     drop(output_stream);
@@ -629,7 +674,9 @@ fn handle_initialize_request(
 }
 
 /// Serialize ServerCapabilities to JSON
-fn serialize_capabilities(caps: &crate::bindings::wasmcp::mcp_v20250618::mcp::ServerCapabilities) -> serde_json::Value {
+fn serialize_capabilities(
+    caps: &crate::bindings::wasmcp::mcp_v20250618::mcp::ServerCapabilities,
+) -> serde_json::Value {
     let mut result = serde_json::Map::new();
 
     if caps.completions.is_some() {
@@ -652,13 +699,19 @@ fn serialize_capabilities(caps: &crate::bindings::wasmcp::mcp_v20250618::mcp::Se
         if list_changed.contains(ServerLists::RESOURCES) {
             let mut resources_caps = serde_json::Map::new();
             resources_caps.insert("listChanged".to_string(), serde_json::json!(true));
-            result.insert("resources".to_string(), serde_json::Value::Object(resources_caps));
+            result.insert(
+                "resources".to_string(),
+                serde_json::Value::Object(resources_caps),
+            );
         }
 
         if list_changed.contains(ServerLists::PROMPTS) {
             let mut prompts_caps = serde_json::Map::new();
             prompts_caps.insert("listChanged".to_string(), serde_json::json!(true));
-            result.insert("prompts".to_string(), serde_json::Value::Object(prompts_caps));
+            result.insert(
+                "prompts".to_string(),
+                serde_json::Value::Object(prompts_caps),
+            );
         }
     }
 
@@ -668,7 +721,9 @@ fn serialize_capabilities(caps: &crate::bindings::wasmcp::mcp_v20250618::mcp::Se
 /// Create 202 Accepted response
 fn create_accepted_response() -> Result<OutgoingResponse, String> {
     let response = OutgoingResponse::new(Fields::new());
-    response.set_status_code(202).map_err(|_| "Failed to set status")?;
+    response
+        .set_status_code(202)
+        .map_err(|_| "Failed to set status")?;
     Ok(response)
 }
 
@@ -680,4 +735,3 @@ fn protocol_version_to_string(version: ProtocolVersion) -> &'static str {
         ProtocolVersion::V20241105 => "2024-11-05",
     }
 }
-
