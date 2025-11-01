@@ -201,7 +201,7 @@ interface server-io {
         id: request-id,
         %result: server-result,
     ) -> result<_, io-error>;
-
+     
     /// Parse an incoming error response from the client
     @since(version = 0.1.4)
     parse-error: func(
@@ -232,7 +232,7 @@ interface server-io {
     /// Notifications are one-way messages that do not expect a response.
     @since(version = 0.1.4)
     write-notification: func(
-        /// Output stream to send the notification
+        /// Output stream (SSE stream) to send the notification
         output: borrow<output-stream>,
         /// The notification to send to the client
         notification: server-notification,
