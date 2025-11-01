@@ -1344,7 +1344,7 @@ interface mcp {
     variant server-message {
         request(tuple<request-id, server-request>),
         %result(tuple<request-id, server-result>),
-        error(tuple<option<request-id>, error>),
+        error(tuple<option<request-id>, error-code>),
         notification(server-notification),
     }
 
@@ -1353,7 +1353,7 @@ interface mcp {
     variant client-message {
         request(tuple<request-id, client-request>),
         %result(tuple<request-id, client-result>),
-        error(tuple<option<request-id>, error>),
+        error(tuple<option<request-id>, error-code>),
         notification(client-notification),
     }
 
@@ -1362,7 +1362,7 @@ interface mcp {
     variant mcp-message {
         request(tuple<request-id, mcp-request>),
         %result(tuple<request-id, mcp-result>),
-        error(tuple<option<request-id>, error>),
+        error(tuple<option<request-id>, error-code>),
         notification(mcp-notification),
     }
 }
