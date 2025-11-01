@@ -1,0 +1,1314 @@
+/// A WebAssembly component development kit for the Model Context Protocol (MCP) version 2025-06-18.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18>
+package wasmcp:mcp-v20250618@0.1.4;
+
+/// Model Context Protocol (MCP) types and messages.
+///
+/// <https://modelcontextprotocol.io/specification/2025-06-18>
+@since(version = 0.1.0)
+interface mcp {
+    use wasi:io/streams@0.2.3.{
+        input-stream,
+    };
+
+    /// Opaque pagination cursor.
+    @since(version = 0.1.0)
+    type cursor = string;
+
+    /// JSON-encoded data.
+    @since(version = 0.1.0)
+    type json = string;
+
+    /// MCP _meta field (JSON-encoded).
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
+    @since(version = 0.1.0)
+    type meta = json;
+
+    /// Uniform Resource Identifier.
+    @since(version = 0.1.0)
+    type uri = string;
+
+    // =========================================================================
+    // Streaming Data Types
+    // =========================================================================
+
+    /// Text data (inline or streamed).
+    @since(version = 0.1.0)
+    variant text-data {
+        /// Inline text content.
+        text(string),
+        /// Streamed text content.
+        text-stream(input-stream),
+    }
+
+    /// Binary data (inline or streamed).
+    @since(version = 0.1.0)
+    variant blob-data {
+        /// Inline binary content.
+        blob(list<u8>),
+        /// Streamed binary content.
+        blob-stream(input-stream),
+    }
+
+    // =========================================================================
+    // Content Types and Options
+    // =========================================================================
+
+    /// Options for embedded resources
+    @since(version = 0.1.0)
+    record embedded-resource-options {
+        mime-type: option<string>,
+        meta: option<meta>,
+    }
+
+    /// Options for content blocks
+    @since(version = 0.1.0)
+    record content-options {
+        /// Optional annotations for the client
+        annotations: option<annotations>,
+        /// Optional metadata
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
+        meta: option<meta>,
+    }
+
+    /// Options for resource link content
+    @since(version = 0.1.0)
+    record resource-link-options {
+        title: option<string>,
+        description: option<string>,
+        size: option<u64>,
+        mime-type: option<string>,
+        /// Optional annotations for the client
+        annotations: option<annotations>,
+        /// Optional metadata
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/basic/index#meta>
+        meta: option<meta>,
+    }
+
+    /// A resource link included in a prompt or tool call result
+    ///
+    /// Resource links reference resources that the server can read. They may not
+    /// appear in resources/list responses.
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcelink>
+    @since(version = 0.1.0)
+    record resource-link-content {
+        /// The URI of this resource
+        uri: uri,
+        /// Resource name for programmatic or logical use
+        name: string,
+        options: option<resource-link-options>,
+    }
+
+    /// Binary content (image or audio) with MIME type
+    ///
+    /// Used for images and audio provided to or from an LLM.
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#imagecontent>
+    @since(version = 0.1.0)
+    record blob {
+        /// The binary data or stream
+        data: blob-data,
+        /// MIME type (e.g., "image/png", "audio/mp3")
+        mime-type: string,
+        options: option<content-options>,
+    }
+
+    /// Image content alias
+    @since(version = 0.1.0)
+    type image-content = blob;
+
+    /// Audio content alias
+    @since(version = 0.1.0)
+    type audio-content = blob;
+
+    /// Text content block
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#textcontent>
+    @since(version = 0.1.0)
+    record text-content {
+        /// The text content of the message
+        text: text-data,
+        options: option<content-options>,
+    }
+
+    /// Text resource contents
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#textresourcecontents>
+    @since(version = 0.1.0)
+    record text-resource-contents {
+        uri: uri,
+        text: text-data,
+        options: option<embedded-resource-options>,
+    }
+
+    /// Content blocks that can be included in messages
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#contentblock>
+    @since(version = 0.1.0)
+    variant content-block {
+        text(text-content),
+        image(image-content),
+        audio(audio-content),
+        resource-link(resource-link-content),
+        embedded-resource(embedded-resource-content),
+    }
+
+    /// A message in a prompt with role and content
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptmessage>
+    @since(version = 0.1.0)
+    record prompt-message {
+        content: content-block,
+        role: role,
+    }
+
+    /// Binary resource contents
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#blobresourcecontents>
+    @since(version = 0.1.0)
+    record blob-resource-contents {
+        uri: uri,
+        blob: blob-data,
+        options: option<embedded-resource-options>,
+    }
+
+    /// Resource contents (text or binary)
+    @since(version = 0.1.0)
+    variant resource-contents {
+        text(text-resource-contents),
+        blob(blob-resource-contents),
+    }
+
+    /// Embedded resource with content options
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#embeddedresource>
+    @since(version = 0.1.0)
+    record embedded-resource-content {
+        %resource: resource-contents,
+        options: option<content-options>,
+    }
+
+    // =========================================================================
+    // Protocol Enumerations
+    // =========================================================================
+
+    /// Log severity levels
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/logging#log-levels>
+    @since(version = 0.1.0)
+    enum log-level {
+        /// Detailed debugging information
+        debug,
+        /// General informational messages
+        info,
+        /// Normal but significant events
+        notice,
+        /// Warning conditions
+        warning,
+        /// Error conditions
+        error,
+        /// Critical conditions
+        critical,
+        /// Action must be taken immediately
+        alert,
+        /// System is unusable
+        emergency,
+    }
+
+    /// Progress token for tracking long-running operations
+    ///
+    /// Progress tokens MUST be either a string or integer value.
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/progress#progress-flow>
+    @since(version = 0.1.0)
+    variant progress-token {
+        %string(string),
+        integer(s64),
+    }
+
+    /// JSON-RPC request identifier
+    ///
+    /// Request IDs can be either strings or numbers as per JSON-RPC 2.0.
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#requestid>
+    @since(version = 0.1.0)
+    variant request-id {
+        number(s64),
+        %string(string),
+    }
+
+    /// MCP protocol version
+    ///
+    /// The protocol version determines which features and message types are available.
+    @since(version = 0.1.0)
+    enum protocol-version {
+        /// Version 2025-06-18 (latest)
+        v20250618,
+        /// Version 2025-03-26
+        v20250326,
+        /// Version 2024-11-05
+        v20241105,
+    }
+
+    /// Server capability list change flags
+    ///
+    /// Used in notifications to indicate which server lists have changed.
+    @since(version = 0.1.0)
+    flags server-lists {
+        tools,
+        resources,
+        prompts,
+    }
+
+    /// Server subscription type flags
+    ///
+    /// Indicates which subscription types the server supports.
+    @since(version = 0.1.0)
+    flags server-subscriptions {
+        resources,
+    }
+
+    /// Client capability list change flags
+    ///
+    /// Used in notifications to indicate which client lists have changed.
+    @since(version = 0.1.0)
+    flags client-lists {
+        roots,
+    }
+
+    /// Role in a conversation
+    ///
+    /// Identifies whether a message is from the user or assistant.
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#role>
+    @since(version = 0.1.0)
+    enum role {
+        user,
+        assistant,
+    }
+
+    // =========================================================================
+    // Capability Structures
+    // =========================================================================
+
+    /// Server capabilities advertised during initialization
+    ///
+    /// Indicates which optional features the server supports.
+    @since(version = 0.1.0)
+    record server-capabilities {
+        /// Supports completion/complete requests
+        completions: option<json>,
+        /// Experimental capabilities (implementation-specific)
+        experimental: option<list<tuple<string, json>>>,
+        /// Supports logging/setLevel and notifications/message
+        logging: option<json>,
+        /// Supports list change notifications
+        list-changed: option<server-lists>,
+        /// Supports resource subscriptions
+        subscriptions: option<server-subscriptions>,
+    }
+
+    /// Client capabilities advertised during initialization
+    ///
+    /// Indicates which optional features the client supports.
+    @since(version = 0.1.0)
+    record client-capabilities {
+        /// Supports server-initiated elicitation requests
+        elicitation: option<json>,
+        /// Experimental capabilities (implementation-specific)
+        experimental: option<list<tuple<string, json>>>,
+        /// Supports list change notifications
+        list-changed: option<client-lists>,
+        /// Supports server-initiated sampling requests
+        sampling: option<json>,
+    }
+
+    /// MCP implementation metadata
+    ///
+    /// Identifies the server or client implementation.
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#implementation>
+    @since(version = 0.1.0)
+    record implementation {
+        /// Implementation name (e.g., "wasmcp", "claude-desktop")
+        name: string,
+        /// Human-readable title
+        title: option<string>,
+        /// Semantic version string
+        version: string,
+    }
+
+    // =========================================================================
+    // Annotations
+    // =========================================================================
+
+    /// Annotations that inform how clients use or display objects
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#annotations>
+    @since(version = 0.1.0)
+    record annotations {
+        /// Intended audience for this content
+        ///
+        /// Can include multiple entries (e.g., ["user", "assistant"]).
+        audience: option<list<role>>,
+
+        /// Last modification timestamp (ISO 8601 format)
+        ///
+        /// Example: "2025-01-12T15:00:58Z"
+        last-modified: option<string>,
+
+        /// Importance priority (0.0 to 1.0)
+        ///
+        /// 1.0 = most important (effectively required)
+        /// 0.0 = least important (entirely optional)
+        priority: option<f64>,
+    }
+
+    /// Tool-specific annotations
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
+    @since(version = 0.1.0)
+    record tool-annotations {
+        /// Human-readable tool title
+        title: option<string>,
+        /// Hint that tool doesn't modify state
+        read-only-hint: option<bool>,
+        /// Hint that tool modifies or deletes data
+        destructive-hint: option<bool>,
+        /// Hint that tool can be called multiple times safely
+        idempotent-hint: option<bool>,
+        /// Hint that tool may produce non-deterministic results
+        open-world-hint: option<bool>,
+    }
+
+    // =========================================================================
+    // Tool Types
+    // =========================================================================
+
+    /// Optional tool properties
+    @since(version = 0.1.0)
+    record tool-options {
+        meta: option<meta>,
+        annotations: option<tool-annotations>,
+        description: option<string>,
+        /// JSON Schema for tool output
+        output-schema: option<json>,
+        title: option<string>,
+    }
+
+    /// Pagination options for list results
+    @since(version = 0.1.0)
+    record next-cursor-options {
+        meta: option<meta>,
+        next-cursor: option<cursor>,
+    }
+
+    /// Tool definition
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
+    @since(version = 0.1.0)
+    record tool {
+        /// Unique tool identifier
+        name: string,
+        /// JSON Schema describing tool parameters
+        input-schema: json,
+        options: option<tool-options>,
+    }
+
+    // =========================================================================
+    // Resource Types
+    // =========================================================================
+
+    /// Resource optional properties
+    @since(version = 0.1.0)
+    record resource-options {
+        /// Resource size in bytes
+        size: option<u64>,
+        /// Human-readable title
+        title: option<string>,
+        /// Resource description
+        description: option<string>,
+        /// MIME type
+        mime-type: option<string>,
+        annotations: option<annotations>,
+        meta: option<meta>,
+    }
+
+    /// Resource definition
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resource>
+    @since(version = 0.1.0)
+    record mcp-resource {
+        /// Resource URI
+        uri: uri,
+        /// Resource name for display/identification
+        name: string,
+        options: option<resource-options>,
+    }
+
+    /// Generic metadata options
+    @since(version = 0.1.0)
+    record meta-options {
+        meta: option<meta>,
+    }
+
+    /// Resource template optional properties
+    @since(version = 0.1.0)
+    record resource-template-options {
+        description: option<string>,
+        title: option<string>,
+        mime-type: option<string>,
+        annotations: option<annotations>,
+        meta: option<meta>,
+    }
+
+    /// Resource template with URI template pattern
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplate>
+    @since(version = 0.1.0)
+    record resource-template {
+        /// URI template (RFC 6570)
+        uri-template: string,
+        /// Template name
+        name: string,
+        options: option<resource-template-options>,
+    }
+
+    // =========================================================================
+    // Prompt Types
+    // =========================================================================
+
+    /// Prompt argument definition
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptargument>
+    @since(version = 0.1.0)
+    record prompt-argument {
+        /// Argument name
+        name: string,
+        /// Argument description
+        description: option<string>,
+        /// Whether argument is required
+        required: option<bool>,
+        /// Human-readable argument title
+        title: option<string>,
+    }
+
+    /// Prompt optional properties
+    @since(version = 0.1.0)
+    record prompt-options {
+        meta: option<meta>,
+        /// Arguments this prompt accepts
+        arguments: option<list<prompt-argument>>,
+        /// Prompt description
+        description: option<string>,
+        /// Human-readable title
+        title: option<string>,
+    }
+
+    /// Prompt definition
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompt>
+    @since(version = 0.1.0)
+    record prompt {
+        /// Unique prompt identifier
+        name: string,
+        options: option<prompt-options>,
+    }
+
+    /// Generic description options
+    @since(version = 0.1.0)
+    record description-options {
+        meta: option<meta>,
+        description: option<string>,
+    }
+
+    // =========================================================================
+    // Schema Types (for Elicitation)
+    // =========================================================================
+
+    /// String schema format constraints
+    @since(version = 0.1.0)
+    enum string-schema-format {
+        uri,
+        email,
+        date,
+        date-time,
+    }
+
+    /// JSON Schema for string type
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#stringschema>
+    @since(version = 0.1.0)
+    record string-schema {
+        description: option<string>,
+        format: option<string-schema-format>,
+        max-length: option<u32>,
+        min-length: option<u32>,
+        title: option<string>,
+    }
+
+    /// Number schema type
+    @since(version = 0.1.0)
+    enum number-schema-type {
+        number,
+        integer,
+    }
+
+    /// JSON Schema for number/integer type
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#numberschema>
+    @since(version = 0.1.0)
+    record number-schema {
+        description: option<string>,
+        maximum: option<f64>,
+        minimum: option<f64>,
+        title: option<string>,
+        %type: number-schema-type,
+    }
+
+    /// JSON Schema for boolean type
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#booleanschema>
+    @since(version = 0.1.0)
+    record boolean-schema {
+        default: option<bool>,
+        description: option<string>,
+        title: option<string>,
+    }
+
+    /// JSON Schema for enum type
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#enumschema>
+    @since(version = 0.1.0)
+    record enum-schema {
+        description: option<string>,
+        /// Allowed values
+        %enum: list<string>,
+        /// Human-readable names for enum values
+        enum-names: option<list<string>>,
+        title: option<string>,
+    }
+
+    /// Primitive schema types
+    @since(version = 0.1.0)
+    variant primitive-schema-definition {
+        string-schema(string-schema),
+        number-schema(number-schema),
+        boolean-schema(boolean-schema),
+        enum-schema(enum-schema),
+    }
+
+    /// Schema requested from client during elicitation
+    record requested-schema {
+        /// Properties to request from client
+        properties: list<tuple<string, primitive-schema-definition>>,
+        /// Required property names
+        required: option<list<string>>,
+    }
+
+    /// Elicitation result action
+    enum elicit-result-action {
+        accept,
+        decline,
+        cancel,
+    }
+
+    /// Elicitation result content value
+    variant elicit-result-content {
+        %string(string),
+        number(f64),
+        boolean(bool),
+    }
+
+    // =========================================================================
+    // Request/Response Types: Initialize
+    // =========================================================================
+
+    /// Initialize request parameters
+    ///
+    /// Sent by client to begin an MCP session.
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
+    @since(version = 0.1.0)
+    record initialize-request {
+        /// Client capabilities
+        capabilities: client-capabilities,
+        /// Client implementation info
+        client-info: implementation,
+        /// Protocol version client supports
+        protocol-version: protocol-version,
+    }
+
+    /// Initialize result optional properties
+    @since(version = 0.1.0)
+    record initialize-result-options {
+        /// Instructions for using the server
+        instructions: option<string>,
+        meta: option<meta>,
+    }
+
+    /// Initialize result structure
+    ///
+    /// Returned by server in response to initialize request.
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializeresult>
+    @since(version = 0.1.0)
+    record initialize-result {
+        meta: option<meta>,
+        /// Server implementation info
+        server-info: implementation,
+        /// Server capabilities
+        capabilities: server-capabilities,
+        /// Protocol version server will use
+        protocol-version: protocol-version,
+        options: option<initialize-result-options>,
+    }
+
+    // =========================================================================
+    // Request/Response Types: Tools
+    // =========================================================================
+
+    /// List tools request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsrequest>
+    @since(version = 0.1.0)
+    record list-tools-request {
+        /// Pagination cursor (from previous response)
+        cursor: option<cursor>,
+    }
+
+    /// List tools result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsresult>
+    @since(version = 0.1.0)
+    record list-tools-result {
+        meta: option<meta>,
+        /// Cursor for next page (if more results available)
+        next-cursor: option<cursor>,
+        /// Available tools
+        tools: list<tool>,
+    }
+
+    /// Call tool request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
+    @since(version = 0.1.0)
+    record call-tool-request {
+        /// Tool name to invoke
+        name: string,
+        /// JSON-encoded tool arguments
+        arguments: option<json>,
+    }
+
+    /// Call tool result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult>
+    @since(version = 0.1.0)
+    record call-tool-result {
+        meta: option<meta>,
+        /// Tool output content
+        content: list<content-block>,
+        /// Whether result represents an error
+        is-error: option<bool>,
+        /// Structured output (optional)
+        structured-content: option<json>,
+    }
+
+    // =========================================================================
+    // Request/Response Types: Resources
+    // =========================================================================
+
+    /// List resources request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesrequest>
+    @since(version = 0.1.0)
+    record list-resources-request {
+        /// Pagination cursor (from previous response)
+        cursor: option<cursor>,
+    }
+
+    /// List resources result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesresult>
+    @since(version = 0.1.0)
+    record list-resources-result {
+        meta: option<meta>,
+        /// Cursor for next page (if more results available)
+        next-cursor: option<cursor>,
+        /// Available resources
+        resources: list<mcp-resource>,
+    }
+
+    /// Read resource request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourcerequest>
+    @since(version = 0.1.0)
+    record read-resource-request {
+        /// Resource URI to read
+        uri: uri,
+    }
+
+    /// Read resource result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourceresult>
+    @since(version = 0.1.0)
+    record read-resource-result {
+        meta: option<meta>,
+        /// Resource contents (text or binary)
+        contents: list<resource-contents>,
+    }
+
+    /// List resource templates request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesrequest>
+    @since(version = 0.1.0)
+    record list-resource-templates-request {
+        /// Pagination cursor (from previous response)
+        cursor: option<cursor>,
+    }
+
+    /// List resource templates result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesresult>
+    @since(version = 0.1.0)
+    record list-resource-templates-result {
+        meta: option<meta>,
+        /// Cursor for next page (if more results available)
+        next-cursor: option<cursor>,
+        /// Available resource templates
+        resource-templates: list<resource-template>,
+    }
+
+    // =========================================================================
+    // Request/Response Types: Prompts
+    // =========================================================================
+
+    /// List prompts request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsrequest>
+    @since(version = 0.1.0)
+    record list-prompts-request {
+        /// Pagination cursor (from previous response)
+        cursor: option<cursor>,
+    }
+
+    /// List prompts result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsresult>
+    @since(version = 0.1.0)
+    record list-prompts-result {
+        meta: option<meta>,
+        /// Cursor for next page (if more results available)
+        next-cursor: option<cursor>,
+        /// Available prompts
+        prompts: list<prompt>,
+    }
+
+    /// Get prompt request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest>
+    @since(version = 0.1.0)
+    record get-prompt-request {
+        /// Prompt name to retrieve
+        name: string,
+        /// JSON-encoded prompt arguments
+        arguments: option<json>,
+    }
+
+    /// Get prompt result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptresult>
+    @since(version = 0.1.0)
+    record get-prompt-result {
+        meta: option<meta>,
+        /// Prompt description
+        description: option<string>,
+        /// Prompt messages
+        messages: list<prompt-message>,
+    }
+
+    // =========================================================================
+    // Request/Response Types: Completion
+    // =========================================================================
+
+    /// Completion argument
+    @since(version = 0.1.0)
+    record completion-argument {
+        /// Argument name
+        name: string,
+        /// Partial argument value
+        value: string,
+    }
+
+    /// Completion context
+    @since(version = 0.1.0)
+    record completion-context {
+        /// Additional arguments as JSON
+        arguments: option<json>,
+    }
+
+    /// Prompt reference for completion
+    @since(version = 0.1.0)
+    record completion-prompt-reference {
+        /// Prompt name
+        name: string,
+        /// Prompt title
+        title: option<string>,
+    }
+
+    /// Reference types for completion
+    @since(version = 0.1.0)
+    variant completion-reference {
+        /// Prompt reference
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptreference>
+        prompt(completion-prompt-reference),
+
+        /// Resource template reference
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplatereference>
+        resource-template(uri),
+    }
+
+    /// Complete request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#completerequest>
+    @since(version = 0.1.0)
+    record complete-request {
+        /// Argument to complete
+        argument: completion-argument,
+        /// Reference (prompt or resource template)
+        ref: completion-reference,
+        /// Additional context
+        context: option<completion-context>,
+    }
+
+    /// Complete result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#completeresult>
+    @since(version = 0.1.0)
+    record complete-result {
+        meta: option<meta>,
+        /// Whether more results are available
+        has-more: option<bool>,
+        /// Total number of completions available
+        total: option<u64>,
+        /// Completion values
+        values: list<string>,
+    }
+
+    // =========================================================================
+    // Request/Response Types: Elicitation
+    // =========================================================================
+
+    /// Elicit request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitrequest>
+    record elicit-request {
+        /// Message to show client
+        message: string,
+        /// Schema describing requested information
+        requested-schema: requested-schema,
+    }
+
+    /// Elicit result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitresult>
+    record elicit-result {
+        meta: option<meta>,
+        /// User action (accept, decline, cancel)
+        action: elicit-result-action,
+        /// User-provided values
+        content: option<list<tuple<string, elicit-result-content>>>,
+    }
+
+    // =========================================================================
+    // Request/Response Types: Roots
+    // =========================================================================
+
+    /// List roots request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listrootsrequest>
+    @since(version = 0.1.0)
+    record list-roots-request {
+        meta: option<meta>,
+        /// Progress token for tracking
+        progress-token: option<progress-token>,
+    }
+
+    /// Root directory or file
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#root>
+    @since(version = 0.1.0)
+    record root {
+        meta: option<meta>,
+        /// Root name
+        name: option<string>,
+        /// Root URI
+        uri: uri,
+    }
+
+    /// List roots result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listrootsresult>
+    @since(version = 0.1.0)
+    record list-roots-result {
+        meta: option<meta>,
+        /// Client root directories/files
+        roots: list<root>,
+    }
+
+    // =========================================================================
+    // Request/Response Types: Ping
+    // =========================================================================
+
+    /// Ping request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#pingrequest>
+    @since(version = 0.1.0)
+    record ping-request {
+        meta: option<meta>,
+        /// Progress token for tracking
+        progress-token: option<progress-token>,
+        /// Additional data
+        extras: list<tuple<string, json>>,
+    }
+
+    // =========================================================================
+    // Request/Response Types: Sampling
+    // =========================================================================
+
+    /// Context inclusion for sampling
+    @since(version = 0.1.0)
+    enum include-context {
+        /// No context
+        none,
+        /// Include this server's context
+        this-server,
+        /// Include all servers' context
+        all-servers,
+    }
+
+    /// Message for sampling request
+    @since(version = 0.1.0)
+    record sampling-message {
+        /// Message content (text, image, or audio)
+        content: content-block,
+        /// Message role
+        role: role,
+    }
+
+    /// Model hint for sampling
+    @since(version = 0.1.0)
+    record model-hint {
+        /// Model name
+        name: option<string>,
+        /// Additional model parameters
+        extra: option<json>,
+    }
+
+    /// Model preferences for sampling
+    @since(version = 0.1.0)
+    record model-preferences {
+        /// Cost priority (0.0-1.0)
+        cost-priority: option<f64>,
+        /// Model hints
+        hints: option<list<model-hint>>,
+        /// Intelligence priority (0.0-1.0)
+        intelligence-priority: option<f64>,
+        /// Speed priority (0.0-1.0)
+        speed-priority: option<f64>,
+    }
+
+    /// Sampling create message request
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#createmessagerequest>
+    @since(version = 0.1.0)
+    record sampling-create-message-request {
+        /// Context to include
+        include-context: include-context,
+        /// Maximum tokens to generate
+        max-tokens: u64,
+        /// Conversation messages
+        messages: list<sampling-message>,
+        /// Request metadata
+        metadata: option<json>,
+        /// Model preferences
+        model-preferences: option<model-preferences>,
+        /// Stop sequences
+        stop-sequences: option<list<string>>,
+        /// System prompt
+        system-prompt: option<string>,
+        /// Sampling temperature
+        temperature: option<f64>,
+    }
+
+    /// Sampling create message result
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#createmessageresult>
+    @since(version = 0.1.0)
+    record sampling-create-message-result {
+        meta: option<meta>,
+        /// Generated content (text, image, or audio)
+        ///
+        /// Runtime constraints (enforced by transport parsers):
+        /// - MUST be text, image, or audio content
+        /// - MUST be inline data (not text-stream or blob-stream)
+        /// - MUST NOT be resource-link or embedded-resource
+        ///
+        /// Rationale: LLMs generate complete content, not resource references.
+        /// Streaming is handled by the sampling protocol itself via progressive
+        /// message updates, not via the text-stream/blob-stream variants.
+        content: content-block,
+        /// Model used
+        model: string,
+        /// Response role
+        role: role,
+        /// Stop reason (e.g., "stop_sequence", "max_tokens")
+        stop-reason: option<string>,
+        /// Additional data
+        extra: option<json>,
+    }
+
+    // =========================================================================
+    // Request/Response Variants
+    // =========================================================================
+
+    /// Client requests (sent to server)
+    @since(version = 0.1.0)
+    variant client-request {
+        initialize(initialize-request),
+        tools-list(list-tools-request),
+        tools-call(call-tool-request),
+        resources-list(list-resources-request),
+        resources-read(read-resource-request),
+        resources-templates-list(list-resource-templates-request),
+        prompts-list(list-prompts-request),
+        prompts-get(get-prompt-request),
+        completion-complete(complete-request),
+        logging-set-level(log-level),
+        ping(ping-request),
+        /// Subscribe to resource updates
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#subscriberequest>
+        resources-subscribe(uri),
+        /// Unsubscribe from resource updates
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#unsubscriberequest>
+        resources-unsubscribe(uri),
+    }
+
+    /// Server requests (sent to client)
+    @since(version = 0.1.0)
+    variant server-request {
+        elicitation-create(elicit-request),
+        roots-list(list-roots-request),
+        sampling-create-message(sampling-create-message-request),
+        ping(ping-request),
+    }
+
+    /// MCP request (client or server)
+    @since(version = 0.1.0)
+    variant mcp-request {
+        server(server-request),
+        client(client-request),
+    }
+
+    /// Server responses (to client requests)
+    @since(version = 0.1.0)
+    variant server-result {
+        /// Empty success response for ping
+        ping,
+        /// Empty success response for logging/setLevel
+        logging-set-level,
+        initialize(initialize-result),
+        tools-list(list-tools-result),
+        tools-call(call-tool-result),
+        resources-list(list-resources-result),
+        resources-read(read-resource-result),
+        resources-templates-list(list-resource-templates-result),
+        prompts-list(list-prompts-result),
+        prompts-get(get-prompt-result),
+        completion-complete(complete-result),
+    }
+
+    /// Client responses (to server requests)
+    @since(version = 0.1.0)
+    variant client-result {
+        elicitation-create(elicit-result),
+        roots-list(list-roots-result),
+        sampling-create-message(sampling-create-message-result),
+    }
+
+    /// MCP response (client or server)
+    @since(version = 0.1.0)
+    variant mcp-result {
+        server(server-result),
+        client(client-result),
+    }
+
+    // =========================================================================
+    // Notification Types
+    // =========================================================================
+
+    /// Logging message notification
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#loggingmessagenotification>
+    @since(version = 0.1.0)
+    record logging-message-notification {
+        /// The data to be logged, such as a string message or an object.
+        data: json,
+        /// Log level
+        level: log-level,
+        /// Logger name
+        logger: option<string>,
+    }
+
+    /// Cancelled notification
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#cancellednotification>
+    @since(version = 0.1.0)
+    record cancelled-notification {
+        /// Request that was cancelled
+        request-id: request-id,
+        /// Cancellation reason
+        reason: option<string>,
+    }
+
+    /// Progress notification
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#progressnotification>
+    @since(version = 0.1.0)
+    record progress-notification {
+        /// Progress token from original request
+        progress-token: progress-token,
+        /// Current progress value
+        progress: f64,
+        /// Total progress value (for percentage)
+        total: option<f64>,
+        /// Status message
+        message: option<string>,
+    }
+
+    /// Common notification fields
+    @since(version = 0.1.1)
+    record notification-options {
+        meta: option<meta>,
+        /// Additional notification data
+        extras: option<json>,
+    }
+
+    /// Resource updated notification
+    ///
+    /// Notifies client that a subscribed resource has changed.
+    ///
+    /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourceupdatednotification>
+    @since(version = 0.1.0)
+    record resource-updated-notification {
+        meta: option<meta>,
+        /// URI of the updated resource
+        uri: uri,
+    }
+
+    /// Server notifications (sent to client)
+    @since(version = 0.1.0)
+    variant server-notification {
+        /// Tools list changed
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#toollistchangednotification>
+        tools-list-changed(notification-options),
+        /// Resources list changed
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcelistchangednotification>
+        resources-list-changed(notification-options),
+        /// Resource updated
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourceupdatednotification>
+        resources-updated(resource-updated-notification),
+        /// Prompts list changed
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptlistchangednotification>
+        prompts-list-changed(notification-options),
+        /// Log message
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#loggingmessagenotification>
+        log(logging-message-notification),
+        /// Request cancelled
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#cancellednotification>
+        cancellation(cancelled-notification),
+        /// Progress update
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#progressnotification>
+        progress(progress-notification),
+    }
+
+    /// Client notifications (sent to server)
+    @since(version = 0.1.0)
+    variant client-notification {
+        /// Initialization complete
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializednotification>
+        initialized(notification-options),
+        /// Roots list changed
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#rootslistchangednotification>
+        roots-list-changed(notification-options),
+        /// Request cancelled
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#cancellednotification>
+        cancelled(cancelled-notification),
+        /// Progress update
+        ///
+        /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#progressnotification>
+        progress(progress-notification),
+    }
+
+    /// MCP notification (client or server)
+    @since(version = 0.1.0)
+    variant mcp-notification {
+        server(server-notification),
+        client(client-notification),
+    }
+
+    // =========================================================================
+    // Error Types
+    // =========================================================================
+
+    /// Error structure
+    @since(version = 0.1.0)
+    record error {
+        /// JSON-RPC error code
+        code: s64,
+        /// Error message
+        message: string,
+        /// Additional error data
+        data: option<json>,
+    }
+
+    /// Standard JSON-RPC error codes
+    @since(version = 0.1.0)
+    variant error-code {
+        /// Parse error (-32700)
+        parse-error(error),
+        /// Invalid request (-32600)
+        invalid-request(error),
+        /// Method not found (-32601)
+        method-not-found(error),
+        /// Invalid parameters (-32602)
+        invalid-params(error),
+        /// Internal error (-32603)
+        internal-error(error),
+        /// JSON-RPC server error (-32000 to -32099)
+        server(error),
+        /// Other JSON-RPC error (-32768 to -32000, excluding above)
+        json-rpc(error),
+        /// Unspecified MCP error
+        mcp(error),
+    }
+}
