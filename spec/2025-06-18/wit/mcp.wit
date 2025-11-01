@@ -31,15 +31,15 @@ interface mcp {
     type uri = string;
 
     /// JSON Web Token (JWT).
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     type jwt = list<u8>;
 
     /// Identity claims from the JWT payload.
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     type claims = list<tuple<string, string>>;
 
     /// Identity information from authentication.
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     record identity {
         /// Raw bearer token as received.
         jwt: jwt,
@@ -48,7 +48,7 @@ interface mcp {
     }
 
     /// Session information from the transport.
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     record session {
         /// The session ID from Mcp-Session-Id header.
         session-id: string,
@@ -1358,7 +1358,7 @@ interface mcp {
     }
 
     /// The MCP message
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     variant mcp-message {
         request(tuple<request-id, mcp-request>),
         %result(tuple<request-id, mcp-result>),

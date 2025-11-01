@@ -115,6 +115,7 @@ pub fn write_mcp_result(
     output: &OutputStream,
     id: RequestId,
     result: ServerResult,
+    frame: MessageFrame,
 ) -> Result<(), IoError> {
     let message = ServerMessage::Result((id, result));
     server_io::send_message(output, message)
