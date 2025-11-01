@@ -1,6 +1,6 @@
 //! Common transport logic shared between HTTP and stdio implementations
 
-use crate::bindings::wasi::io::streams::OutputStream;
+use crate::bindings::wasi::io::streams::{InputStream, OutputStream};
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{
     ClientNotification, ClientRequest, ErrorCode, ProtocolVersion, RequestId, ServerCapabilities,
     ServerResult,
@@ -8,6 +8,58 @@ use crate::bindings::wasmcp::mcp_v20250618::mcp::{
 use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
     NotificationCtx, RequestCtx, Session, handle_notification, handle_request,
 };
+use crate::bindings::wasmcp::mcp_v20250618::server_io::{
+    self, IoError, TransportType,
+};
+
+/// Parsed MCP message from the wire
+#[derive(Debug)]
+pub enum McpMessage {
+    Request(RequestId, ClientRequest),
+    Notification(ClientNotification),
+    Result(RequestId, crate::bindings::wasmcp::mcp_v20250618::mcp::ClientResult),
+    Error(Option<RequestId>, ErrorCode),
+}
+
+/// Parse incoming MCP message using server-io
+///
+/// Tries to parse as request, notification, result, or error in that order
+pub fn parse_mcp_message(
+    transport: TransportType,
+    input: &InputStream,
+) -> Result<McpMessage, String> {
+    // Try to parse as request
+    if let Ok((request_id, client_request)) = server_io::parse_request(transport, input) {
+        return Ok(McpMessage::Request(request_id, client_request));
+    }
+
+    // Try to parse as notification
+    if let Ok(client_notification) = server_io::parse_notification(transport, input) {
+        return Ok(McpMessage::Notification(client_notification));
+    }
+
+    // Try to parse as result
+    if let Ok((result_id, client_result)) = server_io::parse_result(transport, input) {
+        return Ok(McpMessage::Result(result_id, client_result));
+    }
+
+    // Try to parse as error
+    if let Ok((error_id, error_code)) = server_io::parse_error(transport, input) {
+        return Ok(McpMessage::Error(error_id, error_code));
+    }
+
+    Err("Failed to parse message as request, notification, result, or error".to_string())
+}
+
+/// Write MCP result using server-io
+pub fn write_mcp_result(
+    transport: TransportType,
+    output: &OutputStream,
+    id: &RequestId,
+    result: ServerResult,
+) -> Result<(), IoError> {
+    server_io::write_result(transport, output, id, result)
+}
 
 /// Discover capabilities for initialize response
 ///

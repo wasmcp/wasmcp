@@ -16,14 +16,15 @@ use crate::bindings::wasi::http::types::{
 use crate::bindings::wasi::io::streams::OutputStream;
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{
     ClientNotification, ClientRequest, ClientResult, ErrorCode, LogLevel, ProtocolVersion,
-    RequestId,
+    RequestId, ServerResult,
 };
 use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
     ErrorCtx, ResultCtx, Session, handle_error, handle_result,
 };
-use crate::bindings::wasmcp::mcp_v20250618::server_io::{
-    parse_error, parse_notification, parse_request, parse_result, write_result,
-};
+use crate::bindings::wasmcp::mcp_v20250618::server_io::TransportType;
+
+/// HTTP transport always uses SSE formatting
+const TRANSPORT: TransportType = TransportType::Http;
 use crate::bindings::wasmcp::mcp_v20250618::session_manager::{
     SessionError, initialize as session_initialize, validate as session_validate,
 };
@@ -115,97 +116,90 @@ fn handle_post(
         .stream()
         .map_err(|_| "Failed to get input stream")?;
 
-    // Try to parse as request
-    if let Ok((request_id, client_request)) = parse_request(&input_stream) {
-        // Check if it's initialize - handle specially with plain JSON
-        if matches!(client_request, ClientRequest::Initialize(_)) {
+    // Parse MCP message
+    let message = common::parse_mcp_message(TRANSPORT, &input_stream)?;
+
+    match message {
+        common::McpMessage::Request(request_id, client_request) => {
+            // Check if it's initialize - handle specially with plain JSON
+            if matches!(client_request, ClientRequest::Initialize(_)) {
+                drop(input_stream);
+                drop(body_stream);
+                return handle_initialize_request(request_id, client_request, protocol_version);
+            }
+
+            // Not initialize - check if session is required
+            if session_config.enabled && session_id.is_none() {
+                drop(input_stream);
+                drop(body_stream);
+                return Err("HTTP/400:Session ID required for non-initialize requests".to_string());
+            }
+
+            // Not initialize - create SSE response for all other requests
+            let response = OutgoingResponse::new(Fields::new());
+            response
+                .set_status_code(200)
+                .map_err(|_| "Failed to set status")?;
+
+            let response_headers = response.headers();
+            response_headers
+                .set("content-type", &[b"text/event-stream".to_vec()])
+                .map_err(|_| "Failed to set content-type")?;
+            response_headers
+                .set("cache-control", &[b"no-cache".to_vec()])
+                .map_err(|_| "Failed to set cache-control")?;
+            response_headers
+                .set("connection", &[b"keep-alive".to_vec()])
+                .map_err(|_| "Failed to set connection")?;
+
+            let output_body = response.body().map_err(|_| "Failed to get response body")?;
+            let output_stream = output_body
+                .write()
+                .map_err(|_| "Failed to get output stream")?;
+
+            handle_mcp_request(
+                request_id,
+                client_request,
+                protocol_version,
+                session_id.as_deref(),
+                &output_stream,
+            )?;
+
             drop(input_stream);
             drop(body_stream);
-            return handle_initialize_request(request_id, client_request, protocol_version);
+            drop(output_stream);
+            let _ = OutgoingBody::finish(output_body, None);
+            Ok(response)
         }
-
-        // Not initialize - check if session is required
-        if session_config.enabled && session_id.is_none() {
+        common::McpMessage::Notification(client_notification) => {
+            handle_mcp_notification(client_notification, protocol_version, session_id.as_deref())?;
             drop(input_stream);
             drop(body_stream);
-            return Err("HTTP/400:Session ID required for non-initialize requests".to_string());
+            create_accepted_response()
         }
-
-        // Not initialize - create SSE response for all other requests
-        let response = OutgoingResponse::new(Fields::new());
-        response
-            .set_status_code(200)
-            .map_err(|_| "Failed to set status")?;
-
-        let response_headers = response.headers();
-        response_headers
-            .set("content-type", &[b"text/event-stream".to_vec()])
-            .map_err(|_| "Failed to set content-type")?;
-        response_headers
-            .set("cache-control", &[b"no-cache".to_vec()])
-            .map_err(|_| "Failed to set cache-control")?;
-        response_headers
-            .set("connection", &[b"keep-alive".to_vec()])
-            .map_err(|_| "Failed to set connection")?;
-
-        let output_body = response.body().map_err(|_| "Failed to get response body")?;
-        let output_stream = output_body
-            .write()
-            .map_err(|_| "Failed to get output stream")?;
-
-        handle_mcp_request(
-            request_id,
-            client_request,
-            protocol_version,
-            session_id.as_deref(),
-            &output_stream,
-        )?;
-
-        drop(input_stream);
-        drop(body_stream);
-        drop(output_stream);
-        let _ = OutgoingBody::finish(output_body, None);
-        return Ok(response);
+        common::McpMessage::Result(result_id, client_result) => {
+            handle_mcp_result(
+                result_id,
+                client_result,
+                protocol_version,
+                session_id.as_deref(),
+            )?;
+            drop(input_stream);
+            drop(body_stream);
+            create_accepted_response()
+        }
+        common::McpMessage::Error(error_id, error_code) => {
+            handle_mcp_error(
+                error_id,
+                error_code,
+                protocol_version,
+                session_id.as_deref(),
+            )?;
+            drop(input_stream);
+            drop(body_stream);
+            create_accepted_response()
+        }
     }
-
-    // Try to parse as notification
-    if let Ok(client_notification) = parse_notification(&input_stream) {
-        handle_mcp_notification(client_notification, protocol_version, session_id.as_deref())?;
-        drop(input_stream);
-        drop(body_stream);
-        return create_accepted_response();
-    }
-
-    // Try to parse as result
-    if let Ok((result_id, client_result)) = parse_result(&input_stream) {
-        handle_mcp_result(
-            result_id,
-            client_result,
-            protocol_version,
-            session_id.as_deref(),
-        )?;
-        drop(input_stream);
-        drop(body_stream);
-        return create_accepted_response();
-    }
-
-    // Try to parse as error
-    if let Ok((error_id, error_code)) = parse_error(&input_stream) {
-        handle_mcp_error(
-            error_id,
-            error_code,
-            protocol_version,
-            session_id.as_deref(),
-        )?;
-        drop(input_stream);
-        drop(body_stream);
-        return create_accepted_response();
-    }
-
-    // None of the parsers succeeded
-    drop(input_stream);
-    drop(body_stream);
-    Err("Failed to parse message as request, notification, result, or error".to_string())
 }
 
 fn handle_mcp_request(
@@ -226,26 +220,16 @@ fn handle_mcp_request(
         }
         ClientRequest::Ping(_) => {
             common::handle_ping().map_err(|e| format!("Ping failed: {:?}", e))?;
-            // Delegate to server-io
-            write_result(
-                output_stream,
-                &request_id,
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ServerResult::Ping,
-            )
-            .map_err(|e| format!("Failed to write ping result: {:?}", e))?;
+            common::write_mcp_result(TRANSPORT, output_stream, &request_id, ServerResult::Ping)
+                .map_err(|e| format!("Failed to write ping result: {:?}", e))?;
             Ok(())
         }
         ClientRequest::LoggingSetLevel(level) => {
             let level_str = log_level_to_string(level);
             common::handle_set_log_level(level_str)
                 .map_err(|e| format!("SetLevel failed: {:?}", e))?;
-            // Delegate to server-io
-            write_result(
-                output_stream,
-                &request_id,
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ServerResult::LoggingSetLevel,
-            )
-            .map_err(|e| format!("Failed to write setLevel result: {:?}", e))?;
+            common::write_mcp_result(TRANSPORT, output_stream, &request_id, ServerResult::LoggingSetLevel)
+                .map_err(|e| format!("Failed to write setLevel result: {:?}", e))?;
             Ok(())
         }
         _ => {
@@ -260,7 +244,7 @@ fn handle_mcp_request(
             .map_err(|e| format!("Middleware delegation failed: {:?}", e))?;
 
             // Write result via server-io (handles SSE formatting)
-            write_result(output_stream, &request_id, result)
+            common::write_mcp_result(TRANSPORT, output_stream, &request_id, result)
                 .map_err(|e| format!("Failed to write result: {:?}", e))?;
             Ok(())
         }

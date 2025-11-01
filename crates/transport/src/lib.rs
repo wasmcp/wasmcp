@@ -1,41 +1,61 @@
-//! Universal transport component for the Model Context Protocol (MCP)
+//! Transport component for the Model Context Protocol (MCP)
 //!
-//! This transport component provides a unified orchestration layer that:
-//! - Delegates I/O parsing/serialization to server-io components
+//! This transport component provides orchestration for MCP servers:
+//! - Delegates I/O parsing/serialization to server-io component
 //! - Manages session lifecycle via session-manager
 //! - Coordinates with middleware via server-handler
 //! - Handles transport-level MCP methods (initialize, ping, logging/setLevel)
 //!
-//! Architecture:
-//! - Exports both wasi:http/incoming-handler AND wasi:cli/run
-//! - Composition determines which interface is actually used
-//! - Works with http-server-io OR stdio-server-io (via server-io interface)
-//! - Session support is automatic when session-manager is available
+//! ## Build Variants
+//!
+//! **HTTP Transport** (default):
+//! - Exports: `wasi:http/incoming-handler`
+//! - Formatting: Server-Sent Events (SSE)
+//! - Build: `cargo build --target wasm32-wasip2`
+//!
+//! **Stdio Transport** (with `stdio` feature):
+//! - Exports: `wasi:cli/run`
+//! - Formatting: Newline-delimited JSON
+//! - Build: `cargo build --target wasm32-wasip2 --features stdio`
 
+#[cfg(feature = "stdio")]
 mod bindings {
     wit_bindgen::generate!({
-        world: "transport",
+        path: "wit-stdio",
+        world: "transport-stdio",
+        generate_all,
+    });
+}
+
+#[cfg(not(feature = "stdio"))]
+mod bindings {
+    wit_bindgen::generate!({
+        world: "transport-http",
         generate_all,
     });
 }
 
 // HTTP transport implementation
+#[cfg(not(feature = "stdio"))]
 mod http;
 
 // Stdio transport implementation
+#[cfg(feature = "stdio")]
 mod stdio;
 
-// Common transport logic
+// Common transport logic (shared by both)
 mod common;
 
-// Configuration
+// Configuration (HTTP only - sessions)
+#[cfg(not(feature = "stdio"))]
 mod config;
 
 bindings::export!(Component with_types_in bindings);
 
 struct Component;
 
-// Implement HTTP incoming-handler
+// HTTP variant: export incoming-handler
+#[cfg(not(feature = "stdio"))]
 impl bindings::exports::wasi::http::incoming_handler::Guest for Component {
     fn handle(
         request: bindings::wasi::http::types::IncomingRequest,
@@ -45,7 +65,8 @@ impl bindings::exports::wasi::http::incoming_handler::Guest for Component {
     }
 }
 
-// Implement stdio run
+// Stdio variant: export run
+#[cfg(feature = "stdio")]
 impl bindings::exports::wasi::cli::run::Guest for Component {
     fn run() -> Result<(), ()> {
         stdio::StdioTransportGuest::run()
