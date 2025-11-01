@@ -7,10 +7,10 @@ world transport {
     include wasi:cli/command@0.2.3;
 
     // Import server-handler for middleware delegation
-    include wasmcp:mcp-v20250618/server-transport@0.1.4;
+    include wasmcp:mcp-v20250618/server-transport@0.1.4-beta.1;
 
     // Import server-io for JSON-RPC parsing/serialization
-    import wasmcp:mcp-v20250618/server-io@0.1.4;
+    import wasmcp:mcp-v20250618/server-io@0.1.4-beta.1;
 
     // Import session-manager for session lifecycle management
     import wasmcp:mcp-v20250618/session-manager@0.1.4;
