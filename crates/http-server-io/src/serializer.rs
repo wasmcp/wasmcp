@@ -820,6 +820,14 @@ pub fn serialize_server_response(response: &ServerResult) -> Value {
                 })
             })
         }
+        ServerResult::Ping => {
+            // Ping returns empty object per MCP spec
+            json!({})
+        }
+        ServerResult::LoggingSetLevel => {
+            // LoggingSetLevel returns empty object per MCP spec
+            json!({})
+        }
     }
 }
 
