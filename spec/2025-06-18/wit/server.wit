@@ -1,9 +1,8 @@
 use wasi:io/streams@0.2.3;
 
 /// Server-side MCP message handler.
-////
-/// The handler processes incoming messages and generates appropriate
-/// responses or actions based on the MCP protocol.
+///
+/// Processes incoming messages from clients.
 @since(version = 0.1.0)
 interface server-handler {
     use streams.{
@@ -16,25 +15,9 @@ interface server-handler {
         client-request,
         client-result,
         client-notification,
+        identity,
+        session,
     };
-
-    /// Identity information from authentication.
-    @since(version = 0.1.2)
-    record identity {
-        /// Raw bearer token as received.
-        jwt: string,
-        /// Validated claims from the JWT payload.
-        claims: list<tuple<string, string>>,
-    }
-
-    /// Session information from the transport.
-    @since(version = 0.1.2)
-    record session {
-        /// The session ID from Mcp-Session-Id header.
-        session-id: string,
-        /// The ID of the session's underlying key-value store.
-        store-id: string,
-    }
 
     /// Request context passed to handlers.
     ///
@@ -146,14 +129,10 @@ interface server-io {
         stream-error,
     };
     use mcp.{
-        request-id,
+        client-message,
         error-code,
-        client-request,
-        client-result,
-        client-notification,
-        server-request,
-        server-result,
-        server-notification,
+        request-id,
+        server-message,
     };
 
     /// Errors that can occur when sending messages to the client
@@ -167,76 +146,89 @@ interface server-io {
         unexpected(string),
     }
 
-/// Parse an incoming request from the client
+    /// Errors that can occur when parsing messages from the client
     @since(version = 0.1.4)
-    parse-request: func(
-        /// Input stream to read the request from
+    variant parse-error {
+        /// Failed to parse the message from JSON-RPC format
+        deserialization(string),
+        /// Failed to parse the message from JSON-RPC format
+        invalid(string),
+    }
+
+    /// When to stop reading an input stream
+    @since(version = 0.1.4)
+    variant read-limit {
+        /// Delimiter chars
+        delimiter(list<u8>),
+        /// Maximum number of bytes to read
+        max-bytes(u64),
+    }
+
+    /// The prefix and suffix bytes to frame outgoing messages with
+    @since(version = 0.1.4)
+    record message-frame {
+        /// The prefix bytes to frame outgoing messages with
+        prefix: list<u8>,
+        /// The suffix bytes to frame outgoing messages with
+        suffix: list<u8>,
+    }
+
+    /// Parse an incoming message from the client
+    @since(version = 0.1.4)
+    parse-message: func(
+        /// Input stream to read the bytes from
         input: borrow<input-stream>,
-    ) -> result<tuple<request-id, client-request>, io-error>;
+        /// When to stop reading from the stream
+        limit: read-limit,
+        /// The message frame
+        frame: message-frame,
+    ) -> result<client-message, parse-error>;
 
     /// Send a request to the client
     ///
     /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
     @since(version = 0.1.4)
-    write-request: func(
+    write-message: func(
         /// Output stream to send the request over
         output: borrow<output-stream>,
-        /// The request to send to the client
-        request: server-request,
+        /// The message to send to the client
+        message: server-message,
+        /// The message frame
+        frame: message-frame,
     ) -> result<_, io-error>;
+}
 
-    /// Parse incoming result response from the client
-    @since(version = 0.1.4)
-    parse-result: func(
-        /// Input stream to read the result from
-        input: borrow<input-stream>,
-    ) -> result<tuple<request-id, client-result>, io-error>;
+/// Decode and validate a JWT
+@since(version = 0.1.4)
+interface server-auth {
+    use mcp.{
+        claims,
+        client-message,
+        jwt,
+        session,
+    };
 
-    /// Send a result response to the client
-    @since(version = 0.1.4)
-    write-result: func(
-        /// Output stream to send the result over
-        output: borrow<output-stream>,
-        /// The result to send to the client
-        id: request-id,
-        %result: server-result,
-    ) -> result<_, io-error>;
-     
-    /// Parse an incoming error response from the client
-    @since(version = 0.1.4)
-    parse-error: func(
-        /// Input stream to read the error from
-        input: borrow<input-stream>,
-    ) -> result<tuple<option<request-id>, error-code>, io-error>;
-
-    /// Send an error response to the client
-    @since(version = 0.1.4)
-    write-error: func(
-        /// Output stream to send the error over
-        output: borrow<output-stream>,
-        /// The request ID the error is responding to
-        id: option<request-id>,
-        /// The error code to send to the client
-        error: error-code,
-    ) -> result<_, io-error>;
-
-    /// Parse an incoming notification from the client
-    @since(version = 0.1.4)
-    parse-notification: func(
-        /// Input stream to read the notification from
-        input: borrow<input-stream>,
-    ) -> result<client-notification, io-error>;
-
-    /// Send a notification to the client
+    /// Decode and validate a JWT.
+    /// Returns the decoded claims if successful.
     ///
-    /// Notifications are one-way messages that do not expect a response.
+    /// If the token or its signature is invalid or the claims fail validation, it will return an error.
     @since(version = 0.1.4)
-    write-notification: func(
-        /// Output stream (SSE stream) to send the notification
-        output: borrow<output-stream>,
-        /// The notification to send to the client
-        notification: server-notification,
-    ) -> result<_, io-error>;
+    decode: func(
+        /// JWT from the Authorization header
+        jwt: jwt,
+    ) -> result<claims>;
+
+    /// Authorize a request based on the provided claims.
+    /// Returns true iff the request is authorized.
+    @since(version = 0.1.4)
+    authorize: func(
+        /// The incoming message
+        request: client-message,
+        /// Identity claims to authorize against
+        claims: claims,
+        /// The session if enabled
+        session: option<session>,
+    ) -> bool;
 }
 
 /// MCP tools feature
