@@ -138,7 +138,7 @@ interface server-handler {
 /// Streaming I/O for MCP servers
 ///
 /// This interface enables servers to parse and send MCP messages over streams.
-@since(version = 0.1.4)
+@since(version = 0.1.4-beta.1)
 interface server-io {
     use wasi:io/streams@0.2.3.{
         input-stream,
@@ -157,7 +157,7 @@ interface server-io {
     };
 
     /// Errors that can occur when sending messages to the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     variant io-error {
         /// An I/O error occurred writing to the output stream
         %stream(stream-error),
@@ -168,7 +168,7 @@ interface server-io {
     }
 
 /// Parse an incoming request from the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     parse-request: func(
         /// Input stream to read the request from
         input: borrow<input-stream>,
@@ -177,7 +177,7 @@ interface server-io {
     /// Send a request to the client
     ///
     /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     write-request: func(
         /// Output stream to send the request over
         output: borrow<output-stream>,
@@ -186,14 +186,14 @@ interface server-io {
     ) -> result<_, io-error>;
 
     /// Parse incoming result response from the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     parse-result: func(
         /// Input stream to read the result from
         input: borrow<input-stream>,
     ) -> result<tuple<request-id, client-result>, io-error>;
 
     /// Send a result response to the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     write-result: func(
         /// Output stream to send the result over
         output: borrow<output-stream>,
@@ -203,14 +203,14 @@ interface server-io {
     ) -> result<_, io-error>;
      
     /// Parse an incoming error response from the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     parse-error: func(
         /// Input stream to read the error from
         input: borrow<input-stream>,
     ) -> result<tuple<option<request-id>, error-code>, io-error>;
 
     /// Send an error response to the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     write-error: func(
         /// Output stream to send the error over
         output: borrow<output-stream>,
@@ -221,7 +221,7 @@ interface server-io {
     ) -> result<_, io-error>;
 
     /// Parse an incoming notification from the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     parse-notification: func(
         /// Input stream to read the notification from
         input: borrow<input-stream>,
@@ -230,7 +230,7 @@ interface server-io {
     /// Send a notification to the client
     ///
     /// Notifications are one-way messages that do not expect a response.
-    @since(version = 0.1.4)
+    @since(version = 0.1.4-beta.1)
     write-notification: func(
         /// Output stream (SSE stream) to send the notification
         output: borrow<output-stream>,
