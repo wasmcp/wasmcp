@@ -30,6 +30,32 @@ interface mcp {
     @since(version = 0.1.0)
     type uri = string;
 
+    /// JSON Web Token (JWT).
+    @since(version = 0.1.4)
+    type jwt = list<u8>;
+
+    /// Identity claims from the JWT payload.
+    @since(version = 0.1.4)
+    type claims = list<tuple<string, string>>;
+
+    /// Identity information from authentication.
+    @since(version = 0.1.4)
+    record identity {
+        /// Raw bearer token as received.
+        jwt: jwt,
+        /// Validated claims from the JWT payload.
+        claims: claims,
+    }
+
+    /// Session information from the transport.
+    @since(version = 0.1.4)
+    record session {
+        /// The session ID from Mcp-Session-Id header.
+        session-id: string,
+        /// The ID of the session's underlying key-value store.
+        store-id: string,
+    }
+
     // =========================================================================
     // Streaming Data Types
     // =========================================================================
@@ -1308,5 +1334,35 @@ interface mcp {
         json-rpc(error),
         /// Unspecified MCP error
         mcp(error),
+    }
+
+    // =========================================================================
+    // The MCP/JSON-RPC Message
+    // =========================================================================
+
+    /// The MCP message sent from a server
+    variant server-message {
+        request(tuple<request-id, server-request>),
+        %result(tuple<request-id, server-result>),
+        error(tuple<option<request-id>, error>),
+        notification(server-notification),
+    }
+
+
+    /// The MCP message sent from a client
+    variant client-message {
+        request(tuple<request-id, client-request>),
+        %result(tuple<request-id, client-result>),
+        error(tuple<option<request-id>, error>),
+        notification(client-notification),
+    }
+
+    /// The MCP message
+    @since(version = 0.1.4)
+    variant mcp-message {
+        request(tuple<request-id, mcp-request>),
+        %result(tuple<request-id, mcp-result>),
+        error(tuple<option<request-id>, error>),
+        notification(mcp-notification),
     }
 }
