@@ -10,15 +10,15 @@ on:
 
 jobs:
   release:
-    name: Release HTTP Messages
+    name: Release HTTP Server I/O
     permissions:
       contents: write
       packages: write
     uses: ./.github/workflows/reusable-release-component.yml
     with:
-      component-name: http-messages
-      component-crate: http-messages
+      component-name: http-server-io
+      component-crate: http-server-io
       version: ${{ inputs.version }}
-      wkg-package: wasmcp:http-messages
-      tag-prefix: http-messages-v
+      wkg-package: wasmcp:http-server-io
+      tag-prefix: http-server-io-v
     secrets: inherit

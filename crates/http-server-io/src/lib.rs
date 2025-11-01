@@ -1,38 +1,132 @@
-//! HTTP/SSE Server Messages Implementation
+//! HTTP/SSE Server I/O Implementation
 //!
-//! Implements server-messages functions for Server-Sent Events (SSE) transport.
-//! Writes JSON-RPC notifications and requests as SSE events to the provided output stream.
+//! Implements the server-io interface for HTTP/SSE transport.
+//! Handles bidirectional JSON-RPC message exchange with SSE formatting for responses.
+//!
+//! Architecture:
+//! - parser: Handles JSON-RPC parsing for client messages
+//! - serializer: Handles JSON-RPC serialization for server messages
+//! - stream_reader: Handles bounded memory stream I/O
+//!
+//! This component provides full spec-compliant MCP 2025-06-18 message handling
+//! for HTTP transports using Server-Sent Events (SSE) for server→client messages.
 
 #![allow(warnings)]
 
 mod bindings {
     wit_bindgen::generate!({
-        world: "http-messages",
+        world: "http-server-io",
         generate_all,
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::server_messages::Guest;
-use bindings::exports::wasmcp::mcp_v20250618::server_messages::MessageError;
+mod parser;
+mod serializer;
+mod stream_reader;
+
+use bindings::exports::wasmcp::mcp_v20250618::server_io::{Guest, IoError};
 use bindings::wasi::io::streams::{InputStream, OutputStream, StreamError};
 use bindings::wasmcp::mcp_v20250618::mcp::*;
 
-struct HttpMessages;
+use crate::stream_reader::StreamConfig;
 
-impl Guest for HttpMessages {
-    fn notify(output: &OutputStream, notification: ServerNotification) -> Result<(), MessageError> {
-        let (method, params) = serialize_server_notification(&notification);
+struct HttpServerIo;
 
-        let json_rpc = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params
-        });
+impl Guest for HttpServerIo {
+    // =========================================================================
+    // PARSE FUNCTIONS (reading FROM client)
+    // =========================================================================
 
-        write_sse_event(output, &json_rpc)
+    fn parse_request(input: &InputStream) -> Result<(RequestId, ClientRequest), IoError> {
+        // Read JSON-RPC from input stream
+        let json_str = read_stream_to_string(input)?;
+
+        // Parse as JSON
+        let json: serde_json::Value = serde_json::from_str(&json_str)
+            .map_err(|e| IoError::Serialization(format!("Invalid JSON: {}", e)))?;
+
+        // Extract request ID
+        let id = json
+            .get("id")
+            .ok_or_else(|| IoError::Unexpected("Missing 'id' field in request".to_string()))?;
+        let request_id = parser::parse_request_id(id)?;
+
+        // Parse client request
+        let client_request = parser::parse_client_request(&json)?;
+
+        Ok((request_id, client_request))
     }
 
-    fn request(output: &OutputStream, request: ServerRequest) -> Result<(), MessageError> {
+    fn parse_result(input: &InputStream) -> Result<(RequestId, ClientResult), IoError> {
+        // Read JSON-RPC from input stream
+        let json_str = read_stream_to_string(input)?;
+
+        // Parse as JSON
+        let json: serde_json::Value = serde_json::from_str(&json_str)
+            .map_err(|e| IoError::Serialization(format!("Invalid JSON: {}", e)))?;
+
+        // Extract request ID
+        let id = json
+            .get("id")
+            .ok_or_else(|| IoError::Unexpected("Missing 'id' field in response".to_string()))?;
+        let request_id = parser::parse_request_id(id)?;
+
+        // Parse client result from JSON
+        let response = parser::parse_client_response(&json)?;
+
+        match response {
+            Ok(client_result) => Ok((request_id, client_result)),
+            Err(_) => Err(IoError::Unexpected(
+                "Expected result, got error response".to_string(),
+            )),
+        }
+    }
+
+    fn parse_error(input: &InputStream) -> Result<(Option<RequestId>, ErrorCode), IoError> {
+        // Read JSON-RPC from input stream
+        let json_str = read_stream_to_string(input)?;
+
+        // Parse as JSON
+        let json: serde_json::Value = serde_json::from_str(&json_str)
+            .map_err(|e| IoError::Serialization(format!("Invalid JSON: {}", e)))?;
+
+        // Extract request ID (optional for errors per JSON-RPC spec)
+        let request_id = json.get("id").and_then(|id| {
+            if id.is_null() {
+                None
+            } else {
+                parser::parse_request_id(id).ok()
+            }
+        });
+
+        // Parse error code from JSON
+        let response = parser::parse_client_response(&json)?;
+
+        match response {
+            Err(error_code) => Ok((request_id, error_code)),
+            Ok(_) => Err(IoError::Unexpected(
+                "Expected error, got result response".to_string(),
+            )),
+        }
+    }
+
+    fn parse_notification(input: &InputStream) -> Result<ClientNotification, IoError> {
+        // Read JSON-RPC from input stream
+        let json_str = read_stream_to_string(input)?;
+
+        // Parse as JSON
+        let json: serde_json::Value = serde_json::from_str(&json_str)
+            .map_err(|e| IoError::Serialization(format!("Invalid JSON: {}", e)))?;
+
+        // Parse client notification
+        parser::parse_client_notification(&json)
+    }
+
+    // =========================================================================
+    // WRITE FUNCTIONS (writing TO client)
+    // =========================================================================
+
+    fn write_request(output: &OutputStream, request: ServerRequest) -> Result<(), IoError> {
         // Generate a unique request ID for server-initiated requests
         use std::sync::atomic::{AtomicI64, Ordering};
         static REQUEST_COUNTER: AtomicI64 = AtomicI64::new(1);
@@ -49,9 +143,98 @@ impl Guest for HttpMessages {
 
         write_sse_event(output, &json_rpc)
     }
+
+    fn write_result(
+        output: &OutputStream,
+        id: RequestId,
+        result: ServerResult,
+    ) -> Result<(), IoError> {
+        let json_rpc = serializer::serialize_jsonrpc_response(&id, Ok(&result));
+        write_sse_event(output, &json_rpc)
+    }
+
+    fn write_error(
+        output: &OutputStream,
+        id: Option<RequestId>,
+        error: ErrorCode,
+    ) -> Result<(), IoError> {
+        let (code, message) = serializer::serialize_error_code(&error);
+
+        let json_rpc = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": id.as_ref().map(serialize_request_id),
+            "error": {
+                "code": code,
+                "message": message
+            }
+        });
+
+        write_sse_event(output, &json_rpc)
+    }
+
+    fn write_notification(
+        output: &OutputStream,
+        notification: ServerNotification,
+    ) -> Result<(), IoError> {
+        let (method, params) = serialize_server_notification(&notification);
+
+        let json_rpc = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params
+        });
+
+        write_sse_event(output, &json_rpc)
+    }
 }
 
-// Helper functions
+// =============================================================================
+// STREAM I/O HELPERS
+// =============================================================================
+
+fn read_stream_to_string(stream: &InputStream) -> Result<String, IoError> {
+    let config = StreamConfig::default();
+    let bytes =
+        stream_reader::read_bytes_chunked(stream, &config).map_err(|e| IoError::Unexpected(e))?;
+    String::from_utf8(bytes).map_err(|e| IoError::Unexpected(format!("Invalid UTF-8: {}", e)))
+}
+
+fn write_sse_event(stream: &OutputStream, data: &serde_json::Value) -> Result<(), IoError> {
+    // Format as SSE event: "data: {json}\n\n"
+    let event_str = serializer::format_sse_event(data);
+
+    // Write using check_write() to respect budget
+    let bytes = event_str.as_bytes();
+    let mut offset = 0;
+
+    while offset < bytes.len() {
+        match stream.check_write() {
+            Ok(0) => break, // No budget available - stop writing
+            Ok(budget) => {
+                let chunk_size = (bytes.len() - offset).min(budget as usize);
+                let chunk = &bytes[offset..offset + chunk_size];
+                stream.write(chunk).map_err(|e| IoError::Stream(e))?;
+                offset += chunk_size;
+            }
+            Err(e) => {
+                return Err(IoError::Stream(e));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+// =============================================================================
+// SERIALIZATION HELPERS FOR SERVER MESSAGES
+// =============================================================================
+
+fn serialize_request_id(id: &RequestId) -> serde_json::Value {
+    match id {
+        RequestId::String(s) => serde_json::Value::String(s.clone()),
+        RequestId::Number(i) => serde_json::Value::Number(serde_json::Number::from(*i)),
+    }
+}
 
 fn serialize_server_notification(
     notification: &ServerNotification,
@@ -138,7 +321,6 @@ fn serialize_notification_options(opts: &NotificationOptions) -> serde_json::Val
     }
 
     // Unpack extras as arbitrary key-value pairs at the root params level
-    // The spec allows: params?: { _meta?: {...}, [key: string]: unknown }
     if let Some(ref extras) = opts.extras {
         if let Ok(serde_json::Value::Object(extras_obj)) =
             serde_json::from_str::<serde_json::Value>(extras)
@@ -150,54 +332,6 @@ fn serialize_notification_options(opts: &NotificationOptions) -> serde_json::Val
     }
 
     serde_json::Value::Object(params)
-}
-
-fn write_sse_event(stream: &OutputStream, data: &serde_json::Value) -> Result<(), MessageError> {
-    // Format as SSE event: "data: {json}\n\n"
-    let json_str = serde_json::to_string(data)
-        .map_err(|e| MessageError::Serialization(format!("JSON serialization failed: {}", e)))?;
-    let event_data = format!("data: {}\n\n", json_str);
-
-    // Write using check_write() to respect budget
-    let bytes = event_data.as_bytes();
-    let mut offset = 0;
-
-    while offset < bytes.len() {
-        match stream.check_write() {
-            Ok(0) => break, // No budget available - stop writing
-            Ok(budget) => {
-                let chunk_size = (bytes.len() - offset).min(budget as usize);
-                let chunk = &bytes[offset..offset + chunk_size];
-                stream.write(chunk).map_err(|e| MessageError::Io(e))?;
-                offset += chunk_size;
-            }
-            Err(e) => {
-                return Err(MessageError::Io(e));
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn log_level_to_string(level: &LogLevel) -> &'static str {
-    match level {
-        LogLevel::Debug => "debug",
-        LogLevel::Info => "info",
-        LogLevel::Notice => "notice",
-        LogLevel::Warning => "warning",
-        LogLevel::Error => "error",
-        LogLevel::Critical => "critical",
-        LogLevel::Alert => "alert",
-        LogLevel::Emergency => "emergency",
-    }
-}
-
-fn serialize_request_id(id: &RequestId) -> serde_json::Value {
-    match id {
-        RequestId::String(s) => serde_json::Value::String(s.clone()),
-        RequestId::Number(i) => serde_json::Value::Number(serde_json::Number::from(*i)),
-    }
 }
 
 fn serialize_server_request(request: &ServerRequest) -> (&'static str, serde_json::Value) {
@@ -245,6 +379,11 @@ fn serialize_server_request(request: &ServerRequest) -> (&'static str, serde_jso
                     }
                 };
                 params.insert("progressToken".to_string(), token_value);
+            }
+            if let Some(ref meta) = ping_req.meta {
+                if let Ok(meta_value) = serde_json::from_str::<serde_json::Value>(meta) {
+                    params.insert("_meta".to_string(), meta_value);
+                }
             }
             for (k, v) in &ping_req.extras {
                 if let Ok(value) = serde_json::from_str::<serde_json::Value>(v) {
@@ -408,228 +547,21 @@ fn serialize_sampling_message(msg: &SamplingMessage) -> serde_json::Value {
     })
 }
 
-// Helper functions for reading streams
-
-fn read_text_stream(stream: &InputStream) -> Result<String, String> {
-    const MAX_SIZE: u64 = 50 * 1024 * 1024; // 50MB
-    const CHUNK_SIZE: u64 = 64 * 1024; // 64KB
-
-    let bytes = read_stream_chunked(stream, MAX_SIZE, CHUNK_SIZE)?;
-    String::from_utf8(bytes).map_err(|e| format!("Invalid UTF-8: {}", e))
-}
-
-fn read_blob_stream(stream: &InputStream) -> Result<String, String> {
-    use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-
-    const MAX_SIZE: u64 = 50 * 1024 * 1024; // 50MB
-    const CHUNK_SIZE: u64 = 64 * 1024; // 64KB
-
-    let bytes = read_stream_chunked(stream, MAX_SIZE, CHUNK_SIZE)?;
-    Ok(BASE64.encode(&bytes))
-}
-
-fn read_stream_chunked(
-    stream: &InputStream,
-    max_size: u64,
-    chunk_size: u64,
-) -> Result<Vec<u8>, String> {
-    let mut buffer = Vec::new();
-    let mut total_read = 0u64;
-
-    loop {
-        let remaining = max_size.saturating_sub(total_read);
-        if remaining == 0 {
-            return Err(format!("Stream exceeds maximum size of {} bytes", max_size));
-        }
-
-        let to_read = remaining.min(chunk_size);
-
-        match stream.blocking_read(to_read) {
-            Ok(chunk) => {
-                if chunk.is_empty() {
-                    break;
-                }
-                total_read += chunk.len() as u64;
-                buffer.extend_from_slice(&chunk);
-            }
-            Err(StreamError::Closed) => {
-                break;
-            }
-            Err(e) => {
-                return Err(format!("Stream read error: {:?}", e));
-            }
-        }
-    }
-
-    Ok(buffer)
-}
-
 fn serialize_content_block(content: &ContentBlock) -> serde_json::Value {
-    match content {
-        ContentBlock::Text(text_content) => {
-            let mut obj = serde_json::Map::new();
-            obj.insert(
-                "type".to_string(),
-                serde_json::Value::String("text".to_string()),
-            );
-
-            // Serialize text data
-            let text_value = match &text_content.text {
-                TextData::Text(s) => s.clone(),
-                TextData::TextStream(stream) => {
-                    // Read the stream with bounded memory
-                    read_text_stream(stream)
-                        .unwrap_or_else(|e| format!("[error reading text stream: {}]", e))
-                }
-            };
-            obj.insert("text".to_string(), serde_json::Value::String(text_value));
-
-            // Add optional fields
-            if let Some(ref opts) = text_content.options {
-                if let Some(ref annotations) = opts.annotations {
-                    obj.insert(
-                        "annotations".to_string(),
-                        serialize_annotations(annotations),
-                    );
-                }
-                if let Some(ref meta) = opts.meta {
-                    if let Ok(meta_value) = serde_json::from_str::<serde_json::Value>(meta) {
-                        obj.insert("_meta".to_string(), meta_value);
-                    }
-                }
-            }
-
-            serde_json::Value::Object(obj)
-        }
-        ContentBlock::Image(image_content) => {
-            let mut obj = serde_json::Map::new();
-            obj.insert(
-                "type".to_string(),
-                serde_json::Value::String("image".to_string()),
-            );
-
-            // Serialize blob data
-            let data_value = match &image_content.data {
-                BlobData::Blob(bytes) => {
-                    use base64::{Engine as _, engine::general_purpose};
-                    general_purpose::STANDARD.encode(bytes)
-                }
-                BlobData::BlobStream(stream) => {
-                    // Read the stream with bounded memory
-                    read_blob_stream(stream)
-                        .unwrap_or_else(|e| format!("[error reading blob stream: {}]", e))
-                }
-            };
-            obj.insert("data".to_string(), serde_json::Value::String(data_value));
-            obj.insert(
-                "mimeType".to_string(),
-                serde_json::Value::String(image_content.mime_type.clone()),
-            );
-
-            // Add optional fields
-            if let Some(ref opts) = image_content.options {
-                if let Some(ref annotations) = opts.annotations {
-                    obj.insert(
-                        "annotations".to_string(),
-                        serialize_annotations(annotations),
-                    );
-                }
-                if let Some(ref meta) = opts.meta {
-                    if let Ok(meta_value) = serde_json::from_str::<serde_json::Value>(meta) {
-                        obj.insert("_meta".to_string(), meta_value);
-                    }
-                }
-            }
-
-            serde_json::Value::Object(obj)
-        }
-        ContentBlock::Audio(audio_content) => {
-            let mut obj = serde_json::Map::new();
-            obj.insert(
-                "type".to_string(),
-                serde_json::Value::String("audio".to_string()),
-            );
-
-            // Serialize blob data
-            let data_value = match &audio_content.data {
-                BlobData::Blob(bytes) => {
-                    use base64::{Engine as _, engine::general_purpose};
-                    general_purpose::STANDARD.encode(bytes)
-                }
-                BlobData::BlobStream(stream) => {
-                    // Read the stream with bounded memory
-                    read_blob_stream(stream)
-                        .unwrap_or_else(|e| format!("[error reading blob stream: {}]", e))
-                }
-            };
-            obj.insert("data".to_string(), serde_json::Value::String(data_value));
-            obj.insert(
-                "mimeType".to_string(),
-                serde_json::Value::String(audio_content.mime_type.clone()),
-            );
-
-            // Add optional fields
-            if let Some(ref opts) = audio_content.options {
-                if let Some(ref annotations) = opts.annotations {
-                    obj.insert(
-                        "annotations".to_string(),
-                        serialize_annotations(annotations),
-                    );
-                }
-                if let Some(ref meta) = opts.meta {
-                    if let Ok(meta_value) = serde_json::from_str::<serde_json::Value>(meta) {
-                        obj.insert("_meta".to_string(), meta_value);
-                    }
-                }
-            }
-
-            serde_json::Value::Object(obj)
-        }
-        ContentBlock::ResourceLink(_) | ContentBlock::EmbeddedResource(_) => {
-            // These are not part of SamplingMessage content according to the spec
-            // SamplingMessage only supports Text, Image, and Audio
+    // Use serializer module for full content block serialization
+    // This handles all content types including streams
+    match serializer::convert_content_block(content) {
+        Ok(json_block) => serde_json::to_value(json_block).unwrap_or_else(|e| {
             serde_json::json!({
                 "type": "text",
-                "text": "[unsupported content type in sampling message]"
+                "text": format!("[error serializing content: {}]", e)
             })
-        }
+        }),
+        Err(e) => serde_json::json!({
+            "type": "text",
+            "text": format!("[error converting content: {}]", e)
+        }),
     }
-}
-
-fn serialize_annotations(annotations: &Annotations) -> serde_json::Value {
-    let mut obj = serde_json::Map::new();
-
-    if let Some(ref audience) = annotations.audience {
-        let audience_array: Vec<serde_json::Value> = audience
-            .iter()
-            .map(|role| {
-                serde_json::Value::String(
-                    match role {
-                        Role::User => "user",
-                        Role::Assistant => "assistant",
-                    }
-                    .to_string(),
-                )
-            })
-            .collect();
-        obj.insert(
-            "audience".to_string(),
-            serde_json::Value::Array(audience_array),
-        );
-    }
-
-    if let Some(ref last_modified) = annotations.last_modified {
-        obj.insert(
-            "lastModified".to_string(),
-            serde_json::Value::String(last_modified.clone()),
-        );
-    }
-
-    if let Some(priority) = annotations.priority {
-        obj.insert("priority".to_string(), serde_json::json!(priority));
-    }
-
-    serde_json::Value::Object(obj)
 }
 
 fn serialize_model_preferences(prefs: &ModelPreferences) -> serde_json::Value {
@@ -654,4 +586,20 @@ fn serialize_include_context(ctx: &IncludeContext) -> &'static str {
     }
 }
 
-bindings::export!(HttpMessages with_types_in bindings);
+fn log_level_to_string(level: &LogLevel) -> &'static str {
+    match level {
+        LogLevel::Debug => "debug",
+        LogLevel::Info => "info",
+        LogLevel::Notice => "notice",
+        LogLevel::Warning => "warning",
+        LogLevel::Error => "error",
+        LogLevel::Critical => "critical",
+        LogLevel::Alert => "alert",
+        LogLevel::Emergency => "emergency",
+    }
+}
+
+// Re-export internal modules for use by serializer
+use serializer::convert_content_block;
+
+bindings::export!(HttpServerIo with_types_in bindings);

@@ -1,5 +1,0 @@
-package wasmcp:http-messages@0.1.4;
-
-world http-messages {
-    export wasmcp:mcp-v20250618/server-messages@0.1.3;
-}
