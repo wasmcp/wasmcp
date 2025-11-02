@@ -152,7 +152,7 @@ interface sessions {
 ///
 /// Storage format is an implementation detail managed internally by the
 /// session-store component and is NOT exposed via this WIT interface.
-@since(version = 0.1.4-beta.1)
+@since(version = 0.1.4-beta.2)
 interface session-manager {
     use sessions.{session-error};
 
@@ -168,7 +168,7 @@ interface session-manager {
     /// * `Ok(session-id)` - UUID v4 formatted session identifier
     /// * `Err(session-error)` - Storage or generation error
     ///
-    /// @since(version = 0.1.4-beta.1)
+    /// @since(version = 0.1.4-beta.2)
     initialize: func(store-id: string) -> result<string, session-error>;
 
     /// Validate session exists and is not terminated
@@ -183,7 +183,7 @@ interface session-manager {
     /// * `Err(no-such-session)` - Session does not exist
     /// * `Err(session-error)` - Storage error
     ///
-    /// @since(version = 0.1.4-beta.1)
+    /// @since(version = 0.1.4-beta.2)
     validate: func(session-id: string, store-id: string) -> result<bool, session-error>;
 
     /// Mark session as terminated (soft delete)
@@ -200,7 +200,7 @@ interface session-manager {
     /// * `store-id` - WASI KV bucket name
     /// * `reason` - Optional human-readable termination reason
     ///
-    /// @since(version = 0.1.4-beta.1)
+    /// @since(version = 0.1.4-beta.2)
     mark-terminated: func(
         session-id: string,
         store-id: string,
@@ -214,6 +214,6 @@ interface session-manager {
     ///
     /// Typically called by transport layer during cleanup, not by user tools.
     ///
-    /// @since(version = 0.1.4-beta.1)
+    /// @since(version = 0.1.4-beta.2)
     delete-session: func(session-id: string, store-id: string) -> result<_, session-error>;
 }
