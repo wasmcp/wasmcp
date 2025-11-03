@@ -1,11 +1,11 @@
 [package]
 name = "method-not-found"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-wit-bindgen = "0.46"
+wit-bindgen = "0.47"
 serde_json = "1.0"
