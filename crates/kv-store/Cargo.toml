@@ -1,0 +1,13 @@
+[package]
+name = "kv-store"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wit-bindgen = "0.46"
+
+[features]
+draft2 = []
+
+[lib]
+crate-type = ["cdylib"]
