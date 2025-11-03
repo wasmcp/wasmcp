@@ -20,3 +20,8 @@ server-io = "0.1.0"
 session-store = "0.1.0"
 tools-middleware = "0.1.5"
 transport = "0.1.0"
+
+http-transport = "0.1.4"
+stdio-transport = "0.1.4"
+completions-middleware = "0.1.4"
+http-messages = "0.1.4"
