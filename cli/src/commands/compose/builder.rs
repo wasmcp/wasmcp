@@ -48,6 +48,8 @@ pub struct ComposeOptionsBuilder {
     transport: String,
     output: PathBuf,
     override_transport: Option<String>,
+    override_server_io: Option<String>,
+    override_session_store: Option<String>,
     override_method_not_found: Option<String>,
     deps_dir: Option<PathBuf>,
     skip_download: bool,
@@ -84,6 +86,8 @@ impl ComposeOptionsBuilder {
             transport: "http".to_string(),
             output: PathBuf::from("server.wasm"),
             override_transport: None,
+            override_server_io: None,
+            override_session_store: None,
             override_method_not_found: None,
             deps_dir: None,
             skip_download: false,
@@ -115,6 +119,24 @@ impl ComposeOptionsBuilder {
     /// This allows using a custom transport implementation.
     pub fn override_transport(mut self, spec: impl Into<String>) -> Self {
         self.override_transport = Some(spec.into());
+        self
+    }
+
+    /// Override the server-io component with a custom spec
+    ///
+    /// By default, the server-io component is downloaded from the wasmcp registry.
+    /// This allows using a custom server-io implementation.
+    pub fn override_server_io(mut self, spec: impl Into<String>) -> Self {
+        self.override_server_io = Some(spec.into());
+        self
+    }
+
+    /// Override the session-store component with a custom spec
+    ///
+    /// By default, the session-store component is downloaded from the wasmcp registry.
+    /// This allows using a custom session-store implementation.
+    pub fn override_session_store(mut self, spec: impl Into<String>) -> Self {
+        self.override_session_store = Some(spec.into());
         self
     }
 
@@ -203,6 +225,8 @@ impl ComposeOptionsBuilder {
             output: self.output,
             version_resolver,
             override_transport: self.override_transport,
+            override_server_io: self.override_server_io,
+            override_session_store: self.override_session_store,
             override_method_not_found: self.override_method_not_found,
             deps_dir,
             skip_download: self.skip_download,

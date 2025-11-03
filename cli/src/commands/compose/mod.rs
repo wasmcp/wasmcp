@@ -47,8 +47,8 @@ mod wrapping;
 
 // Internal imports from submodules
 use self::framework::{
-    resolve_http_messages_component, resolve_method_not_found_component,
-    resolve_transport_component,
+    resolve_method_not_found_component, resolve_server_io_component,
+    resolve_session_store_component, resolve_transport_component,
 };
 use self::output::{
     print_handler_pipeline_diagram, print_handler_success_message, print_pipeline_diagram,
@@ -82,6 +82,12 @@ pub struct ComposeOptions {
 
     /// Override transport component (path or package spec)
     pub override_transport: Option<String>,
+
+    /// Override server-io component (path or package spec)
+    pub override_server_io: Option<String>,
+
+    /// Override session-store component (path or package spec)
+    pub override_session_store: Option<String>,
 
     /// Override method-not-found component (path or package spec)
     pub override_method_not_found: Option<String>,
@@ -126,6 +132,8 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         output,
         version_resolver,
         override_transport,
+        override_server_io,
+        override_session_store,
         override_method_not_found,
         deps_dir,
         skip_download,
@@ -143,6 +151,8 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 output,
                 version_resolver,
                 override_transport,
+                override_server_io,
+                override_session_store,
                 override_method_not_found,
                 deps_dir,
                 skip_download,
@@ -173,6 +183,8 @@ async fn compose_server(
     output: PathBuf,
     version_resolver: VersionResolver,
     override_transport: Option<String>,
+    override_server_io: Option<String>,
+    override_session_store: Option<String>,
     override_method_not_found: Option<String>,
     deps_dir: PathBuf,
     skip_download: bool,
@@ -219,8 +231,29 @@ async fn compose_server(
 
     // Resolve transport component
     let transport_path = resolve_transport_component(
-        &transport,
         override_transport.as_deref(),
+        &version_resolver,
+        &deps_dir,
+        &client,
+        skip_download,
+        verbose,
+    )
+    .await?;
+
+    // Resolve server-io component
+    let server_io_path = resolve_server_io_component(
+        override_server_io.as_deref(),
+        &version_resolver,
+        &deps_dir,
+        &client,
+        skip_download,
+        verbose,
+    )
+    .await?;
+
+    // Resolve session-store component
+    let session_store_path = resolve_session_store_component(
+        override_session_store.as_deref(),
         &version_resolver,
         &deps_dir,
         &client,
@@ -240,22 +273,6 @@ async fn compose_server(
     )
     .await?;
 
-    // Resolve http-messages component for http transport
-    let http_messages_path = if transport == "http" {
-        Some(
-            resolve_http_messages_component(
-                &version_resolver,
-                &deps_dir,
-                &client,
-                skip_download,
-                verbose,
-            )
-            .await?,
-        )
-    } else {
-        None
-    };
-
     // Auto-detect and wrap capability components (tools, resources, etc.)
     if verbose {
         println!("\nDetecting component types...");
@@ -272,9 +289,10 @@ async fn compose_server(
     // Build and encode the composition
     let bytes = graph::build_composition(
         &transport_path,
+        &server_io_path,
+        &session_store_path,
         &wrapped_components,
         &method_not_found_path,
-        http_messages_path.as_deref(),
         &transport,
         &version_resolver,
         verbose,
@@ -573,18 +591,6 @@ mod tests {
     }
 
     /// Test http messages path handling
-    #[test]
-    fn test_http_messages_conditional() {
-        // HTTP transport should include messages
-        let transport = "http";
-        let should_include = transport == "http";
-        assert!(should_include);
-
-        // Stdio transport should not include messages
-        let transport = "stdio";
-        let should_include = transport == "http";
-        assert!(!should_include);
-    }
 
     #[test]
     fn test_compose_options_builder_chaining() {

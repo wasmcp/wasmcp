@@ -152,13 +152,21 @@ enum ComposeCommand {
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
 
-        /// Version overrides for specific components (e.g., --version-override http-messages=0.1.0)
+        /// Version overrides for specific components (e.g., --version-override transport=0.2.0)
         #[arg(long = "version-override", value_name = "COMPONENT=VERSION")]
         version_overrides: Vec<String>,
 
         /// Override transport component (path or package spec)
         #[arg(long)]
         override_transport: Option<String>,
+
+        /// Override server-io component (path or package spec)
+        #[arg(long)]
+        override_server_io: Option<String>,
+
+        /// Override session-store component (path or package spec)
+        #[arg(long)]
+        override_session_store: Option<String>,
 
         /// Override method-not-found component (path or package spec)
         #[arg(long)]
@@ -491,6 +499,8 @@ async fn main() -> Result<()> {
                 output,
                 version_overrides,
                 override_transport,
+                override_server_io,
+                override_session_store,
                 override_method_not_found,
                 deps_dir,
                 skip_download,
@@ -528,6 +538,8 @@ async fn main() -> Result<()> {
                 // Use other settings as-is
                 let final_transport = transport.to_string();
                 let final_override_transport = override_transport;
+                let final_override_server_io = override_server_io;
+                let final_override_session_store = override_session_store;
                 let final_override_method_not_found = override_method_not_found;
                 let final_force = force;
 
@@ -545,6 +557,8 @@ async fn main() -> Result<()> {
                     output: final_output,
                     version_resolver,
                     override_transport: final_override_transport,
+                    override_server_io: final_override_server_io,
+                    override_session_store: final_override_session_store,
                     override_method_not_found: final_override_method_not_found,
                     deps_dir,
                     skip_download,
@@ -587,6 +601,8 @@ async fn main() -> Result<()> {
                     output: final_output,
                     version_resolver,
                     override_transport: None,
+                    override_server_io: None,
+                    override_session_store: None,
                     override_method_not_found: None,
                     deps_dir,
                     skip_download: false, // Not applicable to handler mode

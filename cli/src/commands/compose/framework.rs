@@ -1,7 +1,7 @@
 //! Framework component resolution
 //!
 //! This module handles resolution and downloading of wasmcp framework components
-//! (transport, method-not-found, http-messages). Framework components are
+//! (transport, server-io, session-store, method-not-found). Framework components are
 //! downloaded from OCI registries and cached locally.
 //!
 //! # Framework Components
@@ -36,24 +36,29 @@ use crate::versioning::VersionResolver;
 /// Represents the different types of framework components that wasmcp
 /// automatically provides for server composition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FrameworkComponent<'a> {
-    /// Transport component (e.g., "http-transport", "stdio-transport")
+pub enum FrameworkComponent {
+    /// Transport component (unified http/stdio)
     ///
     /// Wraps the server with WASI HTTP or CLI interfaces.
-    Transport(&'a str),
+    Transport,
+
+    /// Server I/O component
+    ///
+    /// Provides universal I/O operations (parse_message, send_message, set_frame).
+    ServerIO,
+
+    /// Session store component
+    ///
+    /// Provides session management for stateful MCP servers.
+    SessionStore,
 
     /// Method-not-found terminal handler
     ///
     /// Returns proper MCP errors for unimplemented methods.
     MethodNotFound,
-
-    /// HTTP messages provider
-    ///
-    /// Adds progress/log notification support for HTTP servers.
-    Httpmessages,
 }
 
-impl FrameworkComponent<'_> {
+impl FrameworkComponent {
     /// Get the component name for dependency lookup
     ///
     /// Transforms the framework component type into the package name
@@ -71,9 +76,10 @@ impl FrameworkComponent<'_> {
     /// ```
     pub fn component_name(&self) -> String {
         match self {
-            Self::Transport(transport) => format!("{}-transport", transport),
+            Self::Transport => "transport".to_string(),
+            Self::ServerIO => "server-io".to_string(),
+            Self::SessionStore => "session-store".to_string(),
             Self::MethodNotFound => "method-not-found".to_string(),
-            Self::Httpmessages => "http-messages".to_string(),
         }
     }
 
@@ -93,9 +99,10 @@ impl FrameworkComponent<'_> {
     /// ```
     pub fn display_name(&self) -> &str {
         match self {
-            Self::Transport(_) => "transport",
+            Self::Transport => "transport",
+            Self::ServerIO => "server-io",
+            Self::SessionStore => "session-store",
             Self::MethodNotFound => "method-not-found",
-            Self::Httpmessages => "http-messages",
         }
     }
 
@@ -127,26 +134,11 @@ impl FrameworkComponent<'_> {
             return Ok(());
         }
 
-        match self {
-            Self::Transport(transport) => {
-                if verbose {
-                    println!("\nDownloading framework dependencies...");
-                }
-                dependencies::download_dependencies(transport, resolver, deps_dir, client).await
-            }
-            Self::MethodNotFound | Self::Httpmessages => {
-                // Check if already exists (transport download includes it)
-                let version = resolver.get_version(&self.component_name())?;
-                let pkg =
-                    dependencies::interfaces::package(self.component_name().as_str(), &version);
-                let filename = pkg.replace([':', '/'], "_") + ".wasm";
-                let path = deps_dir.join(&filename);
-                if !path.exists() {
-                    dependencies::download_dependencies("http", resolver, deps_dir, client).await?;
-                }
-                Ok(())
-            }
+        // Download all framework dependencies at once
+        if verbose {
+            println!("\nDownloading framework dependencies...");
         }
+        dependencies::download_dependencies(resolver, deps_dir, client).await
     }
 }
 
@@ -176,7 +168,7 @@ impl FrameworkComponent<'_> {
 /// - Framework component download fails
 /// - Component file not found after download
 pub async fn resolve_framework_component(
-    component: FrameworkComponent<'_>,
+    component: FrameworkComponent,
     override_spec: Option<&str>,
     resolver: &VersionResolver,
     deps_dir: &Path,
@@ -198,34 +190,7 @@ pub async fn resolve_framework_component(
 }
 
 /// Resolve transport component (override or default)
-///
-/// Convenience wrapper for resolving transport components specifically.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// # use wasmcp::commands::compose::framework::resolve_transport_component;
-/// # use wasmcp::commands::compose::PackageClient;
-/// # use std::path::Path;
-/// # async fn example() -> anyhow::Result<()> {
-/// let client = PackageClient::new_with_default_config()?;
-/// let deps_dir = Path::new("~/.config/wasmcp/deps");
-///
-/// // Resolve default HTTP transport
-/// let path = resolve_transport_component(
-///     "http",
-///     None,
-///     "0.1.0",
-///     deps_dir,
-///     &client,
-///     false,
-///     true
-/// ).await?;
-/// # Ok(())
-/// # }
-/// ```
 pub async fn resolve_transport_component(
-    transport: &str,
     override_spec: Option<&str>,
     resolver: &VersionResolver,
     deps_dir: &Path,
@@ -234,7 +199,49 @@ pub async fn resolve_transport_component(
     verbose: bool,
 ) -> Result<PathBuf> {
     resolve_framework_component(
-        FrameworkComponent::Transport(transport),
+        FrameworkComponent::Transport,
+        override_spec,
+        resolver,
+        deps_dir,
+        client,
+        skip_download,
+        verbose,
+    )
+    .await
+}
+
+/// Resolve server-io component (override or default)
+pub async fn resolve_server_io_component(
+    override_spec: Option<&str>,
+    resolver: &VersionResolver,
+    deps_dir: &Path,
+    client: &PackageClient,
+    skip_download: bool,
+    verbose: bool,
+) -> Result<PathBuf> {
+    resolve_framework_component(
+        FrameworkComponent::ServerIO,
+        override_spec,
+        resolver,
+        deps_dir,
+        client,
+        skip_download,
+        verbose,
+    )
+    .await
+}
+
+/// Resolve session-store component (override or default)
+pub async fn resolve_session_store_component(
+    override_spec: Option<&str>,
+    resolver: &VersionResolver,
+    deps_dir: &Path,
+    client: &PackageClient,
+    skip_download: bool,
+    verbose: bool,
+) -> Result<PathBuf> {
+    resolve_framework_component(
+        FrameworkComponent::SessionStore,
         override_spec,
         resolver,
         deps_dir,
@@ -268,29 +275,6 @@ pub async fn resolve_method_not_found_component(
     .await
 }
 
-/// Resolve http-messages component (default only, no override)
-///
-/// Convenience wrapper for resolving the HTTP messages component.
-/// This component does not support overrides as it's tightly coupled
-/// to the HTTP transport implementation.
-pub async fn resolve_http_messages_component(
-    resolver: &VersionResolver,
-    deps_dir: &Path,
-    client: &PackageClient,
-    skip_download: bool,
-    verbose: bool,
-) -> Result<PathBuf> {
-    resolve_framework_component(
-        FrameworkComponent::Httpmessages,
-        None,
-        resolver,
-        deps_dir,
-        client,
-        skip_download,
-        verbose,
-    )
-    .await
-}
 
 #[cfg(test)]
 mod tests {
@@ -299,30 +283,33 @@ mod tests {
     /// Test FrameworkComponent::component_name()
     #[test]
     fn test_framework_component_naming() {
-        let http_transport = FrameworkComponent::Transport("http");
-        assert_eq!(http_transport.component_name(), "http-transport");
+        let transport = FrameworkComponent::Transport;
+        assert_eq!(transport.component_name(), "transport");
 
-        let stdio_transport = FrameworkComponent::Transport("stdio");
-        assert_eq!(stdio_transport.component_name(), "stdio-transport");
+        let server_io = FrameworkComponent::ServerIO;
+        assert_eq!(server_io.component_name(), "server-io");
+
+        let session_store = FrameworkComponent::SessionStore;
+        assert_eq!(session_store.component_name(), "session-store");
 
         let mnf = FrameworkComponent::MethodNotFound;
         assert_eq!(mnf.component_name(), "method-not-found");
-
-        let messages = FrameworkComponent::Httpmessages;
-        assert_eq!(messages.component_name(), "http-messages");
     }
 
     /// Test FrameworkComponent::display_name()
     #[test]
     fn test_framework_component_display_names() {
-        let http_transport = FrameworkComponent::Transport("http");
-        assert_eq!(http_transport.display_name(), "transport");
+        let transport = FrameworkComponent::Transport;
+        assert_eq!(transport.display_name(), "transport");
+
+        let server_io = FrameworkComponent::ServerIO;
+        assert_eq!(server_io.display_name(), "server-io");
+
+        let session_store = FrameworkComponent::SessionStore;
+        assert_eq!(session_store.display_name(), "session-store");
 
         let mnf = FrameworkComponent::MethodNotFound;
         assert_eq!(mnf.display_name(), "method-not-found");
-
-        let messages = FrameworkComponent::Httpmessages;
-        assert_eq!(messages.display_name(), "http-messages");
     }
 
     /// Test framework download message format
