@@ -1,0 +1,9 @@
+package wasmcp:jwt-auth@0.1.0;
+
+world jwt-auth {
+    import wasi:cli/environment@0.2.3;
+    import wasi:http/outgoing-handler@0.2.3;
+    import wasmcp:storage/kv@0.1.0;
+
+    export wasmcp:mcp-v20250618/server-auth@0.1.4-beta.2;
+}
