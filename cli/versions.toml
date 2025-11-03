@@ -9,19 +9,14 @@
 [versions]
 # WIT package versions for scaffolding new components
 # These are embedded in generated wit/deps.toml files
-mcp-v20250618 = "0.1.4"
+mcp-v20250618 = "0.1.3"
 
 # Component versions for downloading from registry
-
-method-not-found = "0.1.5"
-prompts-middleware = "0.1.5"
-resources-middleware = "0.1.5"
-server-io = "0.1.0"
-session-store = "0.1.0"
-tools-middleware = "0.1.5"
-transport = "0.1.0"
-
 http-transport = "0.1.4"
 stdio-transport = "0.1.4"
+method-not-found = "0.1.4"
+tools-middleware = "0.1.4"
+resources-middleware = "0.1.4"
+prompts-middleware = "0.1.4"
 completions-middleware = "0.1.4"
 http-messages = "0.1.4"
