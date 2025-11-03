@@ -56,11 +56,13 @@ jobs:
         run: |
           set -e
           for crate in \
-            crates/session-store \
             crates/method-not-found \
             crates/prompts-middleware \
             crates/resources-middleware \
-            crates/tools-middleware; do
+            crates/server-io \
+            crates/session-store \
+            crates/tools-middleware \
+            crates/transport; do
             if [ -d "$crate/wit" ]; then
               echo "Fetching WIT deps for $crate..."
               (cd "$crate" && wit-deps)
