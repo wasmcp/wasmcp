@@ -85,6 +85,16 @@ interface server-io {
         suffix: list<u8>,
     }
 
+    /// Set the message framing for this request
+    ///
+    /// Must be called by the transport before any parse-message or send-message calls.
+    /// The frame is stored in instance-scoped state for the duration of the request.
+    @since(version = 0.1.4)
+    set-frame: func(
+        /// The message frame to use for this request
+        frame: message-frame,
+    ) -> result<_, io-error>;
+
     /// Read and deserialize an incoming message from the client
     @since(version = 0.1.4)
     parse-message: func(
@@ -92,8 +102,6 @@ interface server-io {
         input: borrow<input-stream>,
         /// When to stop reading from the stream
         limit: read-limit,
-        /// The message frame
-        frame: message-frame,
     ) -> result<client-message, io-error>;
 
     /// Serialize and write an outgoing message to the client
@@ -103,8 +111,6 @@ interface server-io {
         output: borrow<output-stream>,
         /// The message to send to the client
         message: server-message,
-        /// The message frame
-        frame: message-frame,
     ) -> result<_, io-error>;
 }
 
