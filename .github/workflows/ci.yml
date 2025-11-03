@@ -167,7 +167,10 @@ jobs:
             -p method-not-found \
             -p prompts-middleware \
             -p resources-middleware \
-            -p tools-middleware
+            -p server-io \
+            -p session-store \
+            -p tools-middleware \
+            -p transport 
 
       - name: Upload component artifacts
         uses: actions/upload-artifact@v4
