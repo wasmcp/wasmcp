@@ -1,4 +1,4 @@
-package wasmcp:resources-middleware@0.1.4;
+package wasmcp:resources-middleware@0.1.5;
 
 world resources-middleware {
     include wasmcp:mcp-v20250618/server-middleware@0.1.4;
