@@ -80,7 +80,10 @@ fn handle_post(
 
     // Load session configuration
     let session_config = SessionConfig::from_env();
-    eprintln!("[TRANSPORT] Session config loaded - enabled: {}", session_config.enabled);
+    eprintln!(
+        "[TRANSPORT] Session config loaded - enabled: {}",
+        session_config.enabled
+    );
 
     // Check for session header and validate if present
     let headers = request.headers();
@@ -661,7 +664,6 @@ fn handle_initialize_request(
     let session_config = SessionConfig::from_env();
     eprintln!("[TRANSPORT] Session config loaded for init");
 
-
     // Create session if enabled
     let new_session_id = if session_config.enabled {
         let bucket = if session_config.bucket_name.is_empty() {
@@ -722,7 +724,7 @@ fn handle_initialize_request(
     eprintln!("[TRANSPORT] Frame set successfully");
 
     // Build InitializeResult using MCP types
-    use crate::bindings::wasmcp::mcp_v20250618::mcp::{InitializeResult, Implementation};
+    use crate::bindings::wasmcp::mcp_v20250618::mcp::{Implementation, InitializeResult};
 
     let init_result = InitializeResult {
         meta: None,

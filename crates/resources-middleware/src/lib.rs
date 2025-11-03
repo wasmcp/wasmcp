@@ -48,8 +48,12 @@ impl Guest for ResourcesMiddleware {
             ClientMessage::Request((request_id, request)) => {
                 // Handle requests - match on request type
                 let result = match &request {
-                    ClientRequest::ResourcesList(list_req) => handle_resources_list(list_req.clone(), &ctx),
-                    ClientRequest::ResourcesRead(read_req) => handle_resources_read(read_req.clone(), &ctx),
+                    ClientRequest::ResourcesList(list_req) => {
+                        handle_resources_list(list_req.clone(), &ctx)
+                    }
+                    ClientRequest::ResourcesRead(read_req) => {
+                        handle_resources_read(read_req.clone(), &ctx)
+                    }
                     ClientRequest::ResourcesTemplatesList(templates_req) => {
                         handle_templates_list(templates_req.clone(), &ctx)
                     }

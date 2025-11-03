@@ -48,7 +48,9 @@ impl Guest for PromptsMiddleware {
             ClientMessage::Request((request_id, request)) => {
                 // Handle requests - match on request type
                 let result = match &request {
-                    ClientRequest::PromptsList(list_req) => handle_prompts_list(list_req.clone(), &ctx),
+                    ClientRequest::PromptsList(list_req) => {
+                        handle_prompts_list(list_req.clone(), &ctx)
+                    }
                     ClientRequest::PromptsGet(get_req) => handle_prompt_get(get_req.clone(), &ctx),
                     _ => {
                         // Delegate all other requests to downstream handler
