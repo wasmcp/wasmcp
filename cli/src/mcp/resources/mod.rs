@@ -225,7 +225,9 @@ async fn read_local_resource(uri: &str, repo_root: &Path) -> Result<ReadResource
             info!("[LOCAL] Matched wit URI pattern");
             let remainder = uri.strip_prefix("wasmcp://wit/").unwrap();
             // For branch-specific: wit/{branch}/{resource} → {resource}
-            let wit_path = if remainder.starts_with("mcp") || remainder.starts_with("server") || remainder.starts_with("sessions")
+            let wit_path = if remainder.starts_with("mcp")
+                || remainder.starts_with("server")
+                || remainder.starts_with("sessions")
             {
                 // No branch: wit/mcp → mcp
                 remainder

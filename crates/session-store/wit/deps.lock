@@ -29,9 +29,9 @@ sha256 = "d2de617fe31ec0abc6072f75f97dd22bf95b3231d5b3111471d73871df9081cd"
 sha512 = "6f0b4e44c684d760c54552e2bde9bc976e0a4f6525fc1d47acb98625e030847276436242f42a41f4da1bb9169fb2968c53d659d61af9b2f709f4eb6f9880e2c7"
 
 [mcp-v20250618]
-path = "../../../spec/2025-06-18/wit"
-sha256 = "18939dbd836da5a4b2f6b5f922a6db9a6c381502c34d9eff609d7e7b4bf15b24"
-sha512 = "03734c29a1787d9e9cb332a008500002c7e4a8587c5f94004145c0820f20f82049f83af3f70bc00b2f9dab9391c4c31831da629b37f01b7f6eb49e1572a60e9e"
+url = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.4/wasmcp-mcp-v2025-06-18-0.1.4-source.tar.gz"
+sha256 = "e084b4a622a04d41b3fa298bae2b300beb10d0e5d79270a7abe5d39199835277"
+sha512 = "54de045d88800585baaccc8fca5b26a99364b4156a75025d5a0a49264c25ee09ac05e936daa1a2b4eb7ab33cf4ba1defc3a5cfbf1f5fb9be79463d09f9d6eaed"
 
 [random]
 url = "https://github.com/WebAssembly/wasi-random/archive/refs/tags/v0.2.3.tar.gz"

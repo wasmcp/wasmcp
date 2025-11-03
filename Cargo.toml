@@ -11,6 +11,10 @@ exclude = [
     "examples/*",
     "tmp/*",
     "crates/wit",
+    # Outdated crates pending removal
+    "crates/http-server-io",
+    "crates/http-transport",
+    "crates/stdio-transport",
 ]
 resolver = "2"
 

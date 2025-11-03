@@ -82,15 +82,6 @@ interface sessions {
             store-id: string,
         ) -> result<session, session-error>;
 
-        /// Delete the session and all associated data in the bucket
-        ///
-        /// This permanently removes the session ID and all key-value pairs.
-        @since(version = 0.1.0)
-        delete: static func(
-            /// The session to delete
-            session: session,
-        ) -> result<_, session-error>;
-
         /// Get the session ID
         ///
         /// This ID should be returned to clients in the Mcp-Session-Id header
@@ -150,12 +141,79 @@ interface sessions {
             /// Optional reason for termination (shown to client)
             reason: option<string>,
         ) -> result<_, session-error>;
-
-        /// Check if the session is terminated
-        ///
-        /// Returns true if terminate() was previously called on this session.
-        /// Terminated sessions can still read data but should not accept new operations.
-        @since(version = 0.1.0)
-        is-terminated: func() -> result<bool, session-error>;
     }
+}
+
+/// Transport-layer session lifecycle management interface
+///
+/// This interface is used by transport components (HTTP, stdio, etc.) to manage
+/// session lifecycle. User tools should NOT import this interface - they use
+/// the session resource instead.
+///
+/// Storage format is an implementation detail managed internally by the
+/// session-store component and is NOT exposed via this WIT interface.
+@since(version = 0.1.4)
+interface session-manager {
+    use sessions.{session-error};
+
+    /// Initialize a new session
+    ///
+    /// Creates a new session with generated UUID, stores initial metadata,
+    /// and returns the session ID for inclusion in response headers.
+    ///
+    /// # Arguments
+    /// * `store-id` - Name of the WASI KV bucket to use for storage
+    ///
+    /// # Returns
+    /// * `Ok(session-id)` - UUID v4 formatted session identifier
+    /// * `Err(session-error)` - Storage or generation error
+    ///
+    /// @since(version = 0.1.4)
+    initialize: func(store-id: string) -> result<string, session-error>;
+
+    /// Validate session exists and is not terminated
+    ///
+    /// Checks that:
+    /// 1. Session exists in storage
+    /// 2. Session is not marked as terminated
+    ///
+    /// # Returns
+    /// * `Ok(true)` - Session is valid and active
+    /// * `Ok(false)` - Session exists but is terminated
+    /// * `Err(no-such-session)` - Session does not exist
+    /// * `Err(session-error)` - Storage error
+    ///
+    /// @since(version = 0.1.4)
+    validate: func(session-id: string, store-id: string) -> result<bool, session-error>;
+
+    /// Mark session as terminated (soft delete)
+    ///
+    /// Updates session metadata to mark as terminated with optional reason.
+    /// Data remains in storage but session cannot be used for new requests.
+    ///
+    /// This is called by:
+    /// * Transport layer when client sends termination request
+    /// * User tools calling session.terminate()
+    ///
+    /// # Arguments
+    /// * `session-id` - Session to terminate
+    /// * `store-id` - WASI KV bucket name
+    /// * `reason` - Optional human-readable termination reason
+    ///
+    /// @since(version = 0.1.4)
+    mark-terminated: func(
+        session-id: string,
+        store-id: string,
+        reason: option<string>
+    ) -> result<_, session-error>;
+
+    /// Delete session from storage (hard delete)
+    ///
+    /// Completely removes session and all associated data from storage.
+    /// This is a destructive operation that cannot be undone.
+    ///
+    /// Typically called by transport layer during cleanup, not by user tools.
+    ///
+    /// @since(version = 0.1.4)
+    delete-session: func(session-id: string, store-id: string) -> result<_, session-error>;
 }

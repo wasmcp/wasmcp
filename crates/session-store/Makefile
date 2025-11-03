@@ -1,16 +1,20 @@
-.PHONY: work setup wit build build-draft build-draft2 clean
+.PHONY: work setup wit build build-draft build-draft2 clean lint
 
 OUT_DIR = ../../target/wasm32-wasip2/release
 COMPONENT_NAME = session_store
 
-work: setup wit build-draft2 build-draft
+work: setup wit build 
 
 setup:
 	@rustup target add wasm32-wasip2
 
 wit:
 	@wit-deps update
-	@WIT_DEPS_PATH=wit-draft2 wit-deps update
+	@wit-deps -d wit-draft2/deps -l wit-draft2/deps.lock -m wit-draft2/deps.toml
+
+lint:
+	@cargo clippy --fix --allow-dirty -- -D warnings
+	@cargo fmt --all
 
 build-draft:
 	@echo "Building sessions for wasmtime/wash (draft)..."
@@ -23,7 +27,7 @@ build-draft2:
 	@mv $(OUT_DIR)/$(COMPONENT_NAME).wasm $(OUT_DIR)/$(COMPONENT_NAME)-d2.wasm
 	@echo "✓ Draft2 version built: $(OUT_DIR)/$(COMPONENT_NAME)-d2.wasm"
 
-build: build-draft
+build: lint build-draft build-draft2
 
 clean:
 	@cargo clean

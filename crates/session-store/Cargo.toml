@@ -1,10 +1,10 @@
 [package]
 name = "session-store"
-version = "0.1.4"
-edition = "2021"
+version = "0.1.0"
+edition = "2024"
 
 [dependencies]
-wit-bindgen = "0.46"
+wit-bindgen = "0.47"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 base64 = "0.22"

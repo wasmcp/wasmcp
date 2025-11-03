@@ -1,0 +1,24 @@
+name: Release Transport
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Component version (e.g. 0.1.0 or 0.1.0-beta.2)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Release Transport
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: transport
+      component-crate: transport
+      version: ${{ inputs.version }}
+      wkg-package: wasmcp:transport
+      tag-prefix: transport-v
+    secrets: inherit

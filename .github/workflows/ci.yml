@@ -30,6 +30,15 @@ concurrency:
 
 env:
   RUST_VERSION: "1.89"
+  # Framework crates that require WIT dependency fetching
+  FRAMEWORK_CRATES: |
+    method-not-found
+    prompts-middleware
+    resources-middleware
+    server-io
+    session-store
+    tools-middleware
+    transport
 
 jobs:
   lint:
@@ -55,15 +64,12 @@ jobs:
       - name: Fetch WIT dependencies
         run: |
           set -e
-          for crate in \
-            crates/session-store \
-            crates/method-not-found \
-            crates/prompts-middleware \
-            crates/resources-middleware \
-            crates/tools-middleware; do
-            if [ -d "$crate/wit" ]; then
-              echo "Fetching WIT deps for $crate..."
-              (cd "$crate" && wit-deps)
+          echo "$FRAMEWORK_CRATES" | while read -r crate; do
+            [ -z "$crate" ] && continue
+            crate_path="crates/$crate"
+            if [ -d "$crate_path/wit" ]; then
+              echo "Fetching WIT deps for $crate_path..."
+              (cd "$crate_path" && wit-deps)
             fi
           done
 
@@ -135,6 +141,9 @@ jobs:
             crates/prompts-middleware
             crates/resources-middleware
             crates/tools-middleware
+            crates/server-io
+            crates/transport
+            crates/session-store
 
       - name: Install wit-deps
         run: |
@@ -145,14 +154,12 @@ jobs:
       - name: Fetch WIT dependencies
         run: |
           set -e
-          for crate in \
-            crates/method-not-found \
-            crates/prompts-middleware \
-            crates/resources-middleware \
-            crates/tools-middleware; do
-            if [ -d "$crate/wit" ]; then
-              echo "Fetching WIT deps for $crate..."
-              (cd "$crate" && wit-deps)
+          echo "$FRAMEWORK_CRATES" | while read -r crate; do
+            [ -z "$crate" ] && continue
+            crate_path="crates/$crate"
+            if [ -d "$crate_path/wit" ]; then
+              echo "Fetching WIT deps for $crate_path..."
+              (cd "$crate_path" && wit-deps)
             fi
           done
 
@@ -162,7 +169,10 @@ jobs:
             -p method-not-found \
             -p prompts-middleware \
             -p resources-middleware \
-            -p tools-middleware
+            -p server-io \
+            -p session-store \
+            -p tools-middleware \
+            -p transport 
 
       - name: Upload component artifacts
         uses: actions/upload-artifact@v4

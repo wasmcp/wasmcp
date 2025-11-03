@@ -349,22 +349,18 @@ impl GuestSession for SessionImpl {
     }
 
     fn terminate(&self, reason: Option<String>) -> Result<(), SessionError> {
-        // Call session-manager interface (self-import pattern)
-        use crate::bindings::wasmcp::mcp_v20250618::session_manager;
-
         eprintln!(
             "[Session] Terminating session {} (user-initiated)",
             self.session_id
         );
 
-        session_manager::mark_terminated(&self.session_id, &self.store_id, reason.as_deref())
+        // Call internal SessionManager implementation directly
+        SessionManager::mark_terminated(self.session_id.clone(), self.store_id.clone(), reason)
             .map_err(|e| match e {
-                session_manager::SessionError::Store(msg) => SessionError::Store(msg),
-                session_manager::SessionError::NoSuchSession => SessionError::NoSuchSession,
-                session_manager::SessionError::Unexpected(msg) => SessionError::Unexpected(msg),
-                session_manager::SessionError::Io(_) => {
-                    SessionError::Unexpected("IO error".to_string())
-                }
+                ManagerError::Store(msg) => SessionError::Store(msg),
+                ManagerError::NoSuchSession => SessionError::NoSuchSession,
+                ManagerError::Unexpected(msg) => SessionError::Unexpected(msg),
+                ManagerError::Io(_) => SessionError::Unexpected("IO error".to_string()),
             })
     }
 }
@@ -423,13 +419,13 @@ fn validate_value_size(value: &[u8]) -> Result<(), SessionError> {
 
 /// Base64 encode bytes for storage in JSON
 fn base64_encode(bytes: &[u8]) -> String {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
     general_purpose::STANDARD.encode(bytes)
 }
 
 /// Base64 decode string from JSON storage
 fn base64_decode(s: &str) -> Result<Vec<u8>, SessionError> {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
     general_purpose::STANDARD
         .decode(s)
         .map_err(|e| SessionError::Unexpected(format!("Failed to decode base64: {}", e)))
@@ -453,11 +449,22 @@ fn generate_uuid_v4() -> String {
     // Format as lowercase hex with hyphens
     format!(
         "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-        uuid_bytes[0], uuid_bytes[1], uuid_bytes[2], uuid_bytes[3],
-        uuid_bytes[4], uuid_bytes[5],
-        uuid_bytes[6], uuid_bytes[7],
-        uuid_bytes[8], uuid_bytes[9],
-        uuid_bytes[10], uuid_bytes[11], uuid_bytes[12], uuid_bytes[13], uuid_bytes[14], uuid_bytes[15]
+        uuid_bytes[0],
+        uuid_bytes[1],
+        uuid_bytes[2],
+        uuid_bytes[3],
+        uuid_bytes[4],
+        uuid_bytes[5],
+        uuid_bytes[6],
+        uuid_bytes[7],
+        uuid_bytes[8],
+        uuid_bytes[9],
+        uuid_bytes[10],
+        uuid_bytes[11],
+        uuid_bytes[12],
+        uuid_bytes[13],
+        uuid_bytes[14],
+        uuid_bytes[15]
     )
 }
 

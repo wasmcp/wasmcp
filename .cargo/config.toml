@@ -16,8 +16,7 @@ runner = [
     "config",
 ]
 
-# To run tests, you must override the wasm32-wasip2 target.
-# Use: cargo test -p protocol --target <your-host-triple>
-#
-# Or run from the protocol crate directory where it will use host default:
-# cd crates/protocol && cargo test
+# Cargo alias to run tests on native target instead of wasm
+# Usage: cargo test-native (from anywhere in workspace)
+[alias]
+test-native = "test --lib --target aarch64-apple-darwin"
