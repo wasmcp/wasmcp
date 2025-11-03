@@ -55,7 +55,12 @@ jobs:
       - name: Fetch WIT dependencies
         run: |
           set -e
-          for crate in crates/*; do
+          for crate in \
+            crates/session-store \
+            crates/method-not-found \
+            crates/prompts-middleware \
+            crates/resources-middleware \
+            crates/tools-middleware; do
             if [ -d "$crate/wit" ]; then
               echo "Fetching WIT deps for $crate..."
               (cd "$crate" && wit-deps)
@@ -124,7 +129,7 @@ jobs:
         with:
           targets: wasm32-wasip2
           cache-key: components
-          # Cache all component crates (7 framework components)
+          # Cache component crates (4 middleware components built in CI)
           workspaces: |
             crates/method-not-found
             crates/prompts-middleware
@@ -140,15 +145,24 @@ jobs:
       - name: Fetch WIT dependencies
         run: |
           set -e
-          for crate in crates/*; do
+          for crate in \
+            crates/method-not-found \
+            crates/prompts-middleware \
+            crates/resources-middleware \
+            crates/tools-middleware; do
             if [ -d "$crate/wit" ]; then
               echo "Fetching WIT deps for $crate..."
               (cd "$crate" && wit-deps)
             fi
           done
 
-      - name: Build all components
-        run: cargo build --release
+      - name: Build specific components
+        run: |
+          cargo build --release \
+            -p method-not-found \
+            -p prompts-middleware \
+            -p resources-middleware \
+            -p tools-middleware
 
       - name: Upload component artifacts
         uses: actions/upload-artifact@v4
