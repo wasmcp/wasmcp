@@ -47,8 +47,10 @@ mod wrapping;
 
 // Internal imports from submodules
 use self::framework::{
-    resolve_method_not_found_component, resolve_server_io_component,
-    resolve_session_store_component, resolve_transport_component,
+    resolve_method_not_found_component,
+    resolve_server_io_component,
+    resolve_session_store_component,
+    resolve_transport_component,
 };
 use self::output::{
     print_handler_pipeline_diagram, print_handler_success_message, print_pipeline_diagram,
@@ -91,6 +93,15 @@ pub struct ComposeOptions {
 
     /// Override method-not-found component (path or package spec)
     pub override_method_not_found: Option<String>,
+
+    /// Override tools-middleware component (path or package spec)
+    pub override_tools_middleware: Option<String>,
+
+    /// Override resources-middleware component (path or package spec)
+    pub override_resources_middleware: Option<String>,
+
+    /// Override prompts-middleware component (path or package spec)
+    pub override_prompts_middleware: Option<String>,
 
     /// Directory for downloaded dependencies
     pub deps_dir: PathBuf,
@@ -135,6 +146,9 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         override_server_io,
         override_session_store,
         override_method_not_found,
+        override_tools_middleware,
+        override_resources_middleware,
+        override_prompts_middleware,
         deps_dir,
         skip_download,
         force,
@@ -154,6 +168,9 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 override_server_io,
                 override_session_store,
                 override_method_not_found,
+                override_tools_middleware,
+                override_resources_middleware,
+                override_prompts_middleware,
                 deps_dir,
                 skip_download,
                 force,
@@ -166,6 +183,9 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 components,
                 output,
                 version_resolver,
+                override_tools_middleware,
+                override_resources_middleware,
+                override_prompts_middleware,
                 deps_dir,
                 force,
                 verbose,
@@ -186,6 +206,9 @@ async fn compose_server(
     override_server_io: Option<String>,
     override_session_store: Option<String>,
     override_method_not_found: Option<String>,
+    override_tools_middleware: Option<String>,
+    override_resources_middleware: Option<String>,
+    override_prompts_middleware: Option<String>,
     deps_dir: PathBuf,
     skip_download: bool,
     force: bool,
@@ -277,8 +300,16 @@ async fn compose_server(
     if verbose {
         println!("\nDetecting component types...");
     }
-    let wrapped_components =
-        wrapping::wrap_capabilities(component_paths, &deps_dir, &version_resolver, verbose).await?;
+    let wrapped_components = wrapping::wrap_capabilities(
+        component_paths,
+        &deps_dir,
+        &version_resolver,
+        override_tools_middleware.as_deref(),
+        override_resources_middleware.as_deref(),
+        override_prompts_middleware.as_deref(),
+        verbose,
+    )
+    .await?;
 
     // Print composition pipeline (only in verbose mode)
     if verbose {
@@ -314,6 +345,9 @@ async fn compose_handler(
     components: Vec<String>,
     output: PathBuf,
     version_resolver: VersionResolver,
+    override_tools_middleware: Option<String>,
+    override_resources_middleware: Option<String>,
+    override_prompts_middleware: Option<String>,
     deps_dir: PathBuf,
     force: bool,
     verbose: bool,
@@ -356,8 +390,16 @@ async fn compose_handler(
     if verbose {
         println!("\nDetecting component types...");
     }
-    let wrapped_components =
-        wrapping::wrap_capabilities(component_paths, &deps_dir, &version_resolver, verbose).await?;
+    let wrapped_components = wrapping::wrap_capabilities(
+        component_paths,
+        &deps_dir,
+        &version_resolver,
+        override_tools_middleware.as_deref(),
+        override_resources_middleware.as_deref(),
+        override_prompts_middleware.as_deref(),
+        verbose,
+    )
+    .await?;
 
     // Print composition pipeline (only in verbose mode)
     if verbose {

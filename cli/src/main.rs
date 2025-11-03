@@ -172,6 +172,18 @@ enum ComposeCommand {
         #[arg(long)]
         override_method_not_found: Option<String>,
 
+        /// Override tools-middleware component (path or package spec)
+        #[arg(long)]
+        override_tools_middleware: Option<String>,
+
+        /// Override resources-middleware component (path or package spec)
+        #[arg(long)]
+        override_resources_middleware: Option<String>,
+
+        /// Override prompts-middleware component (path or package spec)
+        #[arg(long)]
+        override_prompts_middleware: Option<String>,
+
         /// Directory for dependency components
         #[arg(long, default_value_os_t = default_deps_dir())]
         deps_dir: PathBuf,
@@ -502,6 +514,9 @@ async fn main() -> Result<()> {
                 override_server_io,
                 override_session_store,
                 override_method_not_found,
+                override_tools_middleware,
+                override_resources_middleware,
+                override_prompts_middleware,
                 deps_dir,
                 skip_download,
                 force,
@@ -560,6 +575,9 @@ async fn main() -> Result<()> {
                     override_server_io: final_override_server_io,
                     override_session_store: final_override_session_store,
                     override_method_not_found: final_override_method_not_found,
+                    override_tools_middleware,
+                    override_resources_middleware,
+                    override_prompts_middleware,
                     deps_dir,
                     skip_download,
                     force: final_force,
@@ -604,6 +622,9 @@ async fn main() -> Result<()> {
                     override_server_io: None,
                     override_session_store: None,
                     override_method_not_found: None,
+                    override_tools_middleware: None,
+                    override_resources_middleware: None,
+                    override_prompts_middleware: None,
                     deps_dir,
                     skip_download: false, // Not applicable to handler mode
                     force,
