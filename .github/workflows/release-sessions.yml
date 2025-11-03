@@ -98,7 +98,7 @@ jobs:
       - name: Check if draft variant already exists
         id: check-draft
         run: |
-          if wkg get wasmcp:sessions@${{ inputs.version }} >/dev/null 2>&1; then
+          if wkg get wasmcp:session-store@${{ inputs.version }} >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
             echo "⚠️ Component wasmcp:sessions@${{ inputs.version }} already exists"
             exit 1
@@ -110,7 +110,7 @@ jobs:
       - name: Check if draft2 variant already exists
         id: check-draft2
         run: |
-          if wkg get wasmcp:sessions-d2@${{ inputs.version }} >/dev/null 2>&1; then
+          if wkg get wasmcp:session-store-d2@${{ inputs.version }} >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
             echo "⚠️ Component wasmcp:sessions-d2@${{ inputs.version }} already exists"
             exit 1
@@ -121,12 +121,12 @@ jobs:
 
       - name: Publish draft variant
         run: |
-          wkg publish --package 'wasmcp:sessions@${{ inputs.version }}' target/wasm32-wasip2/release/session_store.wasm
+          wkg publish --package 'wasmcp:session-store@${{ inputs.version }}' target/wasm32-wasip2/release/session_store.wasm
           echo "✅ Published wasmcp:sessions@${{ inputs.version }}"
 
       - name: Publish draft2 variant
         run: |
-          wkg publish --package 'wasmcp:sessions-d2@${{ inputs.version }}' target/wasm32-wasip2/release/session_store-d2.wasm
+          wkg publish --package 'wasmcp:session-store-d2@${{ inputs.version }}' target/wasm32-wasip2/release/session_store-d2.wasm
           echo "✅ Published wasmcp:sessions-d2@${{ inputs.version }}"
 
       - name: Upload component artifacts
