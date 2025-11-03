@@ -1,4 +1,4 @@
-package wasmcp:sessions-d2@0.1.4;
+package wasmcp:sessions-d2@0.1.0;
 
 world sessions-draft2 {
     // Export BOTH interfaces for different consumers
