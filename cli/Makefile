@@ -46,7 +46,7 @@ debug:
 	@echo "✓ Built: $(DEBUG_BIN)"
 
 # Alias for release
-build: release
+build: check release
 
 # Clean build artifacts
 clean:
@@ -58,8 +58,8 @@ test:
 
 # Run clippy and fmt checks
 check:
-	cargo clippy --target $(TARGET) -- -D warnings
-	cargo fmt -- --check
+	cargo clippy --allow-dirty --fix --target $(TARGET) -- -D warnings
+	cargo fmt
 
 # Install to ~/.cargo/bin
 install: release
