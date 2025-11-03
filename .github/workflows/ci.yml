@@ -135,6 +135,9 @@ jobs:
             crates/prompts-middleware
             crates/resources-middleware
             crates/tools-middleware
+            crates/server-io
+            crates/transport
+            crates/session-store
 
       - name: Install wit-deps
         run: |

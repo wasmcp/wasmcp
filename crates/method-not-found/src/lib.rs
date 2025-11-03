@@ -12,18 +12,22 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::server_handler::{
-    ErrorCtx, Guest, NotificationCtx, RequestCtx, ResultCtx,
-};
+use bindings::exports::wasmcp::mcp_v20250618::server_handler::{Guest, MessageContext};
 use bindings::wasmcp::mcp_v20250618::mcp;
 
 struct MethodNotFoundHandler;
 
 impl Guest for MethodNotFoundHandler {
-    fn handle_request(
-        _ctx: RequestCtx,
-        request: mcp::ClientRequest,
-    ) -> Result<mcp::ServerResult, mcp::ErrorCode> {
+    fn handle(
+        _ctx: MessageContext,
+        message: mcp::ClientMessage,
+    ) -> Option<Result<mcp::ServerResult, mcp::ErrorCode>> {
+        // Only handle request messages
+        let mcp::ClientMessage::Request((_request_id, request)) = message else {
+            // Not a request - terminal handler returns None (no response)
+            return None;
+        };
+
         // Determine method name from request variant
         let method = match &request {
             mcp::ClientRequest::Initialize(_) => "initialize",
@@ -42,26 +46,11 @@ impl Guest for MethodNotFoundHandler {
         };
 
         // Return MethodNotFound for all requests
-        Err(mcp::ErrorCode::MethodNotFound(mcp::Error {
+        Some(Err(mcp::ErrorCode::MethodNotFound(mcp::Error {
             code: -32601,
             message: format!("Method not found: {}", method),
             data: None,
-        }))
-    }
-
-    fn handle_notification(_ctx: NotificationCtx, _notification: mcp::ClientNotification) {
-        // Terminal handler - silently ignore notifications
-        // No downstream to forward to, and notifications don't require responses
-    }
-
-    fn handle_result(_ctx: ResultCtx, _result: mcp::ClientResult) {
-        // Terminal handler - silently ignore results
-        // These are responses from client to server, not common in typical flows
-    }
-
-    fn handle_error(_ctx: ErrorCtx, _error: mcp::ErrorCode) {
-        // Terminal handler - silently ignore errors
-        // These are error responses from client to server
+        })))
     }
 }
 

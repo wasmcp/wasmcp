@@ -4,12 +4,8 @@ world sessions {
     // Export BOTH interfaces for different consumers
     // - sessions: User-facing data API (imported by tools/resources)
     // - session-manager: Transport-facing lifecycle API (imported by transports)
-    export wasmcp:mcp-v20250618/sessions@0.1.4;
-    export wasmcp:mcp-v20250618/session-manager@0.1.4;
-
-    // Import session-manager for self-import pattern
-    // Allows SessionImpl.terminate() to call session-manager.mark-terminated()
-    import wasmcp:mcp-v20250618/session-manager@0.1.4;
+    export wasmcp:mcp-v20250618/sessions@0.1.4-beta.2;
+    export wasmcp:mcp-v20250618/session-manager@0.1.4-beta.2;
 
     // WASI imports for storage and UUID generation
     import wasi:keyvalue/store@0.2.0-draft;

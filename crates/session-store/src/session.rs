@@ -349,22 +349,18 @@ impl GuestSession for SessionImpl {
     }
 
     fn terminate(&self, reason: Option<String>) -> Result<(), SessionError> {
-        // Call session-manager interface (self-import pattern)
-        use crate::bindings::wasmcp::mcp_v20250618::session_manager;
-
         eprintln!(
             "[Session] Terminating session {} (user-initiated)",
             self.session_id
         );
 
-        session_manager::mark_terminated(&self.session_id, &self.store_id, reason.as_deref())
+        // Call internal SessionManager implementation directly
+        SessionManager::mark_terminated(self.session_id.clone(), self.store_id.clone(), reason)
             .map_err(|e| match e {
-                session_manager::SessionError::Store(msg) => SessionError::Store(msg),
-                session_manager::SessionError::NoSuchSession => SessionError::NoSuchSession,
-                session_manager::SessionError::Unexpected(msg) => SessionError::Unexpected(msg),
-                session_manager::SessionError::Io(_) => {
-                    SessionError::Unexpected("IO error".to_string())
-                }
+                ManagerError::Store(msg) => SessionError::Store(msg),
+                ManagerError::NoSuchSession => SessionError::NoSuchSession,
+                ManagerError::Unexpected(msg) => SessionError::Unexpected(msg),
+                ManagerError::Io(_) => SessionError::Unexpected("IO error".to_string()),
             })
     }
 }

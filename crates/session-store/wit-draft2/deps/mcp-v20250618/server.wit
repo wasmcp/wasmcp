@@ -1,9 +1,8 @@
 use wasi:io/streams@0.2.3;
 
 /// Server-side MCP message handler.
-////
-/// The handler processes incoming messages and generates appropriate
-/// responses or actions based on the MCP protocol.
+///
+/// Processes incoming messages from clients.
 @since(version = 0.1.0)
 interface server-handler {
     use streams.{
@@ -11,184 +10,141 @@ interface server-handler {
     };
     use mcp.{
         error-code,
-        request-id,
+        client-message,
         server-result,
-        client-request,
-        client-result,
-        client-notification,
+        identity,
+        session,
     };
 
-    /// Identity information from authentication.
-    @since(version = 0.1.2)
-    record identity {
-        /// Raw bearer token as received.
-        jwt: string,
-        /// Validated claims from the JWT payload.
-        claims: list<tuple<string, string>>,
-    }
-
-    /// Session information from the transport.
-    @since(version = 0.1.2)
-    record session {
-        /// The session ID from Mcp-Session-Id header.
-        session-id: string,
-        /// The ID of the session's underlying key-value store.
-        store-id: string,
-    }
-
-    /// Request context passed to handlers.
-    ///
-    /// Contains authentication, session, streaming, and protocol information
-    /// extracted from the transport layer.
-    @since(version = 0.1.0)
-    record request-ctx {
-        /// Unique ID for correlating requests and responses
-        id: request-id,
-        /// MCP protocol version expected by the client
+    /// Incoming message from the client
+    @since(version = 0.1.4-beta.2)
+    record message-context {
+        /// Output stream for sending messages to the client
+        client-stream: option<borrow<output-stream>>,
+        /// MCP protocol version
         protocol-version: string,
-        /// Output stream for sending server-sent messages
-        messages: option<borrow<output-stream>>,
-        /// Authenticated user identity, if available
+        /// Client session details, if available
         session: option<session>,
-        /// User identity information, if available
-        user: option<identity>,
+        /// User identity details, if available
+        identity: option<identity>,
     }
 
-    /// Handle a client request.
-    ///
-    /// Processes an MCP request from the client and returns a response.
-    ///
-    /// Parameters:
-    /// - `request`: Tuple of (request body, request ID for correlation)
-    /// - `options`: Context from transport (auth, session, streams, custom metadata)
-    ///
-    /// Returns the server response or an error code if processing fails.
-    @since(version = 0.1.0)
-    handle-request: func(
-        ctx: request-ctx,
-        request: client-request,
-    ) -> result<server-result, error-code>;
-
-    /// Result context for client responses.
-    ///
-    /// Used when the client responds to a server-initiated request.
-    @since(version = 0.1.0)
-    record result-ctx {
-        /// Unique ID for correlating requests and responses
-        id: request-id,
-        /// MCP protocol version expected by the client
-        protocol-version: string,
-        /// Authenticated user identity, if available
-        session: option<session>,
-        /// User identity information, if available
-        user: option<identity>,
-    }
-
-    /// Handle a client response to a server-initiated request.
-    @since(version = 0.1.0)
-    handle-result: func(
-        ctx: result-ctx,
-        %result: client-result,
-    );
-
-    /// Error context for client error responses.
-    ///
-    /// Used when the client returns an error to a server-initiated request.
-    @since(version = 0.1.0)
-    record error-ctx {
-        /// Unique ID for correlating requests and responses.
-        /// Per JSON-RPC spec, this may be null for some errors.
-        id: option<request-id>,
-        /// MCP protocol version expected by the client
-        protocol-version: string,
-        /// Authenticated user identity, if available
-        session: option<session>,
-        /// User identity information, if available
-        user: option<identity>,
-    }
-
-    /// Handle a client error response.
-    @since(version = 0.1.0)
-    handle-error: func(
-        ctx: error-ctx,
-        error: error-code,
-    );
-
-    /// Notification context for client-initiated notifications.
-    ///
-    /// Contains authentication and session information for handling
-    /// notifications from the client.
-    @since(version = 0.1.0)
-    record notification-ctx {
-        protocol-version: string,
-        /// Authenticated user identity, if available
-        session: option<session>,
-        /// User identity information, if available
-        user: option<identity>,
-    }
-
-    /// Handle a client notification.
-    @since(version = 0.1.0)
-    handle-notification: func(
-        ctx: notification-ctx,
-        notification: client-notification,
-    );
+    /// Handle an incoming message from the client
+    @since(version = 0.1.4-beta.2)
+    handle: func(
+        ctx: message-context,
+        message: client-message,
+    ) -> option<result<server-result, error-code>>;
 }
 
-/// Server-sent MCP messages
+/// Streaming I/O for MCP servers
 ///
-/// This interface provides convenience functions for servers to send MCP notifications and requests
-/// to clients over output streams. Notifications are one-way messages that don't expect responses.
-///
-/// Categories:
-/// - Progress: Real-time updates on long-running operations
-/// - Logging: Send log messages to client's logging system
-/// - List changes: Notify when tools/prompts/resources are added/removed
-/// - Subscriptions: Push updates to subscribed resources/prompts
-/// - Elicitation: Request information from the client (roots, sampling)
-@since(version = 0.1.1)
-interface server-messages {
+/// This interface enables servers to parse and send MCP messages over streams.
+@since(version = 0.1.4-beta.2)
+interface server-io {
     use wasi:io/streams@0.2.3.{
+        input-stream,
         output-stream,
         stream-error,
     };
     use mcp.{
-        server-notification,
-        server-request,
+        client-message,
+        server-message,
     };
 
     /// Errors that can occur when sending messages to the client
-    @since(version = 0.1.1)
-    variant message-error {
+    @since(version = 0.1.4-beta.2)
+    variant io-error {
         /// An I/O error occurred writing to the output stream
-        io(stream-error),
+        %stream(stream-error),
         /// Failed to serialize the notification to JSON-RPC format
         serialization(string),
         /// An unexpected error occurred
         unexpected(string),
+        /// Invalid JSON-RPC message
+        invalid-jsonrpc(string),
+        /// Invalid MCP message
+        invalid-mcp(string),
     }
 
-    /// Send a notification to the client on the current SSE response stream
-    ///
-    /// Notifications are one-way messages that do not expect a response.
-    @since(version = 0.1.1)
-    notify: func(
-        /// Output stream (SSE stream) to send the notification
-        output: borrow<output-stream>,
-        /// The notification to send to the client
-        notification: server-notification,
-    ) -> result<_, message-error>;
+    /// When to stop reading an input stream
+    @since(version = 0.1.4-beta.2)
+    variant read-limit {
+        /// Delimiter chars
+        delimiter(list<u8>),
+        /// Maximum number of bytes to read
+        max-bytes(u64),
+    }
 
-    /// Send a request to the client on the current SSE response stream
+    /// The prefix and suffix bytes to frame outgoing messages with
+    @since(version = 0.1.4-beta.2)
+    record message-frame {
+        /// The prefix bytes to frame outgoing messages with
+        prefix: list<u8>,
+        /// The suffix bytes to frame outgoing messages with
+        suffix: list<u8>,
+    }
+
+    /// Set the message framing for this request
     ///
-    /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
-    @since(version = 0.1.1)
-    request: func(
-        /// Output stream (SSE stream) to send the request
+    /// Must be called by the transport before any parse-message or send-message calls.
+    /// The frame is stored in instance-scoped state for the duration of the request.
+    @since(version = 0.1.4-beta.2)
+    set-frame: func(
+        /// The message frame to use for this request
+        frame: message-frame,
+    ) -> result<_, io-error>;
+
+    /// Read and deserialize an incoming message from the client
+    @since(version = 0.1.4-beta.2)
+    parse-message: func(
+        /// Input stream to read the bytes from
+        input: borrow<input-stream>,
+        /// When to stop reading from the stream
+        limit: read-limit,
+    ) -> result<client-message, io-error>;
+
+    /// Serialize and write an outgoing message to the client
+    @since(version = 0.1.4-beta.2)
+    send-message: func(
+        /// Output stream to send the request over
         output: borrow<output-stream>,
-        /// The request to send to the client
-        request: server-request,
-    ) -> result<_, message-error>;
+        /// The message to send to the client
+        message: server-message,
+    ) -> result<_, io-error>;
+}
+
+/// Decode and validate a JWT
+@since(version = 0.1.4-beta.2)
+interface server-auth {
+    use mcp.{
+        claims,
+        client-message,
+        jwt,
+        session,
+    };
+
+    /// Decode and validate a JWT.
+    /// Returns the decoded claims if successful.
+    ///
+    /// If the token or its signature is invalid or the claims fail validation, it will return an error.
+    @since(version = 0.1.4-beta.2)
+    decode: func(
+        /// JWT from the Authorization header
+        jwt: jwt,
+    ) -> result<claims>;
+
+    /// Authorize a request based on the provided claims.
+    /// Returns true iff the request is authorized.
+    @since(version = 0.1.4-beta.2)
+    authorize: func(
+        /// The incoming message
+        request: client-message,
+        /// Identity claims to authorize against
+        claims: claims,
+        /// The session if enabled
+        session: option<session>,
+    ) -> bool;
 }
 
 /// MCP tools feature
@@ -208,20 +164,20 @@ interface tools {
         call-tool-result,
     };
     use server-handler.{
-        request-ctx,
+        message-context,
     };
 
     /// List tools provided by this component.
     @since(version = 0.1.0)
     list-tools: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: list-tools-request,
     ) -> result<list-tools-result, error-code>;
 
     /// Execute a tool call. Return none for unrecognized tools.
     @since(version = 0.1.0)
     call-tool: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: call-tool-request,
     ) -> result<option<call-tool-result>, error-code>;
 }
@@ -244,27 +200,27 @@ interface resources {
         list-resource-templates-result,
     };
     use server-handler.{
-        request-ctx,
+        message-context,
     };
 
     /// List resources provided by this component.
     @since(version = 0.1.0)
     list-resources: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: list-resources-request,
     ) -> result<list-resources-result, error-code>;
 
     /// Read a resource by URI. Return none for unrecognized URIs.
     @since(version = 0.1.0)
     read-resource: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: read-resource-request,
     ) -> result<option<read-resource-result>, error-code>;
 
     /// List resource templates (RFC 6570 URI templates).
     @since(version = 0.1.0)
     list-resource-templates: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: list-resource-templates-request,
     ) -> result<list-resource-templates-result, error-code>;
 }
@@ -285,20 +241,20 @@ interface prompts {
         get-prompt-result,
     };
     use server-handler.{
-        request-ctx,
+        message-context,
     };
 
     /// List prompts provided by this component.
     @since(version = 0.1.0)
     list-prompts: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: list-prompts-request,
     ) -> result<list-prompts-result, error-code>;
 
     /// Get a prompt by name. Return none for unrecognized prompts.
     @since(version = 0.1.0)
     get-prompt: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: get-prompt-request,
     ) -> result<option<get-prompt-result>, error-code>;
 }
@@ -317,14 +273,14 @@ interface completions {
         complete-result,
     };
     use server-handler.{
-        request-ctx,
+        message-context,
     };
 
     /// Provide completion suggestions for prompt or resource arguments.
     /// Return none for unsupported references.
     @since(version = 0.1.0)
     complete: func(
-        ctx: request-ctx,
+        ctx: message-context,
         request: complete-request,
     ) -> result<option<complete-result>, error-code>;
 }
