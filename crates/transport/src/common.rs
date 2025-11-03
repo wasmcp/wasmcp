@@ -42,6 +42,7 @@ pub fn plain_json_frame() -> MessageFrame {
 /// Messages are framed as Server-Sent Events:
 /// - Prefix: "data: "
 /// - Suffix: "\n\n"
+///
 /// Used for writing SSE responses
 pub fn http_sse_frame() -> MessageFrame {
     MessageFrame {

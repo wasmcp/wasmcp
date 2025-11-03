@@ -528,14 +528,6 @@ fn create_method_not_allowed_response() -> Result<OutgoingResponse, String> {
     Ok(response)
 }
 
-/// Convert RequestId to JSON value for JSON-RPC responses
-fn request_id_to_json(request_id: &RequestId) -> serde_json::Value {
-    match request_id {
-        RequestId::String(s) => serde_json::Value::String(s.clone()),
-        RequestId::Number(n) => serde_json::json!(n),
-    }
-}
-
 /// Parse protocol version string to enum
 fn parse_protocol_version(version: &str) -> Result<ProtocolVersion, String> {
     match version {
@@ -754,51 +746,6 @@ fn handle_initialize_request(
     Ok(response)
 }
 
-/// Serialize ServerCapabilities to JSON
-fn serialize_capabilities(
-    caps: &crate::bindings::wasmcp::mcp_v20250618::mcp::ServerCapabilities,
-) -> serde_json::Value {
-    let mut result = serde_json::Map::new();
-
-    if caps.completions.is_some() {
-        result.insert("completions".to_string(), serde_json::json!({}));
-    }
-
-    if caps.logging.is_some() {
-        result.insert("logging".to_string(), serde_json::json!({}));
-    }
-
-    if let Some(ref list_changed) = caps.list_changed {
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::ServerLists;
-
-        if list_changed.contains(ServerLists::TOOLS) {
-            let mut tools_caps = serde_json::Map::new();
-            tools_caps.insert("listChanged".to_string(), serde_json::json!(true));
-            result.insert("tools".to_string(), serde_json::Value::Object(tools_caps));
-        }
-
-        if list_changed.contains(ServerLists::RESOURCES) {
-            let mut resources_caps = serde_json::Map::new();
-            resources_caps.insert("listChanged".to_string(), serde_json::json!(true));
-            result.insert(
-                "resources".to_string(),
-                serde_json::Value::Object(resources_caps),
-            );
-        }
-
-        if list_changed.contains(ServerLists::PROMPTS) {
-            let mut prompts_caps = serde_json::Map::new();
-            prompts_caps.insert("listChanged".to_string(), serde_json::json!(true));
-            result.insert(
-                "prompts".to_string(),
-                serde_json::Value::Object(prompts_caps),
-            );
-        }
-    }
-
-    serde_json::Value::Object(result)
-}
-
 /// Create 202 Accepted response
 fn create_accepted_response() -> Result<OutgoingResponse, String> {
     let response = OutgoingResponse::new(Fields::new());
@@ -806,13 +753,4 @@ fn create_accepted_response() -> Result<OutgoingResponse, String> {
         .set_status_code(202)
         .map_err(|_| "Failed to set status")?;
     Ok(response)
-}
-
-/// Convert ProtocolVersion to string
-fn protocol_version_to_string(version: ProtocolVersion) -> &'static str {
-    match version {
-        ProtocolVersion::V20250618 => "2025-06-18",
-        ProtocolVersion::V20250326 => "2025-03-26",
-        ProtocolVersion::V20241105 => "2024-11-05",
-    }
 }
