@@ -185,11 +185,18 @@ fn build_middleware_chain(
         // Check if this component imports sessions and wire it if so
         if component_imports_sessions(&component_paths[i])? {
             let sessions_export = graph
-                .alias_instance_export(session_store_inst, "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2")
+                .alias_instance_export(
+                    session_store_inst,
+                    "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2",
+                )
                 .context("Failed to get sessions export from session-store")?;
 
             graph
-                .set_instantiation_argument(inst, "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2", sessions_export)
+                .set_instantiation_argument(
+                    inst,
+                    "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2",
+                    sessions_export,
+                )
                 .with_context(|| format!("Failed to wire component-{} sessions import", i))?;
         }
 
@@ -218,25 +225,53 @@ fn wire_transport(
     let transport_inst = graph.instantiate(transport_id);
 
     // Wire transport's server-handler import to the middleware chain
-    graph.set_instantiation_argument(transport_inst, server_handler_interface, handler_export)
+    graph
+        .set_instantiation_argument(transport_inst, server_handler_interface, handler_export)
         .context("Failed to wire transport server-handler import")?;
 
     // Wire transport's server-io import to the server-io service
-    let server_io_export = graph.alias_instance_export(server_io_inst, "wasmcp:mcp-v20250618/server-io@0.1.4-beta.2")
+    let server_io_export = graph
+        .alias_instance_export(
+            server_io_inst,
+            "wasmcp:mcp-v20250618/server-io@0.1.4-beta.2",
+        )
         .context("Failed to get server-io export")?;
-    graph.set_instantiation_argument(transport_inst, "wasmcp:mcp-v20250618/server-io@0.1.4-beta.2", server_io_export)
+    graph
+        .set_instantiation_argument(
+            transport_inst,
+            "wasmcp:mcp-v20250618/server-io@0.1.4-beta.2",
+            server_io_export,
+        )
         .context("Failed to wire transport server-io import")?;
 
     // Wire transport's sessions import to the session-store service
-    let sessions_export = graph.alias_instance_export(session_store_inst, "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2")
+    let sessions_export = graph
+        .alias_instance_export(
+            session_store_inst,
+            "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2",
+        )
         .context("Failed to get sessions export")?;
-    graph.set_instantiation_argument(transport_inst, "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2", sessions_export)
+    graph
+        .set_instantiation_argument(
+            transport_inst,
+            "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2",
+            sessions_export,
+        )
         .context("Failed to wire transport sessions import")?;
 
     // Wire transport's session-manager import to the session-store service
-    let session_manager_export = graph.alias_instance_export(session_store_inst, "wasmcp:mcp-v20250618/session-manager@0.1.4-beta.2")
+    let session_manager_export = graph
+        .alias_instance_export(
+            session_store_inst,
+            "wasmcp:mcp-v20250618/session-manager@0.1.4-beta.2",
+        )
         .context("Failed to get session-manager export")?;
-    graph.set_instantiation_argument(transport_inst, "wasmcp:mcp-v20250618/session-manager@0.1.4-beta.2", session_manager_export)
+    graph
+        .set_instantiation_argument(
+            transport_inst,
+            "wasmcp:mcp-v20250618/session-manager@0.1.4-beta.2",
+            session_manager_export,
+        )
         .context("Failed to wire transport session-manager import")?;
 
     // Export the appropriate WASI interface based on transport type
@@ -581,7 +616,6 @@ mod tests {
         assert_eq!(interface, "wasmcp:mcp-v20250618/server-handler@0.1.0");
         assert!(interface.starts_with("wasmcp:mcp-v20250618/server-handler@"));
     }
-
 
     /// Test error context for component loading
     #[test]

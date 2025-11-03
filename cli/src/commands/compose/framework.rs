@@ -275,7 +275,6 @@ pub async fn resolve_method_not_found_component(
     .await
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

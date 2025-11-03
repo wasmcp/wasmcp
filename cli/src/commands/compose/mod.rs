@@ -47,10 +47,8 @@ mod wrapping;
 
 // Internal imports from submodules
 use self::framework::{
-    resolve_method_not_found_component,
-    resolve_server_io_component,
-    resolve_session_store_component,
-    resolve_transport_component,
+    resolve_method_not_found_component, resolve_server_io_component,
+    resolve_session_store_component, resolve_transport_component,
 };
 use self::output::{
     print_handler_pipeline_diagram, print_handler_success_message, print_pipeline_diagram,
