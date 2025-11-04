@@ -105,47 +105,12 @@ impl FrameworkComponent {
             Self::MethodNotFound => "method-not-found",
         }
     }
-
-    /// Download dependencies if needed for this component
-    ///
-    /// Ensures the framework component is available locally by downloading
-    /// it from the registry if not already cached.
-    ///
-    /// # Arguments
-    ///
-    /// * `resolver` - Version resolver for component versions
-    /// * `deps_dir` - Directory where dependencies are cached
-    /// * `client` - OCI package client for downloads
-    /// * `skip_download` - If true, assume components already exist
-    /// * `verbose` - Show download progress messages
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if download fails or component cannot be found.
-    pub async fn ensure_downloaded(
-        &self,
-        resolver: &VersionResolver,
-        deps_dir: &Path,
-        client: &PackageClient,
-        skip_download: bool,
-        verbose: bool,
-    ) -> Result<()> {
-        if skip_download {
-            return Ok(());
-        }
-
-        // Download all framework dependencies at once
-        if verbose {
-            println!("\nDownloading framework dependencies...");
-        }
-        dependencies::download_dependencies(resolver, deps_dir, client).await
-    }
 }
 
 /// Generic resolver for framework components (transport or method-not-found)
 ///
 /// Resolves a framework component to a local file path, either by using an
-/// override spec or by downloading the default framework component.
+/// override spec or by getting the path to the already-downloaded default component.
 ///
 /// # Arguments
 ///
@@ -153,8 +118,7 @@ impl FrameworkComponent {
 /// * `override_spec` - Optional custom component spec to use instead of default
 /// * `resolver` - Version resolver for component versions
 /// * `deps_dir` - Directory where dependencies are cached
-/// * `client` - OCI package client for downloads
-/// * `skip_download` - If true, assume components already exist
+/// * `client` - OCI package client for downloads (only used for overrides)
 /// * `verbose` - Show resolution messages
 ///
 /// # Returns
@@ -165,15 +129,13 @@ impl FrameworkComponent {
 ///
 /// Returns an error if:
 /// - Override spec cannot be resolved
-/// - Framework component download fails
-/// - Component file not found after download
+/// - Component file not found (call download_dependencies first)
 pub async fn resolve_framework_component(
     component: FrameworkComponent,
     override_spec: Option<&str>,
     resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
-    skip_download: bool,
     verbose: bool,
 ) -> Result<PathBuf> {
     if let Some(spec) = override_spec {
@@ -182,9 +144,6 @@ pub async fn resolve_framework_component(
         }
         resolution::resolve_component_spec(spec, deps_dir, client, verbose).await
     } else {
-        component
-            .ensure_downloaded(resolver, deps_dir, client, skip_download, verbose)
-            .await?;
         dependencies::get_dependency_path(&component.component_name(), resolver, deps_dir)
     }
 }
@@ -195,7 +154,6 @@ pub async fn resolve_transport_component(
     resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
-    skip_download: bool,
     verbose: bool,
 ) -> Result<PathBuf> {
     resolve_framework_component(
@@ -204,7 +162,6 @@ pub async fn resolve_transport_component(
         resolver,
         deps_dir,
         client,
-        skip_download,
         verbose,
     )
     .await
@@ -216,7 +173,6 @@ pub async fn resolve_server_io_component(
     resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
-    skip_download: bool,
     verbose: bool,
 ) -> Result<PathBuf> {
     resolve_framework_component(
@@ -225,7 +181,6 @@ pub async fn resolve_server_io_component(
         resolver,
         deps_dir,
         client,
-        skip_download,
         verbose,
     )
     .await
@@ -237,19 +192,30 @@ pub async fn resolve_session_store_component(
     resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
-    skip_download: bool,
     verbose: bool,
+    runtime: &str,
 ) -> Result<PathBuf> {
-    resolve_framework_component(
-        FrameworkComponent::SessionStore,
-        override_spec,
-        resolver,
-        deps_dir,
-        client,
-        skip_download,
-        verbose,
-    )
-    .await
+    // If override provided, use it
+    if let Some(spec) = override_spec {
+        if verbose {
+            println!("\nUsing override session-store: {}", spec);
+        }
+        return resolution::resolve_component_spec(spec, deps_dir, client, verbose).await;
+    }
+
+    // Determine package name based on runtime
+    // "spin" uses session-store-d2 (draft 2 WASI)
+    // "wasmcloud" and "wasmtime" use session-store (standard WASI)
+    let component_name = match runtime {
+        "spin" => "session-store-d2",
+        "wasmcloud" | "wasmtime" => "session-store",
+        _ => anyhow::bail!(
+            "unsupported runtime: '{}' (must be 'spin', 'wasmcloud', or 'wasmtime')",
+            runtime
+        ),
+    };
+
+    dependencies::get_dependency_path(component_name, resolver, deps_dir)
 }
 
 /// Resolve method-not-found component (override or default)
@@ -260,7 +226,6 @@ pub async fn resolve_method_not_found_component(
     resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
-    skip_download: bool,
     verbose: bool,
 ) -> Result<PathBuf> {
     resolve_framework_component(
@@ -269,7 +234,6 @@ pub async fn resolve_method_not_found_component(
         resolver,
         deps_dir,
         client,
-        skip_download,
         verbose,
     )
     .await

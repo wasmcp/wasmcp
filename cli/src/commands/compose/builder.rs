@@ -58,6 +58,7 @@ pub struct ComposeOptionsBuilder {
     skip_download: bool,
     force: bool,
     verbose: bool,
+    runtime: String,
 }
 
 #[allow(dead_code)] // Public API - used by external consumers, not internally yet
@@ -99,6 +100,7 @@ impl ComposeOptionsBuilder {
             skip_download: false,
             force: false,
             verbose: false,
+            runtime: "spin".to_string(),
         }
     }
 
@@ -242,6 +244,7 @@ impl ComposeOptionsBuilder {
             force: self.force,
             verbose: self.verbose,
             mode: CompositionMode::Server, // Builder defaults to server mode
+            runtime: self.runtime,
         })
     }
 }

@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
 use super::dependencies;
+use super::interfaces::{DEFAULT_SPEC_VERSION, InterfaceType};
 use crate::versioning::VersionResolver;
 
 /// Package IDs for composition
@@ -45,17 +46,34 @@ pub async fn build_composition(
 ) -> Result<Vec<u8>> {
     // Discover interface versions from actual components before building graph
     // This decouples composition from our version manifest
-    let server_handler_interface = find_component_export(
-        method_not_found_path,
-        "wasmcp:mcp-v20250618/server-handler@",
-    )
-    .context("Failed to discover server-handler interface from method-not-found component")?;
+    let server_handler_prefix = InterfaceType::ServerHandler.interface_prefix(DEFAULT_SPEC_VERSION);
+    let server_handler_interface =
+        find_component_export(method_not_found_path, &server_handler_prefix).context(
+            "Failed to discover server-handler interface from method-not-found component",
+        )?;
+
+    // Discover interface names from the components that EXPORT them
+    // This ensures alias_instance_export gets the exact names the components use
+    let server_io_prefix = InterfaceType::ServerIo.interface_prefix(DEFAULT_SPEC_VERSION);
+    let server_io_interface = find_component_export(server_io_path, &server_io_prefix)
+        .context("Failed to discover server-io interface from server-io component")?;
+
+    let sessions_prefix = InterfaceType::Sessions.interface_prefix(DEFAULT_SPEC_VERSION);
+    let sessions_interface = find_component_export(session_store_path, &sessions_prefix)
+        .context("Failed to discover sessions interface from session-store component")?;
+
+    let session_manager_prefix =
+        InterfaceType::SessionManager.interface_prefix(DEFAULT_SPEC_VERSION);
+    let session_manager_interface =
+        find_component_export(session_store_path, &session_manager_prefix)
+            .context("Failed to discover session-manager interface from session-store component")?;
 
     if verbose {
-        println!(
-            "   Discovered server-handler interface: {}",
-            server_handler_interface
-        );
+        println!("   Discovered interfaces:");
+        println!("     server-handler: {}", server_handler_interface);
+        println!("     server-io: {}", server_io_interface);
+        println!("     sessions: {}", sessions_interface);
+        println!("     session-manager: {}", session_manager_interface);
     }
 
     let mut graph = CompositionGraph::new();
@@ -63,6 +81,13 @@ pub async fn build_composition(
     // Load and register all components
     if verbose {
         println!("   Loading components...");
+        println!("     transport: {}", transport_path.display());
+        println!("     server-io: {}", server_io_path.display());
+        println!("     session-store: {}", session_store_path.display());
+        println!("     method-not-found: {}", method_not_found_path.display());
+        for (i, path) in component_paths.iter().enumerate() {
+            println!("     component-{}: {}", i, path.display());
+        }
     }
     let packages = load_and_register_components(
         &mut graph,
@@ -74,6 +99,34 @@ pub async fn build_composition(
     )?;
 
     // Instantiate service components first (needed for middleware wiring)
+    if verbose {
+        println!("   Instantiating service components...");
+
+        // Check what transport actually imports BEFORE instantiation
+        eprintln!("\n[DEBUG] ==================== COMPONENT ANALYSIS ====================");
+        eprintln!("[DEBUG] Transport imports:");
+        if let Ok(imports) = check_component_imports(transport_path) {
+            for import in imports {
+                eprintln!("[DEBUG]   - {}", import);
+            }
+        }
+
+        eprintln!("\n[DEBUG] Server-io exports:");
+        if let Ok(exports) = check_component_exports(server_io_path) {
+            for export in exports {
+                eprintln!("[DEBUG]   - {}", export);
+            }
+        }
+
+        eprintln!("\n[DEBUG] Session-store exports:");
+        if let Ok(exports) = check_component_exports(session_store_path) {
+            for export in exports {
+                eprintln!("[DEBUG]   - {}", export);
+            }
+        }
+        eprintln!("[DEBUG] ==================== END COMPONENT ANALYSIS ====================\n");
+    }
+
     let server_io_inst = graph.instantiate(packages.server_io_id);
     let session_store_inst = graph.instantiate(packages.session_store_id);
 
@@ -84,9 +137,12 @@ pub async fn build_composition(
     let handler_export = build_middleware_chain(
         &mut graph,
         &packages,
+        server_io_inst,
         session_store_inst,
         component_paths,
         &server_handler_interface,
+        &server_io_interface,
+        &sessions_interface,
     )?;
 
     // Wire transport and export interface
@@ -98,6 +154,12 @@ pub async fn build_composition(
         handler_export,
         transport_type,
         &server_handler_interface,
+        &server_io_interface,
+        &sessions_interface,
+        &session_manager_interface,
+        transport_path,
+        server_io_path,
+        session_store_path,
     )?;
 
     // Encode the composition
@@ -160,9 +222,12 @@ fn load_and_register_components(
 fn build_middleware_chain(
     graph: &mut CompositionGraph,
     packages: &CompositionPackages,
+    server_io_inst: wac_graph::NodeId,
     session_store_inst: wac_graph::NodeId,
     component_paths: &[PathBuf],
     server_handler_interface: &str,
+    server_io_interface: &str,
+    sessions_interface: &str,
 ) -> Result<wac_graph::NodeId> {
     // Start with method-not-found as the terminal handler
     let prev_inst = graph.instantiate(packages.method_not_found_id);
@@ -182,21 +247,25 @@ fn build_middleware_chain(
             .set_instantiation_argument(inst, server_handler_interface, next_handler_export)
             .with_context(|| format!("Failed to wire component-{} server-handler import", i))?;
 
+        // Check if this component imports server-io and wire it if so
+        if component_imports_interface(&component_paths[i], server_io_interface)? {
+            let server_io_export = graph
+                .alias_instance_export(server_io_inst, server_io_interface)
+                .context("Failed to get server-io export from server-io")?;
+
+            graph
+                .set_instantiation_argument(inst, server_io_interface, server_io_export)
+                .with_context(|| format!("Failed to wire component-{} server-io import", i))?;
+        }
+
         // Check if this component imports sessions and wire it if so
-        if component_imports_sessions(&component_paths[i])? {
+        if component_imports_interface(&component_paths[i], sessions_interface)? {
             let sessions_export = graph
-                .alias_instance_export(
-                    session_store_inst,
-                    "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2",
-                )
+                .alias_instance_export(session_store_inst, sessions_interface)
                 .context("Failed to get sessions export from session-store")?;
 
             graph
-                .set_instantiation_argument(
-                    inst,
-                    "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2",
-                    sessions_export,
-                )
+                .set_instantiation_argument(inst, sessions_interface, sessions_export)
                 .with_context(|| format!("Failed to wire component-{} sessions import", i))?;
         }
 
@@ -212,6 +281,7 @@ fn build_middleware_chain(
 }
 
 /// Wire the transport at the front of the chain and export its interface
+#[allow(clippy::too_many_arguments)]
 fn wire_transport(
     graph: &mut CompositionGraph,
     transport_id: wac_graph::PackageId,
@@ -220,63 +290,139 @@ fn wire_transport(
     handler_export: wac_graph::NodeId,
     transport_type: &str,
     server_handler_interface: &str,
+    server_io_interface: &str,
+    sessions_interface: &str,
+    session_manager_interface: &str,
+    transport_path: &Path,
+    server_io_path: &Path,
+    _session_store_path: &Path,
 ) -> Result<()> {
+    eprintln!("\n[WIRE] ==================== WIRING ANALYSIS ====================");
+
     // Instantiate transport
     let transport_inst = graph.instantiate(transport_id);
+    eprintln!("[WIRE] Instantiated transport");
+
+    eprintln!("\n[WIRE] --- Interface Discovery Results ---");
+    eprintln!(
+        "[WIRE] Discovered server-handler: {}",
+        server_handler_interface
+    );
+    eprintln!("[WIRE] Discovered server-io: {}", server_io_interface);
+    eprintln!("[WIRE] Discovered sessions: {}", sessions_interface);
+    eprintln!(
+        "[WIRE] Discovered session-manager: {}",
+        session_manager_interface
+    );
+
+    eprintln!("\n[WIRE] --- Wiring Transport ---");
 
     // Wire transport's server-handler import to the middleware chain
-    graph
-        .set_instantiation_argument(transport_inst, server_handler_interface, handler_export)
-        .context("Failed to wire transport server-handler import")?;
+    eprintln!("[WIRE] 1. Wiring server-handler...");
+    eprintln!("[WIRE]    Interface: {}", server_handler_interface);
+    match graph.set_instantiation_argument(transport_inst, server_handler_interface, handler_export)
+    {
+        Ok(_) => eprintln!("[WIRE]    ✓ Success"),
+        Err(e) => {
+            eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
+            return Err(e).context("Failed to wire transport server-handler import");
+        }
+    }
 
     // Wire transport's server-io import to the server-io service
-    let server_io_export = graph
-        .alias_instance_export(
-            server_io_inst,
-            "wasmcp:mcp-v20250618/server-io@0.1.4-beta.2",
-        )
-        .context("Failed to get server-io export")?;
-    graph
-        .set_instantiation_argument(
-            transport_inst,
-            "wasmcp:mcp-v20250618/server-io@0.1.4-beta.2",
-            server_io_export,
-        )
-        .context("Failed to wire transport server-io import")?;
+    eprintln!("\n[WIRE] 2. Wiring server-io...");
+    eprintln!("[WIRE]    Interface: {}", server_io_interface);
+
+    // Show detailed signature comparison
+    eprintln!("\n[WIRE]    === SIGNATURE COMPARISON ===");
+    eprintln!("[WIRE]    What transport IMPORTS:");
+    match get_interface_details(transport_path, server_io_interface) {
+        Ok(details) => {
+            for line in details.lines() {
+                eprintln!("[WIRE]      {}", line);
+            }
+        }
+        Err(e) => eprintln!("[WIRE]      ERROR: {}", e),
+    }
+
+    eprintln!("\n[WIRE]    What server-io EXPORTS:");
+    match get_interface_details(server_io_path, server_io_interface) {
+        Ok(details) => {
+            for line in details.lines() {
+                eprintln!("[WIRE]      {}", line);
+            }
+        }
+        Err(e) => eprintln!("[WIRE]      ERROR: {}", e),
+    }
+    eprintln!("[WIRE]    === END SIGNATURE COMPARISON ===\n");
+
+    eprintln!("[WIRE]    Attempting to get export from server-io instance...");
+    let server_io_export = match graph.alias_instance_export(server_io_inst, server_io_interface) {
+        Ok(export) => {
+            eprintln!("[WIRE]    ✓ Got export from server-io");
+            export
+        }
+        Err(e) => {
+            eprintln!("[WIRE]    ✗ FAILED to get export: {:?}", e);
+            eprintln!(
+                "[WIRE]    This means server-io does NOT export '{}'",
+                server_io_interface
+            );
+            return Err(e).with_context(|| format!("Failed to get server-io export for interface '{}'. Server-io component may not export this exact interface name.", server_io_interface));
+        }
+    };
+
+    eprintln!("[WIRE]    Attempting to wire transport import to server-io export...");
+    match graph.set_instantiation_argument(transport_inst, server_io_interface, server_io_export) {
+        Ok(_) => eprintln!("[WIRE]    ✓ Success"),
+        Err(e) => {
+            eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
+            return Err(e).with_context(|| {
+                format!(
+                    "Failed to wire transport server-io import for interface '{}'",
+                    server_io_interface
+                )
+            });
+        }
+    }
 
     // Wire transport's sessions import to the session-store service
+    eprintln!("\n[WIRE] 3. Wiring sessions...");
+    eprintln!("[WIRE]    Interface: {}", sessions_interface);
     let sessions_export = graph
-        .alias_instance_export(
-            session_store_inst,
-            "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2",
-        )
+        .alias_instance_export(session_store_inst, sessions_interface)
         .context("Failed to get sessions export")?;
-    graph
-        .set_instantiation_argument(
-            transport_inst,
-            "wasmcp:mcp-v20250618/sessions@0.1.4-beta.2",
-            sessions_export,
-        )
-        .context("Failed to wire transport sessions import")?;
+    match graph.set_instantiation_argument(transport_inst, sessions_interface, sessions_export) {
+        Ok(_) => eprintln!("[WIRE]    ✓ Success"),
+        Err(e) => {
+            eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
+            return Err(e).context("Failed to wire transport sessions import");
+        }
+    }
 
     // Wire transport's session-manager import to the session-store service
+    eprintln!("\n[WIRE] 4. Wiring session-manager...");
+    eprintln!("[WIRE]    Interface: {}", session_manager_interface);
     let session_manager_export = graph
-        .alias_instance_export(
-            session_store_inst,
-            "wasmcp:mcp-v20250618/session-manager@0.1.4-beta.2",
-        )
+        .alias_instance_export(session_store_inst, session_manager_interface)
         .context("Failed to get session-manager export")?;
-    graph
-        .set_instantiation_argument(
-            transport_inst,
-            "wasmcp:mcp-v20250618/session-manager@0.1.4-beta.2",
-            session_manager_export,
-        )
-        .context("Failed to wire transport session-manager import")?;
+    match graph.set_instantiation_argument(
+        transport_inst,
+        session_manager_interface,
+        session_manager_export,
+    ) {
+        Ok(_) => eprintln!("[WIRE]    ✓ Success"),
+        Err(e) => {
+            eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
+            return Err(e).context("Failed to wire transport session-manager import");
+        }
+    }
 
+    eprintln!("\n[WIRE] --- Exporting Transport Interface ---");
     // Export the appropriate WASI interface based on transport type
     match transport_type {
         "http" => {
+            eprintln!("[WIRE] Exporting HTTP handler interface");
             let http_handler = graph.alias_instance_export(
                 transport_inst,
                 dependencies::interfaces::WASI_HTTP_HANDLER,
@@ -284,12 +430,15 @@ fn wire_transport(
             graph.export(http_handler, dependencies::interfaces::WASI_HTTP_HANDLER)?;
         }
         "stdio" => {
+            eprintln!("[WIRE] Exporting CLI run interface");
             let cli_run = graph
                 .alias_instance_export(transport_inst, dependencies::interfaces::WASI_CLI_RUN)?;
             graph.export(cli_run, dependencies::interfaces::WASI_CLI_RUN)?;
         }
         _ => anyhow::bail!("unsupported transport type: '{}'", transport_type),
     }
+
+    eprintln!("[WIRE] ==================== WIRING COMPLETE ====================\n");
 
     Ok(())
 }
@@ -406,14 +555,175 @@ pub fn load_package(
     name: &str,
     path: &Path,
 ) -> Result<wac_graph::types::Package> {
-    wac_graph::types::Package::from_file(&format!("wasmcp:{}", name), None, path, graph.types_mut())
-        .with_context(|| {
-            format!(
-                "Failed to load component '{}' from {}",
-                name,
-                path.display()
-            )
-        })
+    eprintln!(
+        "[LOAD] Loading component '{}' from {}",
+        name,
+        path.display()
+    );
+    let package = wac_graph::types::Package::from_file(
+        &format!("wasmcp:{}", name),
+        None,
+        path,
+        graph.types_mut(),
+    )
+    .with_context(|| {
+        format!(
+            "Failed to load component '{}' from {}",
+            name,
+            path.display()
+        )
+    })?;
+
+    // Log what this package exports
+    eprintln!("[LOAD]   Component '{}' loaded successfully", name);
+
+    Ok(package)
+}
+
+/// Check what interfaces a component exports (for debugging)
+fn check_component_exports(component_path: &Path) -> Result<Vec<String>> {
+    use wit_component::DecodedWasm;
+
+    let bytes = std::fs::read(component_path)?;
+    let decoded = wit_component::decode(&bytes)?;
+
+    let (resolve, world_id) = match decoded {
+        DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
+        _ => return Ok(vec![]),
+    };
+
+    let world = &resolve.worlds[world_id];
+    let mut exports = Vec::new();
+
+    for (key, _item) in &world.exports {
+        if let wit_parser::WorldKey::Interface(id) = key {
+            let interface = &resolve.interfaces[*id];
+            if let Some(package_id) = interface.package {
+                let package = &resolve.packages[package_id];
+                let full_name = format!(
+                    "{}:{}/{}@{}",
+                    package.name.namespace,
+                    package.name.name,
+                    interface.name.as_ref().unwrap_or(&"unknown".to_string()),
+                    package
+                        .name
+                        .version
+                        .as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "0.0.0".to_string())
+                );
+                exports.push(full_name);
+            }
+        }
+    }
+
+    Ok(exports)
+}
+
+/// Check what interfaces a component imports (for debugging)
+fn check_component_imports(component_path: &Path) -> Result<Vec<String>> {
+    use wit_component::DecodedWasm;
+
+    let bytes = std::fs::read(component_path)?;
+    let decoded = wit_component::decode(&bytes)?;
+
+    let (resolve, world_id) = match decoded {
+        DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
+        _ => return Ok(vec![]),
+    };
+
+    let world = &resolve.worlds[world_id];
+    let mut imports = Vec::new();
+
+    for (key, _item) in &world.imports {
+        if let wit_parser::WorldKey::Interface(id) = key {
+            let interface = &resolve.interfaces[*id];
+            if let Some(package_id) = interface.package {
+                let package = &resolve.packages[package_id];
+                let full_name = format!(
+                    "{}:{}/{}@{}",
+                    package.name.namespace,
+                    package.name.name,
+                    interface.name.as_ref().unwrap_or(&"unknown".to_string()),
+                    package
+                        .name
+                        .version
+                        .as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "0.0.0".to_string())
+                );
+                imports.push(full_name);
+            }
+        }
+    }
+
+    Ok(imports)
+}
+
+/// Get detailed interface information including function signatures
+fn get_interface_details(component_path: &Path, interface_name: &str) -> Result<String> {
+    use wit_component::DecodedWasm;
+
+    let bytes = std::fs::read(component_path)?;
+    let decoded = wit_component::decode(&bytes)?;
+
+    let (resolve, world_id) = match decoded {
+        DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
+        _ => anyhow::bail!("Not a component"),
+    };
+
+    let world = &resolve.worlds[world_id];
+
+    // Search both imports and exports
+    for (key, item) in world.imports.iter().chain(world.exports.iter()) {
+        if let wit_parser::WorldKey::Interface(id) = key {
+            let interface = &resolve.interfaces[*id];
+            if let Some(package_id) = interface.package {
+                let package = &resolve.packages[package_id];
+                let full_name = format!(
+                    "{}:{}/{}@{}",
+                    package.name.namespace,
+                    package.name.name,
+                    interface.name.as_ref().unwrap_or(&"unknown".to_string()),
+                    package
+                        .name
+                        .version
+                        .as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "0.0.0".to_string())
+                );
+
+                if full_name == interface_name {
+                    let mut details = String::new();
+                    details.push_str(&format!("Interface: {}\n", full_name));
+                    details.push_str("Functions:\n");
+
+                    for (func_name, func) in &interface.functions {
+                        details.push_str(&format!("  {}(", func_name));
+
+                        // Parameters
+                        for (i, (param_name, param_type)) in func.params.iter().enumerate() {
+                            if i > 0 {
+                                details.push_str(", ");
+                            }
+                            details.push_str(&format!("{}: {:?}", param_name, param_type));
+                        }
+
+                        details.push(')');
+
+                        // Return type
+                        details.push_str(&format!(" -> {:?}", func.result));
+
+                        details.push('\n');
+                    }
+
+                    return Ok(details);
+                }
+            }
+        }
+    }
+
+    anyhow::bail!("Interface {} not found in component", interface_name)
 }
 
 /// Find an interface export from a component by prefix pattern
@@ -475,11 +785,70 @@ fn find_component_export(component_path: &Path, prefix: &str) -> Result<String> 
     )
 }
 
-/// Check if a component imports the sessions interface
+/// Find an interface import from a component by prefix pattern
 ///
-/// Inspects the component binary to determine if it imports wasmcp:*/sessions@*.
-/// This is used to determine whether to wire session-store's sessions export to this component.
-fn component_imports_sessions(component_path: &Path) -> Result<bool> {
+/// Inspects the component binary to find an import matching the given prefix.
+/// For example, prefix "wasmcp:mcp-v20250618/server-io@" will match "wasmcp:mcp-v20250618/server-io@0.1.4".
+///
+/// Returns the full interface name if found.
+fn find_component_import(component_path: &Path, prefix: &str) -> Result<String> {
+    use wit_component::DecodedWasm;
+
+    // Read the component binary
+    let bytes = std::fs::read(component_path)
+        .with_context(|| format!("Failed to read component from {}", component_path.display()))?;
+
+    // Decode the component to get its WIT metadata
+    let decoded = wit_component::decode(&bytes).context("Failed to decode component")?;
+
+    let (resolve, world_id) = match decoded {
+        DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
+        DecodedWasm::WitPackage(_, _) => {
+            anyhow::bail!("Expected a component, found a WIT package");
+        }
+    };
+
+    let world = &resolve.worlds[world_id];
+
+    // Search imports for matching interface
+    for (key, _item) in &world.imports {
+        if let wit_parser::WorldKey::Interface(id) = key {
+            let interface = &resolve.interfaces[*id];
+            if let Some(package_id) = interface.package {
+                let package = &resolve.packages[package_id];
+                // Build the full interface name: namespace:package/interface@version
+                let full_name = format!(
+                    "{}:{}/{}@{}",
+                    package.name.namespace,
+                    package.name.name,
+                    interface.name.as_ref().unwrap_or(&"unknown".to_string()),
+                    package
+                        .name
+                        .version
+                        .as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "0.0.0".to_string())
+                );
+
+                if full_name.starts_with(prefix) {
+                    return Ok(full_name);
+                }
+            }
+        }
+    }
+
+    anyhow::bail!(
+        "No import found matching prefix '{}' in component at {}",
+        prefix,
+        component_path.display()
+    )
+}
+
+/// Check if a component imports a specific interface
+///
+/// Inspects the component binary to determine if it imports the given interface.
+/// This is used to determine whether to wire service exports to this component.
+fn component_imports_interface(component_path: &Path, interface_name: &str) -> Result<bool> {
     use wit_component::DecodedWasm;
 
     // Read the component binary
@@ -498,20 +867,27 @@ fn component_imports_sessions(component_path: &Path) -> Result<bool> {
 
     let world = &resolve.worlds[world_id];
 
-    // Search imports for sessions interface
+    // Search imports for the specified interface
     for (key, _item) in &world.imports {
         if let wit_parser::WorldKey::Interface(id) = key {
             let interface = &resolve.interfaces[*id];
             if let Some(package_id) = interface.package {
                 let package = &resolve.packages[package_id];
-                // Check if this is a sessions interface from wasmcp namespace
-                if package.name.namespace == "wasmcp"
-                    && interface
+                // Build the full interface name
+                let full_name = format!(
+                    "{}:{}/{}@{}",
+                    package.name.namespace,
+                    package.name.name,
+                    interface.name.as_ref().unwrap_or(&"unknown".to_string()),
+                    package
                         .name
+                        .version
                         .as_ref()
-                        .map(|n| n == "sessions")
-                        .unwrap_or(false)
-                {
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "0.0.0".to_string())
+                );
+
+                if full_name == interface_name {
                     return Ok(true);
                 }
             }

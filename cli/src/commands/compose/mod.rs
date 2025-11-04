@@ -39,6 +39,7 @@ mod builder;
 pub mod dependencies;
 mod framework;
 mod graph;
+pub mod interfaces;
 mod output;
 mod profiles;
 mod resolution;
@@ -115,6 +116,10 @@ pub struct ComposeOptions {
 
     /// Composition mode (Server or Handler)
     pub mode: CompositionMode,
+
+    /// Runtime environment: "spin", "wasmcloud", or "wasmtime"
+    /// Determines which session-store variant to use
+    pub runtime: String,
 }
 
 /// Compose MCP server components into a complete WASM component
@@ -152,6 +157,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         force,
         verbose,
         mode,
+        runtime,
     } = options;
 
     // Branch based on composition mode
@@ -173,6 +179,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 skip_download,
                 force,
                 verbose,
+                runtime,
             )
             .await
         }
@@ -211,6 +218,7 @@ async fn compose_server(
     skip_download: bool,
     force: bool,
     verbose: bool,
+    runtime: String,
 ) -> Result<()> {
     // Validate transport type early (before any expensive operations)
     validate_transport(&transport)?;
@@ -250,13 +258,20 @@ async fn compose_server(
     // Resolve all component specs to local paths
     let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
 
+    // Download framework dependencies once upfront (unless skip_download is set)
+    if !skip_download {
+        if verbose {
+            println!("\nDownloading framework dependencies...");
+        }
+        dependencies::download_dependencies(&version_resolver, &deps_dir, &client).await?;
+    }
+
     // Resolve transport component
     let transport_path = resolve_transport_component(
         override_transport.as_deref(),
         &version_resolver,
         &deps_dir,
         &client,
-        skip_download,
         verbose,
     )
     .await?;
@@ -267,7 +282,6 @@ async fn compose_server(
         &version_resolver,
         &deps_dir,
         &client,
-        skip_download,
         verbose,
     )
     .await?;
@@ -278,8 +292,8 @@ async fn compose_server(
         &version_resolver,
         &deps_dir,
         &client,
-        skip_download,
         verbose,
+        &runtime,
     )
     .await?;
 
@@ -289,7 +303,6 @@ async fn compose_server(
         &version_resolver,
         &deps_dir,
         &client,
-        skip_download,
         verbose,
     )
     .await?;

@@ -583,6 +583,7 @@ async fn main() -> Result<()> {
                     force: final_force,
                     verbose,
                     mode: commands::compose::CompositionMode::Server,
+                    runtime: "spin".to_string(), // Default runtime for now
                 };
 
                 commands::compose::compose(options).await
@@ -630,6 +631,7 @@ async fn main() -> Result<()> {
                     force,
                     verbose,
                     mode: commands::compose::CompositionMode::Handler,
+                    runtime: String::new(), // Not used in handler mode
                 };
 
                 commands::compose::compose(options).await

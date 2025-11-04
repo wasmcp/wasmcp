@@ -447,7 +447,10 @@ mod tests {
             component_paths,
             temp_dir.path(),
             &resolver,
-            false,
+            None,  // override_tools_middleware
+            None,  // override_resources_middleware
+            None,  // override_prompts_middleware
+            false, // verbose
         ));
 
         // Should fail because component doesn't exist
