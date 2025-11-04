@@ -20,6 +20,71 @@ struct CompositionPackages {
     method_not_found_id: wac_graph::PackageId,
 }
 
+// TODO: Complete validation implementation per .agent/wire-troubleshooting.md
+// These structures and methods are scaffolded but not fully wired up yet.
+// Remove #[allow(dead_code)] when implementing the full validation.
+
+/// Tracks unsatisfied imports for validation
+#[derive(Debug)]
+struct UnsatisfiedImports {
+    /// Map of component name -> list of unsatisfied import interfaces
+    imports: std::collections::HashMap<String, Vec<String>>,
+}
+
+#[allow(dead_code)]
+impl UnsatisfiedImports {
+    fn new() -> Self {
+        Self {
+            imports: std::collections::HashMap::new(),
+        }
+    }
+
+    /// Add a component's imports (excluding WASI imports)
+    fn add_component_imports(&mut self, name: String, component_path: &Path) -> Result<()> {
+        let imports = check_component_imports(component_path)?;
+        let non_wasi: Vec<String> = imports
+            .into_iter()
+            .filter(|import| !import.starts_with("wasi:"))
+            .collect();
+
+        if !non_wasi.is_empty() {
+            self.imports.insert(name, non_wasi);
+        }
+        Ok(())
+    }
+
+    /// Mark an import as satisfied for a specific component
+    fn mark_satisfied(&mut self, component_name: &str, interface: &str) {
+        if let Some(imports) = self.imports.get_mut(component_name) {
+            imports.retain(|i| i != interface);
+            if imports.is_empty() {
+                self.imports.remove(component_name);
+            }
+        }
+    }
+
+    /// Check if any imports remain unsatisfied
+    fn has_unsatisfied(&self) -> bool {
+        !self.imports.is_empty()
+    }
+
+    /// Get formatted error message for remaining unsatisfied imports
+    fn error_message(&self) -> String {
+        let mut msg = String::from("Composition has unsatisfied imports:\n");
+        for (component, imports) in &self.imports {
+            msg.push_str(&format!("  Component '{}':\n", component));
+            for import in imports {
+                msg.push_str(&format!("    - {}\n", import));
+            }
+        }
+        msg.push_str("\nThese imports were not wired during composition. ");
+        msg.push_str(
+            "Check that you're wiring all required framework interfaces to user components.",
+        );
+        msg
+    }
+}
+
 /// Build the component composition using wac-graph
 ///
 /// The composition strategy:
@@ -98,6 +163,21 @@ pub async fn build_composition(
         method_not_found_path,
     )?;
 
+    // Track imports for validation
+    let mut unsatisfied = UnsatisfiedImports::new();
+    unsatisfied.add_component_imports("transport".to_string(), transport_path)?;
+    unsatisfied.add_component_imports("method-not-found".to_string(), method_not_found_path)?;
+    for (i, path) in component_paths.iter().enumerate() {
+        unsatisfied.add_component_imports(format!("component-{}", i), path)?;
+    }
+
+    if verbose {
+        eprintln!(
+            "\n[VALIDATION] Tracking {} components with imports to validate",
+            unsatisfied.imports.len()
+        );
+    }
+
     // Instantiate service components first (needed for middleware wiring)
     if verbose {
         println!("   Instantiating service components...");
@@ -143,6 +223,7 @@ pub async fn build_composition(
         &server_handler_interface,
         &server_io_interface,
         &sessions_interface,
+        &mut unsatisfied,
     )?;
 
     // Wire transport and export interface
@@ -228,6 +309,7 @@ fn build_middleware_chain(
     server_handler_interface: &str,
     server_io_interface: &str,
     sessions_interface: &str,
+    _unsatisfied: &mut UnsatisfiedImports,
 ) -> Result<wac_graph::NodeId> {
     // Start with method-not-found as the terminal handler
     let prev_inst = graph.instantiate(packages.method_not_found_id);
@@ -675,7 +757,7 @@ fn get_interface_details(component_path: &Path, interface_name: &str) -> Result<
     let world = &resolve.worlds[world_id];
 
     // Search both imports and exports
-    for (key, item) in world.imports.iter().chain(world.exports.iter()) {
+    for (key, _item) in world.imports.iter().chain(world.exports.iter()) {
         if let wit_parser::WorldKey::Interface(id) = key {
             let interface = &resolve.interfaces[*id];
             if let Some(package_id) = interface.package {
@@ -791,6 +873,10 @@ fn find_component_export(component_path: &Path, prefix: &str) -> Result<String> 
 /// For example, prefix "wasmcp:mcp-v20250618/server-io@" will match "wasmcp:mcp-v20250618/server-io@0.1.4".
 ///
 /// Returns the full interface name if found.
+///
+/// TODO: This was used in an earlier approach but is kept for potential future use.
+/// Remove #[allow(dead_code)] if this becomes needed again.
+#[allow(dead_code)]
 fn find_component_import(component_path: &Path, prefix: &str) -> Result<String> {
     use wit_component::DecodedWasm;
 
