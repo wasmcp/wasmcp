@@ -352,6 +352,10 @@ async fn compose_server(
 }
 
 /// Compose a handler component (without transport/terminal)
+///
+/// TODO: Refactor to reduce argument count (9/7). Consider grouping into a
+/// HandlerCompositionOptions struct (components, overrides, paths, flags).
+#[allow(clippy::too_many_arguments)]
 async fn compose_handler(
     components: Vec<String>,
     output: PathBuf,

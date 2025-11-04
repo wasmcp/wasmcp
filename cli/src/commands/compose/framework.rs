@@ -36,6 +36,7 @@ use crate::versioning::VersionResolver;
 /// Represents the different types of framework components that wasmcp
 /// automatically provides for server composition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum FrameworkComponent {
     /// Transport component (unified http/stdio)
     ///

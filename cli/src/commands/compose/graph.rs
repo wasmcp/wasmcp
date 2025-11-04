@@ -99,6 +99,10 @@ impl UnsatisfiedImports {
 ///
 /// Each component's `server-handler` import is satisfied by the next component's
 /// `server-handler` export, creating a linear middleware pipeline.
+///
+/// TODO: Refactor to reduce argument count (8/7). Consider grouping related parameters
+/// into a CompositionConfig struct (paths, interface names, options).
+#[allow(clippy::too_many_arguments)]
 pub async fn build_composition(
     transport_path: &Path,
     server_io_path: &Path,
@@ -300,6 +304,10 @@ fn load_and_register_components(
 /// Build the middleware chain by connecting components
 ///
 /// Returns the final handler export that should be wired to transport
+///
+/// TODO: Refactor to reduce argument count (9/7). Consider grouping into a
+/// MiddlewareChainConfig struct (instances, interfaces, paths, tracker).
+#[allow(clippy::too_many_arguments)]
 fn build_middleware_chain(
     graph: &mut CompositionGraph,
     packages: &CompositionPackages,
