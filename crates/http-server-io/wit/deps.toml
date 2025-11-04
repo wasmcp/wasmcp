@@ -1,3 +1,4 @@
 io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.3.tar.gz"
 
-mcp-v20250618 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.4-beta.1/wasmcp-mcp-v2025-06-18-0.1.4-beta.1-source.tar.gz"
+[mcp-v20250618]
+path = "../../../spec/2025-06-18/wit"
