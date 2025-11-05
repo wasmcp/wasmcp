@@ -1,9 +1,8 @@
 /// Server-side MCP message handler.
 ///
 /// Processes incoming messages from clients.
-@since(version = 0.1.0)
 interface handler {
-    use wasi:io/streams@0.2.3.{
+    use wasi:io/streams@0.2.8.{
         output-stream,
     };
     use mcp.{
@@ -18,7 +17,6 @@ interface handler {
     };
 
     /// Handle an incoming message from the client
-    @since(version = 0.1.4)
     handle: func(
         ctx: transport-context,
         message: server-message,
@@ -43,14 +41,12 @@ interface tools-handler {
     };
 
     /// List tools provided by this component.
-    @since(version = 0.1.0)
     list-tools: func(
         ctx: request-context,
         request: list-tools-request,
     ) -> result<list-tools-result, error-code>;
 
     /// Execute a tool call. Return none for unrecognized tools.
-    @since(version = 0.1.0)
     call-tool: func(
         ctx: request-context,
         request: call-tool-request,
@@ -60,7 +56,6 @@ interface tools-handler {
 /// Handles MCP resources
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
-@since(version = 0.1.0)
 interface resources-handler {
     use mcp.{
         error-code,
@@ -78,21 +73,18 @@ interface resources-handler {
     };
 
     /// list resources provided by this component.
-    @since(version = 0.1.0)
     list-resources: func(
         ctx: request-context,
         request: list-resources-request,
     ) -> result<list-resources-result, error-code>;
 
     /// read a resource by uri. return none for unrecognized uris.
-    @since(version = 0.1.0)
     read-resource: func(
         ctx: request-context,
         request: read-resource-request,
     ) -> result<option<read-resource-result>, error-code>;
 
     /// list resource templates (rfc 6570 uri templates).
-    @since(version = 0.1.0)
     list-resource-templates: func(
         ctx: request-context,
         request: list-resource-templates-request,
@@ -102,7 +94,6 @@ interface resources-handler {
 /// Handles MCP prompts
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
-@since(version = 0.1.0)
 interface prompts-handler {
     use mcp.{
         error-code,
@@ -118,14 +109,12 @@ interface prompts-handler {
     };
 
     /// List prompts provided by this component.
-    @since(version = 0.1.0)
     list-prompts: func(
         ctx: request-context,
         request: list-prompts-request,
     ) -> result<list-prompts-result, error-code>;
 
     /// Get a prompt by name. Return none for unrecognized prompts.
-    @since(version = 0.1.0)
     get-prompt: func(
         ctx: request-context,
         request: get-prompt-request,
@@ -135,7 +124,6 @@ interface prompts-handler {
 /// Handle MCP completions
 ///
 /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
-@since(version = 0.1.0)
 interface completions-handler {
     use mcp.{
         error-code,
@@ -150,7 +138,6 @@ interface completions-handler {
 
     /// Provide completion suggestions for prompt or resource arguments.
     /// Return none for unsupported references.
-    @since(version = 0.1.0)
     complete: func(
         ctx: request-context,
         request: complete-request,
