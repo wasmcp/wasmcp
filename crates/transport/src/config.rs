@@ -3,6 +3,7 @@
 //! Environment variables:
 //! - `MCP_SESSION_ENABLED`: "true"/"false" (default: "false") - Enable session support
 //! - `MCP_SESSION_BUCKET`: Bucket name (default: "") - KV bucket for sessions
+//! - `MCP_SSE_BUFFER`: "true"/"false" (default: "true") - Buffer SSE messages before sending (safer, works on Fermyon Cloud)
 
 use crate::bindings::wasi::cli::environment::get_environment;
 use std::collections::HashMap;
@@ -12,6 +13,7 @@ use std::collections::HashMap;
 pub struct SessionConfig {
     pub enabled: bool,
     pub bucket_name: String,
+    pub sse_buffer: bool,
 }
 
 impl SessionConfig {
@@ -19,6 +21,7 @@ impl SessionConfig {
     ///
     /// - `MCP_SESSION_ENABLED`: "true"/"false" (case-insensitive, default: false)
     /// - `MCP_SESSION_BUCKET`: Bucket name (default: empty string)
+    /// - `MCP_SSE_BUFFER`: "true"/"false" (case-insensitive, default: true)
     pub fn from_env() -> Self {
         let env_vars = get_environment();
         let env_map: HashMap<String, String> = env_vars.into_iter().collect();
@@ -33,9 +36,15 @@ impl SessionConfig {
             .cloned()
             .unwrap_or_default();
 
+        let sse_buffer = env_map
+            .get("MCP_SSE_BUFFER")
+            .map(|v| v.to_lowercase() == "true")
+            .unwrap_or(true); // Default to buffered mode (safe everywhere)
+
         SessionConfig {
             enabled,
             bucket_name,
+            sse_buffer,
         }
     }
 

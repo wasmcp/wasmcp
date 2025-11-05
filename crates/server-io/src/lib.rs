@@ -78,27 +78,8 @@ impl Guest for ServerIo {
         message: ServerMessage,
         frame: MessageFrame,
     ) -> Result<(), IoError> {
-        // Serialize message to JSON-RPC
-        let json_rpc = serialize_server_message(&message)?;
-
-        // Convert to string
-        let json_str = json_rpc.to_string();
-
-        eprintln!(
-            "[SERVER-IO] Sending message: {}",
-            &json_str[..json_str.len().min(100)]
-        );
-        eprintln!(
-            "[SERVER-IO] Frame prefix: {:?}, suffix: {:?}",
-            String::from_utf8_lossy(&frame.prefix),
-            String::from_utf8_lossy(&frame.suffix)
-        );
-
-        // Apply framing
-        let mut framed = Vec::new();
-        framed.extend_from_slice(&frame.prefix);
-        framed.extend_from_slice(json_str.as_bytes());
-        framed.extend_from_slice(&frame.suffix);
+        // Get framed bytes
+        let framed = serialize_message_to_bytes(message, &frame)?;
 
         eprintln!("[SERVER-IO] Framed message length: {} bytes", framed.len());
 
@@ -109,6 +90,72 @@ impl Guest for ServerIo {
 
         Ok(())
     }
+
+    /// Flush buffered data to stream (for buffered mode)
+    ///
+    /// In buffered mode (MCP_SSE_BUFFER=true), all writes accumulate in memory.
+    /// This function writes the entire buffer to the stream in one blocking operation.
+    fn flush_buffer(output: &OutputStream) -> Result<(), IoError> {
+        if !is_buffer_mode() {
+            eprintln!("[SERVER-IO] Not in buffer mode, nothing to flush");
+            return Ok(());
+        }
+
+        let data = BUFFER.with(|buf| {
+            let borrowed = buf.borrow();
+            borrowed.clone()
+        });
+
+        eprintln!(
+            "[SERVER-IO] Flushing {} bytes via blocking_write_and_flush",
+            data.len()
+        );
+
+        output.blocking_write_and_flush(&data).map_err(|e| {
+            eprintln!("[SERVER-IO] blocking_write_and_flush failed: {:?}", e);
+            IoError::Stream(e)
+        })?;
+
+        // Clear buffer after successful write
+        BUFFER.with(|buf| {
+            buf.borrow_mut().clear();
+        });
+
+        eprintln!("[SERVER-IO] Buffer flushed successfully");
+        Ok(())
+    }
+}
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/// Serialize a message to framed bytes WITHOUT writing to stream
+///
+/// This is exported for transport layer to use in buffered mode.
+/// Returns the complete framed message ready to write.
+fn serialize_message_to_bytes(
+    message: ServerMessage,
+    frame: &MessageFrame,
+) -> Result<Vec<u8>, IoError> {
+    // Serialize message to JSON-RPC
+    let json_rpc = serialize_server_message(&message)?;
+
+    // Convert to string
+    let json_str = json_rpc.to_string();
+
+    eprintln!(
+        "[SERVER-IO] Serializing message to bytes: {}",
+        &json_str[..json_str.len().min(100)]
+    );
+
+    // Apply framing
+    let mut framed = Vec::new();
+    framed.extend_from_slice(&frame.prefix);
+    framed.extend_from_slice(json_str.as_bytes());
+    framed.extend_from_slice(&frame.suffix);
+
+    Ok(framed)
 }
 
 // =============================================================================
@@ -453,8 +500,33 @@ fn strip_framing(raw: &[u8], frame: &MessageFrame) -> Result<Vec<u8>, IoError> {
 // WRITING FUNCTIONS
 // =============================================================================
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+
+thread_local! {
+    static BUFFER: RefCell<Vec<u8>> = RefCell::new(Vec::new());
+}
+
+/// Check if we're in buffer mode
+fn is_buffer_mode() -> bool {
+    std::env::var("MCP_SSE_BUFFER")
+        .ok()
+        .map(|v| v.to_lowercase() == "true")
+        .unwrap_or(true) // Default to buffered
+}
+
 /// Write bytes to output stream with backpressure handling
 fn write_bytes(stream: &OutputStream, data: &[u8]) -> Result<(), IoError> {
+    // Check if we're in buffer mode
+    if is_buffer_mode() {
+        eprintln!("[SERVER-IO] Buffer mode: accumulating {} bytes", data.len());
+        BUFFER.with(|buf| {
+            buf.borrow_mut().extend_from_slice(data);
+        });
+        return Ok(());
+    }
+
+    // Streaming mode: write immediately
     let mut offset = 0;
     eprintln!(
         "[SERVER-IO] write_bytes: total {} bytes to write",
@@ -464,23 +536,8 @@ fn write_bytes(stream: &OutputStream, data: &[u8]) -> Result<(), IoError> {
     while offset < data.len() {
         match stream.check_write() {
             Ok(0) => {
-                eprintln!(
-                    "[SERVER-IO] FATAL: Write budget exhausted at {}/{} bytes",
-                    offset,
-                    data.len()
-                );
-                eprintln!("[SERVER-IO] Spin/WASI HTTP does not support true SSE streaming");
-                eprintln!(
-                    "[SERVER-IO] Runtime buffers entire response before delivering to client"
-                );
-                eprintln!("[SERVER-IO] Cannot use pollable.block() - would deadlock");
                 return Err(IoError::Unexpected(format!(
-                    "Write budget exhausted after {}/{} bytes. \
-                     WASI HTTP runtime limitation: responses fully buffered, \
-                     true streaming not supported. Consider batching notifications \
-                     or reducing payload size.",
-                    offset,
-                    data.len()
+                    "Write budget exhausted in streaming mode. Set MCP_SSE_BUFFER=true for buffered mode."
                 )));
             }
             Ok(budget) => {

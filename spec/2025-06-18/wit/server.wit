@@ -111,6 +111,13 @@ interface server-io {
         /// The message frame to use for sending
         frame: message-frame,
     ) -> result<_, io-error>;
+
+    /// Flush buffered messages to the stream (buffered mode only)
+    @since(version = 0.1.4)
+    flush-buffer: func(
+        /// Output stream to flush to
+        output: borrow<output-stream>,
+    ) -> result<_, io-error>;
 }
 
 /// Decode and validate a JWT

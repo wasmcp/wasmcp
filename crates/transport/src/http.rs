@@ -238,36 +238,86 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
             };
             eprintln!("[TRANSPORT] Output stream acquired for SSE streaming");
 
-            // *** CRITICAL: Set response BEFORE processing request ***
-            // This allows client to start reading while we write notifications
-            eprintln!("[TRANSPORT] Setting response (enables true SSE streaming)");
-            ResponseOutparam::set(response_out, Ok(response));
-            eprintln!("[TRANSPORT] Response set - client can now read stream concurrently");
+            // Check if we should use buffered mode (safer) or streaming mode
+            let config = SessionConfig::from_env();
+            let use_buffered_mode = config.sse_buffer;
 
-            eprintln!("[TRANSPORT] Processing MCP request (streaming notifications via SSE)...");
-            if let Err(e) = handle_mcp_request(
-                request_id,
-                client_request,
-                protocol_version,
-                session_id.as_deref(),
-                &output_stream,
-                &common::http_sse_frame(),
-            ) {
-                eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
-                // Can't send error response now - already set response
-                // Just finish the body
-            }
-            eprintln!("[TRANSPORT] MCP request processing complete, all notifications sent");
+            if use_buffered_mode {
+                // *** BUFFERED MODE: Process request, write will use blocking_write_and_flush() ***
+                eprintln!("[TRANSPORT] Using BUFFERED SSE mode (MCP_SSE_BUFFER=true)");
+                eprintln!("[TRANSPORT] Writes will use blocking API (safe for Fermyon Cloud)");
 
-            eprintln!("[TRANSPORT] Dropping streams...");
-            drop(input_stream);
-            drop(body_stream);
-            drop(output_stream);
-            eprintln!("[TRANSPORT] Streams dropped, finishing body...");
-            if let Err(e) = OutgoingBody::finish(output_body, None) {
-                eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+                // Process request - writes accumulate in server-io buffer
+                eprintln!("[TRANSPORT] Processing MCP request (buffering all writes)...");
+                if let Err(e) = handle_mcp_request(
+                    request_id,
+                    client_request,
+                    protocol_version,
+                    session_id.as_deref(),
+                    &output_stream,
+                    &common::http_sse_frame(),
+                ) {
+                    eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
+                }
+
+                eprintln!("[TRANSPORT] MCP request processing complete, flushing buffer...");
+
+                // Flush the accumulated buffer in ONE write
+                use crate::bindings::wasmcp::mcp_v20250618::server_io;
+                if let Err(e) = server_io::flush_buffer(&output_stream) {
+                    eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
+                } else {
+                    eprintln!("[TRANSPORT] Buffer flushed successfully");
+                }
+
+                // Drop streams
+                drop(input_stream);
+                drop(body_stream);
+                drop(output_stream);
+
+                // Finish body
+                if let Err(e) = OutgoingBody::finish(output_body, None) {
+                    eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+                }
+
+                // NOW set response after everything is written
+                eprintln!("[TRANSPORT] Setting response (buffered mode)");
+                ResponseOutparam::set(response_out, Ok(response));
+                eprintln!("[TRANSPORT] Buffered SSE response complete");
+            } else {
+                // *** STREAMING MODE: Set response first, stream writes as they happen ***
+                eprintln!("[TRANSPORT] Using STREAMING SSE mode (MCP_SSE_BUFFER=false)");
+                eprintln!("[TRANSPORT] Setting response (enables true SSE streaming)");
+                ResponseOutparam::set(response_out, Ok(response));
+                eprintln!("[TRANSPORT] Response set - client can now read stream concurrently");
+
+                eprintln!(
+                    "[TRANSPORT] Processing MCP request (streaming notifications via SSE)..."
+                );
+                if let Err(e) = handle_mcp_request(
+                    request_id,
+                    client_request,
+                    protocol_version,
+                    session_id.as_deref(),
+                    &output_stream,
+                    &common::http_sse_frame(),
+                ) {
+                    eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
+                    // Can't send error response now - already set response
+                    // Just finish the body
+                }
+                eprintln!("[TRANSPORT] MCP request processing complete, all notifications sent");
+
+                eprintln!("[TRANSPORT] Dropping streams...");
+                drop(input_stream);
+                drop(body_stream);
+                drop(output_stream);
+                eprintln!("[TRANSPORT] Streams dropped, finishing body...");
+                if let Err(e) = OutgoingBody::finish(output_body, None) {
+                    eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+                }
+                eprintln!("[TRANSPORT] OutgoingBody::finish() completed - SSE response complete");
             }
-            eprintln!("[TRANSPORT] OutgoingBody::finish() completed - SSE response complete");
         }
         common::McpMessage::Notification(client_notification) => {
             let result = handle_mcp_notification(
@@ -922,6 +972,16 @@ fn handle_initialize_request(
         return;
     }
     eprintln!("[TRANSPORT] Initialize response sent successfully");
+
+    // Flush buffered data if in buffer mode
+    eprintln!("[TRANSPORT] Flushing buffer...");
+    if let Err(e) = server_io::flush_buffer(&output_stream) {
+        eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
+        let err_response = create_error_response(&format!("Failed to flush buffer: {:?}", e));
+        ResponseOutparam::set(response_out, Ok(err_response));
+        return;
+    }
+    eprintln!("[TRANSPORT] Buffer flushed successfully");
 
     drop(output_stream);
     if let Err(e) = OutgoingBody::finish(body, None) {
