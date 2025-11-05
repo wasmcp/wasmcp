@@ -194,14 +194,16 @@ get_latest_version() {
 
     info "Fetching latest version..." >&2
 
-    # Use GitHub API to get latest release
-    version=$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases/latest" \
+    # Use GitHub API to get all releases and filter for CLI releases
+    # This is necessary because the repo contains multiple packages with different tag prefixes
+    version=$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases?per_page=100" \
         | grep '"tag_name"' \
+        | grep '"cli-v' \
         | sed -E 's/.*"cli-v([^"]+)".*/\1/' \
         | head -1)
 
     if [[ -z "$version" ]]; then
-        error "Failed to fetch latest version from GitHub API"
+        error "Failed to fetch latest CLI version from GitHub API"
     fi
 
     # Validate version format
