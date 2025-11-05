@@ -36,6 +36,7 @@ fn to_downstream_ctx<'a>(ctx: &'a MessageContext<'a>) -> downstream::MessageCont
             jwt: i.jwt.clone(),
             claims: i.claims.clone(),
         }),
+        frame: ctx.frame.clone(),
     }
 }
 

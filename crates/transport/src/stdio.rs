@@ -22,17 +22,14 @@ impl Guest for StdioTransportGuest {
         let stdin = get_stdin();
         let stdout = get_stdout();
 
-        // Set stdio framing for this session
-        use crate::bindings::wasmcp::mcp_v20250618::server_io;
-        if let Err(e) = server_io::set_frame(&common::stdio_frame()) {
-            eprintln!("[ERROR] Failed to set frame: {:?}", e);
-            return Err(());
-        }
-
         // Event loop: read messages from stdin, process, write to stdout
         loop {
             // Parse incoming message
-            let message = match common::parse_mcp_message(&stdin, common::stdio_read_limit()) {
+            let message = match common::parse_mcp_message(
+                &stdin,
+                common::stdio_read_limit(),
+                &common::stdio_frame(),
+            ) {
                 Ok(msg) => msg,
                 Err(e) => {
                     eprintln!("[ERROR] Failed to parse message: {}", e);
@@ -55,9 +52,12 @@ impl Guest for StdioTransportGuest {
                             write_error(&stdout, Some(request_id), e);
                             continue;
                         }
-                        if let Err(e) =
-                            common::write_mcp_result(&stdout, request_id, ServerResult::Ping)
-                        {
+                        if let Err(e) = common::write_mcp_result(
+                            &stdout,
+                            request_id,
+                            ServerResult::Ping,
+                            &common::stdio_frame(),
+                        ) {
                             eprintln!("[ERROR] Failed to write ping result: {:?}", e);
                         }
                         continue;
@@ -74,6 +74,7 @@ impl Guest for StdioTransportGuest {
                             &stdout,
                             request_id,
                             ServerResult::LoggingSetLevel,
+                            &common::stdio_frame(),
                         ) {
                             eprintln!("[ERROR] Failed to write setLevel result: {:?}", e);
                         }
@@ -89,9 +90,15 @@ impl Guest for StdioTransportGuest {
                         None,          // No session support in stdio
                         String::new(), // No session bucket in stdio
                         &stdout,
+                        &common::stdio_frame(),
                     ) {
                         Ok(result) => {
-                            if let Err(e) = common::write_mcp_result(&stdout, request_id, result) {
+                            if let Err(e) = common::write_mcp_result(
+                                &stdout,
+                                request_id,
+                                result,
+                                &common::stdio_frame(),
+                            ) {
                                 eprintln!("[ERROR] Failed to write result: {:?}", e);
                             }
                         }
@@ -108,6 +115,7 @@ impl Guest for StdioTransportGuest {
                         proto_ver,
                         None,          // No session support in stdio
                         String::new(), // No session bucket in stdio
+                        &common::stdio_frame(),
                     ) {
                         eprintln!("[ERROR] Notification handling failed: {:?}", e);
                     }
@@ -125,6 +133,7 @@ impl Guest for StdioTransportGuest {
                         protocol_version: "2025-06-18".to_string(),
                         session: None,
                         identity: None,
+                        frame: common::stdio_frame(),
                     };
 
                     let message = ClientMessage::Result((result_id, client_result));
@@ -143,6 +152,7 @@ impl Guest for StdioTransportGuest {
                         protocol_version: "2025-06-18".to_string(),
                         session: None,
                         identity: None,
+                        frame: common::stdio_frame(),
                     };
 
                     let message = ClientMessage::Error((error_id, error_code));
@@ -160,7 +170,8 @@ fn handle_initialize(
     _init_req: &crate::bindings::wasmcp::mcp_v20250618::mcp::InitializeRequest,
 ) -> Result<(), ()> {
     // Discover capabilities from downstream
-    let capabilities = common::discover_capabilities_for_init(ProtocolVersion::V20250618);
+    let capabilities =
+        common::discover_capabilities_for_init(ProtocolVersion::V20250618, &common::stdio_frame());
 
     // Create initialize result
     let result = ServerResult::Initialize(
@@ -177,7 +188,7 @@ fn handle_initialize(
         },
     );
 
-    if let Err(e) = common::write_mcp_result(stdout, request_id, result) {
+    if let Err(e) = common::write_mcp_result(stdout, request_id, result, &common::stdio_frame()) {
         eprintln!("[ERROR] Failed to write initialize result: {:?}", e);
         return Err(());
     }
@@ -195,7 +206,7 @@ fn write_error(
     use crate::bindings::wasmcp::mcp_v20250618::server_io;
 
     let message = ServerMessage::Error((id, error));
-    if let Err(e) = server_io::send_message(stdout, message) {
+    if let Err(e) = server_io::send_message(stdout, message, &common::stdio_frame()) {
         eprintln!("[ERROR] Failed to write error: {:?}", e);
     }
 }

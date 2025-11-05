@@ -6,7 +6,10 @@ use crate::bindings::wasmcp::mcp_v20250618::mcp::{
     ServerCapabilities, ServerMessage, ServerResult,
 };
 use crate::bindings::wasmcp::mcp_v20250618::server_handler::{MessageContext, Session, handle};
-use crate::bindings::wasmcp::mcp_v20250618::server_io::{self, IoError, MessageFrame, ReadLimit};
+use crate::bindings::wasmcp::mcp_v20250618::server_io::{self, IoError, ReadLimit};
+
+// Re-export MessageFrame so it's public
+pub use crate::bindings::wasmcp::mcp_v20250618::server_io::MessageFrame;
 
 /// Parsed MCP message from the wire
 #[derive(Debug)]
@@ -83,10 +86,13 @@ pub fn stdio_read_limit() -> ReadLimit {
 
 /// Parse incoming MCP message using server-io
 ///
-/// Uses the new unified parse_message() interface.
-/// Note: set_frame() must be called before using this function.
-pub fn parse_mcp_message(input: &InputStream, limit: ReadLimit) -> Result<McpMessage, String> {
-    let client_message = server_io::parse_message(input, &limit)
+/// Uses the new unified parse_message() interface with explicit frame parameter.
+pub fn parse_mcp_message(
+    input: &InputStream,
+    limit: ReadLimit,
+    frame: &MessageFrame,
+) -> Result<McpMessage, String> {
+    let client_message = server_io::parse_message(input, &limit, frame)
         .map_err(|e| format!("Failed to parse message: {:?}", e))?;
 
     match client_message {
@@ -109,22 +115,25 @@ pub fn parse_mcp_message(input: &InputStream, limit: ReadLimit) -> Result<McpMes
 
 /// Write MCP result using server-io
 ///
-/// Uses the new unified send_message() interface.
-/// Note: set_frame() must be called before using this function.
+/// Uses the new unified send_message() interface with explicit frame parameter.
 pub fn write_mcp_result(
     output: &OutputStream,
     id: RequestId,
     result: ServerResult,
+    frame: &MessageFrame,
 ) -> Result<(), IoError> {
     let message = ServerMessage::Result((id, result));
-    server_io::send_message(output, message)
+    server_io::send_message(output, message, frame)
 }
 
 /// Discover capabilities for initialize response
 ///
 /// This is called during initialize to probe the downstream handler
-pub fn discover_capabilities_for_init(_protocol_version: ProtocolVersion) -> ServerCapabilities {
-    discover_capabilities()
+pub fn discover_capabilities_for_init(
+    _protocol_version: ProtocolVersion,
+    frame: &MessageFrame,
+) -> ServerCapabilities {
+    discover_capabilities(frame)
 }
 
 /// Handle transport-level MCP method: ping
@@ -145,7 +154,7 @@ pub fn handle_set_log_level(_level: String) -> Result<(), ErrorCode> {
 /// Discover server capabilities by probing downstream handler
 ///
 /// This sends test requests to see what the middleware stack supports
-fn discover_capabilities() -> ServerCapabilities {
+fn discover_capabilities(frame: &MessageFrame) -> ServerCapabilities {
     use crate::bindings::wasmcp::mcp_v20250618::mcp::{
         ClientRequest, CompleteRequest, CompletionArgument, CompletionPromptReference,
         CompletionReference, ListPromptsRequest, ListResourcesRequest, ListToolsRequest,
@@ -161,6 +170,7 @@ fn discover_capabilities() -> ServerCapabilities {
         protocol_version: "2025-06-18".to_string(),
         session: None,
         identity: None,
+        frame: frame.clone(),
     };
     let tools_request = ClientRequest::ToolsList(ListToolsRequest { cursor: None });
     let tools_message = ClientMessage::Request((RequestId::Number(0), tools_request));
@@ -174,6 +184,7 @@ fn discover_capabilities() -> ServerCapabilities {
         protocol_version: "2025-06-18".to_string(),
         session: None,
         identity: None,
+        frame: frame.clone(),
     };
     let resources_request = ClientRequest::ResourcesList(ListResourcesRequest { cursor: None });
     let resources_message = ClientMessage::Request((RequestId::Number(1), resources_request));
@@ -187,6 +198,7 @@ fn discover_capabilities() -> ServerCapabilities {
         protocol_version: "2025-06-18".to_string(),
         session: None,
         identity: None,
+        frame: frame.clone(),
     };
     let prompts_request = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
     let prompts_message = ClientMessage::Request((RequestId::Number(2), prompts_request));
@@ -223,6 +235,7 @@ fn discover_capabilities() -> ServerCapabilities {
                     protocol_version: "2025-06-18".to_string(),
                     session: None,
                     identity: None,
+                    frame: frame.clone(),
                 };
                 let req = ClientRequest::CompletionComplete(completion_request);
                 let completion_message = ClientMessage::Request((RequestId::Number(3), req));
@@ -268,6 +281,7 @@ pub fn delegate_to_middleware(
     session_id: Option<&str>,
     bucket_name: String,
     output_stream: &OutputStream,
+    frame: &MessageFrame,
 ) -> Result<ServerResult, ErrorCode> {
     // Create session if provided
     let session = session_id.map(|id| Session {
@@ -281,6 +295,7 @@ pub fn delegate_to_middleware(
         protocol_version: protocol_version_to_string(protocol_version),
         session,
         identity: None, // TODO: Add user identity support
+        frame: frame.clone(),
     };
 
     // Create client message
@@ -306,6 +321,7 @@ pub fn delegate_notification(
     protocol_version: ProtocolVersion,
     session_id: Option<&str>,
     bucket_name: String,
+    frame: &MessageFrame,
 ) -> Result<(), ErrorCode> {
     // Create session if provided
     let session = session_id.map(|id| Session {
@@ -319,6 +335,7 @@ pub fn delegate_notification(
         protocol_version: protocol_version_to_string(protocol_version),
         session,
         identity: None,
+        frame: frame.clone(),
     };
 
     // Create client message

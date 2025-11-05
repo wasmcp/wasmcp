@@ -338,7 +338,15 @@ fn build_middleware_chain(
             .with_context(|| format!("Failed to wire component-{} server-handler import", i))?;
 
         // Check if this component imports server-io and wire it if so
+        eprintln!(
+            "[MIDDLEWARE] Checking if component-{} imports server-io...",
+            i
+        );
         if component_imports_interface(&component_paths[i], server_io_interface)? {
+            eprintln!(
+                "[MIDDLEWARE]   ✓ component-{} DOES import server-io, wiring it",
+                i
+            );
             let server_io_export = graph
                 .alias_instance_export(server_io_inst, server_io_interface)
                 .context("Failed to get server-io export from server-io")?;
@@ -346,10 +354,27 @@ fn build_middleware_chain(
             graph
                 .set_instantiation_argument(inst, server_io_interface, server_io_export)
                 .with_context(|| format!("Failed to wire component-{} server-io import", i))?;
+            eprintln!(
+                "[MIDDLEWARE]   ✓ Successfully wired server-io to component-{}",
+                i
+            );
+        } else {
+            eprintln!(
+                "[MIDDLEWARE]   ✗ component-{} does NOT import server-io, skipping",
+                i
+            );
         }
 
         // Check if this component imports sessions and wire it if so
+        eprintln!(
+            "[MIDDLEWARE] Checking if component-{} imports sessions...",
+            i
+        );
         if component_imports_interface(&component_paths[i], sessions_interface)? {
+            eprintln!(
+                "[MIDDLEWARE]   ✓ component-{} DOES import sessions, wiring it",
+                i
+            );
             let sessions_export = graph
                 .alias_instance_export(session_store_inst, sessions_interface)
                 .context("Failed to get sessions export from session-store")?;
@@ -357,6 +382,15 @@ fn build_middleware_chain(
             graph
                 .set_instantiation_argument(inst, sessions_interface, sessions_export)
                 .with_context(|| format!("Failed to wire component-{} sessions import", i))?;
+            eprintln!(
+                "[MIDDLEWARE]   ✓ Successfully wired sessions to component-{}",
+                i
+            );
+        } else {
+            eprintln!(
+                "[MIDDLEWARE]   ✗ component-{} does NOT import sessions, skipping",
+                i
+            );
         }
 
         // This component's export becomes the next input

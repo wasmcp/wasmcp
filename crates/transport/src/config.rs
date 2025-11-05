@@ -38,4 +38,15 @@ impl SessionConfig {
             bucket_name,
         }
     }
+
+    /// Get bucket name, returning default if empty
+    ///
+    /// Returns the configured bucket name, or the default bucket ("") if not configured.
+    pub fn get_bucket(&self) -> &str {
+        if self.bucket_name.is_empty() {
+            crate::http::DEFAULT_SESSION_BUCKET
+        } else {
+            &self.bucket_name
+        }
+    }
 }

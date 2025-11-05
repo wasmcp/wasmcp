@@ -4,8 +4,7 @@
 //! Handles bidirectional JSON-RPC message exchange with runtime-specified framing.
 //!
 //! Architecture:
-//! - Transport calls set_frame() to configure framing for the request
-//! - Frame is stored in instance-scoped state (safe in WASM component model)
+//! - Transport passes frame on each parse/send call (explicit, no state)
 //! - Single parse_message() function replaces 4 parse_* functions
 //! - Single send_message() function replaces 4 write_* functions
 //! - No compile-time feature flags for transport selection
@@ -36,39 +35,19 @@ use bindings::wasi::io::streams::{InputStream, OutputStream, StreamError};
 use bindings::wasmcp::mcp_v20250618::mcp::*;
 
 use crate::stream_reader::StreamConfig;
-use std::cell::RefCell;
-
-// Instance-scoped frame storage
-// Safe because each WASM component instance has its own linear memory
-thread_local! {
-    static CURRENT_FRAME: RefCell<Option<MessageFrame>> = RefCell::new(None);
-}
 
 struct ServerIo;
 
 impl Guest for ServerIo {
-    /// Set the message framing for this request
-    ///
-    /// Must be called by the transport before any parse-message or send-message calls.
-    fn set_frame(frame: MessageFrame) -> Result<(), IoError> {
-        CURRENT_FRAME.with(|f| {
-            *f.borrow_mut() = Some(frame);
-        });
-        Ok(())
-    }
-
     /// Parse an incoming message from the client
     ///
     /// Reads from the input stream according to the read limit, strips framing,
     /// and parses the JSON-RPC message into a client-message variant.
-    fn parse_message(input: &InputStream, limit: ReadLimit) -> Result<ClientMessage, IoError> {
-        // Get frame from instance state
-        let frame = CURRENT_FRAME.with(|f| {
-            f.borrow().clone().ok_or_else(|| {
-                IoError::Unexpected("set_frame must be called before parse_message".to_string())
-            })
-        })?;
-
+    fn parse_message(
+        input: &InputStream,
+        limit: ReadLimit,
+        frame: MessageFrame,
+    ) -> Result<ClientMessage, IoError> {
         // Read raw bytes based on limit
         let raw_bytes = match limit {
             ReadLimit::Delimiter(delim) => read_until_delimiter(input, &delim)?,
@@ -94,19 +73,26 @@ impl Guest for ServerIo {
     ///
     /// Serializes the server-message variant to JSON-RPC format, applies framing,
     /// and writes to the output stream.
-    fn send_message(output: &OutputStream, message: ServerMessage) -> Result<(), IoError> {
-        // Get frame from instance state
-        let frame = CURRENT_FRAME.with(|f| {
-            f.borrow().clone().ok_or_else(|| {
-                IoError::Unexpected("set_frame must be called before send_message".to_string())
-            })
-        })?;
-
+    fn send_message(
+        output: &OutputStream,
+        message: ServerMessage,
+        frame: MessageFrame,
+    ) -> Result<(), IoError> {
         // Serialize message to JSON-RPC
         let json_rpc = serialize_server_message(&message)?;
 
         // Convert to string
         let json_str = json_rpc.to_string();
+
+        eprintln!(
+            "[SERVER-IO] Sending message: {}",
+            &json_str[..json_str.len().min(100)]
+        );
+        eprintln!(
+            "[SERVER-IO] Frame prefix: {:?}, suffix: {:?}",
+            String::from_utf8_lossy(&frame.prefix),
+            String::from_utf8_lossy(&frame.suffix)
+        );
 
         // Apply framing
         let mut framed = Vec::new();
@@ -114,8 +100,12 @@ impl Guest for ServerIo {
         framed.extend_from_slice(json_str.as_bytes());
         framed.extend_from_slice(&frame.suffix);
 
+        eprintln!("[SERVER-IO] Framed message length: {} bytes", framed.len());
+
         // Write to stream
         write_bytes(output, &framed)?;
+
+        eprintln!("[SERVER-IO] Message written and flushed");
 
         Ok(())
     }
@@ -466,21 +456,66 @@ fn strip_framing(raw: &[u8], frame: &MessageFrame) -> Result<Vec<u8>, IoError> {
 /// Write bytes to output stream with backpressure handling
 fn write_bytes(stream: &OutputStream, data: &[u8]) -> Result<(), IoError> {
     let mut offset = 0;
+    eprintln!(
+        "[SERVER-IO] write_bytes: total {} bytes to write",
+        data.len()
+    );
 
     while offset < data.len() {
         match stream.check_write() {
-            Ok(0) => break,
+            Ok(0) => {
+                eprintln!(
+                    "[SERVER-IO] FATAL: Write budget exhausted at {}/{} bytes",
+                    offset,
+                    data.len()
+                );
+                eprintln!("[SERVER-IO] Spin/WASI HTTP does not support true SSE streaming");
+                eprintln!(
+                    "[SERVER-IO] Runtime buffers entire response before delivering to client"
+                );
+                eprintln!("[SERVER-IO] Cannot use pollable.block() - would deadlock");
+                return Err(IoError::Unexpected(format!(
+                    "Write budget exhausted after {}/{} bytes. \
+                     WASI HTTP runtime limitation: responses fully buffered, \
+                     true streaming not supported. Consider batching notifications \
+                     or reducing payload size.",
+                    offset,
+                    data.len()
+                )));
+            }
             Ok(budget) => {
                 let chunk_size = (data.len() - offset).min(budget as usize);
+                eprintln!(
+                    "[SERVER-IO] check_write returned budget {}, writing {} bytes",
+                    budget, chunk_size
+                );
                 stream
                     .write(&data[offset..offset + chunk_size])
-                    .map_err(|e| IoError::Stream(e))?;
+                    .map_err(|e| {
+                        eprintln!("[SERVER-IO] write() failed: {:?}", e);
+                        IoError::Stream(e)
+                    })?;
                 offset += chunk_size;
+                eprintln!(
+                    "[SERVER-IO] wrote chunk, offset now {}/{}",
+                    offset,
+                    data.len()
+                );
+                // Don't flush per-chunk - only at end
             }
-            Err(e) => return Err(IoError::Stream(e)),
+            Err(e) => {
+                eprintln!("[SERVER-IO] check_write() failed: {:?}", e);
+                return Err(IoError::Stream(e));
+            }
         }
     }
 
+    // DON'T flush here - let buffer accumulate across multiple messages
+    // Only the transport layer will flush at the very end via OutgoingBody::finish()
+    eprintln!(
+        "[SERVER-IO] Successfully wrote all {} bytes (no flush - buffered)",
+        data.len()
+    );
     Ok(())
 }
 
