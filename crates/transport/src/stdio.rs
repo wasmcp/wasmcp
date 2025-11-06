@@ -22,6 +22,9 @@ impl Guest for StdioTransportGuest {
         let stdin = get_stdin();
         let stdout = get_stdout();
 
+        // Track protocol version from initialize (default to latest)
+        let mut protocol_version = ProtocolVersion::V20250618;
+
         // Event loop: read messages from stdin, process, write to stdout
         loop {
             // Parse incoming message
@@ -42,7 +45,7 @@ impl Guest for StdioTransportGuest {
                 common::McpMessage::Request(request_id, client_request) => {
                     // Handle initialize specially (capabilities discovery)
                     if let ClientRequest::Initialize(init_req) = &client_request {
-                        handle_initialize(&stdout, request_id, init_req)?;
+                        protocol_version = handle_initialize(&stdout, request_id, init_req)?;
                         continue;
                     }
 
@@ -65,7 +68,7 @@ impl Guest for StdioTransportGuest {
 
                     // Handle logging/setLevel directly
                     if let ClientRequest::LoggingSetLevel(level) = &client_request {
-                        let level_str = log_level_to_string(*level);
+                        let level_str = common::log_level_to_string(*level);
                         if let Err(e) = common::handle_set_log_level(level_str) {
                             write_error(&stdout, Some(request_id.clone()), e);
                             continue;
@@ -82,12 +85,11 @@ impl Guest for StdioTransportGuest {
                     }
 
                     // Delegate everything else to middleware
-                    let proto_ver = ProtocolVersion::V20250618; // TODO: Parse from init
                     match common::delegate_to_middleware(
                         request_id.clone(),
                         client_request,
-                        proto_ver,
-                        None,          // No session support in stdio
+                        protocol_version,
+                        Some("0"),     // Session ID "0" indicates stdio mode
                         String::new(), // No session bucket in stdio
                         &stdout,
                         &common::stdio_frame(),
@@ -109,11 +111,10 @@ impl Guest for StdioTransportGuest {
                 }
 
                 common::McpMessage::Notification(notification) => {
-                    let proto_ver = ProtocolVersion::V20250618;
                     if let Err(e) = common::delegate_notification(
                         notification,
-                        proto_ver,
-                        None,          // No session support in stdio
+                        protocol_version,
+                        Some("0"),     // Session ID "0" indicates stdio mode
                         String::new(), // No session bucket in stdio
                         &common::stdio_frame(),
                     ) {
@@ -124,17 +125,15 @@ impl Guest for StdioTransportGuest {
                 common::McpMessage::Result(result_id, client_result) => {
                     // Bidirectional MCP: handle result from client
                     use crate::bindings::wasmcp::mcp_v20250618::mcp::ClientMessage;
-                    use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
-                        MessageContext, handle,
-                    };
+                    use crate::bindings::wasmcp::mcp_v20250618::server_handler::handle;
 
-                    let ctx = MessageContext {
-                        client_stream: None,
-                        protocol_version: "2025-06-18".to_string(),
-                        session: None,
-                        identity: None,
-                        frame: common::stdio_frame(),
-                    };
+                    let ctx = common::create_message_context(
+                        None,
+                        protocol_version,
+                        Some("0"), // Session ID "0" indicates stdio mode
+                        "",
+                        &common::stdio_frame(),
+                    );
 
                     let message = ClientMessage::Result((result_id, client_result));
                     handle(&ctx, message);
@@ -143,17 +142,15 @@ impl Guest for StdioTransportGuest {
                 common::McpMessage::Error(error_id, error_code) => {
                     // Bidirectional MCP: handle error from client
                     use crate::bindings::wasmcp::mcp_v20250618::mcp::ClientMessage;
-                    use crate::bindings::wasmcp::mcp_v20250618::server_handler::{
-                        MessageContext, handle,
-                    };
+                    use crate::bindings::wasmcp::mcp_v20250618::server_handler::handle;
 
-                    let ctx = MessageContext {
-                        client_stream: None,
-                        protocol_version: "2025-06-18".to_string(),
-                        session: None,
-                        identity: None,
-                        frame: common::stdio_frame(),
-                    };
+                    let ctx = common::create_message_context(
+                        None,
+                        protocol_version,
+                        Some("0"), // Session ID "0" indicates stdio mode
+                        "",
+                        &common::stdio_frame(),
+                    );
 
                     let message = ClientMessage::Error((error_id, error_code));
                     handle(&ctx, message);
@@ -164,14 +161,18 @@ impl Guest for StdioTransportGuest {
 }
 
 /// Handle initialize request with capability discovery
+/// Returns the negotiated protocol version
 fn handle_initialize(
     stdout: &crate::bindings::wasi::io::streams::OutputStream,
     request_id: crate::bindings::wasmcp::mcp_v20250618::mcp::RequestId,
-    _init_req: &crate::bindings::wasmcp::mcp_v20250618::mcp::InitializeRequest,
-) -> Result<(), ()> {
+    init_req: &crate::bindings::wasmcp::mcp_v20250618::mcp::InitializeRequest,
+) -> Result<ProtocolVersion, ()> {
+    // Use client's requested protocol version (for now, we only support one version)
+    let protocol_version = init_req.protocol_version;
+
     // Discover capabilities from downstream
     let capabilities =
-        common::discover_capabilities_for_init(ProtocolVersion::V20250618, &common::stdio_frame());
+        common::discover_capabilities_for_init(protocol_version, &common::stdio_frame());
 
     // Create initialize result
     let result = ServerResult::Initialize(
@@ -183,7 +184,7 @@ fn handle_initialize(
                 version: env!("CARGO_PKG_VERSION").to_string(),
             },
             capabilities,
-            protocol_version: ProtocolVersion::V20250618,
+            protocol_version,
             options: None,
         },
     );
@@ -193,7 +194,7 @@ fn handle_initialize(
         return Err(());
     }
 
-    Ok(())
+    Ok(protocol_version)
 }
 
 /// Write JSON-RPC error to stdout
@@ -208,21 +209,5 @@ fn write_error(
     let message = ServerMessage::Error((id, error));
     if let Err(e) = server_io::send_message(stdout, message, &common::stdio_frame()) {
         eprintln!("[ERROR] Failed to write error: {:?}", e);
-    }
-}
-
-/// Convert LogLevel enum to string
-fn log_level_to_string(level: crate::bindings::wasmcp::mcp_v20250618::mcp::LogLevel) -> String {
-    use crate::bindings::wasmcp::mcp_v20250618::mcp::LogLevel;
-
-    match level {
-        LogLevel::Debug => "debug".to_string(),
-        LogLevel::Info => "info".to_string(),
-        LogLevel::Notice => "notice".to_string(),
-        LogLevel::Warning => "warning".to_string(),
-        LogLevel::Error => "error".to_string(),
-        LogLevel::Critical => "critical".to_string(),
-        LogLevel::Alert => "alert".to_string(),
-        LogLevel::Emergency => "emergency".to_string(),
     }
 }

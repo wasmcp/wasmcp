@@ -50,9 +50,11 @@ impl Guest for PromptsMiddleware {
                 // Handle requests - match on request type
                 let result = match &request {
                     ClientRequest::PromptsList(list_req) => {
-                        handle_prompts_list(list_req.clone(), &ctx)
+                        handle_prompts_list(request_id.clone(), list_req.clone(), &ctx)
                     }
-                    ClientRequest::PromptsGet(get_req) => handle_prompt_get(get_req.clone(), &ctx),
+                    ClientRequest::PromptsGet(get_req) => {
+                        handle_prompt_get(request_id.clone(), get_req.clone(), &ctx)
+                    }
                     _ => {
                         // Delegate all other requests to downstream handler
                         let downstream_msg = ClientMessage::Request((request_id.clone(), request));
@@ -70,6 +72,7 @@ impl Guest for PromptsMiddleware {
 }
 
 fn handle_prompts_list(
+    request_id: RequestId,
     req: ListPromptsRequest,
     ctx: &MessageContext,
 ) -> Result<ServerResult, ErrorCode> {
@@ -87,9 +90,9 @@ fn handle_prompts_list(
         }
     };
 
-    // Try to get downstream prompts
+    // Try to get downstream prompts - preserve the original request ID
     let downstream_req = ClientRequest::PromptsList(req.clone());
-    let downstream_msg = ClientMessage::Request((RequestId::Number(0), downstream_req));
+    let downstream_msg = ClientMessage::Request((request_id, downstream_req));
     match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
         Some(Ok(ServerResult::PromptsList(downstream_result))) => {
             // Merge our prompts with downstream prompts
@@ -166,6 +169,7 @@ fn handle_prompts_list(
 }
 
 fn handle_prompt_get(
+    request_id: RequestId,
     req: GetPromptRequest,
     ctx: &MessageContext,
 ) -> Result<ServerResult, ErrorCode> {
@@ -178,7 +182,7 @@ fn handle_prompt_get(
         Ok(None) => {
             // Imported interface doesn't handle this prompt - try downstream
             let downstream_req = ClientRequest::PromptsGet(req.clone());
-            let downstream_msg = ClientMessage::Request((RequestId::Number(0), downstream_req));
+            let downstream_msg = ClientMessage::Request((request_id, downstream_req));
             match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
                 Some(Ok(response)) => Ok(response),
                 Some(Err(ErrorCode::MethodNotFound(_))) | None => {

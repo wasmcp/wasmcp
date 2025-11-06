@@ -50,13 +50,13 @@ impl Guest for ResourcesMiddleware {
                 // Handle requests - match on request type
                 let result = match &request {
                     ClientRequest::ResourcesList(list_req) => {
-                        handle_resources_list(list_req.clone(), &ctx)
+                        handle_resources_list(request_id.clone(), list_req.clone(), &ctx)
                     }
                     ClientRequest::ResourcesRead(read_req) => {
-                        handle_resources_read(read_req.clone(), &ctx)
+                        handle_resources_read(request_id.clone(), read_req.clone(), &ctx)
                     }
                     ClientRequest::ResourcesTemplatesList(templates_req) => {
-                        handle_templates_list(templates_req.clone(), &ctx)
+                        handle_templates_list(request_id.clone(), templates_req.clone(), &ctx)
                     }
                     _ => {
                         // Delegate all other requests to downstream handler
@@ -75,6 +75,7 @@ impl Guest for ResourcesMiddleware {
 }
 
 fn handle_resources_list(
+    request_id: RequestId,
     req: ListResourcesRequest,
     ctx: &MessageContext,
 ) -> Result<ServerResult, ErrorCode> {
@@ -92,9 +93,9 @@ fn handle_resources_list(
         }
     };
 
-    // Try to get downstream resources
+    // Try to get downstream resources - preserve the original request ID
     let downstream_req = ClientRequest::ResourcesList(req.clone());
-    let downstream_msg = ClientMessage::Request((RequestId::Number(0), downstream_req));
+    let downstream_msg = ClientMessage::Request((request_id, downstream_req));
     match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
         Some(Ok(ServerResult::ResourcesList(downstream_result))) => {
             // Merge our resources with downstream resources
@@ -171,6 +172,7 @@ fn handle_resources_list(
 }
 
 fn handle_resources_read(
+    request_id: RequestId,
     req: ReadResourceRequest,
     ctx: &MessageContext,
 ) -> Result<ServerResult, ErrorCode> {
@@ -183,7 +185,7 @@ fn handle_resources_read(
         Ok(None) => {
             // Imported interface doesn't handle this URI - try downstream
             let downstream_req = ClientRequest::ResourcesRead(req.clone());
-            let downstream_msg = ClientMessage::Request((RequestId::Number(0), downstream_req));
+            let downstream_msg = ClientMessage::Request((request_id, downstream_req));
             match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
                 Some(Ok(response)) => Ok(response),
                 Some(Err(ErrorCode::MethodNotFound(_))) | None => {
@@ -206,6 +208,7 @@ fn handle_resources_read(
 }
 
 fn handle_templates_list(
+    request_id: RequestId,
     req: ListResourceTemplatesRequest,
     ctx: &MessageContext,
 ) -> Result<ServerResult, ErrorCode> {
@@ -222,9 +225,9 @@ fn handle_templates_list(
         }
     };
 
-    // Try to get downstream templates
+    // Try to get downstream templates - preserve the original request ID
     let downstream_req = ClientRequest::ResourcesTemplatesList(req.clone());
-    let downstream_msg = ClientMessage::Request((RequestId::Number(0), downstream_req));
+    let downstream_msg = ClientMessage::Request((request_id, downstream_req));
     match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
         Some(Ok(ServerResult::ResourcesTemplatesList(downstream_result))) => {
             // Merge our templates with downstream templates

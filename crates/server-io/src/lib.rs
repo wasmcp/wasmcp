@@ -518,25 +518,38 @@ thread_local! {
     static BUFFER: RefCell<Vec<u8>> = RefCell::new(Vec::new());
 }
 
-/// Get the current server mode
-fn get_server_mode() -> String {
+/// Server mode - mirrors transport crate's ServerMode enum
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ServerMode {
+    Sse,
+    SseBuffer,
+    Json,
+}
+
+/// Get the current server mode from MCP_SERVER_MODE env var
+/// Parsing logic matches transport/src/config.rs
+fn get_server_mode() -> ServerMode {
     std::env::var("MCP_SERVER_MODE")
         .ok()
-        .map(|v| v.to_lowercase())
-        .unwrap_or_else(|| "sse_buffer".to_string())
+        .and_then(|v| match v.to_lowercase().as_str() {
+            "sse" => Some(ServerMode::Sse),
+            "sse_buffer" => Some(ServerMode::SseBuffer),
+            "json" => Some(ServerMode::Json),
+            _ => None,
+        })
+        .unwrap_or(ServerMode::SseBuffer) // Default to buffered mode (safe everywhere)
 }
 
 /// Check if we're in buffer mode
 fn is_buffer_mode() -> bool {
-    let mode = get_server_mode();
     // Buffer for: sse_buffer (default) and json modes
     // Don't buffer for: sse mode (true streaming)
-    mode == "sse_buffer" || mode == "json"
+    matches!(get_server_mode(), ServerMode::SseBuffer | ServerMode::Json)
 }
 
 /// Check if we're in JSON mode (suppresses notifications)
 fn is_json_mode() -> bool {
-    get_server_mode() == "json"
+    matches!(get_server_mode(), ServerMode::Json)
 }
 
 /// Write bytes to output stream with backpressure handling

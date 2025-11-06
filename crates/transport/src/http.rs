@@ -15,15 +15,15 @@ use crate::bindings::wasi::http::types::{
 };
 use crate::bindings::wasi::io::streams::OutputStream;
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{
-    ClientNotification, ClientRequest, ClientResult, ErrorCode, LogLevel, ProtocolVersion,
-    RequestId, ServerResult,
+    ClientNotification, ClientRequest, ClientResult, ErrorCode, RequestId, ServerResult,
 };
-use crate::bindings::wasmcp::mcp_v20250618::server_handler::{MessageContext, Session, handle};
+use crate::bindings::wasmcp::mcp_v20250618::server_handler::handle;
 use crate::bindings::wasmcp::mcp_v20250618::session_manager::{
     SessionError, initialize as session_initialize, validate as session_validate,
 };
 use crate::common;
 use crate::config::SessionConfig;
+use crate::error::TransportError;
 
 /// Default session store ID for WASI key-value storage
 pub(crate) const DEFAULT_SESSION_BUCKET: &str = "";
@@ -39,66 +39,72 @@ impl Guest for HttpTransportGuest {
 fn handle_http_request(request: IncomingRequest, response_out: ResponseOutparam) {
     eprintln!("[TRANSPORT] Handling HTTP request");
 
-    // 1. Validate Origin header (DNS rebinding protection)
-    if let Err(e) = validate_origin(&request) {
-        let response = create_error_response(&e);
-        ResponseOutparam::set(response_out, Ok(response));
-        return;
-    }
-    eprintln!("[TRANSPORT] Origin validated");
-
-    // 2. Extract and validate MCP-Protocol-Version header
-    let protocol_version = match validate_protocol_version(&request) {
-        Ok(v) => v,
-        Err(e) => {
-            let response = create_error_response(&e);
-            ResponseOutparam::set(response_out, Ok(response));
-            return;
-        }
-    };
-    eprintln!("[TRANSPORT] Protocol version: {}", protocol_version);
-
-    // 3. Parse method and handle accordingly
-    let method = request.method();
-    eprintln!("[TRANSPORT] Method: {:?}", method);
-
-    match method {
-        Method::Post => handle_post(request, protocol_version, response_out),
-        Method::Get => handle_get(request, protocol_version, response_out),
-        Method::Delete => handle_delete(request, response_out),
-        _ => match create_method_not_allowed_response() {
-            Ok(response) => ResponseOutparam::set(response_out, Ok(response)),
-            Err(e) => {
-                let response = create_error_response(&e);
-                ResponseOutparam::set(response_out, Ok(response));
-            }
-        },
-    }
-}
-
-fn handle_post(request: IncomingRequest, protocol_version: String, response_out: ResponseOutparam) {
-    eprintln!("[TRANSPORT] Handling POST request");
-
-    // Validate Accept header per spec
-    if let Err(e) = validate_accept_header(&request) {
-        let response = create_error_response(&e);
-        ResponseOutparam::set(response_out, Ok(response));
-        return;
-    }
-    eprintln!("[TRANSPORT] Accept header validated");
-
-    // Load session configuration
+    // 1. Load session configuration once for the entire request
     let session_config = SessionConfig::from_env();
     eprintln!(
         "[TRANSPORT] Session config loaded - enabled: {}, mode: {:?}",
         session_config.enabled, session_config.mode
     );
 
+    // 2. Validate Origin header (DNS rebinding protection)
+    if let Err(e) = validate_origin(&request) {
+        let response = transport_error_to_response(&e);
+        ResponseOutparam::set(response_out, Ok(response));
+        return;
+    }
+    eprintln!("[TRANSPORT] Origin validated");
+
+    // 3. Extract and validate MCP-Protocol-Version header
+    let protocol_version = match validate_protocol_version(&request) {
+        Ok(v) => v,
+        Err(e) => {
+            let response = transport_error_to_response(&e);
+            ResponseOutparam::set(response_out, Ok(response));
+            return;
+        }
+    };
+    eprintln!("[TRANSPORT] Protocol version: {}", protocol_version);
+
+    // 4. Parse method and handle accordingly
+    let method = request.method();
+    eprintln!("[TRANSPORT] Method: {:?}", method);
+
+    match method {
+        Method::Post => handle_post(request, protocol_version, response_out, &session_config),
+        Method::Get => handle_get(request, protocol_version, response_out, &session_config),
+        Method::Delete => handle_delete(request, response_out, &session_config),
+        _ => match create_method_not_allowed_response(&session_config) {
+            Ok(response) => ResponseOutparam::set(response_out, Ok(response)),
+            Err(e) => {
+                let error = TransportError::internal(e);
+                let response = transport_error_to_response(&error);
+                ResponseOutparam::set(response_out, Ok(response));
+            }
+        },
+    }
+}
+
+fn handle_post(
+    request: IncomingRequest,
+    protocol_version: String,
+    response_out: ResponseOutparam,
+    session_config: &SessionConfig,
+) {
+    eprintln!("[TRANSPORT] Handling POST request");
+
+    // Validate Accept header per spec
+    if let Err(e) = validate_accept_header(&request) {
+        let response = transport_error_to_response(&e);
+        ResponseOutparam::set(response_out, Ok(response));
+        return;
+    }
+    eprintln!("[TRANSPORT] Accept header validated");
+
     // Check for session header and validate if present
     let session_id_raw = match extract_session_id_header(&request) {
         Ok(opt) => opt,
         Err(e) => {
-            let response = create_error_response(&e);
+            let response = transport_error_to_response(&e);
             ResponseOutparam::set(response_out, Ok(response));
             return;
         }
@@ -112,17 +118,20 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
             match session_validate(&session_str, bucket) {
                 Ok(true) => Some(session_str),
                 Ok(false) => {
-                    let response = create_error_response("HTTP/404:Session terminated");
+                    let error = TransportError::session("Session terminated");
+                    let response = transport_error_to_response(&error);
                     ResponseOutparam::set(response_out, Ok(response));
                     return;
                 }
                 Err(SessionError::NoSuchSession) => {
-                    let response = create_error_response("HTTP/404:Session not found");
+                    let error = TransportError::session("Session not found");
+                    let response = transport_error_to_response(&error);
                     ResponseOutparam::set(response_out, Ok(response));
                     return;
                 }
                 Err(_) => {
-                    let response = create_error_response("HTTP/500:Session validation error");
+                    let error = TransportError::session("Session validation error");
+                    let response = transport_error_to_response(&error);
                     ResponseOutparam::set(response_out, Ok(response));
                     return;
                 }
@@ -139,7 +148,8 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
     let body_stream = match request.consume() {
         Ok(s) => s,
         Err(_) => {
-            let response = create_error_response("Failed to consume request");
+            let error = TransportError::internal("Failed to consume request");
+            let response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(response));
             return;
         }
@@ -147,7 +157,8 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
     let input_stream = match body_stream.stream() {
         Ok(s) => s,
         Err(_) => {
-            let response = create_error_response("Failed to get input stream");
+            let error = TransportError::internal("Failed to get input stream");
+            let response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(response));
             return;
         }
@@ -161,7 +172,8 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
     ) {
         Ok(m) => m,
         Err(e) => {
-            let response = create_error_response(&e);
+            let error = TransportError::protocol(e);
+            let response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(response));
             return;
         }
@@ -178,6 +190,7 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
                     client_request,
                     protocol_version,
                     response_out,
+                    session_config,
                 );
                 return;
             }
@@ -186,228 +199,47 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
             if session_config.enabled && session_id.is_none() {
                 drop(input_stream);
                 drop(body_stream);
-                let response = create_error_response(
-                    "HTTP/400:Session ID required for non-initialize requests",
-                );
+                let error =
+                    TransportError::session("Session ID required for non-initialize requests");
+                let response = transport_error_to_response(&error);
                 ResponseOutparam::set(response_out, Ok(response));
                 return;
             }
 
-            // Not initialize - handle based on server mode
-            use crate::bindings::wasmcp::mcp_v20250618::server_io;
+            // Not initialize - delegate to mode-specific handler
             use crate::config::ServerMode;
 
             match session_config.mode {
-                ServerMode::Json => {
-                    // Plain JSON mode - single response
-                    eprintln!("[TRANSPORT] Using JSON mode (single buffered response)");
-
-                    let response_headers = Fields::new();
-                    if let Err(_) =
-                        response_headers.set("content-type", &[b"application/json".to_vec()])
-                    {
-                        let response = create_error_response("Failed to set content-type");
-                        ResponseOutparam::set(response_out, Ok(response));
-                        return;
-                    }
-
-                    let response = OutgoingResponse::new(response_headers);
-                    if let Err(_) = response.set_status_code(200) {
-                        let err_response = create_error_response("Failed to set status");
-                        ResponseOutparam::set(response_out, Ok(err_response));
-                        return;
-                    }
-
-                    let output_body = match response.body() {
-                        Ok(b) => b,
-                        Err(_) => {
-                            let err_response = create_error_response("Failed to get response body");
-                            ResponseOutparam::set(response_out, Ok(err_response));
-                            return;
-                        }
-                    };
-
-                    let output_stream = match output_body.write() {
-                        Ok(s) => s,
-                        Err(_) => {
-                            let err_response = create_error_response("Failed to get output stream");
-                            ResponseOutparam::set(response_out, Ok(err_response));
-                            return;
-                        }
-                    };
-
-                    // Process request with plain JSON framing
-                    if let Err(e) = handle_mcp_request(
-                        request_id,
-                        client_request,
-                        protocol_version,
-                        session_id.as_deref(),
-                        &output_stream,
-                        &common::plain_json_frame(),
-                    ) {
-                        eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
-                    }
-
-                    // Flush buffer (single write)
-                    if let Err(e) = server_io::flush_buffer(&output_stream) {
-                        eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
-                    }
-
-                    // Clean up
-                    drop(input_stream);
-                    drop(body_stream);
-                    drop(output_stream);
-                    if let Err(e) = OutgoingBody::finish(output_body, None) {
-                        eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
-                    }
-
-                    // Set response AFTER all writes complete
-                    ResponseOutparam::set(response_out, Ok(response));
-                    eprintln!("[TRANSPORT] JSON response complete");
-                }
-
-                ServerMode::Sse => {
-                    // True streaming SSE mode
-                    eprintln!("[TRANSPORT] Using SSE mode (true streaming, immediate writes)");
-
-                    let response_headers = Fields::new();
-                    if let Err(_) =
-                        response_headers.set("content-type", &[b"text/event-stream".to_vec()])
-                    {
-                        let response = create_error_response("Failed to set content-type");
-                        ResponseOutparam::set(response_out, Ok(response));
-                        return;
-                    }
-                    if let Err(_) = response_headers.set("cache-control", &[b"no-cache".to_vec()]) {
-                        let response = create_error_response("Failed to set cache-control");
-                        ResponseOutparam::set(response_out, Ok(response));
-                        return;
-                    }
-
-                    let response = OutgoingResponse::new(response_headers);
-                    if let Err(_) = response.set_status_code(200) {
-                        let err_response = create_error_response("Failed to set status");
-                        ResponseOutparam::set(response_out, Ok(err_response));
-                        return;
-                    }
-
-                    let output_body = match response.body() {
-                        Ok(b) => b,
-                        Err(_) => {
-                            let err_response = create_error_response("Failed to get response body");
-                            ResponseOutparam::set(response_out, Ok(err_response));
-                            return;
-                        }
-                    };
-
-                    // Set response FIRST (enables true streaming)
-                    eprintln!("[TRANSPORT] Setting response (enables true SSE streaming)");
-                    ResponseOutparam::set(response_out, Ok(response));
-
-                    let output_stream = match output_body.write() {
-                        Ok(s) => s,
-                        Err(_) => {
-                            eprintln!("[TRANSPORT] ERROR getting output stream");
-                            return;
-                        }
-                    };
-
-                    // Process request - writes stream immediately
-                    if let Err(e) = handle_mcp_request(
-                        request_id,
-                        client_request,
-                        protocol_version,
-                        session_id.as_deref(),
-                        &output_stream,
-                        &common::http_sse_frame(),
-                    ) {
-                        eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
-                    }
-
-                    // Clean up
-                    drop(input_stream);
-                    drop(body_stream);
-                    drop(output_stream);
-                    if let Err(e) = OutgoingBody::finish(output_body, None) {
-                        eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
-                    }
-                    eprintln!("[TRANSPORT] Streaming SSE response complete");
-                }
-
-                ServerMode::SseBuffer => {
-                    // Buffered SSE mode (default, safest)
-                    eprintln!("[TRANSPORT] Using SSE_Buffer mode (buffered SSE with single flush)");
-
-                    let response_headers = Fields::new();
-                    if let Err(_) =
-                        response_headers.set("content-type", &[b"text/event-stream".to_vec()])
-                    {
-                        let response = create_error_response("Failed to set content-type");
-                        ResponseOutparam::set(response_out, Ok(response));
-                        return;
-                    }
-                    if let Err(_) = response_headers.set("cache-control", &[b"no-cache".to_vec()]) {
-                        let response = create_error_response("Failed to set cache-control");
-                        ResponseOutparam::set(response_out, Ok(response));
-                        return;
-                    }
-
-                    let response = OutgoingResponse::new(response_headers);
-                    if let Err(_) = response.set_status_code(200) {
-                        let err_response = create_error_response("Failed to set status");
-                        ResponseOutparam::set(response_out, Ok(err_response));
-                        return;
-                    }
-
-                    let output_body = match response.body() {
-                        Ok(b) => b,
-                        Err(_) => {
-                            let err_response = create_error_response("Failed to get response body");
-                            ResponseOutparam::set(response_out, Ok(err_response));
-                            return;
-                        }
-                    };
-
-                    let output_stream = match output_body.write() {
-                        Ok(s) => s,
-                        Err(_) => {
-                            let err_response = create_error_response("Failed to get output stream");
-                            ResponseOutparam::set(response_out, Ok(err_response));
-                            return;
-                        }
-                    };
-
-                    // Process request - writes accumulate in buffer
-                    if let Err(e) = handle_mcp_request(
-                        request_id,
-                        client_request,
-                        protocol_version,
-                        session_id.as_deref(),
-                        &output_stream,
-                        &common::http_sse_frame(),
-                    ) {
-                        eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
-                    }
-
-                    eprintln!("[TRANSPORT] MCP request processing complete, flushing buffer...");
-
-                    // Flush buffer in one write
-                    if let Err(e) = server_io::flush_buffer(&output_stream) {
-                        eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
-                    }
-
-                    // Clean up
-                    drop(input_stream);
-                    drop(body_stream);
-                    drop(output_stream);
-                    if let Err(e) = OutgoingBody::finish(output_body, None) {
-                        eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
-                    }
-
-                    // Set response AFTER all writes complete
-                    ResponseOutparam::set(response_out, Ok(response));
-                    eprintln!("[TRANSPORT] Buffered SSE response complete");
-                }
+                ServerMode::Json => handle_json_mode(
+                    request_id,
+                    client_request,
+                    protocol_version,
+                    session_id.as_deref(),
+                    input_stream,
+                    body_stream,
+                    response_out,
+                    &session_config,
+                ),
+                ServerMode::Sse => handle_sse_streaming_mode(
+                    request_id,
+                    client_request,
+                    protocol_version,
+                    session_id.as_deref(),
+                    input_stream,
+                    body_stream,
+                    response_out,
+                    &session_config,
+                ),
+                ServerMode::SseBuffer => handle_sse_buffered_mode(
+                    request_id,
+                    client_request,
+                    protocol_version,
+                    session_id.as_deref(),
+                    input_stream,
+                    body_stream,
+                    response_out,
+                    &session_config,
+                ),
             }
         }
         common::McpMessage::Notification(client_notification) => {
@@ -415,6 +247,7 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
                 client_notification,
                 protocol_version,
                 session_id.as_deref(),
+                &session_config,
             );
             drop(input_stream);
             drop(body_stream);
@@ -426,6 +259,7 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
                 client_result,
                 protocol_version,
                 session_id.as_deref(),
+                session_config,
             );
             drop(input_stream);
             drop(body_stream);
@@ -437,6 +271,7 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
                 error_code,
                 protocol_version,
                 session_id.as_deref(),
+                session_config,
             );
             drop(input_stream);
             drop(body_stream);
@@ -452,10 +287,12 @@ fn handle_mcp_request(
     session_id: Option<&str>,
     output_stream: &OutputStream,
     frame: &common::MessageFrame,
-) -> Result<(), String> {
+    config: &SessionConfig,
+) -> Result<(), TransportError> {
     eprintln!("[TRANSPORT-MCP] Starting request handler");
     // Parse protocol version
-    let proto_ver = parse_protocol_version(&protocol_version)?;
+    let proto_ver = common::parse_protocol_version(&protocol_version)
+        .map_err(|e| TransportError::protocol(e))?;
     eprintln!("[TRANSPORT-MCP] Protocol version: {:?}", proto_ver);
 
     // Handle based on request type
@@ -463,28 +300,29 @@ fn handle_mcp_request(
         ClientRequest::Initialize(_) => {
             eprintln!("[TRANSPORT-MCP] ERROR: Initialize should never reach here");
             // Should never reach here - initialize is handled separately
-            Err("Initialize must be handled before SSE response setup".to_string())
+            Err(TransportError::internal(
+                "Initialize must be handled before SSE response setup",
+            ))
         }
         ClientRequest::Ping(_) => {
             eprintln!("[TRANSPORT-MCP] Handling Ping");
-            common::handle_ping().map_err(|e| format!("Ping failed: {:?}", e))?;
-            common::write_mcp_result(output_stream, request_id, ServerResult::Ping, frame)
-                .map_err(|e| format!("Failed to write ping result: {:?}", e))?;
+            common::handle_ping()
+                .map_err(|e| TransportError::protocol(format!("Ping failed: {:?}", e)))?;
+            common::write_mcp_result(output_stream, request_id, ServerResult::Ping, frame)?;
             eprintln!("[TRANSPORT-MCP] Ping response sent");
             Ok(())
         }
         ClientRequest::LoggingSetLevel(level) => {
             eprintln!("[TRANSPORT-MCP] Handling LoggingSetLevel: {:?}", level);
-            let level_str = log_level_to_string(level);
+            let level_str = common::log_level_to_string(level);
             common::handle_set_log_level(level_str)
-                .map_err(|e| format!("SetLevel failed: {:?}", e))?;
+                .map_err(|e| TransportError::protocol(format!("SetLevel failed: {:?}", e)))?;
             common::write_mcp_result(
                 output_stream,
                 request_id,
                 ServerResult::LoggingSetLevel,
                 frame,
-            )
-            .map_err(|e| format!("Failed to write setLevel result: {:?}", e))?;
+            )?;
             eprintln!("[TRANSPORT-MCP] LoggingSetLevel response sent");
             Ok(())
         }
@@ -493,9 +331,7 @@ fn handle_mcp_request(
                 "[TRANSPORT-MCP] Delegating to middleware for request type: {:?}",
                 std::any::type_name_of_val(&client_request)
             );
-            // Load session configuration
-            let session_config = SessionConfig::from_env();
-            let bucket = session_config.get_bucket().to_string();
+            let bucket = config.get_bucket().to_string();
 
             // Delegate all other methods to middleware
             eprintln!(
@@ -510,45 +346,333 @@ fn handle_mcp_request(
                 output_stream,
                 frame,
             )
-            .map_err(|e| format!("Middleware delegation failed: {:?}", e))?;
+            .map_err(|e| {
+                TransportError::protocol(format!("Middleware delegation failed: {:?}", e))
+            })?;
 
             eprintln!("[TRANSPORT-MCP] Middleware returned final result, writing to SSE stream...");
             // Write result via server-io (handles SSE formatting)
-            common::write_mcp_result(output_stream, request_id, result, frame)
-                .map_err(|e| format!("Failed to write result: {:?}", e))?;
+            common::write_mcp_result(output_stream, request_id, result, frame)?;
             eprintln!("[TRANSPORT-MCP] Final result written to SSE stream");
             Ok(())
         }
     }
 }
 
-/// Create session from session ID and config
-fn create_session(session_id: Option<&str>, config: &SessionConfig) -> Option<Session> {
-    session_id.map(|id| Session {
-        session_id: id.to_string(),
-        store_id: config.get_bucket().to_string(),
-    })
+/// Handle POST request in JSON mode (single buffered response)
+fn handle_json_mode(
+    request_id: RequestId,
+    client_request: ClientRequest,
+    protocol_version: String,
+    session_id: Option<&str>,
+    input_stream: crate::bindings::wasi::io::streams::InputStream,
+    body_stream: crate::bindings::wasi::http::types::IncomingBody,
+    response_out: ResponseOutparam,
+    config: &SessionConfig,
+) {
+    use crate::bindings::wasi::http::types::Fields;
+    use crate::bindings::wasi::http::types::{OutgoingBody, OutgoingResponse};
+    use crate::bindings::wasmcp::mcp_v20250618::server_io;
+
+    eprintln!("[TRANSPORT] Using JSON mode (single buffered response)");
+
+    let response_headers = Fields::new();
+    if let Err(_) = response_headers.set("content-type", &[b"application/json".to_vec()]) {
+        let error = TransportError::internal("Failed to set content-type");
+        let response = transport_error_to_response(&error);
+        ResponseOutparam::set(response_out, Ok(response));
+        return;
+    }
+
+    let response = OutgoingResponse::new(response_headers);
+    if let Err(_) = response.set_status_code(200) {
+        let error = TransportError::internal("Failed to set status");
+        let err_response = transport_error_to_response(&error);
+        ResponseOutparam::set(response_out, Ok(err_response));
+        return;
+    }
+
+    let output_body = match response.body() {
+        Ok(b) => b,
+        Err(_) => {
+            let error = TransportError::internal("Failed to get response body");
+            let err_response = transport_error_to_response(&error);
+            ResponseOutparam::set(response_out, Ok(err_response));
+            return;
+        }
+    };
+
+    let output_stream = match output_body.write() {
+        Ok(s) => s,
+        Err(_) => {
+            let error = TransportError::internal("Failed to get output stream");
+            let err_response = transport_error_to_response(&error);
+            ResponseOutparam::set(response_out, Ok(err_response));
+            return;
+        }
+    };
+
+    // Process request with plain JSON framing
+    if let Err(e) = handle_mcp_request(
+        request_id.clone(),
+        client_request,
+        protocol_version,
+        session_id,
+        &output_stream,
+        &common::plain_json_frame(),
+        config,
+    ) {
+        eprintln!("[TRANSPORT] ERROR during request processing: {:?}", e);
+        // Write error response to stream
+        use crate::bindings::wasmcp::mcp_v20250618::mcp::{Error, ErrorCode, ServerMessage};
+        let error_code = ErrorCode::InternalError(Error {
+            code: -32603,
+            message: e.message(),
+            data: None,
+        });
+        let error_message = ServerMessage::Error((Some(request_id), error_code));
+        let _ = crate::bindings::wasmcp::mcp_v20250618::server_io::send_message(
+            &output_stream,
+            error_message,
+            &common::plain_json_frame(),
+        );
+    }
+
+    // Flush buffer (single write)
+    if let Err(e) = server_io::flush_buffer(&output_stream) {
+        eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
+    }
+
+    // Clean up - drop streams BEFORE finishing body (output_stream is child of output_body)
+    drop(output_stream);
+    drop(input_stream);
+    drop(body_stream);
+    if let Err(e) = OutgoingBody::finish(output_body, None) {
+        eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+    }
+
+    // Set response AFTER all writes complete
+    ResponseOutparam::set(response_out, Ok(response));
+    eprintln!("[TRANSPORT] JSON response complete");
+}
+
+/// Handle POST request in SSE streaming mode (immediate writes)
+fn handle_sse_streaming_mode(
+    request_id: RequestId,
+    client_request: ClientRequest,
+    protocol_version: String,
+    session_id: Option<&str>,
+    input_stream: crate::bindings::wasi::io::streams::InputStream,
+    body_stream: crate::bindings::wasi::http::types::IncomingBody,
+    response_out: ResponseOutparam,
+    config: &SessionConfig,
+) {
+    use crate::bindings::wasi::http::types::Fields;
+    use crate::bindings::wasi::http::types::{OutgoingBody, OutgoingResponse};
+
+    eprintln!("[TRANSPORT] Using SSE mode (true streaming, immediate writes)");
+
+    let response_headers = Fields::new();
+    if let Err(_) = response_headers.set("content-type", &[b"text/event-stream".to_vec()]) {
+        let error = TransportError::internal("Failed to set content-type");
+        let response = transport_error_to_response(&error);
+        ResponseOutparam::set(response_out, Ok(response));
+        return;
+    }
+    if let Err(_) = response_headers.set("cache-control", &[b"no-cache".to_vec()]) {
+        let error = TransportError::internal("Failed to set cache-control");
+        let response = transport_error_to_response(&error);
+        ResponseOutparam::set(response_out, Ok(response));
+        return;
+    }
+
+    let response = OutgoingResponse::new(response_headers);
+    if let Err(_) = response.set_status_code(200) {
+        let error = TransportError::internal("Failed to set status");
+        let err_response = transport_error_to_response(&error);
+        ResponseOutparam::set(response_out, Ok(err_response));
+        return;
+    }
+
+    let output_body = match response.body() {
+        Ok(b) => b,
+        Err(_) => {
+            let error = TransportError::internal("Failed to get response body");
+            let err_response = transport_error_to_response(&error);
+            ResponseOutparam::set(response_out, Ok(err_response));
+            return;
+        }
+    };
+
+    // Set response FIRST to enable streaming
+    ResponseOutparam::set(response_out, Ok(response));
+
+    let output_stream = match output_body.write() {
+        Ok(s) => s,
+        Err(_) => {
+            eprintln!("[TRANSPORT] ERROR getting output stream");
+            return;
+        }
+    };
+
+    // Process request with SSE framing
+    if let Err(e) = handle_mcp_request(
+        request_id.clone(),
+        client_request,
+        protocol_version,
+        session_id,
+        &output_stream,
+        &common::http_sse_frame(),
+        config,
+    ) {
+        eprintln!("[TRANSPORT] ERROR during request processing: {:?}", e);
+        // Write error response to SSE stream
+        use crate::bindings::wasmcp::mcp_v20250618::mcp::{Error, ErrorCode, ServerMessage};
+        let error_code = ErrorCode::InternalError(Error {
+            code: -32603,
+            message: e.message(),
+            data: None,
+        });
+        let error_message = ServerMessage::Error((Some(request_id), error_code));
+        let _ = crate::bindings::wasmcp::mcp_v20250618::server_io::send_message(
+            &output_stream,
+            error_message,
+            &common::http_sse_frame(),
+        );
+    }
+
+    // Clean up
+    drop(input_stream);
+    drop(body_stream);
+    drop(output_stream);
+    if let Err(e) = OutgoingBody::finish(output_body, None) {
+        eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+    }
+    eprintln!("[TRANSPORT] SSE streaming response complete");
+}
+
+/// Handle POST request in SSE buffered mode (accumulate and flush once)
+fn handle_sse_buffered_mode(
+    request_id: RequestId,
+    client_request: ClientRequest,
+    protocol_version: String,
+    session_id: Option<&str>,
+    input_stream: crate::bindings::wasi::io::streams::InputStream,
+    body_stream: crate::bindings::wasi::http::types::IncomingBody,
+    response_out: ResponseOutparam,
+    config: &SessionConfig,
+) {
+    use crate::bindings::wasi::http::types::Fields;
+    use crate::bindings::wasi::http::types::{OutgoingBody, OutgoingResponse};
+    use crate::bindings::wasmcp::mcp_v20250618::server_io;
+
+    eprintln!("[TRANSPORT] Using SSE_Buffer mode (buffered SSE with single flush)");
+
+    let response_headers = Fields::new();
+    if let Err(_) = response_headers.set("content-type", &[b"text/event-stream".to_vec()]) {
+        let error = TransportError::internal("Failed to set content-type");
+        let response = transport_error_to_response(&error);
+        ResponseOutparam::set(response_out, Ok(response));
+        return;
+    }
+    if let Err(_) = response_headers.set("cache-control", &[b"no-cache".to_vec()]) {
+        let error = TransportError::internal("Failed to set cache-control");
+        let response = transport_error_to_response(&error);
+        ResponseOutparam::set(response_out, Ok(response));
+        return;
+    }
+
+    let response = OutgoingResponse::new(response_headers);
+    if let Err(_) = response.set_status_code(200) {
+        let error = TransportError::internal("Failed to set status");
+        let err_response = transport_error_to_response(&error);
+        ResponseOutparam::set(response_out, Ok(err_response));
+        return;
+    }
+
+    let output_body = match response.body() {
+        Ok(b) => b,
+        Err(_) => {
+            let error = TransportError::internal("Failed to get response body");
+            let err_response = transport_error_to_response(&error);
+            ResponseOutparam::set(response_out, Ok(err_response));
+            return;
+        }
+    };
+
+    let output_stream = match output_body.write() {
+        Ok(s) => s,
+        Err(_) => {
+            let error = TransportError::internal("Failed to get output stream");
+            let err_response = transport_error_to_response(&error);
+            ResponseOutparam::set(response_out, Ok(err_response));
+            return;
+        }
+    };
+
+    // Process request with SSE framing
+    if let Err(e) = handle_mcp_request(
+        request_id.clone(),
+        client_request,
+        protocol_version,
+        session_id,
+        &output_stream,
+        &common::http_sse_frame(),
+        config,
+    ) {
+        eprintln!("[TRANSPORT] ERROR during request processing: {:?}", e);
+        // Write error response to SSE stream
+        use crate::bindings::wasmcp::mcp_v20250618::mcp::{Error, ErrorCode, ServerMessage};
+        let error_code = ErrorCode::InternalError(Error {
+            code: -32603,
+            message: e.message(),
+            data: None,
+        });
+        let error_message = ServerMessage::Error((Some(request_id), error_code));
+        let _ = crate::bindings::wasmcp::mcp_v20250618::server_io::send_message(
+            &output_stream,
+            error_message,
+            &common::http_sse_frame(),
+        );
+    }
+
+    // Flush buffer (single write)
+    if let Err(e) = server_io::flush_buffer(&output_stream) {
+        eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
+    }
+
+    // Clean up - drop streams BEFORE finishing body (output_stream is child of output_body)
+    drop(output_stream);
+    drop(input_stream);
+    drop(body_stream);
+    if let Err(e) = OutgoingBody::finish(output_body, None) {
+        eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+    }
+
+    // Set response AFTER all writes complete
+    ResponseOutparam::set(response_out, Ok(response));
+    eprintln!("[TRANSPORT] SSE buffered response complete");
 }
 
 /// Send result or error response for notifications, results, and errors
-fn respond_with_result(result: Result<(), String>, response_out: ResponseOutparam) {
+fn respond_with_result(result: Result<(), TransportError>, response_out: ResponseOutparam) {
     match result {
         Ok(_) => match create_accepted_response() {
             Ok(response) => ResponseOutparam::set(response_out, Ok(response)),
             Err(e) => {
-                let response = create_error_response(&e);
+                let response = transport_error_to_response(&TransportError::internal(e));
                 ResponseOutparam::set(response_out, Ok(response));
             }
         },
         Err(e) => {
-            let response = create_error_response(&e);
+            let response = transport_error_to_response(&e);
             ResponseOutparam::set(response_out, Ok(response));
         }
     }
 }
 
 /// Extract session ID from request headers
-fn extract_session_id_header(request: &IncomingRequest) -> Result<Option<String>, String> {
+fn extract_session_id_header(request: &IncomingRequest) -> Result<Option<String>, TransportError> {
     let headers = request.headers();
     let session_id_values = headers.get("mcp-session-id");
 
@@ -558,20 +682,20 @@ fn extract_session_id_header(request: &IncomingRequest) -> Result<Option<String>
 
     String::from_utf8(session_id_values[0].clone())
         .map(Some)
-        .map_err(|_| "HTTP/400:Invalid Mcp-Session-Id header encoding".to_string())
+        .map_err(|_| TransportError::validation("Invalid Mcp-Session-Id header encoding"))
 }
 
 fn handle_mcp_notification(
     client_notification: ClientNotification,
     protocol_version: String,
     session_id: Option<&str>,
-) -> Result<(), String> {
+    config: &SessionConfig,
+) -> Result<(), TransportError> {
     // Parse protocol version
-    let proto_ver = parse_protocol_version(&protocol_version)?;
+    let proto_ver = common::parse_protocol_version(&protocol_version)
+        .map_err(|e| TransportError::protocol(e))?;
 
-    // Load session configuration
-    let session_config = SessionConfig::from_env();
-    let bucket = session_config.get_bucket().to_string();
+    let bucket = config.get_bucket().to_string();
 
     // Delegate to middleware via notification context
     common::delegate_notification(
@@ -581,7 +705,7 @@ fn handle_mcp_notification(
         bucket,
         &common::plain_json_frame(),
     )
-    .map_err(|e| format!("Notification handling failed: {:?}", e))?;
+    .map_err(|e| TransportError::protocol(format!("Notification handling failed: {:?}", e)))?;
 
     Ok(())
 }
@@ -590,32 +714,36 @@ fn handle_get(
     _request: IncomingRequest,
     _protocol_version: String,
     response_out: ResponseOutparam,
+    _session_config: &SessionConfig,
 ) {
     eprintln!("[TRANSPORT] GET request received - returning 405 Method Not Allowed");
-    match create_method_not_allowed_response() {
+    match create_method_not_allowed_response(_session_config) {
         Ok(response) => {
             eprintln!("[TRANSPORT] 405 response created successfully");
             ResponseOutparam::set(response_out, Ok(response));
         }
         Err(e) => {
             eprintln!("[TRANSPORT] Error creating 405 response: {}", e);
-            let response = create_error_response(&e);
+            let error = TransportError::internal(e);
+            let response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(response));
         }
     }
 }
 
 /// Handle DELETE request for session cleanup
-fn handle_delete(request: IncomingRequest, response_out: ResponseOutparam) {
-    // Load session configuration
-    let session_config = SessionConfig::from_env();
-
+fn handle_delete(
+    request: IncomingRequest,
+    response_out: ResponseOutparam,
+    session_config: &SessionConfig,
+) {
     // If sessions not enabled, return 405 Method Not Allowed
     if !session_config.enabled {
-        match create_method_not_allowed_response() {
+        match create_method_not_allowed_response(session_config) {
             Ok(response) => ResponseOutparam::set(response_out, Ok(response)),
             Err(e) => {
-                let response = create_error_response(&e);
+                let error = TransportError::internal(e);
+                let response = transport_error_to_response(&error);
                 ResponseOutparam::set(response_out, Ok(response));
             }
         }
@@ -626,12 +754,13 @@ fn handle_delete(request: IncomingRequest, response_out: ResponseOutparam) {
     let session_id = match extract_session_id_header(&request) {
         Ok(Some(id)) => id,
         Ok(None) => {
-            let response = create_error_response("HTTP/404:No session to delete");
+            let error = TransportError::session("No session to delete");
+            let response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(response));
             return;
         }
         Err(e) => {
-            let response = create_error_response(&e);
+            let response = transport_error_to_response(&e);
             ResponseOutparam::set(response_out, Ok(response));
             return;
         }
@@ -647,49 +776,52 @@ fn handle_delete(request: IncomingRequest, response_out: ResponseOutparam) {
             // Return 200 OK
             let response = OutgoingResponse::new(Fields::new());
             if let Err(_) = response.set_status_code(200) {
-                let err_response = create_error_response("Failed to set status");
+                let error = TransportError::internal("Failed to set status");
+                let err_response = transport_error_to_response(&error);
                 ResponseOutparam::set(response_out, Ok(err_response));
                 return;
             }
             ResponseOutparam::set(response_out, Ok(response));
         }
         Err(SessionError::NoSuchSession) => {
-            let response = create_error_response("HTTP/404:Session not found");
+            let error = TransportError::session("Session not found");
+            let response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(response));
         }
         Err(_) => {
-            let response = create_error_response("HTTP/500:Failed to delete session");
+            let error = TransportError::session("Failed to delete session");
+            let response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(response));
         }
     }
 }
 
 /// Validate Accept header per MCP spec
-fn validate_accept_header(request: &IncomingRequest) -> Result<(), String> {
+fn validate_accept_header(request: &IncomingRequest) -> Result<(), TransportError> {
     let headers = request.headers();
     let accept_values = headers.get("accept");
 
     if accept_values.is_empty() {
-        return Err("Missing Accept header".to_string());
+        return Err(TransportError::validation("Missing Accept header"));
     }
 
     let accept_str = String::from_utf8(accept_values[0].clone())
-        .map_err(|_| "Invalid Accept header encoding".to_string())?;
+        .map_err(|_| TransportError::validation("Invalid Accept header encoding"))?;
 
     let has_json = accept_str.contains("application/json") || accept_str.contains("*/*");
     let has_sse = accept_str.contains("text/event-stream") || accept_str.contains("*/*");
 
     if !has_json || !has_sse {
-        return Err(
-            "Accept header must include both application/json and text/event-stream".to_string(),
-        );
+        return Err(TransportError::validation(
+            "Accept header must include both application/json and text/event-stream",
+        ));
     }
 
     Ok(())
 }
 
 /// Validate MCP-Protocol-Version header
-fn validate_protocol_version(request: &IncomingRequest) -> Result<String, String> {
+fn validate_protocol_version(request: &IncomingRequest) -> Result<String, TransportError> {
     let headers = request.headers();
     let version_values = headers.get("mcp-protocol-version");
 
@@ -699,16 +831,19 @@ fn validate_protocol_version(request: &IncomingRequest) -> Result<String, String
     }
 
     let version_str = String::from_utf8(version_values[0].clone())
-        .map_err(|_| "Invalid MCP-Protocol-Version header encoding".to_string())?;
+        .map_err(|_| TransportError::validation("Invalid MCP-Protocol-Version header encoding"))?;
 
     match version_str.as_str() {
         "2025-06-18" | "2025-03-26" | "2024-11-05" => Ok(version_str),
-        _ => Err(format!("Unsupported MCP-Protocol-Version: {}", version_str)),
+        _ => Err(TransportError::protocol(format!(
+            "Unsupported MCP-Protocol-Version: {}",
+            version_str
+        ))),
     }
 }
 
 /// Validate Origin header to prevent DNS rebinding attacks
-fn validate_origin(request: &IncomingRequest) -> Result<(), String> {
+fn validate_origin(request: &IncomingRequest) -> Result<(), TransportError> {
     let headers = request.headers();
     let origin_values = headers.get("origin");
 
@@ -726,12 +861,14 @@ fn validate_origin(request: &IncomingRequest) -> Result<(), String> {
 
     let origin = if origin_values.is_empty() {
         if require_origin == "true" {
-            return Err("Origin header required but not provided".to_string());
+            return Err(TransportError::validation(
+                "Origin header required but not provided",
+            ));
         }
         return Ok(());
     } else {
         String::from_utf8(origin_values[0].clone())
-            .map_err(|_| "Invalid Origin header encoding".to_string())?
+            .map_err(|_| TransportError::validation("Invalid Origin header encoding"))?
     };
 
     match allowed_origins {
@@ -745,10 +882,10 @@ fn validate_origin(request: &IncomingRequest) -> Result<(), String> {
             if allowed_list.contains(&origin.as_str()) {
                 Ok(())
             } else {
-                Err(format!(
+                Err(TransportError::validation(format!(
                     "Origin '{}' not in allowed list. Set MCP_ALLOWED_ORIGINS environment variable.",
                     origin
-                ))
+                )))
             }
         }
         None => validate_localhost_origin(&origin),
@@ -756,7 +893,7 @@ fn validate_origin(request: &IncomingRequest) -> Result<(), String> {
 }
 
 /// Validate localhost origin (default secure behavior)
-fn validate_localhost_origin(origin: &str) -> Result<(), String> {
+fn validate_localhost_origin(origin: &str) -> Result<(), TransportError> {
     let localhost_patterns = [
         "http://localhost",
         "https://localhost",
@@ -772,27 +909,16 @@ fn validate_localhost_origin(origin: &str) -> Result<(), String> {
         }
     }
 
-    Err(format!(
+    Err(TransportError::validation(format!(
         "Origin '{}' not allowed. By default, only localhost origins are permitted.",
         origin
-    ))
+    )))
 }
 
-/// Create error response
-fn create_error_response(message: &str) -> OutgoingResponse {
-    // Parse HTTP status code from message prefix (format: "HTTP/404:message")
-    let (status_code, error_message) = if message.starts_with("HTTP/") {
-        let parts: Vec<&str> = message.splitn(2, ':').collect();
-        if parts.len() == 2 {
-            let status_str = parts[0].strip_prefix("HTTP/").unwrap_or("400");
-            let status = status_str.parse::<u16>().unwrap_or(400);
-            (status, parts[1])
-        } else {
-            (400, message)
-        }
-    } else {
-        (400, message)
-    };
+/// Convert TransportError to HTTP response
+fn transport_error_to_response(error: &TransportError) -> OutgoingResponse {
+    let status_code = error.http_status_code();
+    let error_message = error.message();
 
     let response = OutgoingResponse::new(Fields::new());
     let _ = response.set_status_code(status_code);
@@ -820,9 +946,10 @@ fn create_error_response(message: &str) -> OutgoingResponse {
 }
 
 /// Create 405 Method Not Allowed response
-fn create_method_not_allowed_response() -> Result<OutgoingResponse, String> {
+fn create_method_not_allowed_response(
+    session_config: &SessionConfig,
+) -> Result<OutgoingResponse, String> {
     // Set Allow header based on session support
-    let session_config = SessionConfig::from_env();
     let allow_methods = if session_config.enabled {
         b"POST, DELETE".to_vec()
     } else {
@@ -844,51 +971,26 @@ fn create_method_not_allowed_response() -> Result<OutgoingResponse, String> {
     Ok(response)
 }
 
-/// Parse protocol version string to enum
-fn parse_protocol_version(version: &str) -> Result<ProtocolVersion, String> {
-    match version {
-        "2025-06-18" => Ok(ProtocolVersion::V20250618),
-        "2025-03-26" => Ok(ProtocolVersion::V20250326),
-        "2024-11-05" => Ok(ProtocolVersion::V20241105),
-        _ => Err(format!("Unsupported protocol version: {}", version)),
-    }
-}
-
-/// Convert LogLevel enum to string
-fn log_level_to_string(level: LogLevel) -> String {
-    match level {
-        LogLevel::Debug => "debug".to_string(),
-        LogLevel::Info => "info".to_string(),
-        LogLevel::Notice => "notice".to_string(),
-        LogLevel::Warning => "warning".to_string(),
-        LogLevel::Error => "error".to_string(),
-        LogLevel::Critical => "critical".to_string(),
-        LogLevel::Alert => "alert".to_string(),
-        LogLevel::Emergency => "emergency".to_string(),
-    }
-}
-
 /// Handle result response from client (bidirectional MCP)
 fn handle_mcp_result(
     result_id: RequestId,
     client_result: ClientResult,
     protocol_version: String,
     session_id: Option<&str>,
-) -> Result<(), String> {
-    // Load session configuration
-    let session_config = SessionConfig::from_env();
-
-    // Create session if provided
-    let session = create_session(session_id, &session_config);
+    session_config: &SessionConfig,
+) -> Result<(), TransportError> {
+    // Parse protocol version
+    let proto_ver = common::parse_protocol_version(&protocol_version)
+        .map_err(|e| TransportError::protocol(e))?;
 
     // Create message context (no client-stream for results - client sending to server)
-    let ctx = MessageContext {
-        client_stream: None,
-        protocol_version,
-        session,
-        identity: None,
-        frame: common::plain_json_frame(),
-    };
+    let ctx = common::create_message_context(
+        None,
+        proto_ver,
+        session_id,
+        session_config.get_bucket(),
+        &common::plain_json_frame(),
+    );
 
     // Create client message
     let message = crate::bindings::wasmcp::mcp_v20250618::mcp::ClientMessage::Result((
@@ -907,21 +1009,20 @@ fn handle_mcp_error(
     error_code: ErrorCode,
     protocol_version: String,
     session_id: Option<&str>,
-) -> Result<(), String> {
-    // Load session configuration
-    let session_config = SessionConfig::from_env();
-
-    // Create session if provided
-    let session = create_session(session_id, &session_config);
+    session_config: &SessionConfig,
+) -> Result<(), TransportError> {
+    // Parse protocol version
+    let proto_ver = common::parse_protocol_version(&protocol_version)
+        .map_err(|e| TransportError::protocol(e))?;
 
     // Create message context (no client-stream for errors - client sending to server)
-    let ctx = MessageContext {
-        client_stream: None,
-        protocol_version,
-        session,
-        identity: None,
-        frame: common::plain_json_frame(),
-    };
+    let ctx = common::create_message_context(
+        None,
+        proto_ver,
+        session_id,
+        session_config.get_bucket(),
+        &common::plain_json_frame(),
+    );
 
     // Create client message
     let message =
@@ -938,14 +1039,16 @@ fn handle_initialize_request(
     _client_request: ClientRequest,
     protocol_version: String,
     response_out: ResponseOutparam,
+    session_config: &SessionConfig,
 ) {
     eprintln!("[TRANSPORT] Handling initialize request");
 
     // Parse protocol version
-    let proto_ver = match parse_protocol_version(&protocol_version) {
+    let proto_ver = match common::parse_protocol_version(&protocol_version) {
         Ok(v) => v,
         Err(e) => {
-            let response = create_error_response(&e);
+            let error = TransportError::protocol(e);
+            let response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(response));
             return;
         }
@@ -956,10 +1059,6 @@ fn handle_initialize_request(
     let capabilities =
         common::discover_capabilities_for_init(proto_ver, &common::plain_json_frame());
     eprintln!("[TRANSPORT] Capabilities discovered");
-
-    // Load session configuration
-    let session_config = SessionConfig::from_env();
-    eprintln!("[TRANSPORT] Session config loaded for init");
 
     // Create session if enabled
     let new_session_id = if session_config.enabled {
@@ -982,7 +1081,8 @@ fn handle_initialize_request(
     let headers = Fields::new();
     eprintln!("[TRANSPORT] Setting content-type header");
     if let Err(_) = headers.set("content-type", &[b"application/json".to_vec()]) {
-        let response = create_error_response("Failed to set content-type");
+        let error = TransportError::internal("Failed to set content-type");
+        let response = transport_error_to_response(&error);
         ResponseOutparam::set(response_out, Ok(response));
         return;
     }
@@ -992,7 +1092,8 @@ fn handle_initialize_request(
     if let Some(ref session_id) = new_session_id {
         eprintln!("[TRANSPORT] Setting Mcp-Session-Id header: {}", session_id);
         if let Err(_) = headers.set("mcp-session-id", &[session_id.as_bytes().to_vec()]) {
-            let response = create_error_response("Failed to set Mcp-Session-Id header");
+            let error = TransportError::internal("Failed to set Mcp-Session-Id header");
+            let response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(response));
             return;
         }
@@ -1003,7 +1104,8 @@ fn handle_initialize_request(
     let response = OutgoingResponse::new(headers);
     eprintln!("[TRANSPORT] Setting status code 200");
     if let Err(_) = response.set_status_code(200) {
-        let err_response = create_error_response("Failed to set status");
+        let error = TransportError::internal("Failed to set status");
+        let err_response = transport_error_to_response(&error);
         ResponseOutparam::set(response_out, Ok(err_response));
         return;
     }
@@ -1013,7 +1115,8 @@ fn handle_initialize_request(
     let body = match response.body() {
         Ok(b) => b,
         Err(_) => {
-            let err_response = create_error_response("Failed to get response body");
+            let error = TransportError::internal("Failed to get response body");
+            let err_response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(err_response));
             return;
         }
@@ -1022,7 +1125,8 @@ fn handle_initialize_request(
     let output_stream = match body.write() {
         Ok(s) => s,
         Err(_) => {
-            let err_response = create_error_response("Failed to get output stream");
+            let error = TransportError::internal("Failed to get output stream");
+            let err_response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(err_response));
             return;
         }
@@ -1057,8 +1161,9 @@ fn handle_initialize_request(
         &crate::common::plain_json_frame(),
     ) {
         eprintln!("[TRANSPORT] ERROR sending initialize response: {:?}", e);
-        let err_response =
-            create_error_response(&format!("Failed to send initialize response: {:?}", e));
+        let error =
+            TransportError::internal(format!("Failed to send initialize response: {:?}", e));
+        let err_response = transport_error_to_response(&error);
         ResponseOutparam::set(response_out, Ok(err_response));
         return;
     }
@@ -1068,7 +1173,8 @@ fn handle_initialize_request(
     eprintln!("[TRANSPORT] Flushing buffer...");
     if let Err(e) = server_io::flush_buffer(&output_stream) {
         eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
-        let err_response = create_error_response(&format!("Failed to flush buffer: {:?}", e));
+        let error = TransportError::internal(format!("Failed to flush buffer: {:?}", e));
+        let err_response = transport_error_to_response(&error);
         ResponseOutparam::set(response_out, Ok(err_response));
         return;
     }
@@ -1077,7 +1183,8 @@ fn handle_initialize_request(
     drop(output_stream);
     if let Err(e) = OutgoingBody::finish(body, None) {
         eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
-        let err_response = create_error_response("Failed to finish body");
+        let error = TransportError::internal("Failed to finish body");
+        let err_response = transport_error_to_response(&error);
         ResponseOutparam::set(response_out, Ok(err_response));
         return;
     }

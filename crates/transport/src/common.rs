@@ -5,11 +5,95 @@ use crate::bindings::wasmcp::mcp_v20250618::mcp::{
     ClientMessage, ClientNotification, ClientRequest, ErrorCode, ProtocolVersion, RequestId,
     ServerCapabilities, ServerMessage, ServerResult,
 };
-use crate::bindings::wasmcp::mcp_v20250618::server_handler::{MessageContext, Session, handle};
+use crate::bindings::wasmcp::mcp_v20250618::server_handler::{MessageContext, handle};
 use crate::bindings::wasmcp::mcp_v20250618::server_io::{self, IoError, ReadLimit};
 
 // Re-export MessageFrame so it's public
 pub use crate::bindings::wasmcp::mcp_v20250618::server_io::MessageFrame;
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+/// Maximum size for HTTP request bodies (10MB)
+const HTTP_MAX_REQUEST_SIZE: u64 = 10 * 1024 * 1024;
+
+/// Request ID for internal capability discovery probes
+/// Uses -1 to avoid conflicts with real client request IDs (which are typically positive)
+const CAPABILITY_PROBE_REQUEST_ID: i64 = -1;
+
+// =============================================================================
+// PROTOCOL VERSION HELPERS
+// =============================================================================
+
+/// Parse protocol version string to enum
+pub fn parse_protocol_version(version: &str) -> Result<ProtocolVersion, String> {
+    match version {
+        "2025-06-18" => Ok(ProtocolVersion::V20250618),
+        "2025-03-26" => Ok(ProtocolVersion::V20250326),
+        "2024-11-05" => Ok(ProtocolVersion::V20241105),
+        _ => Err(format!("Unsupported protocol version: {}", version)),
+    }
+}
+
+/// Convert ProtocolVersion enum to string
+pub fn protocol_version_to_string(version: ProtocolVersion) -> String {
+    match version {
+        ProtocolVersion::V20241105 => "2024-11-05".to_string(),
+        ProtocolVersion::V20250326 => "2025-03-26".to_string(),
+        ProtocolVersion::V20250618 => "2025-06-18".to_string(),
+    }
+}
+
+/// Convert LogLevel enum to string
+pub fn log_level_to_string(level: crate::bindings::wasmcp::mcp_v20250618::mcp::LogLevel) -> String {
+    use crate::bindings::wasmcp::mcp_v20250618::mcp::LogLevel;
+
+    match level {
+        LogLevel::Debug => "debug".to_string(),
+        LogLevel::Info => "info".to_string(),
+        LogLevel::Notice => "notice".to_string(),
+        LogLevel::Warning => "warning".to_string(),
+        LogLevel::Error => "error".to_string(),
+        LogLevel::Critical => "critical".to_string(),
+        LogLevel::Alert => "alert".to_string(),
+        LogLevel::Emergency => "emergency".to_string(),
+    }
+}
+
+/// Create session object from optional session ID and store ID
+pub fn create_session(
+    session_id: Option<&str>,
+    store_id: &str,
+) -> Option<crate::bindings::wasmcp::mcp_v20250618::mcp::Session> {
+    session_id.map(|id| crate::bindings::wasmcp::mcp_v20250618::mcp::Session {
+        session_id: id.to_string(),
+        store_id: store_id.to_string(),
+    })
+}
+
+/// Create MessageContext with common parameters
+///
+/// This eliminates duplication of MessageContext construction across the codebase.
+pub fn create_message_context<'a>(
+    client_stream: Option<&'a OutputStream>,
+    protocol_version: ProtocolVersion,
+    session_id: Option<&str>,
+    bucket_name: &str,
+    frame: &MessageFrame,
+) -> MessageContext<'a> {
+    MessageContext {
+        client_stream,
+        protocol_version: protocol_version_to_string(protocol_version),
+        session: create_session(session_id, bucket_name),
+        identity: None, // TODO: Add user identity support
+        frame: frame.clone(),
+    }
+}
+
+// =============================================================================
+// MESSAGE TYPES
+// =============================================================================
 
 /// Parsed MCP message from the wire
 #[derive(Debug)]
@@ -58,7 +142,7 @@ pub fn http_sse_frame() -> MessageFrame {
 ///
 /// For HTTP, we read the entire request body up to a maximum size
 pub fn http_read_limit() -> ReadLimit {
-    ReadLimit::MaxBytes(10 * 1024 * 1024) // 10MB max
+    ReadLimit::MaxBytes(HTTP_MAX_REQUEST_SIZE)
 }
 
 /// Stdio newline-delimited JSON framing configuration
@@ -130,10 +214,10 @@ pub fn write_mcp_result(
 ///
 /// This is called during initialize to probe the downstream handler
 pub fn discover_capabilities_for_init(
-    _protocol_version: ProtocolVersion,
+    protocol_version: ProtocolVersion,
     frame: &MessageFrame,
 ) -> ServerCapabilities {
-    discover_capabilities(frame)
+    discover_capabilities(protocol_version, frame)
 }
 
 /// Handle transport-level MCP method: ping
@@ -154,7 +238,10 @@ pub fn handle_set_log_level(_level: String) -> Result<(), ErrorCode> {
 /// Discover server capabilities by probing downstream handler
 ///
 /// This sends test requests to see what the middleware stack supports
-fn discover_capabilities(frame: &MessageFrame) -> ServerCapabilities {
+fn discover_capabilities(
+    protocol_version: ProtocolVersion,
+    frame: &MessageFrame,
+) -> ServerCapabilities {
     use crate::bindings::wasmcp::mcp_v20250618::mcp::{
         ClientRequest, CompleteRequest, CompletionArgument, CompletionPromptReference,
         CompletionReference, ListPromptsRequest, ListResourcesRequest, ListToolsRequest,
@@ -165,43 +252,34 @@ fn discover_capabilities(frame: &MessageFrame) -> ServerCapabilities {
     let mut has_completions = false;
 
     // Probe for tools support
-    let tools_ctx = MessageContext {
-        client_stream: None,
-        protocol_version: "2025-06-18".to_string(),
-        session: None,
-        identity: None,
-        frame: frame.clone(),
-    };
+    let tools_ctx = create_message_context(None, protocol_version, None, "", frame);
     let tools_request = ClientRequest::ToolsList(ListToolsRequest { cursor: None });
-    let tools_message = ClientMessage::Request((RequestId::Number(0), tools_request));
+    let tools_message = ClientMessage::Request((
+        RequestId::Number(CAPABILITY_PROBE_REQUEST_ID),
+        tools_request,
+    ));
     if let Some(Ok(_)) = handle(&tools_ctx, tools_message) {
         list_changed_flags |= ServerLists::TOOLS;
     }
 
     // Probe for resources support
-    let resources_ctx = MessageContext {
-        client_stream: None,
-        protocol_version: "2025-06-18".to_string(),
-        session: None,
-        identity: None,
-        frame: frame.clone(),
-    };
+    let resources_ctx = create_message_context(None, protocol_version, None, "", frame);
     let resources_request = ClientRequest::ResourcesList(ListResourcesRequest { cursor: None });
-    let resources_message = ClientMessage::Request((RequestId::Number(1), resources_request));
+    let resources_message = ClientMessage::Request((
+        RequestId::Number(CAPABILITY_PROBE_REQUEST_ID),
+        resources_request,
+    ));
     if let Some(Ok(_)) = handle(&resources_ctx, resources_message) {
         list_changed_flags |= ServerLists::RESOURCES;
     }
 
     // Probe for prompts support and use result to test completions
-    let prompts_ctx = MessageContext {
-        client_stream: None,
-        protocol_version: "2025-06-18".to_string(),
-        session: None,
-        identity: None,
-        frame: frame.clone(),
-    };
+    let prompts_ctx = create_message_context(None, protocol_version, None, "", frame);
     let prompts_request = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
-    let prompts_message = ClientMessage::Request((RequestId::Number(2), prompts_request));
+    let prompts_message = ClientMessage::Request((
+        RequestId::Number(CAPABILITY_PROBE_REQUEST_ID),
+        prompts_request,
+    ));
     if let Some(Ok(ServerResult::PromptsList(prompts_result))) =
         handle(&prompts_ctx, prompts_message)
     {
@@ -230,15 +308,11 @@ fn discover_capabilities(frame: &MessageFrame) -> ServerCapabilities {
                 };
 
                 // Test if completions are supported
-                let completion_ctx = MessageContext {
-                    client_stream: None,
-                    protocol_version: "2025-06-18".to_string(),
-                    session: None,
-                    identity: None,
-                    frame: frame.clone(),
-                };
+                let completion_ctx =
+                    create_message_context(None, protocol_version, None, "", frame);
                 let req = ClientRequest::CompletionComplete(completion_request);
-                let completion_message = ClientMessage::Request((RequestId::Number(3), req));
+                let completion_message =
+                    ClientMessage::Request((RequestId::Number(CAPABILITY_PROBE_REQUEST_ID), req));
                 match handle(&completion_ctx, completion_message) {
                     Some(Ok(_)) => has_completions = true,
                     Some(Err(ErrorCode::MethodNotFound(_))) => {
@@ -283,20 +357,14 @@ pub fn delegate_to_middleware(
     output_stream: &OutputStream,
     frame: &MessageFrame,
 ) -> Result<ServerResult, ErrorCode> {
-    // Create session if provided
-    let session = session_id.map(|id| Session {
-        session_id: id.to_string(),
-        store_id: bucket_name.clone(),
-    });
-
     // Create message context
-    let ctx = MessageContext {
-        client_stream: Some(output_stream),
-        protocol_version: protocol_version_to_string(protocol_version),
-        session,
-        identity: None, // TODO: Add user identity support
-        frame: frame.clone(),
-    };
+    let ctx = create_message_context(
+        Some(output_stream),
+        protocol_version,
+        session_id,
+        &bucket_name,
+        frame,
+    );
 
     // Create client message
     let message = ClientMessage::Request((request_id, client_request));
@@ -323,20 +391,8 @@ pub fn delegate_notification(
     bucket_name: String,
     frame: &MessageFrame,
 ) -> Result<(), ErrorCode> {
-    // Create session if provided
-    let session = session_id.map(|id| Session {
-        session_id: id.to_string(),
-        store_id: bucket_name.clone(),
-    });
-
     // Create message context (no client-stream for notifications - they're one-way)
-    let ctx = MessageContext {
-        client_stream: None,
-        protocol_version: protocol_version_to_string(protocol_version),
-        session,
-        identity: None,
-        frame: frame.clone(),
-    };
+    let ctx = create_message_context(None, protocol_version, session_id, &bucket_name, frame);
 
     // Create client message
     let message = ClientMessage::Notification(client_notification);
@@ -344,13 +400,4 @@ pub fn delegate_notification(
     // Delegate to imported server-handler (should return None for notifications)
     handle(&ctx, message);
     Ok(())
-}
-
-/// Convert ProtocolVersion enum to string format
-fn protocol_version_to_string(version: ProtocolVersion) -> String {
-    match version {
-        ProtocolVersion::V20250618 => "2025-06-18".to_string(),
-        ProtocolVersion::V20250326 => "2025-03-26".to_string(),
-        ProtocolVersion::V20241105 => "2024-11-05".to_string(),
-    }
 }

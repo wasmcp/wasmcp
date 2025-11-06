@@ -49,8 +49,12 @@ impl Guest for ToolsMiddleware {
             ClientMessage::Request((request_id, request)) => {
                 // Handle requests - match on request type
                 let result = match &request {
-                    ClientRequest::ToolsList(list_req) => handle_tools_list(list_req.clone(), &ctx),
-                    ClientRequest::ToolsCall(call_req) => handle_tools_call(call_req.clone(), &ctx),
+                    ClientRequest::ToolsList(list_req) => {
+                        handle_tools_list(request_id.clone(), list_req.clone(), &ctx)
+                    }
+                    ClientRequest::ToolsCall(call_req) => {
+                        handle_tools_call(request_id.clone(), call_req.clone(), &ctx)
+                    }
                     _ => {
                         // Delegate all other requests to downstream handler
                         let downstream_msg = ClientMessage::Request((request_id.clone(), request));
@@ -68,6 +72,7 @@ impl Guest for ToolsMiddleware {
 }
 
 fn handle_tools_list(
+    request_id: RequestId,
     req: ListToolsRequest,
     ctx: &MessageContext,
 ) -> Result<ServerResult, ErrorCode> {
@@ -85,9 +90,9 @@ fn handle_tools_list(
         }
     };
 
-    // Try to get downstream tools
+    // Try to get downstream tools - preserve the original request ID
     let downstream_req = ClientRequest::ToolsList(req.clone());
-    let downstream_msg = ClientMessage::Request((RequestId::Number(0), downstream_req));
+    let downstream_msg = ClientMessage::Request((request_id, downstream_req));
     match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
         Some(Ok(ServerResult::ToolsList(downstream_result))) => {
             // Merge our tools with downstream tools
@@ -164,6 +169,7 @@ fn handle_tools_list(
 }
 
 fn handle_tools_call(
+    request_id: RequestId,
     req: CallToolRequest,
     ctx: &MessageContext,
 ) -> Result<ServerResult, ErrorCode> {
@@ -175,8 +181,9 @@ fn handle_tools_call(
         }
         Ok(None) => {
             // Imported interface doesn't handle this tool - try downstream
+            // Preserve the original request ID
             let downstream_req = ClientRequest::ToolsCall(req.clone());
-            let downstream_msg = ClientMessage::Request((RequestId::Number(0), downstream_req));
+            let downstream_msg = ClientMessage::Request((request_id, downstream_req));
             match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
                 Some(Ok(response)) => Ok(response),
                 Some(Err(ErrorCode::MethodNotFound(_))) | None => {
