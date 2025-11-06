@@ -78,6 +78,17 @@ impl Guest for ServerIo {
         message: ServerMessage,
         frame: MessageFrame,
     ) -> Result<(), IoError> {
+        // In JSON mode, suppress notifications (only final response is sent)
+        // Per MCP spec 2025-06-18: SSE allows multiple messages, JSON mode only sends final response
+        if is_json_mode() {
+            if let ServerMessage::Notification(_) = message {
+                eprintln!(
+                    "[SERVER-IO] JSON mode: suppressing notification (only final response sent)"
+                );
+                return Ok(());
+            }
+        }
+
         // Get framed bytes
         let framed = serialize_message_to_bytes(message, &frame)?;
 
@@ -93,7 +104,7 @@ impl Guest for ServerIo {
 
     /// Flush buffered data to stream (for buffered mode)
     ///
-    /// In buffered mode (MCP_SSE_BUFFER=true), all writes accumulate in memory.
+    /// In buffered mode (MCP_SERVER_MODE=sse_buffer or json), all writes accumulate in memory.
     /// This function writes the entire buffer to the stream in one blocking operation.
     fn flush_buffer(output: &OutputStream) -> Result<(), IoError> {
         if !is_buffer_mode() {
@@ -507,12 +518,25 @@ thread_local! {
     static BUFFER: RefCell<Vec<u8>> = RefCell::new(Vec::new());
 }
 
+/// Get the current server mode
+fn get_server_mode() -> String {
+    std::env::var("MCP_SERVER_MODE")
+        .ok()
+        .map(|v| v.to_lowercase())
+        .unwrap_or_else(|| "sse_buffer".to_string())
+}
+
 /// Check if we're in buffer mode
 fn is_buffer_mode() -> bool {
-    std::env::var("MCP_SSE_BUFFER")
-        .ok()
-        .map(|v| v.to_lowercase() == "true")
-        .unwrap_or(true) // Default to buffered
+    let mode = get_server_mode();
+    // Buffer for: sse_buffer (default) and json modes
+    // Don't buffer for: sse mode (true streaming)
+    mode == "sse_buffer" || mode == "json"
+}
+
+/// Check if we're in JSON mode (suppresses notifications)
+fn is_json_mode() -> bool {
+    get_server_mode() == "json"
 }
 
 /// Write bytes to output stream with backpressure handling
@@ -537,7 +561,7 @@ fn write_bytes(stream: &OutputStream, data: &[u8]) -> Result<(), IoError> {
         match stream.check_write() {
             Ok(0) => {
                 return Err(IoError::Unexpected(format!(
-                    "Write budget exhausted in streaming mode. Set MCP_SSE_BUFFER=true for buffered mode."
+                    "Write budget exhausted in streaming mode. Set MCP_SERVER_MODE=sse_buffer for buffered mode."
                 )));
             }
             Ok(budget) => {

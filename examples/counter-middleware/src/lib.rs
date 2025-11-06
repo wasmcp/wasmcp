@@ -24,7 +24,7 @@ impl Guest for Counter {
         message: ClientMessage,
     ) -> Option<Result<ServerResult, ErrorCode>> {
         // Only handle request messages
-        let ClientMessage::Request((request_id, request)) = &message else {
+        let ClientMessage::Request((_request_id, request)) = &message else {
             // Not a request - delegate to downstream
             let downstream_ctx = downstream::MessageContext {
                 client_stream: ctx.client_stream,
@@ -96,7 +96,7 @@ fn handle_list_tools(
     ));
 
     match downstream::handle(&downstream_ctx, downstream_msg) {
-        Some(Ok(ServerResult::ToolsList(mut downstream_result))) => {
+        Some(Ok(ServerResult::ToolsList(downstream_result))) => {
             // Merge our tool with downstream tools
             let mut all_tools = vec![our_tool];
             all_tools.extend(downstream_result.tools);
@@ -250,16 +250,5 @@ fn success_result(result: String) -> CallToolResult {
     }
 }
 
-fn error_result(message: String) -> CallToolResult {
-    CallToolResult {
-        content: vec![ContentBlock::Text(TextContent {
-            text: TextData::Text(message),
-            options: None,
-        })],
-        is_error: Some(true),
-        meta: None,
-        structured_content: None,
-    }
-}
 
 bindings::export!(Counter with_types_in bindings);

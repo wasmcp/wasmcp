@@ -90,8 +90,8 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
     // Load session configuration
     let session_config = SessionConfig::from_env();
     eprintln!(
-        "[TRANSPORT] Session config loaded - enabled: {}",
-        session_config.enabled
+        "[TRANSPORT] Session config loaded - enabled: {}, mode: {:?}",
+        session_config.enabled, session_config.mode
     );
 
     // Check for session header and validate if present
@@ -193,130 +193,221 @@ fn handle_post(request: IncomingRequest, protocol_version: String, response_out:
                 return;
             }
 
-            // Not initialize - create SSE response for all other requests
-            eprintln!("[TRANSPORT] Creating SSE response for non-initialize request");
-            let response_headers = Fields::new();
-            if let Err(_) = response_headers.set("content-type", &[b"text/event-stream".to_vec()]) {
-                let response = create_error_response("Failed to set content-type");
-                ResponseOutparam::set(response_out, Ok(response));
-                return;
-            }
-            if let Err(_) = response_headers.set("cache-control", &[b"no-cache".to_vec()]) {
-                let response = create_error_response("Failed to set cache-control");
-                ResponseOutparam::set(response_out, Ok(response));
-                return;
-            }
-            eprintln!(
-                "[TRANSPORT] SSE headers set (content-type: text/event-stream, cache-control: no-cache)"
-            );
+            // Not initialize - handle based on server mode
+            use crate::bindings::wasmcp::mcp_v20250618::server_io;
+            use crate::config::ServerMode;
 
-            let response = OutgoingResponse::new(response_headers);
-            if let Err(_) = response.set_status_code(200) {
-                let err_response = create_error_response("Failed to set status");
-                ResponseOutparam::set(response_out, Ok(err_response));
-                return;
-            }
-            eprintln!("[TRANSPORT] SSE Response created with status 200");
+            match session_config.mode {
+                ServerMode::Json => {
+                    // Plain JSON mode - single response
+                    eprintln!("[TRANSPORT] Using JSON mode (single buffered response)");
 
-            let output_body = match response.body() {
-                Ok(b) => b,
-                Err(_) => {
-                    let err_response = create_error_response("Failed to get response body");
-                    ResponseOutparam::set(response_out, Ok(err_response));
-                    return;
-                }
-            };
-            eprintln!("[TRANSPORT] Response body obtained");
+                    let response_headers = Fields::new();
+                    if let Err(_) =
+                        response_headers.set("content-type", &[b"application/json".to_vec()])
+                    {
+                        let response = create_error_response("Failed to set content-type");
+                        ResponseOutparam::set(response_out, Ok(response));
+                        return;
+                    }
 
-            let output_stream = match output_body.write() {
-                Ok(s) => s,
-                Err(_) => {
-                    let err_response = create_error_response("Failed to get output stream");
-                    ResponseOutparam::set(response_out, Ok(err_response));
-                    return;
-                }
-            };
-            eprintln!("[TRANSPORT] Output stream acquired for SSE streaming");
+                    let response = OutgoingResponse::new(response_headers);
+                    if let Err(_) = response.set_status_code(200) {
+                        let err_response = create_error_response("Failed to set status");
+                        ResponseOutparam::set(response_out, Ok(err_response));
+                        return;
+                    }
 
-            // Check if we should use buffered mode (safer) or streaming mode
-            let config = SessionConfig::from_env();
-            let use_buffered_mode = config.sse_buffer;
+                    let output_body = match response.body() {
+                        Ok(b) => b,
+                        Err(_) => {
+                            let err_response = create_error_response("Failed to get response body");
+                            ResponseOutparam::set(response_out, Ok(err_response));
+                            return;
+                        }
+                    };
 
-            if use_buffered_mode {
-                // *** BUFFERED MODE: Process request, write will use blocking_write_and_flush() ***
-                eprintln!("[TRANSPORT] Using BUFFERED SSE mode (MCP_SSE_BUFFER=true)");
-                eprintln!("[TRANSPORT] Writes will use blocking API (safe for Fermyon Cloud)");
+                    let output_stream = match output_body.write() {
+                        Ok(s) => s,
+                        Err(_) => {
+                            let err_response = create_error_response("Failed to get output stream");
+                            ResponseOutparam::set(response_out, Ok(err_response));
+                            return;
+                        }
+                    };
 
-                // Process request - writes accumulate in server-io buffer
-                eprintln!("[TRANSPORT] Processing MCP request (buffering all writes)...");
-                if let Err(e) = handle_mcp_request(
-                    request_id,
-                    client_request,
-                    protocol_version,
-                    session_id.as_deref(),
-                    &output_stream,
-                    &common::http_sse_frame(),
-                ) {
-                    eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
-                }
+                    // Process request with plain JSON framing
+                    if let Err(e) = handle_mcp_request(
+                        request_id,
+                        client_request,
+                        protocol_version,
+                        session_id.as_deref(),
+                        &output_stream,
+                        &common::plain_json_frame(),
+                    ) {
+                        eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
+                    }
 
-                eprintln!("[TRANSPORT] MCP request processing complete, flushing buffer...");
+                    // Flush buffer (single write)
+                    if let Err(e) = server_io::flush_buffer(&output_stream) {
+                        eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
+                    }
 
-                // Flush the accumulated buffer in ONE write
-                use crate::bindings::wasmcp::mcp_v20250618::server_io;
-                if let Err(e) = server_io::flush_buffer(&output_stream) {
-                    eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
-                } else {
-                    eprintln!("[TRANSPORT] Buffer flushed successfully");
+                    // Clean up
+                    drop(input_stream);
+                    drop(body_stream);
+                    drop(output_stream);
+                    if let Err(e) = OutgoingBody::finish(output_body, None) {
+                        eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+                    }
+
+                    // Set response AFTER all writes complete
+                    ResponseOutparam::set(response_out, Ok(response));
+                    eprintln!("[TRANSPORT] JSON response complete");
                 }
 
-                // Drop streams
-                drop(input_stream);
-                drop(body_stream);
-                drop(output_stream);
+                ServerMode::Sse => {
+                    // True streaming SSE mode
+                    eprintln!("[TRANSPORT] Using SSE mode (true streaming, immediate writes)");
 
-                // Finish body
-                if let Err(e) = OutgoingBody::finish(output_body, None) {
-                    eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+                    let response_headers = Fields::new();
+                    if let Err(_) =
+                        response_headers.set("content-type", &[b"text/event-stream".to_vec()])
+                    {
+                        let response = create_error_response("Failed to set content-type");
+                        ResponseOutparam::set(response_out, Ok(response));
+                        return;
+                    }
+                    if let Err(_) = response_headers.set("cache-control", &[b"no-cache".to_vec()]) {
+                        let response = create_error_response("Failed to set cache-control");
+                        ResponseOutparam::set(response_out, Ok(response));
+                        return;
+                    }
+
+                    let response = OutgoingResponse::new(response_headers);
+                    if let Err(_) = response.set_status_code(200) {
+                        let err_response = create_error_response("Failed to set status");
+                        ResponseOutparam::set(response_out, Ok(err_response));
+                        return;
+                    }
+
+                    let output_body = match response.body() {
+                        Ok(b) => b,
+                        Err(_) => {
+                            let err_response = create_error_response("Failed to get response body");
+                            ResponseOutparam::set(response_out, Ok(err_response));
+                            return;
+                        }
+                    };
+
+                    // Set response FIRST (enables true streaming)
+                    eprintln!("[TRANSPORT] Setting response (enables true SSE streaming)");
+                    ResponseOutparam::set(response_out, Ok(response));
+
+                    let output_stream = match output_body.write() {
+                        Ok(s) => s,
+                        Err(_) => {
+                            eprintln!("[TRANSPORT] ERROR getting output stream");
+                            return;
+                        }
+                    };
+
+                    // Process request - writes stream immediately
+                    if let Err(e) = handle_mcp_request(
+                        request_id,
+                        client_request,
+                        protocol_version,
+                        session_id.as_deref(),
+                        &output_stream,
+                        &common::http_sse_frame(),
+                    ) {
+                        eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
+                    }
+
+                    // Clean up
+                    drop(input_stream);
+                    drop(body_stream);
+                    drop(output_stream);
+                    if let Err(e) = OutgoingBody::finish(output_body, None) {
+                        eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+                    }
+                    eprintln!("[TRANSPORT] Streaming SSE response complete");
                 }
 
-                // NOW set response after everything is written
-                eprintln!("[TRANSPORT] Setting response (buffered mode)");
-                ResponseOutparam::set(response_out, Ok(response));
-                eprintln!("[TRANSPORT] Buffered SSE response complete");
-            } else {
-                // *** STREAMING MODE: Set response first, stream writes as they happen ***
-                eprintln!("[TRANSPORT] Using STREAMING SSE mode (MCP_SSE_BUFFER=false)");
-                eprintln!("[TRANSPORT] Setting response (enables true SSE streaming)");
-                ResponseOutparam::set(response_out, Ok(response));
-                eprintln!("[TRANSPORT] Response set - client can now read stream concurrently");
+                ServerMode::SseBuffer => {
+                    // Buffered SSE mode (default, safest)
+                    eprintln!("[TRANSPORT] Using SSE_Buffer mode (buffered SSE with single flush)");
 
-                eprintln!(
-                    "[TRANSPORT] Processing MCP request (streaming notifications via SSE)..."
-                );
-                if let Err(e) = handle_mcp_request(
-                    request_id,
-                    client_request,
-                    protocol_version,
-                    session_id.as_deref(),
-                    &output_stream,
-                    &common::http_sse_frame(),
-                ) {
-                    eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
-                    // Can't send error response now - already set response
-                    // Just finish the body
-                }
-                eprintln!("[TRANSPORT] MCP request processing complete, all notifications sent");
+                    let response_headers = Fields::new();
+                    if let Err(_) =
+                        response_headers.set("content-type", &[b"text/event-stream".to_vec()])
+                    {
+                        let response = create_error_response("Failed to set content-type");
+                        ResponseOutparam::set(response_out, Ok(response));
+                        return;
+                    }
+                    if let Err(_) = response_headers.set("cache-control", &[b"no-cache".to_vec()]) {
+                        let response = create_error_response("Failed to set cache-control");
+                        ResponseOutparam::set(response_out, Ok(response));
+                        return;
+                    }
 
-                eprintln!("[TRANSPORT] Dropping streams...");
-                drop(input_stream);
-                drop(body_stream);
-                drop(output_stream);
-                eprintln!("[TRANSPORT] Streams dropped, finishing body...");
-                if let Err(e) = OutgoingBody::finish(output_body, None) {
-                    eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+                    let response = OutgoingResponse::new(response_headers);
+                    if let Err(_) = response.set_status_code(200) {
+                        let err_response = create_error_response("Failed to set status");
+                        ResponseOutparam::set(response_out, Ok(err_response));
+                        return;
+                    }
+
+                    let output_body = match response.body() {
+                        Ok(b) => b,
+                        Err(_) => {
+                            let err_response = create_error_response("Failed to get response body");
+                            ResponseOutparam::set(response_out, Ok(err_response));
+                            return;
+                        }
+                    };
+
+                    let output_stream = match output_body.write() {
+                        Ok(s) => s,
+                        Err(_) => {
+                            let err_response = create_error_response("Failed to get output stream");
+                            ResponseOutparam::set(response_out, Ok(err_response));
+                            return;
+                        }
+                    };
+
+                    // Process request - writes accumulate in buffer
+                    if let Err(e) = handle_mcp_request(
+                        request_id,
+                        client_request,
+                        protocol_version,
+                        session_id.as_deref(),
+                        &output_stream,
+                        &common::http_sse_frame(),
+                    ) {
+                        eprintln!("[TRANSPORT] ERROR during request processing: {}", e);
+                    }
+
+                    eprintln!("[TRANSPORT] MCP request processing complete, flushing buffer...");
+
+                    // Flush buffer in one write
+                    if let Err(e) = server_io::flush_buffer(&output_stream) {
+                        eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
+                    }
+
+                    // Clean up
+                    drop(input_stream);
+                    drop(body_stream);
+                    drop(output_stream);
+                    if let Err(e) = OutgoingBody::finish(output_body, None) {
+                        eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
+                    }
+
+                    // Set response AFTER all writes complete
+                    ResponseOutparam::set(response_out, Ok(response));
+                    eprintln!("[TRANSPORT] Buffered SSE response complete");
                 }
-                eprintln!("[TRANSPORT] OutgoingBody::finish() completed - SSE response complete");
             }
         }
         common::McpMessage::Notification(client_notification) => {
