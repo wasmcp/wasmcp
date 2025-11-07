@@ -47,44 +47,33 @@ pub mod interfaces {
     }
 }
 
-/// Download required framework dependencies (transport, method-not-found, and all middleware)
+/// Download required framework dependencies (transport, server-io, session-store variants, method-not-found, and all middleware)
 pub async fn download_dependencies(
-    transport: &str,
     resolver: &VersionResolver,
     deps_dir: &Path,
     client: &PackageClient,
 ) -> Result<()> {
     // Get component-specific versions from the resolver
-    let transport_component = format!("{}-transport", transport);
-    let transport_version = resolver.get_version(&transport_component)?;
+    let transport_version = resolver.get_version("transport")?;
+    let server_io_version = resolver.get_version("server-io")?;
+    let session_store_version = resolver.get_version("session-store")?;
     let method_not_found_version = resolver.get_version("method-not-found")?;
     let tools_middleware_version = resolver.get_version("tools-middleware")?;
     let resources_middleware_version = resolver.get_version("resources-middleware")?;
     let prompts_middleware_version = resolver.get_version("prompts-middleware")?;
 
     // Build package specs with component-specific versions
-    let transport_pkg = interfaces::package(&transport_component, &transport_version);
-    let method_not_found_pkg = interfaces::package("method-not-found", &method_not_found_version);
-    let tools_middleware_pkg = interfaces::package("tools-middleware", &tools_middleware_version);
-    let resources_middleware_pkg =
-        interfaces::package("resources-middleware", &resources_middleware_version);
-    let prompts_middleware_pkg =
-        interfaces::package("prompts-middleware", &prompts_middleware_version);
-
-    let mut specs = vec![
-        transport_pkg,
-        method_not_found_pkg,
-        tools_middleware_pkg,
-        resources_middleware_pkg,
-        prompts_middleware_pkg,
+    // Download both session-store variants (d2 for Spin, standard for wasmcloud/wasmtime)
+    let specs = vec![
+        interfaces::package("transport", &transport_version),
+        interfaces::package("server-io", &server_io_version),
+        interfaces::package("session-store", &session_store_version),
+        interfaces::package("session-store-d2", &session_store_version),
+        interfaces::package("method-not-found", &method_not_found_version),
+        interfaces::package("tools-middleware", &tools_middleware_version),
+        interfaces::package("resources-middleware", &resources_middleware_version),
+        interfaces::package("prompts-middleware", &prompts_middleware_version),
     ];
-
-    // Download http-messages for http transport (provides messages interface)
-    if transport == "http" {
-        let http_messages_version = resolver.get_version("http-messages")?;
-        let http_messages_pkg = interfaces::package("http-messages", &http_messages_version);
-        specs.push(http_messages_pkg);
-    }
 
     pkg::download_packages(client, &specs, deps_dir).await
 }
@@ -92,12 +81,20 @@ pub async fn download_dependencies(
 /// Get the file path for a framework dependency
 ///
 /// Framework dependencies are always stored as `wasmcp_{name}@{version}.wasm`
+/// Special case: session-store-d2 uses the version from session-store entry
 pub fn get_dependency_path(
     name: &str,
     resolver: &VersionResolver,
     deps_dir: &Path,
 ) -> Result<PathBuf> {
-    let version = resolver.get_version(name)?;
+    // session-store-d2 uses the same version as session-store
+    let version_key = if name == "session-store-d2" {
+        "session-store"
+    } else {
+        name
+    };
+
+    let version = resolver.get_version(version_key)?;
     let filename = format!("wasmcp_{}@{}.wasm", name, version);
     let path = deps_dir.join(&filename);
 
@@ -245,14 +242,14 @@ mod tests {
         let resolver = VersionResolver::new().unwrap();
 
         // Get the expected version from resolver
-        let expected_version = resolver.get_version("http-transport").unwrap();
-        let filename = format!("wasmcp_http-transport@{}.wasm", expected_version);
+        let expected_version = resolver.get_version("transport").unwrap();
+        let filename = format!("wasmcp_transport@{}.wasm", expected_version);
         let file_path = temp_dir.path().join(filename);
 
         // Create empty file
         std::fs::write(&file_path, b"").unwrap();
 
-        let result = get_dependency_path("http-transport", &resolver, temp_dir.path());
+        let result = get_dependency_path("transport", &resolver, temp_dir.path());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), file_path);
     }
