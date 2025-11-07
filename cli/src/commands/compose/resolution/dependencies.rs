@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use crate::commands::pkg;
 use crate::versioning::VersionResolver;
 
-use super::interfaces;
+use crate::commands::compose::inspection::interfaces;
 
 /// Type alias for the package client used throughout composition
 pub type PackageClient =

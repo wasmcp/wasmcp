@@ -23,7 +23,7 @@
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 
-use super::{ComposeOptions, CompositionMode};
+use crate::commands::compose::{ComposeOptions, CompositionMode};
 use crate::config;
 use crate::versioning::VersionResolver;
 

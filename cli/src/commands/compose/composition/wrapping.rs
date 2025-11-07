@@ -8,7 +8,8 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
-use super::dependencies;
+use super::load_package;
+use crate::commands::compose::resolution::dependencies;
 use crate::versioning::VersionResolver;
 
 /// Prefix for temporary wrapped component files
@@ -161,7 +162,7 @@ pub async fn wrap_capabilities(
             if verbose {
                 println!("\nUsing override tools-middleware: {}", override_spec);
             }
-            super::resolution::resolve_component_spec(
+            crate::commands::compose::resolution::resolve_component_spec(
                 override_spec,
                 deps_dir,
                 client.as_ref().unwrap(),
@@ -177,7 +178,7 @@ pub async fn wrap_capabilities(
             if verbose {
                 println!("\nUsing override resources-middleware: {}", override_spec);
             }
-            super::resolution::resolve_component_spec(
+            crate::commands::compose::resolution::resolve_component_spec(
                 override_spec,
                 deps_dir,
                 client.as_ref().unwrap(),
@@ -193,7 +194,7 @@ pub async fn wrap_capabilities(
             if verbose {
                 println!("\nUsing override prompts-middleware: {}", override_spec);
             }
-            super::resolution::resolve_component_spec(
+            crate::commands::compose::resolution::resolve_component_spec(
                 override_spec,
                 deps_dir,
                 client.as_ref().unwrap(),
@@ -367,9 +368,9 @@ fn wrap_with_middleware(
 ) -> Result<Vec<u8>> {
     let mut graph = CompositionGraph::new();
 
-    // Load both components
-    let middleware_pkg = super::graph::load_package(&mut graph, middleware_name, middleware_path)?;
-    let capability_pkg = super::graph::load_package(&mut graph, capability_name, capability_path)?;
+    // Load both components (verbose = false for internal wrapping operations)
+    let middleware_pkg = load_package(&mut graph, middleware_name, middleware_path, false)?;
+    let capability_pkg = load_package(&mut graph, capability_name, capability_path, false)?;
 
     // Register packages
     let middleware_id = graph.register_package(middleware_pkg)?;

@@ -28,7 +28,7 @@
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
-use super::{PackageClient, dependencies, resolution};
+use super::{PackageClient, dependencies, spec};
 use crate::versioning::VersionResolver;
 
 /// Framework component type for resolution
@@ -143,7 +143,7 @@ pub async fn resolve_framework_component(
         if verbose {
             println!("\nUsing override {}: {}", component.display_name(), spec);
         }
-        resolution::resolve_component_spec(spec, deps_dir, client, verbose).await
+        spec::resolve_component_spec(spec, deps_dir, client, verbose).await
     } else {
         dependencies::get_dependency_path(&component.component_name(), resolver, deps_dir)
     }
@@ -201,7 +201,7 @@ pub async fn resolve_session_store_component(
         if verbose {
             println!("\nUsing override session-store: {}", spec);
         }
-        return resolution::resolve_component_spec(spec, deps_dir, client, verbose).await;
+        return spec::resolve_component_spec(spec, deps_dir, client, verbose).await;
     }
 
     // Determine package name based on runtime

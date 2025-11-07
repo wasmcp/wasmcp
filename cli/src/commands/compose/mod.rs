@@ -26,36 +26,33 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
+use crate::commands::pkg;
+use crate::config as wasmcp_config;
 use crate::versioning::VersionResolver;
-use crate::{commands::pkg, config};
 
 // Public re-exports
-pub use self::builder::ComposeOptionsBuilder;
-pub use self::dependencies::PackageClient;
-pub use self::profiles::expand_profile_specs;
+pub use self::config::ComposeOptionsBuilder;
+pub use self::config::expand_profile_specs;
+pub use self::resolution::PackageClient;
 
-// Submodules
-mod builder;
-pub mod dependencies;
-mod framework;
-mod graph;
-pub mod interfaces;
-mod output;
-mod profiles;
-mod resolution;
-mod validation;
-mod wrapping;
+// Submodules - organized by functionality
+pub mod composition;
+pub mod config;
+pub mod inspection;
+pub mod output;
+pub mod resolution;
 
 // Internal imports from submodules
-use self::framework::{
-    resolve_method_not_found_component, resolve_server_io_component,
-    resolve_session_store_component, resolve_transport_component,
-};
+use self::composition::{build_composition, build_handler_composition, wrap_capabilities};
+use self::config::{resolve_output_path, validate_output_file, validate_transport};
 use self::output::{
     print_handler_pipeline_diagram, print_handler_success_message, print_pipeline_diagram,
     print_success_message,
 };
-use self::validation::{resolve_output_path, validate_output_file, validate_transport};
+use self::resolution::{
+    download_dependencies, resolve_method_not_found_component, resolve_server_io_component,
+    resolve_session_store_component, resolve_transport_component,
+};
 
 /// Composition mode: Server (complete) or Handler (intermediate)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -236,7 +233,7 @@ async fn compose_server(
     }
 
     // Ensure wasmcp directories exist
-    config::ensure_dirs()?;
+    wasmcp_config::ensure_dirs()?;
 
     // Create package client
     let client = pkg::create_default_client()
@@ -263,7 +260,7 @@ async fn compose_server(
         if verbose {
             println!("\nDownloading framework dependencies...");
         }
-        dependencies::download_dependencies(&version_resolver, &deps_dir, &client).await?;
+        download_dependencies(&version_resolver, &deps_dir, &client).await?;
     }
 
     // Resolve transport component
@@ -311,7 +308,7 @@ async fn compose_server(
     if verbose {
         println!("\nDetecting component types...");
     }
-    let wrapped_components = wrapping::wrap_capabilities(
+    let wrapped_components = wrap_capabilities(
         component_paths,
         &deps_dir,
         &version_resolver,
@@ -329,7 +326,7 @@ async fn compose_server(
     }
 
     // Build and encode the composition
-    let bytes = graph::build_composition(
+    let bytes = build_composition(
         &transport_path,
         &server_io_path,
         &session_store_path,
@@ -379,7 +376,7 @@ async fn compose_handler(
     }
 
     // Ensure wasmcp directories exist
-    config::ensure_dirs()?;
+    wasmcp_config::ensure_dirs()?;
 
     // Create package client
     let client = pkg::create_default_client()
@@ -404,7 +401,7 @@ async fn compose_handler(
     if verbose {
         println!("\nDetecting component types...");
     }
-    let wrapped_components = wrapping::wrap_capabilities(
+    let wrapped_components = wrap_capabilities(
         component_paths,
         &deps_dir,
         &version_resolver,
@@ -422,8 +419,7 @@ async fn compose_handler(
     }
 
     // Build and encode the handler-only composition
-    let bytes =
-        graph::build_handler_composition(&wrapped_components, &version_resolver, verbose).await?;
+    let bytes = build_handler_composition(&wrapped_components, &version_resolver, verbose).await?;
 
     // Write output file
     std::fs::write(&output_path, bytes)
@@ -445,7 +441,8 @@ async fn resolve_user_components(
     let mut paths = Vec::new();
 
     for (i, spec) in specs.iter().enumerate() {
-        let path = resolution::resolve_component_spec(spec, deps_dir, client, verbose).await?;
+        let path =
+            resolution::spec::resolve_component_spec(spec, deps_dir, client, verbose).await?;
         if verbose {
             println!("   {}. {} → {}", i + 1, spec, path.display());
         }
@@ -462,15 +459,15 @@ mod tests {
     #[test]
     fn test_interface_names() {
         assert_eq!(
-            dependencies::interfaces::server_handler("0.1.0"),
+            inspection::interfaces::server_handler("0.1.0"),
             "wasmcp:mcp-v20250618/server-handler@0.1.0"
         );
         assert_eq!(
-            dependencies::interfaces::tools("0.1.0"),
+            inspection::interfaces::tools("0.1.0"),
             "wasmcp:mcp-v20250618/tools@0.1.0"
         );
         assert_eq!(
-            dependencies::interfaces::WASI_HTTP_HANDLER,
+            inspection::interfaces::WASI_HTTP_HANDLER,
             "wasi:http/incoming-handler@0.2.6"
         );
         assert_eq!(dependencies::interfaces::WASI_CLI_RUN, "wasi:cli/run@0.2.6");
@@ -479,11 +476,11 @@ mod tests {
     #[test]
     fn test_package_naming() {
         assert_eq!(
-            dependencies::interfaces::package("http-transport", "0.1.0"),
+            inspection::interfaces::package("http-transport", "0.1.0"),
             "wasmcp:http-transport@0.1.0"
         );
         assert_eq!(
-            dependencies::interfaces::package("method-not-found", "0.1.0"),
+            inspection::interfaces::package("method-not-found", "0.1.0"),
             "wasmcp:method-not-found@0.1.0"
         );
     }

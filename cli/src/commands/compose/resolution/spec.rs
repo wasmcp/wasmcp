@@ -11,7 +11,7 @@ use std::pin::Pin;
 
 use crate::{commands::pkg, config};
 
-use super::dependencies::PackageClient;
+use super::PackageClient;
 
 /// Resolve a component spec (alias, path, or package spec) to a local file path
 ///
@@ -110,7 +110,9 @@ fn resolve_component_spec_recursive<'a>(
         }
 
         // 3. Otherwise treat as package spec and download
-        println!("      Downloading {} from registry...", spec);
+        if verbose {
+            println!("      Downloading {} from registry...", spec);
+        }
         pkg::resolve_spec(spec, client, deps_dir)
             .await
             .map_err(|e| {
