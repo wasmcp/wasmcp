@@ -196,54 +196,6 @@ pub fn find_component_export(component_path: &Path, prefix: &str) -> Result<Stri
     )
 }
 
-/// Find an interface import from a component by prefix pattern
-///
-/// Inspects the component binary to find an import matching the given prefix.
-/// For example, prefix "wasmcp:mcp-v20250618/server-io@" will match "wasmcp:mcp-v20250618/server-io@0.1.4".
-///
-/// Returns the full interface name if found.
-///
-/// TODO: This was used in an earlier approach but is kept for potential future use.
-/// Remove #[allow(dead_code)] if this becomes needed again.
-#[allow(dead_code)]
-pub fn find_component_import(component_path: &Path, prefix: &str) -> Result<String> {
-    let (resolve, world_id) = decode_component_world(component_path)?;
-    let world = &resolve.worlds[world_id];
-
-    // Search imports for matching interface
-    for (key, _item) in &world.imports {
-        if let wit_parser::WorldKey::Interface(id) = key {
-            let interface = &resolve.interfaces[*id];
-            if let Some(package_id) = interface.package {
-                let package = &resolve.packages[package_id];
-                // Build the full interface name: namespace:package/interface@version
-                let full_name = format!(
-                    "{}:{}/{}@{}",
-                    package.name.namespace,
-                    package.name.name,
-                    interface.name.as_ref().unwrap_or(&"unknown".to_string()),
-                    package
-                        .name
-                        .version
-                        .as_ref()
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| "0.0.0".to_string())
-                );
-
-                if full_name.starts_with(prefix) {
-                    return Ok(full_name);
-                }
-            }
-        }
-    }
-
-    anyhow::bail!(
-        "No import found matching prefix '{}' in component at {}",
-        prefix,
-        component_path.display()
-    )
-}
-
 /// Check if a component imports a specific interface
 ///
 /// Inspects the component binary to determine if it imports the given interface.

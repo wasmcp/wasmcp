@@ -50,17 +50,6 @@ pub fn get_strings_wasm() -> Option<PathBuf> {
     get_fixture_path("strings-py/strings.wasm")
 }
 
-/// Creates a minimal test WASM component with specified exports
-///
-/// This is a placeholder for when we need to create custom test components.
-/// For now, we'll use the example components from the repository.
-#[allow(dead_code)]
-pub fn create_test_component(_exports: &[&str]) -> Vec<u8> {
-    // TODO: Implement minimal component generation
-    // For now, this is not used - we use real example components
-    unimplemented!("Use get_calculator_wasm() or get_strings_wasm() instead")
-}
-
 /// Creates a test configuration file with components
 pub fn create_test_config(temp_dir: &Path, components: &[(&str, &str)]) -> std::io::Result<PathBuf> {
     let config_path = temp_dir.join("config.toml");

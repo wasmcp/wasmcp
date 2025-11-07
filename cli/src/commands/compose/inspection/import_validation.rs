@@ -11,7 +11,6 @@ use super::introspection::check_component_imports;
 
 // TODO: Complete validation implementation per .agent/wire-troubleshooting.md
 // These structures and methods are scaffolded but not fully wired up yet.
-// Remove #[allow(dead_code)] when implementing the full validation.
 
 /// Tracks unsatisfied imports for validation
 #[derive(Debug)]
@@ -20,7 +19,6 @@ pub struct UnsatisfiedImports {
     pub imports: HashMap<String, Vec<String>>,
 }
 
-#[allow(dead_code)]
 impl Default for UnsatisfiedImports {
     fn default() -> Self {
         Self::new()
