@@ -50,7 +50,11 @@ impl Guest for ServerIo {
     ) -> Result<ClientMessage, IoError> {
         // Read raw bytes based on limit
         let raw_bytes = match limit {
-            ReadLimit::Delimiter(delim) => read_until_delimiter(input, &delim)?,
+            ReadLimit::Delimiter(delim) => read_until_delimiter(input, &delim).map_err(|e| {
+                // Clear READ_BUFFER on error to prevent stale data
+                READ_BUFFER.with(|rb| rb.borrow_mut().clear());
+                e
+            })?,
             ReadLimit::MaxBytes(max) => read_max_bytes(input, max)?,
         };
 
@@ -82,9 +86,6 @@ impl Guest for ServerIo {
         // Per MCP spec 2025-06-18: SSE allows multiple messages, JSON mode only sends final response
         if is_json_mode() {
             if let ServerMessage::Notification(_) = message {
-                eprintln!(
-                    "[SERVER-IO] JSON mode: suppressing notification (only final response sent)"
-                );
                 return Ok(());
             }
         }
@@ -92,23 +93,17 @@ impl Guest for ServerIo {
         // Get framed bytes
         let framed = serialize_message_to_bytes(message, &frame)?;
 
-        eprintln!("[SERVER-IO] Framed message length: {} bytes", framed.len());
-
         // Write to stream
         write_bytes(output, &framed)?;
-
-        eprintln!("[SERVER-IO] Message written and flushed");
-
         Ok(())
     }
 
     /// Flush buffered data to stream (for buffered mode)
     ///
-    /// In buffered mode (MCP_SERVER_MODE=sse_buffer or json), all writes accumulate in memory.
+    /// In buffered mode (MCP_SERVER_MODE=json), all writes accumulate in memory.
     /// This function writes the entire buffer to the stream in one blocking operation.
     fn flush_buffer(output: &OutputStream) -> Result<(), IoError> {
         if !is_buffer_mode() {
-            eprintln!("[SERVER-IO] Not in buffer mode, nothing to flush");
             return Ok(());
         }
 
@@ -116,11 +111,6 @@ impl Guest for ServerIo {
             let borrowed = buf.borrow();
             borrowed.clone()
         });
-
-        eprintln!(
-            "[SERVER-IO] Flushing {} bytes via blocking_write_and_flush",
-            data.len()
-        );
 
         output.blocking_write_and_flush(&data).map_err(|e| {
             eprintln!("[SERVER-IO] blocking_write_and_flush failed: {:?}", e);
@@ -132,7 +122,6 @@ impl Guest for ServerIo {
             buf.borrow_mut().clear();
         });
 
-        eprintln!("[SERVER-IO] Buffer flushed successfully");
         Ok(())
     }
 }
@@ -154,11 +143,6 @@ fn serialize_message_to_bytes(
 
     // Convert to string
     let json_str = json_rpc.to_string();
-
-    eprintln!(
-        "[SERVER-IO] Serializing message to bytes: {}",
-        &json_str[..json_str.len().min(100)]
-    );
 
     // Apply framing
     let mut framed = Vec::new();
@@ -195,6 +179,29 @@ fn read_until_byte(stream: &InputStream, delimiter: u8) -> Result<Vec<u8>, IoErr
     const CHUNK_SIZE: usize = 4096; // Read 4KB chunks
     let mut buffer = Vec::new();
 
+    // FIRST: Check if we have buffered data from a previous read
+    // This happens when multiple newline-delimited messages arrive in one chunk
+    READ_BUFFER.with(|rb| {
+        let mut read_buf = rb.borrow_mut();
+        if !read_buf.is_empty() {
+            buffer.extend_from_slice(&read_buf);
+            read_buf.clear();
+        }
+    });
+
+    // Check if buffered data already contains a complete message
+    if let Some(pos) = buffer.iter().position(|&b| b == delimiter) {
+        let message = buffer[..=pos].to_vec();
+        let remaining = buffer[pos + 1..].to_vec();
+
+        // Save remaining bytes for next call
+        if !remaining.is_empty() {
+            READ_BUFFER.with(|rb| *rb.borrow_mut() = remaining);
+        }
+
+        return Ok(message);
+    }
+
     loop {
         if buffer.len() >= MAX_SIZE {
             return Err(IoError::Unexpected(format!(
@@ -203,27 +210,32 @@ fn read_until_byte(stream: &InputStream, delimiter: u8) -> Result<Vec<u8>, IoErr
             )));
         }
 
-        let chunk = stream
-            .read(CHUNK_SIZE as u64)
-            .map_err(|e| IoError::Stream(e))?;
+        let chunk = stream.blocking_read(CHUNK_SIZE as u64).map_err(|e| {
+            eprintln!("[SERVER-IO] read_until_byte: blocking_read error: {:?}", e);
+            IoError::Stream(e)
+        })?;
 
         if chunk.is_empty() {
+            // Empty chunk from blocking_read indicates EOF
             if buffer.is_empty() {
                 return Err(IoError::Unexpected(
                     "Stream closed before delimiter".to_string(),
                 ));
-            } else {
-                break; // EOF reached
             }
+            return Err(IoError::Unexpected("Stream closed mid-message".to_string()));
         }
 
         // Scan byte-by-byte for delimiter
-        for byte in chunk {
+        for (idx, &byte) in chunk.iter().enumerate() {
+            buffer.push(byte);
             if byte == delimiter {
-                // Found delimiter - return buffer without it
+                // Found delimiter - save any remaining bytes from this chunk
+                let remaining = &chunk[idx + 1..];
+                if !remaining.is_empty() {
+                    READ_BUFFER.with(|rb| rb.borrow_mut().extend_from_slice(remaining));
+                }
                 return Ok(buffer);
             }
-            buffer.push(byte);
         }
     }
 
@@ -258,7 +270,7 @@ fn read_until_multibyte_delimiter(
         }
 
         let chunk = stream
-            .read(CHUNK_SIZE as u64)
+            .blocking_read(CHUNK_SIZE as u64)
             .map_err(|e| IoError::Stream(e))?;
 
         if chunk.is_empty() {
@@ -516,14 +528,17 @@ use std::collections::HashMap;
 
 thread_local! {
     static BUFFER: RefCell<Vec<u8>> = RefCell::new(Vec::new());
+
+    /// Read buffer for preserving excess bytes when multiple messages arrive in one chunk
+    static READ_BUFFER: RefCell<Vec<u8>> = RefCell::new(Vec::new());
 }
 
 /// Server mode - mirrors transport crate's ServerMode enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ServerMode {
     Sse,
-    SseBuffer,
     Json,
+    Stdio,
 }
 
 /// Get the current server mode from MCP_SERVER_MODE env var
@@ -533,18 +548,18 @@ fn get_server_mode() -> ServerMode {
         .ok()
         .and_then(|v| match v.to_lowercase().as_str() {
             "sse" => Some(ServerMode::Sse),
-            "sse_buffer" => Some(ServerMode::SseBuffer),
             "json" => Some(ServerMode::Json),
+            "stdio" => Some(ServerMode::Stdio),
             _ => None,
         })
-        .unwrap_or(ServerMode::SseBuffer) // Default to buffered mode (safe everywhere)
+        .unwrap_or(ServerMode::Sse) // Default to SSE mode (immediate writes, allows notifications)
 }
 
 /// Check if we're in buffer mode
 fn is_buffer_mode() -> bool {
-    // Buffer for: sse_buffer (default) and json modes
-    // Don't buffer for: sse mode (true streaming)
-    matches!(get_server_mode(), ServerMode::SseBuffer | ServerMode::Json)
+    // Buffer for: json mode
+    // Don't buffer for: sse and stdio modes (immediate writes)
+    matches!(get_server_mode(), ServerMode::Json)
 }
 
 /// Check if we're in JSON mode (suppresses notifications)
@@ -561,7 +576,6 @@ fn is_json_mode() -> bool {
 fn write_bytes(stream: &OutputStream, data: &[u8]) -> Result<(), IoError> {
     // Check if we're in buffer mode
     if is_buffer_mode() {
-        eprintln!("[SERVER-IO] Buffer mode: accumulating {} bytes", data.len());
         BUFFER.with(|buf| {
             buf.borrow_mut().extend_from_slice(data);
         });
@@ -569,10 +583,6 @@ fn write_bytes(stream: &OutputStream, data: &[u8]) -> Result<(), IoError> {
     }
 
     // Streaming mode with async yielding pattern
-    eprintln!(
-        "[SERVER-IO] write_bytes: writing {} bytes with async yielding",
-        data.len()
-    );
 
     let mut offset = 0;
 
@@ -581,19 +591,13 @@ fn write_bytes(stream: &OutputStream, data: &[u8]) -> Result<(), IoError> {
         match stream.check_write() {
             Ok(0) => {
                 // No capacity - subscribe to pollable to yield to async executor
-                eprintln!("[SERVER-IO] No write capacity, yielding via subscribe...");
                 let pollable = stream.subscribe();
                 pollable.block(); // This yields to async executor until writable
-                eprintln!("[SERVER-IO] Subscribe returned, retrying write...");
                 continue;
             }
             Ok(count) => {
                 // Write up to available capacity
                 let chunk_size = (data.len() - offset).min(count as usize);
-                eprintln!(
-                    "[SERVER-IO] Writing chunk: {} bytes (capacity: {})",
-                    chunk_size, count
-                );
 
                 stream
                     .write(&data[offset..offset + chunk_size])
@@ -603,12 +607,6 @@ fn write_bytes(stream: &OutputStream, data: &[u8]) -> Result<(), IoError> {
                     })?;
 
                 offset += chunk_size;
-                eprintln!(
-                    "[SERVER-IO] Wrote {} bytes, total: {}/{}",
-                    chunk_size,
-                    offset,
-                    data.len()
-                );
             }
             Err(e) => {
                 eprintln!("[SERVER-IO] ⚠️  check_write failed: {:?}", e);
@@ -618,16 +616,11 @@ fn write_bytes(stream: &OutputStream, data: &[u8]) -> Result<(), IoError> {
     }
 
     // Flush after writing complete message (like Spin SDK does)
-    eprintln!("[SERVER-IO] Flushing {} bytes...", data.len());
     stream.flush().map_err(|e| {
         eprintln!("[SERVER-IO] ⚠️  Flush failed: {:?}", e);
         IoError::Stream(e)
     })?;
 
-    eprintln!(
-        "[SERVER-IO] Successfully wrote and flushed {} bytes",
-        data.len()
-    );
     Ok(())
 }
 

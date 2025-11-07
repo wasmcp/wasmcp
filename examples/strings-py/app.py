@@ -6,7 +6,7 @@ A tools capability that provides string manipulation operations.
 import json
 from typing import Optional
 from wit_world import exports
-from wit_world.imports import mcp, server_handler, server_messages
+from wit_world.imports import mcp, server_handler, server_io
 
 
 class StringsTools(exports.Tools):
@@ -60,7 +60,7 @@ class StringsTools(exports.Tools):
         if not request.arguments:
             return error_result("Missing tool arguments")
 
-        log = lambda message: server_messages.notify(ctx.messages, mcp.ServerNotification_Log(value=mcp.LoggingMessageNotification(data=message, level=mcp.LogLevel.INFO, logger="python-tools")))
+        log = lambda message: server_io.notify(ctx.messages, mcp.ServerNotification_Log(value=mcp.LoggingMessageNotification(data=message, level=mcp.LogLevel.INFO, logger="python-tools")))
 
         try:
             args = json.loads(request.arguments)
