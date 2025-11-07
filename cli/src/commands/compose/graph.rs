@@ -542,25 +542,21 @@ fn wire_transport(
         }
     }
 
-    eprintln!("\n[WIRE] --- Exporting Transport Interface ---");
-    // Export the appropriate WASI interface based on transport type
-    match transport_type {
-        "http" => {
-            eprintln!("[WIRE] Exporting HTTP handler interface");
-            let http_handler = graph.alias_instance_export(
-                transport_inst,
-                dependencies::interfaces::WASI_HTTP_HANDLER,
-            )?;
-            graph.export(http_handler, dependencies::interfaces::WASI_HTTP_HANDLER)?;
-        }
-        "stdio" => {
-            eprintln!("[WIRE] Exporting CLI run interface");
-            let cli_run = graph
-                .alias_instance_export(transport_inst, dependencies::interfaces::WASI_CLI_RUN)?;
-            graph.export(cli_run, dependencies::interfaces::WASI_CLI_RUN)?;
-        }
-        _ => anyhow::bail!("unsupported transport type: '{}'", transport_type),
-    }
+    eprintln!("\n[WIRE] --- Exporting Transport Interfaces ---");
+    // Export both HTTP and CLI interfaces from the transport component
+    // This allows the composed component to be run with either wasmtime serve or wasmtime run
+
+    eprintln!("[WIRE] Exporting HTTP handler interface");
+    let http_handler =
+        graph.alias_instance_export(transport_inst, dependencies::interfaces::WASI_HTTP_HANDLER)?;
+    graph.export(http_handler, dependencies::interfaces::WASI_HTTP_HANDLER)?;
+
+    eprintln!("[WIRE] Exporting CLI run interface");
+    let cli_run =
+        graph.alias_instance_export(transport_inst, dependencies::interfaces::WASI_CLI_RUN)?;
+    graph.export(cli_run, dependencies::interfaces::WASI_CLI_RUN)?;
+
+    eprintln!("[WIRE] Both interfaces exported successfully");
 
     eprintln!("[WIRE] ==================== WIRING COMPLETE ====================\n");
 
@@ -1105,8 +1101,8 @@ mod tests {
         assert!(cli_run.starts_with("wasi:cli/run@"));
 
         // Verify specific current versions
-        assert_eq!(http_handler, "wasi:http/incoming-handler@0.2.3");
-        assert_eq!(cli_run, "wasi:cli/run@0.2.3");
+        assert_eq!(http_handler, "wasi:http/incoming-handler@0.2.6");
+        assert_eq!(cli_run, "wasi:cli/run@0.2.6");
     }
 
     /// Test server handler interface construction

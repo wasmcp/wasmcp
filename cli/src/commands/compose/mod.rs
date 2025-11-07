@@ -472,9 +472,9 @@ mod tests {
         );
         assert_eq!(
             dependencies::interfaces::WASI_HTTP_HANDLER,
-            "wasi:http/incoming-handler@0.2.3"
+            "wasi:http/incoming-handler@0.2.6"
         );
-        assert_eq!(dependencies::interfaces::WASI_CLI_RUN, "wasi:cli/run@0.2.3");
+        assert_eq!(dependencies::interfaces::WASI_CLI_RUN, "wasi:cli/run@0.2.6");
     }
 
     #[test]

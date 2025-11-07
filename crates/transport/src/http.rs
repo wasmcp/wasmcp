@@ -38,14 +38,8 @@ impl Guest for HttpTransportGuest {
 }
 
 async fn handle_http_request_async(request: IncomingRequest, response_out: ResponseOutparam) {
-    eprintln!("[TRANSPORT] Handling HTTP request");
-
     // 1. Load session configuration once for the entire request
     let session_config = SessionConfig::from_env();
-    eprintln!(
-        "[TRANSPORT] Session config loaded - enabled: {}, mode: {:?}",
-        session_config.enabled, session_config.mode
-    );
 
     // 2. Validate Origin header (DNS rebinding protection)
     if let Err(e) = validate_origin(&request) {
@@ -53,7 +47,6 @@ async fn handle_http_request_async(request: IncomingRequest, response_out: Respo
         ResponseOutparam::set(response_out, Ok(response));
         return;
     }
-    eprintln!("[TRANSPORT] Origin validated");
 
     // 3. Extract and validate MCP-Protocol-Version header
     let protocol_version = match validate_protocol_version(&request) {
@@ -64,11 +57,9 @@ async fn handle_http_request_async(request: IncomingRequest, response_out: Respo
             return;
         }
     };
-    eprintln!("[TRANSPORT] Protocol version: {}", protocol_version);
 
     // 4. Parse method and handle accordingly
     let method = request.method();
-    eprintln!("[TRANSPORT] Method: {:?}", method);
 
     match method {
         Method::Post => handle_post(request, protocol_version, response_out, &session_config).await,
@@ -91,15 +82,12 @@ async fn handle_post(
     response_out: ResponseOutparam,
     session_config: &SessionConfig,
 ) {
-    eprintln!("[TRANSPORT] Handling POST request");
-
     // Validate Accept header per spec
     if let Err(e) = validate_accept_header(&request) {
         let response = transport_error_to_response(&e);
         ResponseOutparam::set(response_out, Ok(response));
         return;
     }
-    eprintln!("[TRANSPORT] Accept header validated");
 
     // Check for session header and validate if present
     let session_id_raw = match extract_session_id_header(&request) {
@@ -234,16 +222,6 @@ async fn handle_post(
                     )
                     .await
                 }
-                ServerMode::SseBuffer => handle_sse_buffered_mode(
-                    request_id,
-                    client_request,
-                    protocol_version,
-                    session_id.as_deref(),
-                    input_stream,
-                    body_stream,
-                    response_out,
-                    session_config,
-                ),
             }
         }
         common::McpMessage::Notification(client_notification) => {
@@ -293,11 +271,9 @@ fn handle_mcp_request(
     frame: &common::MessageFrame,
     config: &SessionConfig,
 ) -> Result<(), TransportError> {
-    eprintln!("[TRANSPORT-MCP] Starting request handler");
     // Parse protocol version
     let proto_ver =
         common::parse_protocol_version(&protocol_version).map_err(TransportError::protocol)?;
-    eprintln!("[TRANSPORT-MCP] Protocol version: {:?}", proto_ver);
 
     // Handle based on request type
     match client_request {
@@ -309,15 +285,12 @@ fn handle_mcp_request(
             ))
         }
         ClientRequest::Ping(_) => {
-            eprintln!("[TRANSPORT-MCP] Handling Ping");
             common::handle_ping()
                 .map_err(|e| TransportError::protocol(format!("Ping failed: {:?}", e)))?;
             common::write_mcp_result(output_stream, request_id, ServerResult::Ping, frame)?;
-            eprintln!("[TRANSPORT-MCP] Ping response sent");
             Ok(())
         }
         ClientRequest::LoggingSetLevel(level) => {
-            eprintln!("[TRANSPORT-MCP] Handling LoggingSetLevel: {:?}", level);
             let level_str = common::log_level_to_string(level);
             common::handle_set_log_level(level_str)
                 .map_err(|e| TransportError::protocol(format!("SetLevel failed: {:?}", e)))?;
@@ -327,20 +300,12 @@ fn handle_mcp_request(
                 ServerResult::LoggingSetLevel,
                 frame,
             )?;
-            eprintln!("[TRANSPORT-MCP] LoggingSetLevel response sent");
             Ok(())
         }
         _ => {
-            eprintln!(
-                "[TRANSPORT-MCP] Delegating to middleware for request type: {:?}",
-                std::any::type_name_of_val(&client_request)
-            );
             let bucket = config.get_bucket().to_string();
 
             // Delegate all other methods to middleware
-            eprintln!(
-                "[TRANSPORT-MCP] Calling delegate_to_middleware (notifications will stream via SSE)..."
-            );
             let result = common::delegate_to_middleware(
                 request_id.clone(),
                 client_request,
@@ -354,10 +319,8 @@ fn handle_mcp_request(
                 TransportError::protocol(format!("Middleware delegation failed: {:?}", e))
             })?;
 
-            eprintln!("[TRANSPORT-MCP] Middleware returned final result, writing to SSE stream...");
             // Write result via server-io (handles SSE formatting)
             common::write_mcp_result(output_stream, request_id, result, frame)?;
-            eprintln!("[TRANSPORT-MCP] Final result written to SSE stream");
             Ok(())
         }
     }
@@ -378,8 +341,6 @@ fn handle_json_mode(
     use crate::bindings::wasi::http::types::Fields;
     use crate::bindings::wasi::http::types::{OutgoingBody, OutgoingResponse};
     use crate::bindings::wasmcp::mcp_v20250618::server_io;
-
-    eprintln!("[TRANSPORT] Using JSON mode (single buffered response)");
 
     let response_headers = Fields::new();
     if response_headers
@@ -461,7 +422,6 @@ fn handle_json_mode(
 
     // Set response AFTER all writes complete
     ResponseOutparam::set(response_out, Ok(response));
-    eprintln!("[TRANSPORT] JSON response complete");
 }
 
 /// Handle POST request in SSE streaming mode (async writes with yielding)
@@ -483,8 +443,6 @@ async fn handle_sse_streaming_mode(
 ) {
     use crate::bindings::wasi::http::types::Fields;
     use crate::bindings::wasi::http::types::{OutgoingBody, OutgoingResponse};
-
-    eprintln!("[TRANSPORT] Using SSE mode (true streaming, immediate writes)");
 
     let response_headers = Fields::new();
     if response_headers
@@ -568,118 +526,8 @@ async fn handle_sse_streaming_mode(
     if let Err(e) = OutgoingBody::finish(output_body, None) {
         eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
     }
-    eprintln!("[TRANSPORT] SSE streaming response complete");
 }
 
-/// Handle POST request in SSE buffered mode (accumulate and flush once)
-#[allow(clippy::too_many_arguments)]
-fn handle_sse_buffered_mode(
-    request_id: RequestId,
-    client_request: ClientRequest,
-    protocol_version: String,
-    session_id: Option<&str>,
-    input_stream: crate::bindings::wasi::io::streams::InputStream,
-    body_stream: crate::bindings::wasi::http::types::IncomingBody,
-    response_out: ResponseOutparam,
-    config: &SessionConfig,
-) {
-    use crate::bindings::wasi::http::types::Fields;
-    use crate::bindings::wasi::http::types::{OutgoingBody, OutgoingResponse};
-    use crate::bindings::wasmcp::mcp_v20250618::server_io;
-
-    eprintln!("[TRANSPORT] Using SSE_Buffer mode (buffered SSE with single flush)");
-
-    let response_headers = Fields::new();
-    if response_headers
-        .set("content-type", &[b"text/event-stream".to_vec()])
-        .is_err()
-    {
-        let error = TransportError::internal("Failed to set content-type");
-        let response = transport_error_to_response(&error);
-        ResponseOutparam::set(response_out, Ok(response));
-        return;
-    }
-    if response_headers
-        .set("cache-control", &[b"no-cache".to_vec()])
-        .is_err()
-    {
-        let error = TransportError::internal("Failed to set cache-control");
-        let response = transport_error_to_response(&error);
-        ResponseOutparam::set(response_out, Ok(response));
-        return;
-    }
-
-    let response = OutgoingResponse::new(response_headers);
-    if response.set_status_code(200).is_err() {
-        let error = TransportError::internal("Failed to set status");
-        let err_response = transport_error_to_response(&error);
-        ResponseOutparam::set(response_out, Ok(err_response));
-        return;
-    }
-
-    let output_body = match response.body() {
-        Ok(b) => b,
-        Err(_) => {
-            let error = TransportError::internal("Failed to get response body");
-            let err_response = transport_error_to_response(&error);
-            ResponseOutparam::set(response_out, Ok(err_response));
-            return;
-        }
-    };
-
-    let output_stream = match output_body.write() {
-        Ok(s) => s,
-        Err(_) => {
-            let error = TransportError::internal("Failed to get output stream");
-            let err_response = transport_error_to_response(&error);
-            ResponseOutparam::set(response_out, Ok(err_response));
-            return;
-        }
-    };
-
-    // Process request with SSE framing
-    if let Err(e) = handle_mcp_request(
-        request_id.clone(),
-        client_request,
-        protocol_version,
-        session_id,
-        &output_stream,
-        &common::http_sse_frame(),
-        config,
-    ) {
-        eprintln!("[TRANSPORT] ERROR during request processing: {:?}", e);
-        // Write error response to SSE stream
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::{Error, ErrorCode, ServerMessage};
-        let error_code = ErrorCode::InternalError(Error {
-            code: -32603,
-            message: e.message(),
-            data: None,
-        });
-        let error_message = ServerMessage::Error((Some(request_id), error_code));
-        let _ = crate::bindings::wasmcp::mcp_v20250618::server_io::send_message(
-            &output_stream,
-            error_message,
-            &common::http_sse_frame(),
-        );
-    }
-
-    // Flush buffer (single write)
-    if let Err(e) = server_io::flush_buffer(&output_stream) {
-        eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
-    }
-
-    // Clean up - drop streams BEFORE finishing body (output_stream is child of output_body)
-    drop(output_stream);
-    drop(input_stream);
-    drop(body_stream);
-    if let Err(e) = OutgoingBody::finish(output_body, None) {
-        eprintln!("[TRANSPORT] ERROR finishing body: {:?}", e);
-    }
-
-    // Set response AFTER all writes complete
-    ResponseOutparam::set(response_out, Ok(response));
-    eprintln!("[TRANSPORT] SSE buffered response complete");
-}
 
 /// Send result or error response for notifications, results, and errors
 fn respond_with_result(result: Result<(), TransportError>, response_out: ResponseOutparam) {
@@ -743,14 +591,11 @@ fn handle_get(
     response_out: ResponseOutparam,
     _session_config: &SessionConfig,
 ) {
-    eprintln!("[TRANSPORT] GET request received - returning 405 Method Not Allowed");
     match create_method_not_allowed_response(_session_config) {
         Ok(response) => {
-            eprintln!("[TRANSPORT] 405 response created successfully");
             ResponseOutparam::set(response_out, Ok(response));
         }
         Err(e) => {
-            eprintln!("[TRANSPORT] Error creating 405 response: {}", e);
             let error = TransportError::internal(e);
             let response = transport_error_to_response(&error);
             ResponseOutparam::set(response_out, Ok(response));
@@ -1068,8 +913,6 @@ fn handle_initialize_request(
     response_out: ResponseOutparam,
     session_config: &SessionConfig,
 ) {
-    eprintln!("[TRANSPORT] Handling initialize request");
-
     // Parse protocol version
     let proto_ver = match common::parse_protocol_version(&protocol_version) {
         Ok(v) => v,
@@ -1080,12 +923,10 @@ fn handle_initialize_request(
             return;
         }
     };
-    eprintln!("[TRANSPORT] Protocol version parsed: {:?}", proto_ver);
 
     // Get capabilities from downstream handler
     let capabilities =
         common::discover_capabilities_for_init(proto_ver, &common::plain_json_frame());
-    eprintln!("[TRANSPORT] Capabilities discovered");
 
     // Create session if enabled
     let new_session_id = if session_config.enabled {
@@ -1093,20 +934,14 @@ fn handle_initialize_request(
 
         match session_initialize(bucket) {
             Ok(id) => Some(id),
-            Err(_) => {
-                // Session creation failed - continue without session (non-fatal per MCP spec)
-                eprintln!("[WARN] Session creation failed, continuing without session support");
-                None
-            }
+            Err(_) => None,
         }
     } else {
         None
     };
 
     // Create plain JSON response with optional session header
-    eprintln!("[TRANSPORT] Creating response headers for initialize");
     let headers = Fields::new();
-    eprintln!("[TRANSPORT] Setting content-type header");
     if headers
         .set("content-type", &[b"application/json".to_vec()])
         .is_err()
@@ -1116,11 +951,9 @@ fn handle_initialize_request(
         ResponseOutparam::set(response_out, Ok(response));
         return;
     }
-    eprintln!("[TRANSPORT] Content-type header set successfully");
 
     // Set Mcp-Session-Id header if session was created
     if let Some(ref session_id) = new_session_id {
-        eprintln!("[TRANSPORT] Setting Mcp-Session-Id header: {}", session_id);
         if headers
             .set("mcp-session-id", &[session_id.as_bytes().to_vec()])
             .is_err()
@@ -1130,21 +963,16 @@ fn handle_initialize_request(
             ResponseOutparam::set(response_out, Ok(response));
             return;
         }
-        eprintln!("[TRANSPORT] Mcp-Session-Id header set successfully");
     }
 
-    eprintln!("[TRANSPORT] Creating OutgoingResponse");
     let response = OutgoingResponse::new(headers);
-    eprintln!("[TRANSPORT] Setting status code 200");
     if response.set_status_code(200).is_err() {
         let error = TransportError::internal("Failed to set status");
         let err_response = transport_error_to_response(&error);
         ResponseOutparam::set(response_out, Ok(err_response));
         return;
     }
-    eprintln!("[TRANSPORT] Status code set successfully");
 
-    eprintln!("[TRANSPORT] Getting response body");
     let body = match response.body() {
         Ok(b) => b,
         Err(_) => {
@@ -1154,7 +982,6 @@ fn handle_initialize_request(
             return;
         }
     };
-    eprintln!("[TRANSPORT] Getting output stream");
     let output_stream = match body.write() {
         Ok(s) => s,
         Err(_) => {
@@ -1164,7 +991,6 @@ fn handle_initialize_request(
             return;
         }
     };
-    eprintln!("[TRANSPORT] Output stream acquired");
 
     // Build InitializeResult using MCP types
     use crate::bindings::wasmcp::mcp_v20250618::mcp::{Implementation, InitializeResult};
@@ -1185,7 +1011,6 @@ fn handle_initialize_request(
     use crate::bindings::wasmcp::mcp_v20250618::mcp::{ServerMessage, ServerResult};
     let server_message = ServerMessage::Result((request_id, ServerResult::Initialize(init_result)));
 
-    eprintln!("[TRANSPORT] Sending initialize response via server-io");
     // Use server-io to write the message with plain JSON framing
     use crate::bindings::wasmcp::mcp_v20250618::server_io;
     if let Err(e) = server_io::send_message(
@@ -1200,10 +1025,8 @@ fn handle_initialize_request(
         ResponseOutparam::set(response_out, Ok(err_response));
         return;
     }
-    eprintln!("[TRANSPORT] Initialize response sent successfully");
 
     // Flush buffered data if in buffer mode
-    eprintln!("[TRANSPORT] Flushing buffer...");
     if let Err(e) = server_io::flush_buffer(&output_stream) {
         eprintln!("[TRANSPORT] ERROR flushing buffer: {:?}", e);
         let error = TransportError::internal(format!("Failed to flush buffer: {:?}", e));
@@ -1211,7 +1034,6 @@ fn handle_initialize_request(
         ResponseOutparam::set(response_out, Ok(err_response));
         return;
     }
-    eprintln!("[TRANSPORT] Buffer flushed successfully");
 
     drop(output_stream);
     if let Err(e) = OutgoingBody::finish(body, None) {

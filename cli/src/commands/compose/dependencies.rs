@@ -16,10 +16,10 @@ pub type PackageClient =
 /// WIT interface constants for MCP protocol
 pub mod interfaces {
     /// WASI HTTP incoming-handler interface (HTTP transport export)
-    pub const WASI_HTTP_HANDLER: &str = "wasi:http/incoming-handler@0.2.3";
+    pub const WASI_HTTP_HANDLER: &str = "wasi:http/incoming-handler@0.2.6";
 
     /// WASI CLI run interface (stdio transport export)
-    pub const WASI_CLI_RUN: &str = "wasi:cli/run@0.2.3";
+    pub const WASI_CLI_RUN: &str = "wasi:cli/run@0.2.6";
 
     /// Generate the server handler interface name with version
     pub fn server_handler(version: &str) -> String {
@@ -182,9 +182,9 @@ mod tests {
     fn test_wasi_interface_constants() {
         assert_eq!(
             interfaces::WASI_HTTP_HANDLER,
-            "wasi:http/incoming-handler@0.2.3"
+            "wasi:http/incoming-handler@0.2.6"
         );
-        assert_eq!(interfaces::WASI_CLI_RUN, "wasi:cli/run@0.2.3");
+        assert_eq!(interfaces::WASI_CLI_RUN, "wasi:cli/run@0.2.6");
     }
 
     #[test]

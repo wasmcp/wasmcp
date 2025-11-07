@@ -9,14 +9,15 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::tools::{Guest, RequestCtx};
+use bindings::exports::wasmcp::mcp_v20250618::tools::Guest;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
+use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
 
 struct Calculator;
 
 impl Guest for Calculator {
     fn list_tools(
-        _ctx: RequestCtx,
+        _ctx: MessageContext,
         _request: ListToolsRequest,
     ) -> Result<ListToolsResult, ErrorCode> {
         Ok(ListToolsResult {
@@ -60,7 +61,7 @@ impl Guest for Calculator {
     }
 
     fn call_tool(
-        _ctx: RequestCtx,
+        _ctx: MessageContext,
         request: CallToolRequest,
     ) -> Result<Option<CallToolResult>, ErrorCode> {
         match request.name.as_str() {

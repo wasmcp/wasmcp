@@ -12,11 +12,11 @@
 /// <https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management>
 @since(version = 0.1.0)
 interface sessions {
-    use wasi:io/streams@0.2.3.{
+    use wasi:io/streams@0.2.6.{
         output-stream,
         stream-error,
     };
-    use wasi:io/poll@0.2.3.{
+    use wasi:io/poll@0.2.6.{
         pollable,
     };
     use mcp.{

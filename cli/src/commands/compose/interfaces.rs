@@ -22,10 +22,10 @@ pub const DEFAULT_SPEC_VERSION: &str = "mcp-v20250618";
 pub const WASMCP_NAMESPACE: &str = "wasmcp";
 
 /// WASI HTTP incoming handler interface
-pub const WASI_HTTP_HANDLER: &str = "wasi:http/incoming-handler@0.2.3";
+pub const WASI_HTTP_HANDLER: &str = "wasi:http/incoming-handler@0.2.6";
 
 /// WASI CLI run interface
-pub const WASI_CLI_RUN: &str = "wasi:cli/run@0.2.3";
+pub const WASI_CLI_RUN: &str = "wasi:cli/run@0.2.6";
 
 /// MCP capability and framework interface types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -336,8 +336,8 @@ mod tests {
 
     #[test]
     fn test_wasi_constants() {
-        assert_eq!(WASI_HTTP_HANDLER, "wasi:http/incoming-handler@0.2.3");
-        assert_eq!(WASI_CLI_RUN, "wasi:cli/run@0.2.3");
+        assert_eq!(WASI_HTTP_HANDLER, "wasi:http/incoming-handler@0.2.6");
+        assert_eq!(WASI_CLI_RUN, "wasi:cli/run@0.2.6");
     }
 
     #[test]
