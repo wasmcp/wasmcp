@@ -85,7 +85,7 @@ enum Command {
     ///   wasmcp compose handler calc.wasm math.wasm      # Handler component
     ///   wasmcp compose server calc strings              # Multiple handlers
     #[command(subcommand)]
-    Compose(ComposeCommand),
+    Compose(Box<ComposeCommand>),
 
     /// WIT dependency management commands
     Wit {
@@ -107,6 +107,7 @@ enum Command {
 }
 
 #[derive(Parser)]
+#[allow(clippy::large_enum_variant)]
 enum ComposeCommand {
     /// Compose a complete MCP server
     ///
@@ -511,7 +512,7 @@ async fn main() -> Result<()> {
             Ok(())
         }
 
-        Command::Compose(compose_cmd) => match compose_cmd {
+        Command::Compose(compose_cmd) => match *compose_cmd {
             ComposeCommand::Server {
                 profile,
                 components,
