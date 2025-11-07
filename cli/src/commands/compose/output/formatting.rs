@@ -168,9 +168,9 @@ pub fn print_success_message(
     println!("\nTo run the server:");
 
     // Get runtime info or use default
-    let runtime = runtime_info.cloned().unwrap_or_else(|| {
-        crate::commands::compose::inspection::RuntimeInfo::default()
-    });
+    let runtime = runtime_info
+        .cloned()
+        .unwrap_or_else(crate::commands::compose::inspection::RuntimeInfo::default);
 
     match (&runtime.runtime_type, transport) {
         (RuntimeType::Wasmtime, "http") => {

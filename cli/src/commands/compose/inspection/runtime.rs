@@ -27,9 +27,8 @@ pub enum RuntimeType {
     Generic,
 }
 
-impl RuntimeInfo {
-    /// Create a default runtime info (Wasmtime with basic capabilities)
-    pub fn default() -> Self {
+impl Default for RuntimeInfo {
+    fn default() -> Self {
         Self {
             capabilities: vec!["cli".to_string(), "http".to_string()],
             runtime_type: RuntimeType::Wasmtime,
@@ -69,13 +68,19 @@ pub fn detect_runtime(component_bytes: &[u8]) -> Result<RuntimeInfo> {
                 let package = &resolve.packages[package_id];
                 let namespace = &package.name.namespace;
                 let name = &package.name.name;
+                let version = package.name.version.as_ref().map(|v| v.to_string());
 
-                // Detect runtime type from session package
-                if namespace == "wasmcp" {
-                    if name == "sessions" {
-                        runtime_type = RuntimeType::Wasmtime;
-                    } else if name == "sessions-d2" {
+                // Detect runtime type from keyvalue package version
+                if namespace == "wasi"
+                    && name == "keyvalue"
+                    && let Some(ver) = &version
+                {
+                    if ver.contains("draft2") {
+                        // draft2 versions indicate Spin runtime
                         runtime_type = RuntimeType::Spin;
+                    } else {
+                        // Non-draft2 versions indicate Wasmtime
+                        runtime_type = RuntimeType::Wasmtime;
                     }
                 }
 
