@@ -11,14 +11,14 @@ mod bindings {
 
 use bindings::exports::wasmcp::mcp_v20250618::tools::Guest;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::server_messages;
-use bindings::wasmcp::mcp_v20250618::server_handler::RequestCtx;
+use bindings::wasmcp::mcp_v20250618::server_io;
+use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
 
 struct Calculator;
 
 impl Guest for Calculator {
     fn list_tools(
-        _ctx: RequestCtx,
+        _ctx: MessageContext,
         _request: ListToolsRequest,
     ) -> Result<ListToolsResult, ErrorCode> {
 
@@ -86,7 +86,7 @@ impl Guest for Calculator {
     }
 
     fn call_tool(
-        ctx: RequestCtx,
+        ctx: MessageContext,
         request: CallToolRequest,
     ) -> Result<Option<CallToolResult>, ErrorCode> {
         let result = match request.name.as_str() {
@@ -157,11 +157,11 @@ fn error_result(message: String) -> CallToolResult {
     }
 }
 
-// Calculates factorial with SSE server_messages demonstrating progress updates.
+// Calculates factorial with SSE notifications demonstrating progress updates.
 // Note: When running with wasmtime serve, use `-S http-outgoing-body-buffer-chunks=10`
-// to ensure sufficient buffer for streaming multiple server_messages plus the final response.
+// to ensure sufficient buffer for streaming multiple notifications plus the final response.
 fn execute_factorial(
-    ctx: &RequestCtx,
+    ctx: &MessageContext,
     request: &CallToolRequest,
 ) -> CallToolResult {
     // Parse the argument to get n
@@ -172,14 +172,15 @@ fn execute_factorial(
         }
     };
 
-    let log = |msg| if let Some(stream) = ctx.messages {
-        let _ = server_messages::notify(
+    let log = |msg| if let Some(stream) = ctx.client_stream {
+        let _ = server_io::send_message(
             stream,
-            &ServerNotification::Log(LoggingMessageNotification {
+            ServerMessage::Notification(ServerNotification::Log(LoggingMessageNotification {
                 data: msg,
                 level: LogLevel::Info,
                 logger: Some("factorial".to_string())
-            })
+            })),
+            &ctx.frame
         );
     };
 
