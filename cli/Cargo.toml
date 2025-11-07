@@ -1,6 +1,6 @@
 [package]
 name = "wasmcp"
-version = "0.4.10"
+version = "0.4.11"
 edition = "2024"
 rust-version = "1.89"
 authors = ["wasmcp contributors"]

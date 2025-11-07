@@ -9,14 +9,15 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::resources::{Guest, RequestCtx};
+use bindings::exports::wasmcp::mcp_v20250618::resources::Guest;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
+use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
 
 struct TextResources;
 
 impl Guest for TextResources {
     fn list_resources(
-        _ctx: RequestCtx,
+        _ctx: MessageContext,
         _request: ListResourcesRequest,
     ) -> Result<ListResourcesResult, ErrorCode> {
         Ok(ListResourcesResult {
@@ -52,7 +53,7 @@ impl Guest for TextResources {
     }
 
     fn read_resource(
-        _ctx: RequestCtx,
+        _ctx: MessageContext,
         request: ReadResourceRequest,
     ) -> Result<Option<ReadResourceResult>, ErrorCode> {
         match request.uri.as_str() {
@@ -66,7 +67,7 @@ impl Guest for TextResources {
     }
 
     fn list_resource_templates(
-        _ctx: RequestCtx,
+        _ctx: MessageContext,
         _request: ListResourceTemplatesRequest,
     ) -> Result<ListResourceTemplatesResult, ErrorCode> {
         // No templates for static resources

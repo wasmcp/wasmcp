@@ -14,6 +14,9 @@ use std::path::Path;
 pub struct VersionManifest {
     /// Component and WIT package versions
     pub versions: HashMap<String, String>,
+    /// WASI interface versions
+    #[serde(default)]
+    pub wasi: HashMap<String, String>,
 }
 
 /// Version resolver that handles version lookups and overrides
@@ -21,6 +24,8 @@ pub struct VersionManifest {
 pub struct VersionResolver {
     /// Base versions from manifest
     versions: HashMap<String, String>,
+    /// WASI versions from manifest
+    wasi: HashMap<String, String>,
     /// User-specified overrides
     overrides: HashMap<String, String>,
 }
@@ -35,6 +40,7 @@ impl VersionResolver {
 
         Ok(Self {
             versions: manifest.versions,
+            wasi: manifest.wasi,
             overrides: HashMap::new(),
         })
     }
@@ -49,6 +55,7 @@ impl VersionResolver {
 
         Ok(Self {
             versions: manifest.versions,
+            wasi: manifest.wasi,
             overrides: HashMap::new(),
         })
     }
@@ -86,6 +93,21 @@ impl VersionResolver {
             .with_context(|| format!("No version found for '{}'", name))
     }
 
+    /// Get WASI interface version
+    pub fn get_wasi_version(&self, interface: &str) -> Result<String> {
+        // Check overrides first (format: wasi-http, wasi-cli)
+        let override_key = format!("wasi-{}", interface);
+        if let Some(version) = self.overrides.get(&override_key) {
+            return Ok(version.clone());
+        }
+
+        // Then check wasi section
+        self.wasi
+            .get(interface)
+            .cloned()
+            .with_context(|| format!("No WASI version found for '{}'", interface))
+    }
+
     /// Get all resolved versions (manifest + overrides)
     pub fn get_all_versions(&self) -> HashMap<String, String> {
         let mut result = self.versions.clone();
@@ -104,7 +126,7 @@ mod tests {
 
         // Should have default versions
         assert!(resolver.get_version("mcp-v20250618").is_ok());
-        assert!(resolver.get_version("http-transport").is_ok());
+        assert!(resolver.get_version("transport").is_ok());
     }
 
     #[test]
@@ -112,10 +134,10 @@ mod tests {
         let mut resolver = VersionResolver::new().unwrap();
 
         resolver
-            .apply_overrides(vec!["http-messages=0.2.0".to_string()])
+            .apply_overrides(vec!["transport=0.2.0".to_string()])
             .unwrap();
 
-        assert_eq!(resolver.get_version("http-messages").unwrap(), "0.2.0");
+        assert_eq!(resolver.get_version("transport").unwrap(), "0.2.0");
     }
 
     #[test]

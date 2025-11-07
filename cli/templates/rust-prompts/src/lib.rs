@@ -9,14 +9,15 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::prompts::{Guest, RequestCtx};
+use bindings::exports::wasmcp::mcp_v20250618::prompts::Guest;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
+use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
 
 struct ExamplePrompts;
 
 impl Guest for ExamplePrompts {
     fn list_prompts(
-        _ctx: RequestCtx,
+        _ctx: MessageContext,
         _request: ListPromptsRequest,
     ) -> Result<ListPromptsResult, ErrorCode> {
         Ok(ListPromptsResult {
@@ -66,7 +67,7 @@ impl Guest for ExamplePrompts {
     }
 
     fn get_prompt(
-        _ctx: RequestCtx,
+        _ctx: MessageContext,
         request: GetPromptRequest,
     ) -> Result<Option<GetPromptResult>, ErrorCode> {
         match request.name.as_str() {

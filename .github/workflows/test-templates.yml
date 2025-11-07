@@ -72,9 +72,7 @@ jobs:
           sudo mv /tmp/wasmcp-bin/wasmcp /usr/local/bin/
 
       - name: Install wasmtime
-        run: |
-          curl -fsSL https://github.com/bytecodealliance/wasmtime/releases/download/v29.0.0/wasmtime-v29.0.0-x86_64-linux.tar.xz | tar -xJ
-          sudo mv wasmtime-v29.0.0-x86_64-linux/wasmtime /usr/local/bin/
+        uses: ./.github/actions/setup-wasmtime
 
       - name: Install language tooling (Rust)
         if: matrix.language == 'rust'
@@ -125,7 +123,7 @@ jobs:
           fi
 
           echo "Composing $COMPONENT into mcp-server.wasm..."
-          wasmcp compose server $COMPONENT -o mcp-server.wasm || {
+          wasmcp compose server $COMPONENT --runtime wasmtime -o mcp-server.wasm || {
             echo "ERROR: Composition failed"
             exit 1
           }
@@ -150,13 +148,13 @@ jobs:
             # Python outputs to project root
             COMPONENT="ci-test-${{ matrix.language }}.wasm"
           fi
-          wasmcp compose server $COMPONENT --transport stdio -o mcp-server-stdio.wasm
+          wasmcp compose server $COMPONENT --runtime wasmtime -o mcp-server-stdio.wasm
 
       - name: Start HTTP server (background)
         run: |
           cd ci-test-${{ matrix.language }}
           echo "Starting server..."
-          wasmtime serve -Scli mcp-server.wasm &
+          wasmtime serve -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=json mcp-server.wasm &
           SERVER_PID=$!
           echo $SERVER_PID > /tmp/server.pid
           echo "Server PID: $SERVER_PID"
@@ -233,7 +231,7 @@ jobs:
           cd ci-test-${{ matrix.language }}
 
           # Test tools/list
-          tools_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+          tools_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio mcp-server-stdio.wasm \
             --cli --transport stdio --method tools/list)
 
           # Verify tools are present (different per language)
@@ -249,15 +247,15 @@ jobs:
 
           # Test tools/call
           if [ "${{ matrix.language }}" = "rust" ]; then
-            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio mcp-server-stdio.wasm \
               --cli --transport stdio --method tools/call --tool-name add --tool-arg a=10 --tool-arg b=32)
             echo "$response" | grep -q "42"
           elif [ "${{ matrix.language }}" = "typescript" ]; then
-            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio mcp-server-stdio.wasm \
               --cli --transport stdio --method tools/call --tool-name example-tool --tool-arg input="test")
             echo "$response" | grep -q "Received: test"
           else
-            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio mcp-server-stdio.wasm \
               --cli --transport stdio --method tools/call --tool-name reverse --tool-arg text="hello")
             echo "$response" | grep -q "olleh"
           fi
@@ -290,9 +288,7 @@ jobs:
           sudo mv /tmp/wasmcp-bin/wasmcp /usr/local/bin/
 
       - name: Install wasmtime
-        run: |
-          curl -fsSL https://github.com/bytecodealliance/wasmtime/releases/download/v29.0.0/wasmtime-v29.0.0-x86_64-linux.tar.xz | tar -xJ
-          sudo mv wasmtime-v29.0.0-x86_64-linux/wasmtime /usr/local/bin/
+        uses: ./.github/actions/setup-wasmtime
 
       - name: Install language tooling (Rust)
         if: matrix.language == 'rust'
@@ -343,7 +339,7 @@ jobs:
           fi
 
           echo "Composing $COMPONENT into mcp-server.wasm..."
-          wasmcp compose server $COMPONENT -o mcp-server.wasm || {
+          wasmcp compose server $COMPONENT --runtime wasmtime -o mcp-server.wasm || {
             echo "ERROR: Composition failed"
             exit 1
           }
@@ -368,13 +364,13 @@ jobs:
             # Python outputs to project root
             COMPONENT="ci-test-${{ matrix.language }}-resources.wasm"
           fi
-          wasmcp compose server $COMPONENT --transport stdio -o mcp-server-stdio.wasm
+          wasmcp compose server $COMPONENT --runtime wasmtime --transport stdio -o mcp-server-stdio.wasm
 
       - name: Start HTTP server (background)
         run: |
           cd ci-test-${{ matrix.language }}-resources
           echo "Starting server..."
-          wasmtime serve -Scli mcp-server.wasm &
+          wasmtime serve -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=json mcp-server.wasm &
           SERVER_PID=$!
           echo $SERVER_PID > /tmp/server.pid
           echo "Server PID: $SERVER_PID"
@@ -423,7 +419,7 @@ jobs:
           cd ci-test-${{ matrix.language }}-resources
 
           # Test resources/list
-          resources_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+          resources_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio mcp-server-stdio.wasm \
             --cli --transport stdio --method resources/list)
 
           # Verify resources are present (same for all languages)
@@ -431,11 +427,11 @@ jobs:
           echo "$resources_list" | grep -q "text://info"
 
           # Test resources/read for greeting
-          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio mcp-server-stdio.wasm \
             --cli --transport stdio --method resources/read --uri "text://greeting")
           echo "$response" | grep -q "Hello from wasmcp resources"
 
           # Test resources/read for info
-          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp mcp-server-stdio.wasm \
+          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio mcp-server-stdio.wasm \
             --cli --transport stdio --method resources/read --uri "text://info")
           echo "$response" | grep -q "simple resources capability"

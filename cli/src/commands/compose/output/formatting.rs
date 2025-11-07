@@ -122,22 +122,23 @@ pub fn print_handler_pipeline_diagram(components: &[PathBuf]) {
 
 /// Print success message with run instructions
 ///
-/// Displays completion message and transport-specific instructions for
+/// Displays completion message and runtime-specific instructions for
 /// running the composed server.
 ///
 /// # Arguments
 ///
 /// * `output_path` - Path to the composed server file
 /// * `transport` - The transport type ("http" or "stdio")
+/// * `runtime_info` - Optional runtime information (capabilities and type)
 ///
 /// # Output Format
 ///
-/// For HTTP transport:
+/// For HTTP transport with Wasmtime:
 /// ```text
 /// Composed: /path/to/server.wasm
 ///
 /// To run the server:
-///   wasmtime serve -Scli /path/to/server.wasm
+///   wasmtime serve -Shttp -Skeyvalue -Scli /path/to/server.wasm
 /// ```
 ///
 /// For stdio transport:
@@ -145,7 +146,7 @@ pub fn print_handler_pipeline_diagram(components: &[PathBuf]) {
 /// Composed: /path/to/server.wasm
 ///
 /// To run the server:
-///   wasmtime run /path/to/server.wasm
+///   wasmtime run -Scli /path/to/server.wasm
 /// ```
 ///
 /// # Examples
@@ -154,15 +155,60 @@ pub fn print_handler_pipeline_diagram(components: &[PathBuf]) {
 /// # use wasmcp::commands::compose::output::print_success_message;
 /// # use std::path::Path;
 /// let path = Path::new("server.wasm");
-/// print_success_message(path, "http");
+/// print_success_message(path, "http", None);
 /// ```
-pub fn print_success_message(output_path: &Path, transport: &str) {
+pub fn print_success_message(
+    output_path: &Path,
+    transport: &str,
+    runtime_info: Option<&crate::commands::compose::inspection::RuntimeInfo>,
+) {
+    use crate::commands::compose::inspection::RuntimeType;
+
     println!("\nComposed: {}", output_path.display());
     println!("\nTo run the server:");
-    match transport {
-        "http" => println!("  wasmtime serve -Scli {}", output_path.display()),
-        "stdio" => println!("  wasmtime run {}", output_path.display()),
-        _ => println!("  wasmtime {}", output_path.display()),
+
+    // Get runtime info or use default
+    let runtime = runtime_info
+        .cloned()
+        .unwrap_or_else(crate::commands::compose::inspection::RuntimeInfo::default);
+
+    match (&runtime.runtime_type, transport) {
+        (RuntimeType::Wasmtime, "http") => {
+            // Wasmtime HTTP: use serve with capability flags
+            let mut flags = String::new();
+            for cap in &runtime.capabilities {
+                flags.push_str(&format!(" -S{}", cap));
+            }
+            println!("  wasmtime serve{} {}", flags, output_path.display());
+        }
+        (RuntimeType::Wasmtime, "stdio") => {
+            // Wasmtime stdio: use run with capability flags
+            let mut flags = String::new();
+            for cap in &runtime.capabilities {
+                flags.push_str(&format!(" -S{}", cap));
+            }
+            println!("  wasmtime run{} {}", flags, output_path.display());
+        }
+        (RuntimeType::Spin, "http") => {
+            // Spin runtime
+            println!("  spin up -f {}", output_path.display());
+        }
+        (RuntimeType::Spin, "stdio") => {
+            // Spin doesn't support stdio mode
+            println!("  # Note: Spin runtime does not support stdio transport");
+            println!("  wasmtime run {}", output_path.display());
+        }
+        (RuntimeType::Generic, "http") => {
+            // Generic/unknown runtime - use basic wasmtime command
+            println!("  wasmtime serve -Scli {}", output_path.display());
+        }
+        (RuntimeType::Generic, "stdio") => {
+            println!("  wasmtime run {}", output_path.display());
+        }
+        _ => {
+            // Fallback
+            println!("  wasmtime {}", output_path.display());
+        }
     }
 }
 

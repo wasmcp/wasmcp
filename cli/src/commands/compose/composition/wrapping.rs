@@ -8,7 +8,8 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
-use super::dependencies;
+use super::load_package;
+use crate::commands::compose::resolution::dependencies;
 use crate::versioning::VersionResolver;
 
 /// Prefix for temporary wrapped component files
@@ -138,17 +139,71 @@ pub async fn wrap_capabilities(
     component_paths: Vec<PathBuf>,
     deps_dir: &Path,
     resolver: &VersionResolver,
+    override_tools_middleware: Option<&str>,
+    override_resources_middleware: Option<&str>,
+    override_prompts_middleware: Option<&str>,
     verbose: bool,
 ) -> Result<Vec<PathBuf>> {
     let mut wrapped_paths = Vec::new();
 
-    // Discover capability interfaces from middleware components
-    let tools_middleware_path =
-        dependencies::get_dependency_path("tools-middleware", resolver, deps_dir)?;
-    let resources_middleware_path =
-        dependencies::get_dependency_path("resources-middleware", resolver, deps_dir)?;
-    let prompts_middleware_path =
-        dependencies::get_dependency_path("prompts-middleware", resolver, deps_dir)?;
+    // Create client for resolving overrides (only if needed)
+    let client = if override_tools_middleware.is_some()
+        || override_resources_middleware.is_some()
+        || override_prompts_middleware.is_some()
+    {
+        Some(crate::commands::pkg::create_default_client().await?)
+    } else {
+        None
+    };
+
+    // Resolve middleware paths - use overrides if provided, otherwise download
+    let tools_middleware_path = match override_tools_middleware {
+        Some(override_spec) => {
+            if verbose {
+                println!("\nUsing override tools-middleware: {}", override_spec);
+            }
+            crate::commands::compose::resolution::resolve_component_spec(
+                override_spec,
+                deps_dir,
+                client.as_ref().unwrap(),
+                verbose,
+            )
+            .await?
+        }
+        None => dependencies::get_dependency_path("tools-middleware", resolver, deps_dir)?,
+    };
+
+    let resources_middleware_path = match override_resources_middleware {
+        Some(override_spec) => {
+            if verbose {
+                println!("\nUsing override resources-middleware: {}", override_spec);
+            }
+            crate::commands::compose::resolution::resolve_component_spec(
+                override_spec,
+                deps_dir,
+                client.as_ref().unwrap(),
+                verbose,
+            )
+            .await?
+        }
+        None => dependencies::get_dependency_path("resources-middleware", resolver, deps_dir)?,
+    };
+
+    let prompts_middleware_path = match override_prompts_middleware {
+        Some(override_spec) => {
+            if verbose {
+                println!("\nUsing override prompts-middleware: {}", override_spec);
+            }
+            crate::commands::compose::resolution::resolve_component_spec(
+                override_spec,
+                deps_dir,
+                client.as_ref().unwrap(),
+                verbose,
+            )
+            .await?
+        }
+        None => dependencies::get_dependency_path("prompts-middleware", resolver, deps_dir)?,
+    };
 
     // Discover server-handler interface (all middleware export it, use tools as source)
     let server_handler_interface = discover_server_handler_interface(&tools_middleware_path)
@@ -313,9 +368,9 @@ fn wrap_with_middleware(
 ) -> Result<Vec<u8>> {
     let mut graph = CompositionGraph::new();
 
-    // Load both components
-    let middleware_pkg = super::graph::load_package(&mut graph, middleware_name, middleware_path)?;
-    let capability_pkg = super::graph::load_package(&mut graph, capability_name, capability_path)?;
+    // Load both components (verbose = false for internal wrapping operations)
+    let middleware_pkg = load_package(&mut graph, middleware_name, middleware_path, false)?;
+    let capability_pkg = load_package(&mut graph, capability_name, capability_path, false)?;
 
     // Register packages
     let middleware_id = graph.register_package(middleware_pkg)?;
@@ -393,7 +448,10 @@ mod tests {
             component_paths,
             temp_dir.path(),
             &resolver,
-            false,
+            None,  // override_tools_middleware
+            None,  // override_resources_middleware
+            None,  // override_prompts_middleware
+            false, // verbose
         ));
 
         // Should fail because component doesn't exist
@@ -462,16 +520,17 @@ mod tests {
         assert_eq!(name3, "component");
     }
 
-    /// Test that dependencies module interfaces are accessible
+    /// Test that inspection module interfaces are accessible
     #[test]
     fn test_interface_constants_available() {
         use crate::DEFAULT_WASMCP_VERSION;
+        use crate::commands::compose::inspection::interfaces;
 
         // Verify we can call interface naming functions
-        let server_handler = dependencies::interfaces::server_handler(DEFAULT_WASMCP_VERSION);
-        let tools = dependencies::interfaces::tools(DEFAULT_WASMCP_VERSION);
-        let resources = dependencies::interfaces::resources(DEFAULT_WASMCP_VERSION);
-        let prompts = dependencies::interfaces::prompts(DEFAULT_WASMCP_VERSION);
+        let server_handler = interfaces::server_handler(DEFAULT_WASMCP_VERSION);
+        let tools = interfaces::tools(DEFAULT_WASMCP_VERSION);
+        let resources = interfaces::resources(DEFAULT_WASMCP_VERSION);
+        let prompts = interfaces::prompts(DEFAULT_WASMCP_VERSION);
 
         // Verify format
         assert!(server_handler.starts_with("wasmcp:mcp-v20250618/server-handler@"));

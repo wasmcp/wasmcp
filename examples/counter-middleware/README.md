@@ -1,13 +1,13 @@
 # Counter Middleware
 
-Server middleware that counts tool invocations using session storage.
+Server middleware that tracks downstream tool invocations during a given session using the `session-storage` crate.
 
 ## Overview
 
 This example demonstrates **two important patterns** in wasmcp:
 
-1. **Middleware Pattern**: Intercepting and transforming MCP requests
-2. **Session Storage**: Persisting state across requests within a session
+- **Middleware Pattern**: Intercepting and transforming MCP requests
+- **Session Storage**: Persisting state across requests within a session
 
 Counter-middleware sits between the client and your capability providers, counting every tool call that flows through it while transparently passing requests downstream.
 
@@ -15,27 +15,9 @@ Counter-middleware sits between the client and your capability providers, counti
 
 In wasmcp, middleware components:
 
-- **Import AND export** `server-handler` - they sit in the middle of the request chain
 - **Intercept** specific requests they care about
 - **Delegate** all other requests to the downstream handler unchanged
 - **Can add** new capabilities (like our `get-count` tool)
-
-This is different from capability providers (tools/resources/prompts) which only **export** interfaces.
-
-### The server-middleware Pattern
-
-```wit
-world counter-middleware {
-    include wasmcp:mcp-v20250618/server-middleware@0.1.4;
-
-    import wasmcp:mcp-v20250618/sessions@0.1.4;
-    import wasmcp:mcp-v20250618/server-io@0.1.4;
-}
-```
-
-The `server-middleware` include provides:
-- **Imports**: `server-handler` (downstream components)
-- **Exports**: `server-handler` (for upstream/transport)
 
 ## Session Storage
 

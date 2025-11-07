@@ -26,35 +26,33 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
+use crate::commands::pkg;
+use crate::config as wasmcp_config;
 use crate::versioning::VersionResolver;
-use crate::{commands::pkg, config};
 
 // Public re-exports
-pub use self::builder::ComposeOptionsBuilder;
-pub use self::dependencies::PackageClient;
-pub use self::profiles::expand_profile_specs;
+pub use self::config::ComposeOptionsBuilder;
+pub use self::config::expand_profile_specs;
+pub use self::resolution::PackageClient;
 
-// Submodules
-mod builder;
-pub mod dependencies;
-mod framework;
-mod graph;
-mod output;
-mod profiles;
-mod resolution;
-mod validation;
-mod wrapping;
+// Submodules - organized by functionality
+pub mod composition;
+pub mod config;
+pub mod inspection;
+pub mod output;
+pub mod resolution;
 
 // Internal imports from submodules
-use self::framework::{
-    resolve_http_messages_component, resolve_method_not_found_component,
-    resolve_transport_component,
-};
+use self::composition::{build_composition, build_handler_composition, wrap_capabilities};
+use self::config::{resolve_output_path, validate_output_file, validate_transport};
 use self::output::{
     print_handler_pipeline_diagram, print_handler_success_message, print_pipeline_diagram,
     print_success_message,
 };
-use self::validation::{resolve_output_path, validate_output_file, validate_transport};
+use self::resolution::{
+    download_dependencies, resolve_method_not_found_component, resolve_server_io_component,
+    resolve_session_store_component, resolve_transport_component,
+};
 
 /// Composition mode: Server (complete) or Handler (intermediate)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,8 +81,23 @@ pub struct ComposeOptions {
     /// Override transport component (path or package spec)
     pub override_transport: Option<String>,
 
+    /// Override server-io component (path or package spec)
+    pub override_server_io: Option<String>,
+
+    /// Override session-store component (path or package spec)
+    pub override_session_store: Option<String>,
+
     /// Override method-not-found component (path or package spec)
     pub override_method_not_found: Option<String>,
+
+    /// Override tools-middleware component (path or package spec)
+    pub override_tools_middleware: Option<String>,
+
+    /// Override resources-middleware component (path or package spec)
+    pub override_resources_middleware: Option<String>,
+
+    /// Override prompts-middleware component (path or package spec)
+    pub override_prompts_middleware: Option<String>,
 
     /// Directory for downloaded dependencies
     pub deps_dir: PathBuf,
@@ -100,6 +113,10 @@ pub struct ComposeOptions {
 
     /// Composition mode (Server or Handler)
     pub mode: CompositionMode,
+
+    /// Runtime environment: "spin", "wasmcloud", or "wasmtime"
+    /// Determines which session-store variant to use
+    pub runtime: String,
 }
 
 /// Compose MCP server components into a complete WASM component
@@ -126,12 +143,18 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         output,
         version_resolver,
         override_transport,
+        override_server_io,
+        override_session_store,
         override_method_not_found,
+        override_tools_middleware,
+        override_resources_middleware,
+        override_prompts_middleware,
         deps_dir,
         skip_download,
         force,
         verbose,
         mode,
+        runtime,
     } = options;
 
     // Branch based on composition mode
@@ -143,11 +166,17 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 output,
                 version_resolver,
                 override_transport,
+                override_server_io,
+                override_session_store,
                 override_method_not_found,
+                override_tools_middleware,
+                override_resources_middleware,
+                override_prompts_middleware,
                 deps_dir,
                 skip_download,
                 force,
                 verbose,
+                runtime,
             )
             .await
         }
@@ -156,6 +185,9 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 components,
                 output,
                 version_resolver,
+                override_tools_middleware,
+                override_resources_middleware,
+                override_prompts_middleware,
                 deps_dir,
                 force,
                 verbose,
@@ -173,11 +205,17 @@ async fn compose_server(
     output: PathBuf,
     version_resolver: VersionResolver,
     override_transport: Option<String>,
+    override_server_io: Option<String>,
+    override_session_store: Option<String>,
     override_method_not_found: Option<String>,
+    override_tools_middleware: Option<String>,
+    override_resources_middleware: Option<String>,
+    override_prompts_middleware: Option<String>,
     deps_dir: PathBuf,
     skip_download: bool,
     force: bool,
     verbose: bool,
+    runtime: String,
 ) -> Result<()> {
     // Validate transport type early (before any expensive operations)
     validate_transport(&transport)?;
@@ -195,7 +233,7 @@ async fn compose_server(
     }
 
     // Ensure wasmcp directories exist
-    config::ensure_dirs()?;
+    wasmcp_config::ensure_dirs()?;
 
     // Create package client
     let client = pkg::create_default_client()
@@ -217,15 +255,42 @@ async fn compose_server(
     // Resolve all component specs to local paths
     let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
 
+    // Download framework dependencies once upfront (unless skip_download is set)
+    if !skip_download {
+        if verbose {
+            println!("\nDownloading framework dependencies...");
+        }
+        download_dependencies(&version_resolver, &deps_dir, &client).await?;
+    }
+
     // Resolve transport component
     let transport_path = resolve_transport_component(
-        &transport,
         override_transport.as_deref(),
         &version_resolver,
         &deps_dir,
         &client,
-        skip_download,
         verbose,
+    )
+    .await?;
+
+    // Resolve server-io component
+    let server_io_path = resolve_server_io_component(
+        override_server_io.as_deref(),
+        &version_resolver,
+        &deps_dir,
+        &client,
+        verbose,
+    )
+    .await?;
+
+    // Resolve session-store component
+    let session_store_path = resolve_session_store_component(
+        override_session_store.as_deref(),
+        &version_resolver,
+        &deps_dir,
+        &client,
+        verbose,
+        &runtime,
     )
     .await?;
 
@@ -235,33 +300,24 @@ async fn compose_server(
         &version_resolver,
         &deps_dir,
         &client,
-        skip_download,
         verbose,
     )
     .await?;
-
-    // Resolve http-messages component for http transport
-    let http_messages_path = if transport == "http" {
-        Some(
-            resolve_http_messages_component(
-                &version_resolver,
-                &deps_dir,
-                &client,
-                skip_download,
-                verbose,
-            )
-            .await?,
-        )
-    } else {
-        None
-    };
 
     // Auto-detect and wrap capability components (tools, resources, etc.)
     if verbose {
         println!("\nDetecting component types...");
     }
-    let wrapped_components =
-        wrapping::wrap_capabilities(component_paths, &deps_dir, &version_resolver, verbose).await?;
+    let wrapped_components = wrap_capabilities(
+        component_paths,
+        &deps_dir,
+        &version_resolver,
+        override_tools_middleware.as_deref(),
+        override_resources_middleware.as_deref(),
+        override_prompts_middleware.as_deref(),
+        verbose,
+    )
+    .await?;
 
     // Print composition pipeline (only in verbose mode)
     if verbose {
@@ -270,12 +326,12 @@ async fn compose_server(
     }
 
     // Build and encode the composition
-    let bytes = graph::build_composition(
+    let bytes = build_composition(
         &transport_path,
+        &server_io_path,
+        &session_store_path,
         &wrapped_components,
         &method_not_found_path,
-        http_messages_path.as_deref(),
-        &transport,
         &version_resolver,
         verbose,
     )
@@ -285,17 +341,41 @@ async fn compose_server(
     std::fs::write(&output_path, &bytes)
         .with_context(|| format!("Failed to write output file: {}", output_path.display()))?;
 
-    // Print success message
-    print_success_message(&output_path, &transport);
+    // Detect runtime requirements from composed component
+    let runtime_info = match inspection::detect_runtime(&bytes) {
+        Ok(info) => {
+            if verbose {
+                println!("\nDetected runtime: {:?}", info.runtime_type);
+                println!("Required capabilities: {:?}", info.capabilities);
+            }
+            Some(info)
+        }
+        Err(e) => {
+            if verbose {
+                eprintln!("Warning: Failed to detect runtime info: {}", e);
+            }
+            None
+        }
+    };
+
+    // Print success message with runtime-specific instructions
+    print_success_message(&output_path, &transport, runtime_info.as_ref());
 
     Ok(())
 }
 
 /// Compose a handler component (without transport/terminal)
+///
+/// TODO: Refactor to reduce argument count (9/7). Consider grouping into a
+/// HandlerCompositionOptions struct (components, overrides, paths, flags).
+#[allow(clippy::too_many_arguments)]
 async fn compose_handler(
     components: Vec<String>,
     output: PathBuf,
     version_resolver: VersionResolver,
+    override_tools_middleware: Option<String>,
+    override_resources_middleware: Option<String>,
+    override_prompts_middleware: Option<String>,
     deps_dir: PathBuf,
     force: bool,
     verbose: bool,
@@ -313,7 +393,7 @@ async fn compose_handler(
     }
 
     // Ensure wasmcp directories exist
-    config::ensure_dirs()?;
+    wasmcp_config::ensure_dirs()?;
 
     // Create package client
     let client = pkg::create_default_client()
@@ -338,8 +418,16 @@ async fn compose_handler(
     if verbose {
         println!("\nDetecting component types...");
     }
-    let wrapped_components =
-        wrapping::wrap_capabilities(component_paths, &deps_dir, &version_resolver, verbose).await?;
+    let wrapped_components = wrap_capabilities(
+        component_paths,
+        &deps_dir,
+        &version_resolver,
+        override_tools_middleware.as_deref(),
+        override_resources_middleware.as_deref(),
+        override_prompts_middleware.as_deref(),
+        verbose,
+    )
+    .await?;
 
     // Print composition pipeline (only in verbose mode)
     if verbose {
@@ -348,8 +436,7 @@ async fn compose_handler(
     }
 
     // Build and encode the handler-only composition
-    let bytes =
-        graph::build_handler_composition(&wrapped_components, &version_resolver, verbose).await?;
+    let bytes = build_handler_composition(&wrapped_components, &version_resolver, verbose).await?;
 
     // Write output file
     std::fs::write(&output_path, bytes)
@@ -371,7 +458,8 @@ async fn resolve_user_components(
     let mut paths = Vec::new();
 
     for (i, spec) in specs.iter().enumerate() {
-        let path = resolution::resolve_component_spec(spec, deps_dir, client, verbose).await?;
+        let path =
+            resolution::spec::resolve_component_spec(spec, deps_dir, client, verbose).await?;
         if verbose {
             println!("   {}. {} → {}", i + 1, spec, path.display());
         }
@@ -388,28 +476,25 @@ mod tests {
     #[test]
     fn test_interface_names() {
         assert_eq!(
-            dependencies::interfaces::server_handler("0.1.0"),
+            inspection::interfaces::server_handler("0.1.0"),
             "wasmcp:mcp-v20250618/server-handler@0.1.0"
         );
         assert_eq!(
-            dependencies::interfaces::tools("0.1.0"),
+            inspection::interfaces::tools("0.1.0"),
             "wasmcp:mcp-v20250618/tools@0.1.0"
         );
-        assert_eq!(
-            dependencies::interfaces::WASI_HTTP_HANDLER,
-            "wasi:http/incoming-handler@0.2.3"
-        );
-        assert_eq!(dependencies::interfaces::WASI_CLI_RUN, "wasi:cli/run@0.2.3");
+        // Note: WASI interface versions now come from VersionResolver, not constants
+        // These would require a resolver instance to test properly
     }
 
     #[test]
     fn test_package_naming() {
         assert_eq!(
-            dependencies::interfaces::package("http-transport", "0.1.0"),
+            inspection::interfaces::package("http-transport", "0.1.0"),
             "wasmcp:http-transport@0.1.0"
         );
         assert_eq!(
-            dependencies::interfaces::package("method-not-found", "0.1.0"),
+            inspection::interfaces::package("method-not-found", "0.1.0"),
             "wasmcp:method-not-found@0.1.0"
         );
     }
@@ -573,18 +658,6 @@ mod tests {
     }
 
     /// Test http messages path handling
-    #[test]
-    fn test_http_messages_conditional() {
-        // HTTP transport should include messages
-        let transport = "http";
-        let should_include = transport == "http";
-        assert!(should_include);
-
-        // Stdio transport should not include messages
-        let transport = "stdio";
-        let should_include = transport == "http";
-        assert!(!should_include);
-    }
 
     #[test]
     fn test_compose_options_builder_chaining() {

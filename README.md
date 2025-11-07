@@ -34,8 +34,8 @@ cd time-tools && make && cd ..
 wasmcp registry component add time time-tools/time-tools.wasm
 
 # Compose into an MCP server and run
-wasmcp compose server time -o server.wasm
-wasmtime serve -Scli server.wasm  # http://0.0.0.0:8080/mcp
+wasmcp compose server time --runtime wasmtime -o server.wasm
+wasmtime serve -Scli -Skeyvalue -Shttp server.wasm  # http://0.0.0.0:8080/mcp
 ```
 
 Combine multiple tool components - they automatically merge into a unified catalog:
@@ -46,8 +46,8 @@ cd math-tools && make && cd ..
 wasmcp registry component add math math-tools/target/wasm32-wasip2/release/math_tools.wasm
 
 # Compose both together
-wasmcp compose server time math -o combined-server.wasm
-wasmtime serve -Scli combined-server.wasm
+wasmcp compose server time math --runtime wasmtime -o combined-server.wasm
+wasmtime serve -Scli -Skeyvalue -Shttp combined-server.wasm
 ```
 
 See [examples/](examples/) for more.
@@ -214,8 +214,9 @@ Generated templates demonstrate the capability pattern with working tool impleme
 
 Published to [ghcr.io/wasmcp](https://github.com/orgs/wasmcp/packages):
 
-- **http-transport** - HTTP server (for `wasmtime serve`)
-- **stdio-transport** - Stdio integration (for local clients)
+- **transport** - Universal transport for HTTP / stdio execution
+- **server-io** - Universal MCP message I/O with configurable transport framing support 
+- **session-store** - Key Value session component
 - **method-not-found** - Terminal handler for unhandled methods
 
 The CLI automatically downloads these when composing.
