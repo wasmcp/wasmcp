@@ -1,10 +1,11 @@
 [package]
 name = "kv-store"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-wit-bindgen = "0.46"
+wit-bindgen = "0.47.0"
+serde_json = "1.0.145"
 
 [features]
 draft2 = []
