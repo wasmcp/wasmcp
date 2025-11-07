@@ -1,2 +1,2 @@
 http = "https://github.com/WebAssembly/wasi-http/archive/refs/tags/v0.2.3.tar.gz"
-mcp-v20250618 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.3/wasmcp-mcp-v2025-06-18-0.1.3-source.tar.gz"
+mcp-v2025-06-18 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.5/wasmcp-mcp-v2025-06-18-0.1.5-source.tar.gz"
