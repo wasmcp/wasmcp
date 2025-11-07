@@ -1,0 +1,15 @@
+name: 'Setup Wasmtime'
+description: 'Install Wasmtime runtime'
+inputs:
+  version:
+    description: 'Wasmtime version to install'
+    required: false
+    default: 'v37.0.1'
+runs:
+  using: 'composite'
+  steps:
+    - name: Install wasmtime
+      shell: bash
+      run: |
+        curl -fsSL https://github.com/bytecodealliance/wasmtime/releases/download/${{ inputs.version }}/wasmtime-${{ inputs.version }}-x86_64-linux.tar.xz | tar -xJ
+        sudo mv wasmtime-${{ inputs.version }}-x86_64-linux/wasmtime /usr/local/bin/

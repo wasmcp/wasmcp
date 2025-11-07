@@ -48,7 +48,6 @@ export default {
   externals: {
     "wasmcp:mcp-v20250618/mcp@{{wasmcp_version}}": "wasmcp:mcp-v20250618/mcp@{{wasmcp_version}}",
     "wasmcp:mcp-v20250618/resources@{{wasmcp_version}}": "wasmcp:mcp-v20250618/resources@{{wasmcp_version}}",
-    "wasmcp:mcp-v20250618/server-messages@{{wasmcp_version}}": "wasmcp:mcp-v20250618/server-messages@{{wasmcp_version}}",
   },
   optimization: {
     minimize: false,
