@@ -31,22 +31,22 @@ DEBUG_BIN := $(BUILD_DIR)/debug/wasmcp
 .PHONY: all build release debug clean test check install
 
 # Default target
-all: release
+work: release 
 
 # Release build (optimized)
-release:
+release: build
 	@echo "Building wasmcp CLI for $(TARGET) (release)..."
 	cargo build --release --target $(TARGET)
 	@echo "✓ Built: $(RELEASE_BIN)"
 
 # Debug build (faster compile)
-debug:
+debug: build
 	@echo "Building wasmcp CLI for $(TARGET) (debug)..."
 	cargo build --target $(TARGET)
 	@echo "✓ Built: $(DEBUG_BIN)"
 
 # Alias for release
-build: check release
+build: check
 
 # Clean build artifacts
 clean:

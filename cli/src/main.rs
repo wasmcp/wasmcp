@@ -85,7 +85,7 @@ enum Command {
     ///   wasmcp compose handler calc.wasm math.wasm      # Handler component
     ///   wasmcp compose server calc strings              # Multiple handlers
     #[command(subcommand)]
-    Compose(ComposeCommand),
+    Compose(Box<ComposeCommand>),
 
     /// WIT dependency management commands
     Wit {
@@ -107,6 +107,7 @@ enum Command {
 }
 
 #[derive(Parser)]
+#[allow(clippy::large_enum_variant)]
 enum ComposeCommand {
     /// Compose a complete MCP server
     ///
@@ -152,7 +153,7 @@ enum ComposeCommand {
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
 
-        /// Version overrides for specific components (e.g., --version-override http-messages=0.1.0)
+        /// Version overrides for specific components (e.g., --version-override transport=0.2.0)
         #[arg(long = "version-override", value_name = "COMPONENT=VERSION")]
         version_overrides: Vec<String>,
 
@@ -160,9 +161,29 @@ enum ComposeCommand {
         #[arg(long)]
         override_transport: Option<String>,
 
+        /// Override server-io component (path or package spec)
+        #[arg(long)]
+        override_server_io: Option<String>,
+
+        /// Override session-store component (path or package spec)
+        #[arg(long)]
+        override_session_store: Option<String>,
+
         /// Override method-not-found component (path or package spec)
         #[arg(long)]
         override_method_not_found: Option<String>,
+
+        /// Override tools-middleware component (path or package spec)
+        #[arg(long)]
+        override_tools_middleware: Option<String>,
+
+        /// Override resources-middleware component (path or package spec)
+        #[arg(long)]
+        override_resources_middleware: Option<String>,
+
+        /// Override prompts-middleware component (path or package spec)
+        #[arg(long)]
+        override_prompts_middleware: Option<String>,
 
         /// Directory for dependency components
         #[arg(long, default_value_os_t = default_deps_dir())]
@@ -179,6 +200,14 @@ enum ComposeCommand {
         /// Enable verbose output (show detailed resolution and composition steps)
         #[arg(long, short = 'v')]
         verbose: bool,
+
+        /// Target runtime environment (determines session-store variant)
+        ///
+        /// - spin: Uses WASI draft2/preview2 (session-store-d2)
+        /// - wasmtime: Uses WASI 0.2.x (session-store)
+        /// - wasmcloud: Uses WASI 0.2.x (session-store)
+        #[arg(long, value_name = "RUNTIME", default_value = "spin")]
+        runtime: String,
     },
 
     /// Compose a handler component (composable middleware without transport)
@@ -483,7 +512,7 @@ async fn main() -> Result<()> {
             Ok(())
         }
 
-        Command::Compose(compose_cmd) => match compose_cmd {
+        Command::Compose(compose_cmd) => match *compose_cmd {
             ComposeCommand::Server {
                 profile,
                 components,
@@ -491,11 +520,17 @@ async fn main() -> Result<()> {
                 output,
                 version_overrides,
                 override_transport,
+                override_server_io,
+                override_session_store,
                 override_method_not_found,
+                override_tools_middleware,
+                override_resources_middleware,
+                override_prompts_middleware,
                 deps_dir,
                 skip_download,
                 force,
                 verbose,
+                runtime,
             } => {
                 // Merge components from both sources (new unified approach)
                 // If -p flags are used, they're prepended to components list for backward compatibility
@@ -528,6 +563,8 @@ async fn main() -> Result<()> {
                 // Use other settings as-is
                 let final_transport = transport.to_string();
                 let final_override_transport = override_transport;
+                let final_override_server_io = override_server_io;
+                let final_override_session_store = override_session_store;
                 let final_override_method_not_found = override_method_not_found;
                 let final_force = force;
 
@@ -538,6 +575,14 @@ async fn main() -> Result<()> {
                     .apply_overrides(version_overrides)
                     .context("Failed to apply version overrides")?;
 
+                // Validate runtime value
+                if !["spin", "wasmtime", "wasmcloud"].contains(&runtime.as_str()) {
+                    anyhow::bail!(
+                        "Invalid runtime '{}'. Must be one of: spin, wasmtime, wasmcloud",
+                        runtime
+                    );
+                }
+
                 // Create compose options
                 let options = commands::compose::ComposeOptions {
                     components: resolved_components,
@@ -545,12 +590,18 @@ async fn main() -> Result<()> {
                     output: final_output,
                     version_resolver,
                     override_transport: final_override_transport,
+                    override_server_io: final_override_server_io,
+                    override_session_store: final_override_session_store,
                     override_method_not_found: final_override_method_not_found,
+                    override_tools_middleware,
+                    override_resources_middleware,
+                    override_prompts_middleware,
                     deps_dir,
                     skip_download,
                     force: final_force,
                     verbose,
                     mode: commands::compose::CompositionMode::Server,
+                    runtime,
                 };
 
                 commands::compose::compose(options).await
@@ -587,12 +638,18 @@ async fn main() -> Result<()> {
                     output: final_output,
                     version_resolver,
                     override_transport: None,
+                    override_server_io: None,
+                    override_session_store: None,
                     override_method_not_found: None,
+                    override_tools_middleware: None,
+                    override_resources_middleware: None,
+                    override_prompts_middleware: None,
                     deps_dir,
                     skip_download: false, // Not applicable to handler mode
                     force,
                     verbose,
                     mode: commands::compose::CompositionMode::Handler,
+                    runtime: String::new(), // Not used in handler mode
                 };
 
                 commands::compose::compose(options).await

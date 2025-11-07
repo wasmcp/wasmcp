@@ -20,10 +20,10 @@ deps = ["cli", "clocks", "filesystem", "io", "random", "sockets"]
 sha256 = "1cccbfe4122686ea57a25cd368e8cdfc408cbcad089f47fb6685b6f92e96f050"
 sha512 = "7a95f964c13da52611141acd89bc8876226497f128e99dd176a4270c5b5efbd8cc847b5fbd1a91258d028c646db99e0424d72590cf1caf20f9f3a3343fad5017"
 
-[mcp-v20250618]
-url = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.3/wasmcp-mcp-v2025-06-18-0.1.3-source.tar.gz"
-sha256 = "b94549ce17e4c763227c8dbdf05a09a680fed11cf8b4c8dc74b758679791763c"
-sha512 = "062d61e22eedc881f4b603f46fb063783a8f4b7e4e0067c82c618c36b3ffb02070a302ab8954af42d77e437ab851df47c2e40194e3592f68ff8853b02da48715"
+[mcp-v2025-06-18]
+url = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.5/wasmcp-mcp-v2025-06-18-0.1.5-source.tar.gz"
+sha256 = "cfef2ab13c99bf1af20e4d8c109be7af4bb2fd2298dbeeceacd58dfbda99615f"
+sha512 = "88a1d1287d1873736955e39744b15e37701de160817803e30202b6ab7bae076a0335a5a4ccd892b2948da2022015591aa516734abbc5a647ca0dbfbd9d6f3a20"
 deps = ["io"]
 
 [random]

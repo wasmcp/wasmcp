@@ -39,6 +39,7 @@ mod builder;
 pub mod dependencies;
 mod framework;
 mod graph;
+pub mod interfaces;
 mod output;
 mod profiles;
 mod resolution;
@@ -47,8 +48,8 @@ mod wrapping;
 
 // Internal imports from submodules
 use self::framework::{
-    resolve_http_messages_component, resolve_method_not_found_component,
-    resolve_transport_component,
+    resolve_method_not_found_component, resolve_server_io_component,
+    resolve_session_store_component, resolve_transport_component,
 };
 use self::output::{
     print_handler_pipeline_diagram, print_handler_success_message, print_pipeline_diagram,
@@ -83,8 +84,23 @@ pub struct ComposeOptions {
     /// Override transport component (path or package spec)
     pub override_transport: Option<String>,
 
+    /// Override server-io component (path or package spec)
+    pub override_server_io: Option<String>,
+
+    /// Override session-store component (path or package spec)
+    pub override_session_store: Option<String>,
+
     /// Override method-not-found component (path or package spec)
     pub override_method_not_found: Option<String>,
+
+    /// Override tools-middleware component (path or package spec)
+    pub override_tools_middleware: Option<String>,
+
+    /// Override resources-middleware component (path or package spec)
+    pub override_resources_middleware: Option<String>,
+
+    /// Override prompts-middleware component (path or package spec)
+    pub override_prompts_middleware: Option<String>,
 
     /// Directory for downloaded dependencies
     pub deps_dir: PathBuf,
@@ -100,6 +116,10 @@ pub struct ComposeOptions {
 
     /// Composition mode (Server or Handler)
     pub mode: CompositionMode,
+
+    /// Runtime environment: "spin", "wasmcloud", or "wasmtime"
+    /// Determines which session-store variant to use
+    pub runtime: String,
 }
 
 /// Compose MCP server components into a complete WASM component
@@ -126,12 +146,18 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         output,
         version_resolver,
         override_transport,
+        override_server_io,
+        override_session_store,
         override_method_not_found,
+        override_tools_middleware,
+        override_resources_middleware,
+        override_prompts_middleware,
         deps_dir,
         skip_download,
         force,
         verbose,
         mode,
+        runtime,
     } = options;
 
     // Branch based on composition mode
@@ -143,11 +169,17 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 output,
                 version_resolver,
                 override_transport,
+                override_server_io,
+                override_session_store,
                 override_method_not_found,
+                override_tools_middleware,
+                override_resources_middleware,
+                override_prompts_middleware,
                 deps_dir,
                 skip_download,
                 force,
                 verbose,
+                runtime,
             )
             .await
         }
@@ -156,6 +188,9 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 components,
                 output,
                 version_resolver,
+                override_tools_middleware,
+                override_resources_middleware,
+                override_prompts_middleware,
                 deps_dir,
                 force,
                 verbose,
@@ -173,11 +208,17 @@ async fn compose_server(
     output: PathBuf,
     version_resolver: VersionResolver,
     override_transport: Option<String>,
+    override_server_io: Option<String>,
+    override_session_store: Option<String>,
     override_method_not_found: Option<String>,
+    override_tools_middleware: Option<String>,
+    override_resources_middleware: Option<String>,
+    override_prompts_middleware: Option<String>,
     deps_dir: PathBuf,
     skip_download: bool,
     force: bool,
     verbose: bool,
+    runtime: String,
 ) -> Result<()> {
     // Validate transport type early (before any expensive operations)
     validate_transport(&transport)?;
@@ -217,15 +258,42 @@ async fn compose_server(
     // Resolve all component specs to local paths
     let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
 
+    // Download framework dependencies once upfront (unless skip_download is set)
+    if !skip_download {
+        if verbose {
+            println!("\nDownloading framework dependencies...");
+        }
+        dependencies::download_dependencies(&version_resolver, &deps_dir, &client).await?;
+    }
+
     // Resolve transport component
     let transport_path = resolve_transport_component(
-        &transport,
         override_transport.as_deref(),
         &version_resolver,
         &deps_dir,
         &client,
-        skip_download,
         verbose,
+    )
+    .await?;
+
+    // Resolve server-io component
+    let server_io_path = resolve_server_io_component(
+        override_server_io.as_deref(),
+        &version_resolver,
+        &deps_dir,
+        &client,
+        verbose,
+    )
+    .await?;
+
+    // Resolve session-store component
+    let session_store_path = resolve_session_store_component(
+        override_session_store.as_deref(),
+        &version_resolver,
+        &deps_dir,
+        &client,
+        verbose,
+        &runtime,
     )
     .await?;
 
@@ -235,33 +303,24 @@ async fn compose_server(
         &version_resolver,
         &deps_dir,
         &client,
-        skip_download,
         verbose,
     )
     .await?;
-
-    // Resolve http-messages component for http transport
-    let http_messages_path = if transport == "http" {
-        Some(
-            resolve_http_messages_component(
-                &version_resolver,
-                &deps_dir,
-                &client,
-                skip_download,
-                verbose,
-            )
-            .await?,
-        )
-    } else {
-        None
-    };
 
     // Auto-detect and wrap capability components (tools, resources, etc.)
     if verbose {
         println!("\nDetecting component types...");
     }
-    let wrapped_components =
-        wrapping::wrap_capabilities(component_paths, &deps_dir, &version_resolver, verbose).await?;
+    let wrapped_components = wrapping::wrap_capabilities(
+        component_paths,
+        &deps_dir,
+        &version_resolver,
+        override_tools_middleware.as_deref(),
+        override_resources_middleware.as_deref(),
+        override_prompts_middleware.as_deref(),
+        verbose,
+    )
+    .await?;
 
     // Print composition pipeline (only in verbose mode)
     if verbose {
@@ -272,9 +331,10 @@ async fn compose_server(
     // Build and encode the composition
     let bytes = graph::build_composition(
         &transport_path,
+        &server_io_path,
+        &session_store_path,
         &wrapped_components,
         &method_not_found_path,
-        http_messages_path.as_deref(),
         &transport,
         &version_resolver,
         verbose,
@@ -292,10 +352,17 @@ async fn compose_server(
 }
 
 /// Compose a handler component (without transport/terminal)
+///
+/// TODO: Refactor to reduce argument count (9/7). Consider grouping into a
+/// HandlerCompositionOptions struct (components, overrides, paths, flags).
+#[allow(clippy::too_many_arguments)]
 async fn compose_handler(
     components: Vec<String>,
     output: PathBuf,
     version_resolver: VersionResolver,
+    override_tools_middleware: Option<String>,
+    override_resources_middleware: Option<String>,
+    override_prompts_middleware: Option<String>,
     deps_dir: PathBuf,
     force: bool,
     verbose: bool,
@@ -338,8 +405,16 @@ async fn compose_handler(
     if verbose {
         println!("\nDetecting component types...");
     }
-    let wrapped_components =
-        wrapping::wrap_capabilities(component_paths, &deps_dir, &version_resolver, verbose).await?;
+    let wrapped_components = wrapping::wrap_capabilities(
+        component_paths,
+        &deps_dir,
+        &version_resolver,
+        override_tools_middleware.as_deref(),
+        override_resources_middleware.as_deref(),
+        override_prompts_middleware.as_deref(),
+        verbose,
+    )
+    .await?;
 
     // Print composition pipeline (only in verbose mode)
     if verbose {
@@ -573,18 +648,6 @@ mod tests {
     }
 
     /// Test http messages path handling
-    #[test]
-    fn test_http_messages_conditional() {
-        // HTTP transport should include messages
-        let transport = "http";
-        let should_include = transport == "http";
-        assert!(should_include);
-
-        // Stdio transport should not include messages
-        let transport = "stdio";
-        let should_include = transport == "http";
-        assert!(!should_include);
-    }
 
     #[test]
     fn test_compose_options_builder_chaining() {

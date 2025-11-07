@@ -48,11 +48,17 @@ pub struct ComposeOptionsBuilder {
     transport: String,
     output: PathBuf,
     override_transport: Option<String>,
+    override_server_io: Option<String>,
+    override_session_store: Option<String>,
     override_method_not_found: Option<String>,
+    override_tools_middleware: Option<String>,
+    override_resources_middleware: Option<String>,
+    override_prompts_middleware: Option<String>,
     deps_dir: Option<PathBuf>,
     skip_download: bool,
     force: bool,
     verbose: bool,
+    runtime: String,
 }
 
 #[allow(dead_code)] // Public API - used by external consumers, not internally yet
@@ -84,11 +90,17 @@ impl ComposeOptionsBuilder {
             transport: "http".to_string(),
             output: PathBuf::from("server.wasm"),
             override_transport: None,
+            override_server_io: None,
+            override_session_store: None,
             override_method_not_found: None,
+            override_tools_middleware: None,
+            override_resources_middleware: None,
+            override_prompts_middleware: None,
             deps_dir: None,
             skip_download: false,
             force: false,
             verbose: false,
+            runtime: "spin".to_string(),
         }
     }
 
@@ -115,6 +127,24 @@ impl ComposeOptionsBuilder {
     /// This allows using a custom transport implementation.
     pub fn override_transport(mut self, spec: impl Into<String>) -> Self {
         self.override_transport = Some(spec.into());
+        self
+    }
+
+    /// Override the server-io component with a custom spec
+    ///
+    /// By default, the server-io component is downloaded from the wasmcp registry.
+    /// This allows using a custom server-io implementation.
+    pub fn override_server_io(mut self, spec: impl Into<String>) -> Self {
+        self.override_server_io = Some(spec.into());
+        self
+    }
+
+    /// Override the session-store component with a custom spec
+    ///
+    /// By default, the session-store component is downloaded from the wasmcp registry.
+    /// This allows using a custom session-store implementation.
+    pub fn override_session_store(mut self, spec: impl Into<String>) -> Self {
+        self.override_session_store = Some(spec.into());
         self
     }
 
@@ -203,12 +233,18 @@ impl ComposeOptionsBuilder {
             output: self.output,
             version_resolver,
             override_transport: self.override_transport,
+            override_server_io: self.override_server_io,
+            override_session_store: self.override_session_store,
             override_method_not_found: self.override_method_not_found,
+            override_tools_middleware: self.override_tools_middleware,
+            override_resources_middleware: self.override_resources_middleware,
+            override_prompts_middleware: self.override_prompts_middleware,
             deps_dir,
             skip_download: self.skip_download,
             force: self.force,
             verbose: self.verbose,
             mode: CompositionMode::Server, // Builder defaults to server mode
+            runtime: self.runtime,
         })
     }
 }

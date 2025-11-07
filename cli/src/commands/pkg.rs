@@ -182,8 +182,24 @@ pub async fn download_packages(
         .await
         .context("Failed to create deps directory")?;
 
-    // Download all packages in parallel
-    let downloads: Vec<_> = specs
+    // Filter specs to only download packages that don't already exist
+    let mut to_download = Vec::new();
+    for spec in specs {
+        let filename = spec.replace([':', '/'], "_") + ".wasm";
+        let output_path = deps_dir.join(&filename);
+        if !output_path.exists() {
+            to_download.push(spec.clone());
+        }
+    }
+
+    // If nothing to download, return early
+    if to_download.is_empty() {
+        println!("   All dependencies already cached");
+        return Ok(());
+    }
+
+    // Download packages that don't exist in parallel
+    let downloads: Vec<_> = to_download
         .iter()
         .map(|spec| {
             let client = client.clone();

@@ -104,7 +104,7 @@ mod tests {
 
         // Should have default versions
         assert!(resolver.get_version("mcp-v20250618").is_ok());
-        assert!(resolver.get_version("http-transport").is_ok());
+        assert!(resolver.get_version("transport").is_ok());
     }
 
     #[test]
@@ -112,10 +112,10 @@ mod tests {
         let mut resolver = VersionResolver::new().unwrap();
 
         resolver
-            .apply_overrides(vec!["http-messages=0.2.0".to_string()])
+            .apply_overrides(vec!["transport=0.2.0".to_string()])
             .unwrap();
 
-        assert_eq!(resolver.get_version("http-messages").unwrap(), "0.2.0");
+        assert_eq!(resolver.get_version("transport").unwrap(), "0.2.0");
     }
 
     #[test]
