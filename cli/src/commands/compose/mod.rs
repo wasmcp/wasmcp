@@ -335,7 +335,6 @@ async fn compose_server(
         &session_store_path,
         &wrapped_components,
         &method_not_found_path,
-        &transport,
         &version_resolver,
         verbose,
     )

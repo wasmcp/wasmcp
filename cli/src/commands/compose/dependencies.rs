@@ -9,43 +9,11 @@ use std::path::{Path, PathBuf};
 use crate::commands::pkg;
 use crate::versioning::VersionResolver;
 
+use super::interfaces;
+
 /// Type alias for the package client used throughout composition
 pub type PackageClient =
     wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>;
-
-/// WIT interface constants for MCP protocol
-pub mod interfaces {
-    /// WASI HTTP incoming-handler interface (HTTP transport export)
-    pub const WASI_HTTP_HANDLER: &str = "wasi:http/incoming-handler@0.2.6";
-
-    /// WASI CLI run interface (stdio transport export)
-    pub const WASI_CLI_RUN: &str = "wasi:cli/run@0.2.6";
-
-    /// Generate the server handler interface name with version
-    pub fn server_handler(version: &str) -> String {
-        format!("wasmcp:mcp-v20250618/server-handler@{}", version)
-    }
-
-    /// Generate the tools capability interface name with version
-    pub fn tools(version: &str) -> String {
-        format!("wasmcp:mcp-v20250618/tools@{}", version)
-    }
-
-    /// Generate the resources capability interface name with version
-    pub fn resources(version: &str) -> String {
-        format!("wasmcp:mcp-v20250618/resources@{}", version)
-    }
-
-    /// Generate the prompts capability interface name with version
-    pub fn prompts(version: &str) -> String {
-        format!("wasmcp:mcp-v20250618/prompts@{}", version)
-    }
-
-    /// Generate a versioned package name for wasmcp components
-    pub fn package(name: &str, version: &str) -> String {
-        format!("wasmcp:{}@{}", name, version)
-    }
-}
 
 /// Download required framework dependencies (transport, server-io, session-store variants, method-not-found, and all middleware)
 pub async fn download_dependencies(
@@ -176,15 +144,6 @@ mod tests {
             interfaces::package("tools-middleware", "1.0.0"),
             "wasmcp:tools-middleware@1.0.0"
         );
-    }
-
-    #[test]
-    fn test_wasi_interface_constants() {
-        assert_eq!(
-            interfaces::WASI_HTTP_HANDLER,
-            "wasi:http/incoming-handler@0.2.6"
-        );
-        assert_eq!(interfaces::WASI_CLI_RUN, "wasi:cli/run@0.2.6");
     }
 
     #[test]

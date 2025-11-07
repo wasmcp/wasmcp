@@ -7,8 +7,7 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
-use super::dependencies;
-use super::interfaces::{DEFAULT_SPEC_VERSION, InterfaceType};
+use super::interfaces::{self, DEFAULT_SPEC_VERSION, InterfaceType};
 use crate::versioning::VersionResolver;
 
 /// Package IDs for composition
@@ -109,7 +108,6 @@ pub async fn build_composition(
     session_store_path: &Path,
     component_paths: &[PathBuf],
     method_not_found_path: &Path,
-    transport_type: &str,
     _resolver: &VersionResolver,
     verbose: bool,
 ) -> Result<Vec<u8>> {
@@ -237,7 +235,6 @@ pub async fn build_composition(
         server_io_inst,
         session_store_inst,
         handler_export,
-        transport_type,
         &server_handler_interface,
         &server_io_interface,
         &sessions_interface,
@@ -245,6 +242,7 @@ pub async fn build_composition(
         transport_path,
         server_io_path,
         session_store_path,
+        _resolver,
     )?;
 
     // Encode the composition
@@ -412,7 +410,6 @@ fn wire_transport(
     server_io_inst: wac_graph::NodeId,
     session_store_inst: wac_graph::NodeId,
     handler_export: wac_graph::NodeId,
-    transport_type: &str,
     server_handler_interface: &str,
     server_io_interface: &str,
     sessions_interface: &str,
@@ -420,6 +417,7 @@ fn wire_transport(
     transport_path: &Path,
     server_io_path: &Path,
     _session_store_path: &Path,
+    resolver: &VersionResolver,
 ) -> Result<()> {
     eprintln!("\n[WIRE] ==================== WIRING ANALYSIS ====================");
 
@@ -547,14 +545,14 @@ fn wire_transport(
     // This allows the composed component to be run with either wasmtime serve or wasmtime run
 
     eprintln!("[WIRE] Exporting HTTP handler interface");
-    let http_handler =
-        graph.alias_instance_export(transport_inst, dependencies::interfaces::WASI_HTTP_HANDLER)?;
-    graph.export(http_handler, dependencies::interfaces::WASI_HTTP_HANDLER)?;
+    let wasi_http = interfaces::wasi_http_handler(resolver)?;
+    let http_handler = graph.alias_instance_export(transport_inst, &wasi_http)?;
+    graph.export(http_handler, &wasi_http)?;
 
     eprintln!("[WIRE] Exporting CLI run interface");
-    let cli_run =
-        graph.alias_instance_export(transport_inst, dependencies::interfaces::WASI_CLI_RUN)?;
-    graph.export(cli_run, dependencies::interfaces::WASI_CLI_RUN)?;
+    let wasi_cli = interfaces::wasi_cli_run(resolver)?;
+    let cli_run = graph.alias_instance_export(transport_inst, &wasi_cli)?;
+    graph.export(cli_run, &wasi_cli)?;
 
     eprintln!("[WIRE] Both interfaces exported successfully");
 
@@ -584,8 +582,8 @@ pub async fn build_handler_composition(
     }
 
     let mut graph = CompositionGraph::new();
-    let version = version_resolver.get_version("server")?;
-    let server_handler_interface = dependencies::interfaces::server_handler(&version);
+    let version = version_resolver.get_version("mcp-v20250618")?;
+    let server_handler_interface = interfaces::server_handler(&version);
 
     // Load and register all components
     if verbose {
@@ -1087,22 +1085,24 @@ mod tests {
         assert!(error_msg.contains("grpc"));
     }
 
-    /// Test WASI interface constants are available
+    /// Test WASI interface functions are available
     #[test]
-    fn test_wasi_interface_constants() {
-        use super::dependencies::interfaces;
+    fn test_wasi_interface_functions() {
+        use super::interfaces;
 
-        // These constants should be defined and accessible
-        let http_handler = interfaces::WASI_HTTP_HANDLER;
-        let cli_run = interfaces::WASI_CLI_RUN;
+        let resolver = VersionResolver::new().unwrap();
+
+        // These functions should be defined and accessible
+        let http_handler = interfaces::wasi_http_handler(&resolver).unwrap();
+        let cli_run = interfaces::wasi_cli_run(&resolver).unwrap();
 
         // Verify format (exact version may vary)
         assert!(http_handler.starts_with("wasi:http/incoming-handler@"));
         assert!(cli_run.starts_with("wasi:cli/run@"));
 
         // Verify specific current versions
-        assert_eq!(http_handler, "wasi:http/incoming-handler@0.2.6");
-        assert_eq!(cli_run, "wasi:cli/run@0.2.6");
+        assert_eq!(http_handler, "wasi:http/incoming-handler@0.2.8");
+        assert_eq!(cli_run, "wasi:cli/run@0.2.8");
     }
 
     /// Test server handler interface construction

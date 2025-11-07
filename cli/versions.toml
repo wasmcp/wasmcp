@@ -19,3 +19,8 @@ method-not-found = "0.1.6"
 tools-middleware = "0.1.6"
 resources-middleware = "0.1.6"
 prompts-middleware = "0.1.6"
+
+[wasi]
+# WASI interface versions for transport exports
+http = "0.2.8"
+cli = "0.2.8"

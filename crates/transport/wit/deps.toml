@@ -1,4 +1,4 @@
-io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.6.tar.gz"
-cli = "https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.6.tar.gz"
-http = "https://github.com/WebAssembly/wasi-http/archive/refs/tags/v0.2.6.tar.gz"
+io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.8.tar.gz"
+cli = "https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.8.tar.gz"
+http = "https://github.com/WebAssembly/wasi-http/archive/refs/tags/v0.2.8.tar.gz"
 mcp-v20250618 = { path = "../../../spec/2025-06-18/wit" }

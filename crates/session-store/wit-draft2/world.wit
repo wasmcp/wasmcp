@@ -9,7 +9,7 @@ world sessions-draft2 {
 
     // WASI imports for storage and UUID generation (draft2 versions)
     import wasi:keyvalue/store@0.2.0-draft2;
-    import wasi:random/random@0.2.6;
-    import wasi:io/streams@0.2.6;
-    import wasi:io/poll@0.2.6;
+    import wasi:random/random@0.2.8;
+    import wasi:io/streams@0.2.8;
+    import wasi:io/poll@0.2.8;
 }

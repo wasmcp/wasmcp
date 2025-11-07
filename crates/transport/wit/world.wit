@@ -3,8 +3,8 @@ package wasmcp:transport@0.1.1;
 world transport {
     // Export both HTTP and CLI interfaces
     // Runtime imports only what it needs
-    include wasi:http/proxy@0.2.6;
-    include wasi:cli/command@0.2.6;
+    include wasi:http/proxy@0.2.8;
+    include wasi:cli/command@0.2.8;
 
     // Import server-handler for middleware delegation
     include wasmcp:mcp-v20250618/server-transport@0.1.5;

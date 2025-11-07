@@ -22,10 +22,20 @@ pub const DEFAULT_SPEC_VERSION: &str = "mcp-v20250618";
 pub const WASMCP_NAMESPACE: &str = "wasmcp";
 
 /// WASI HTTP incoming handler interface
-pub const WASI_HTTP_HANDLER: &str = "wasi:http/incoming-handler@0.2.6";
+///
+/// Pulls version from VersionResolver (versions.toml [wasi] section)
+pub fn wasi_http_handler(resolver: &VersionResolver) -> Result<String> {
+    let version = resolver.get_wasi_version("http")?;
+    Ok(format!("wasi:http/incoming-handler@{}", version))
+}
 
 /// WASI CLI run interface
-pub const WASI_CLI_RUN: &str = "wasi:cli/run@0.2.6";
+///
+/// Pulls version from VersionResolver (versions.toml [wasi] section)
+pub fn wasi_cli_run(resolver: &VersionResolver) -> Result<String> {
+    let version = resolver.get_wasi_version("cli")?;
+    Ok(format!("wasi:cli/run@{}", version))
+}
 
 /// MCP capability and framework interface types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -335,9 +345,13 @@ mod tests {
     }
 
     #[test]
-    fn test_wasi_constants() {
-        assert_eq!(WASI_HTTP_HANDLER, "wasi:http/incoming-handler@0.2.6");
-        assert_eq!(WASI_CLI_RUN, "wasi:cli/run@0.2.6");
+    fn test_wasi_functions() {
+        let resolver = VersionResolver::new().unwrap();
+        assert_eq!(
+            wasi_http_handler(&resolver).unwrap(),
+            "wasi:http/incoming-handler@0.2.8"
+        );
+        assert_eq!(wasi_cli_run(&resolver).unwrap(), "wasi:cli/run@0.2.8");
     }
 
     #[test]

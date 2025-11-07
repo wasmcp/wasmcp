@@ -528,7 +528,6 @@ async fn handle_sse_streaming_mode(
     }
 }
 
-
 /// Send result or error response for notifications, results, and errors
 fn respond_with_result(result: Result<(), TransportError>, response_out: ResponseOutparam) {
     match result {
@@ -932,10 +931,7 @@ fn handle_initialize_request(
     let new_session_id = if session_config.enabled {
         let bucket = session_config.get_bucket();
 
-        match session_initialize(bucket) {
-            Ok(id) => Some(id),
-            Err(_) => None,
-        }
+        session_initialize(bucket).ok()
     } else {
         None
     };
@@ -953,16 +949,15 @@ fn handle_initialize_request(
     }
 
     // Set Mcp-Session-Id header if session was created
-    if let Some(ref session_id) = new_session_id {
-        if headers
+    if let Some(ref session_id) = new_session_id
+        && headers
             .set("mcp-session-id", &[session_id.as_bytes().to_vec()])
             .is_err()
-        {
-            let error = TransportError::internal("Failed to set Mcp-Session-Id header");
-            let response = transport_error_to_response(&error);
-            ResponseOutparam::set(response_out, Ok(response));
-            return;
-        }
+    {
+        let error = TransportError::internal("Failed to set Mcp-Session-Id header");
+        let response = transport_error_to_response(&error);
+        ResponseOutparam::set(response_out, Ok(response));
+        return;
     }
 
     let response = OutgoingResponse::new(headers);
