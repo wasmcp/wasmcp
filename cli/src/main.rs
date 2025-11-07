@@ -199,6 +199,14 @@ enum ComposeCommand {
         /// Enable verbose output (show detailed resolution and composition steps)
         #[arg(long, short = 'v')]
         verbose: bool,
+
+        /// Target runtime environment (determines session-store variant)
+        ///
+        /// - spin: Uses WASI draft2/preview2 (session-store-d2)
+        /// - wasmtime: Uses WASI 0.2.x (session-store)
+        /// - wasmcloud: Uses WASI 0.2.x (session-store)
+        #[arg(long, value_name = "RUNTIME", default_value = "spin")]
+        runtime: String,
     },
 
     /// Compose a handler component (composable middleware without transport)
@@ -521,6 +529,7 @@ async fn main() -> Result<()> {
                 skip_download,
                 force,
                 verbose,
+                runtime,
             } => {
                 // Merge components from both sources (new unified approach)
                 // If -p flags are used, they're prepended to components list for backward compatibility
@@ -565,6 +574,14 @@ async fn main() -> Result<()> {
                     .apply_overrides(version_overrides)
                     .context("Failed to apply version overrides")?;
 
+                // Validate runtime value
+                if !["spin", "wasmtime", "wasmcloud"].contains(&runtime.as_str()) {
+                    anyhow::bail!(
+                        "Invalid runtime '{}'. Must be one of: spin, wasmtime, wasmcloud",
+                        runtime
+                    );
+                }
+
                 // Create compose options
                 let options = commands::compose::ComposeOptions {
                     components: resolved_components,
@@ -583,7 +600,7 @@ async fn main() -> Result<()> {
                     force: final_force,
                     verbose,
                     mode: commands::compose::CompositionMode::Server,
-                    runtime: "spin".to_string(), // Default runtime for now
+                    runtime,
                 };
 
                 commands::compose::compose(options).await
