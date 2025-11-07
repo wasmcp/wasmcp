@@ -17,6 +17,7 @@ mod bindings {
 
 mod common;
 mod config;
+mod error;
 mod http;
 mod stdio;
 

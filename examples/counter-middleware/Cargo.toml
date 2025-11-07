@@ -1,0 +1,15 @@
+[package]
+name = "counter_middleware"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+# Empty workspace table prevents this package from inheriting
+# a parent workspace when created inside another workspace
+[workspace]
+
+[dependencies]
+wit-bindgen = "0.46"
+serde_json = "1.0"

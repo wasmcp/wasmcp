@@ -3,5 +3,4 @@ cli = "https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.3.tar.gz"
 http = "https://github.com/WebAssembly/wasi-http/archive/refs/tags/v0.2.3.tar.gz"
 keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/refs/tags/v0.2.0-draft.tar.gz"
 random = "https://github.com/WebAssembly/wasi-random/archive/refs/tags/v0.2.3.tar.gz"
-# Using local spec directory for development (will be replaced with GitHub release URL after publishing)
-mcp-v20250618 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.4/wasmcp-mcp-v2025-06-18-0.1.4-source.tar.gz"
+mcp-v20250618 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.5/wasmcp-mcp-v2025-06-18-0.1.5-source.tar.gz"
