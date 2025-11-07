@@ -1,1 +1,2 @@
-keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/v0.2.0-draft.tar.gz"
+wasi-keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/v0.2.0-draft.tar.gz"
+keyvalue = { path = "../../../wit/keyvalue" }

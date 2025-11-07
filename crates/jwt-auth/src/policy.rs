@@ -19,18 +19,15 @@ impl PolicyEngine {
         // Add the policy
         engine
             .add_policy("authorization.rego".to_string(), policy.to_string())
-            .map_err(|e| {
-                AuthError::Internal(format!("Failed to add policy: {}", e))
-            })?;
+            .map_err(|e| AuthError::Internal(format!("Failed to add policy: {}", e)))?;
 
         // Add data if provided
         if let Some(data_json) = data {
-            let data_value = Value::from_json_str(data_json).map_err(|e| {
-                AuthError::Internal(format!("Failed to parse policy data: {}", e))
-            })?;
-            engine.add_data(data_value).map_err(|e| {
-                AuthError::Internal(format!("Failed to add policy data: {}", e))
-            })?;
+            let data_value = Value::from_json_str(data_json)
+                .map_err(|e| AuthError::Internal(format!("Failed to parse policy data: {}", e)))?;
+            engine
+                .add_data(data_value)
+                .map_err(|e| AuthError::Internal(format!("Failed to add policy data: {}", e)))?;
         }
 
         Ok(Self { engine })
@@ -168,29 +165,29 @@ fn extract_mcp_context(message: &ClientMessage) -> serde_json::Value {
         ClientMessage::Error((_, _)) => {
             json!({ "type": "error" })
         }
-        ClientMessage::Notification(notif) => {
-            match notif {
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::Initialized(_) => {
-                    json!({ "method": "notifications/initialized" })
-                }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::RootsListChanged(_) => {
-                    json!({ "method": "notifications/roots/list_changed" })
-                }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::Cancelled(cancel) => {
-                    json!({
-                        "method": "notifications/cancelled",
-                        "request_id": format!("{:?}", cancel.request_id)
-                    })
-                }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::Progress(progress) => {
-                    json!({
-                        "method": "notifications/progress",
-                        "progress_token": format!("{:?}", progress.progress_token),
-                        "progress": progress.progress
-                    })
-                }
+        ClientMessage::Notification(notif) => match notif {
+            crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::Initialized(_) => {
+                json!({ "method": "notifications/initialized" })
             }
-        }
+            crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::RootsListChanged(
+                _,
+            ) => {
+                json!({ "method": "notifications/roots/list_changed" })
+            }
+            crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::Cancelled(cancel) => {
+                json!({
+                    "method": "notifications/cancelled",
+                    "request_id": format!("{:?}", cancel.request_id)
+                })
+            }
+            crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::Progress(progress) => {
+                json!({
+                    "method": "notifications/progress",
+                    "progress_token": format!("{:?}", progress.progress_token),
+                    "progress": progress.progress
+                })
+            }
+        },
     }
 }
 

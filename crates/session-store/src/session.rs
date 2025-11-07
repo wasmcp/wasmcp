@@ -10,7 +10,7 @@ use crate::bindings::exports::wasmcp::mcp_v20250618::sessions::{
 };
 use crate::bindings::wasi::io::poll::Pollable;
 use crate::bindings::wasi::io::streams::OutputStream;
-use crate::bindings::wasmcp::storage::kv::{self as kv_store, Bucket, Error as KvError};
+use crate::bindings::wasmcp::keyvalue::store::{self as kv_store, Bucket, Error as KvError};
 use serde::{Deserialize, Serialize};
 
 /// Convert KV store error to ManagerError
@@ -121,7 +121,7 @@ impl SessionManager {
 
         // Store in KV
         bucket
-            .set(&session_id, storage_json.as_bytes())
+            .set_bytes(&session_id, storage_json.as_bytes())
             .map_err(kv_to_manager_error)?;
 
         eprintln!(
@@ -142,17 +142,14 @@ impl SessionManager {
         let bucket = kv_store::open(&store_id).map_err(kv_to_manager_error)?;
 
         // Check if session exists
-        if !bucket
-            .exists(&session_id)
-            .map_err(kv_to_manager_error)?
-        {
+        if !bucket.exists(&session_id).map_err(kv_to_manager_error)? {
             eprintln!("[SessionManager] Session {} does not exist", session_id);
             return Err(ManagerError::NoSuchSession);
         }
 
         // Read storage and check termination status
         let data = bucket
-            .get(&session_id)
+            .get_bytes(&session_id)
             .map_err(kv_to_manager_error)?
             .ok_or_else(|| {
                 eprintln!(
@@ -196,7 +193,7 @@ impl SessionManager {
 
         // Read current storage
         let data = bucket
-            .get(&session_id)
+            .get_bytes(&session_id)
             .map_err(kv_to_manager_error)?
             .ok_or(ManagerError::NoSuchSession)?;
 
@@ -212,7 +209,7 @@ impl SessionManager {
             .map_err(|e| ManagerError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
 
         bucket
-            .set(&session_id, storage_json.as_bytes())
+            .set_bytes(&session_id, storage_json.as_bytes())
             .map_err(kv_to_manager_error)?;
 
         eprintln!(
@@ -231,9 +228,7 @@ impl SessionManager {
 
         let bucket = kv_store::open(&store_id).map_err(kv_to_manager_error)?;
 
-        bucket
-            .delete(&session_id)
-            .map_err(kv_to_manager_error)?;
+        bucket.delete(&session_id).map_err(kv_to_manager_error)?;
 
         eprintln!(
             "[SessionManager] Session {} deleted successfully",
@@ -268,10 +263,7 @@ impl GuestSession for SessionImpl {
         let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
         // Validate session exists
-        if !bucket
-            .exists(&session_id)
-            .map_err(kv_to_session_error)?
-        {
+        if !bucket.exists(&session_id).map_err(kv_to_session_error)? {
             return Err(SessionError::NoSuchSession);
         }
 
@@ -293,7 +285,7 @@ impl GuestSession for SessionImpl {
         // Read storage
         let data = self
             .bucket
-            .get(&self.session_id)
+            .get_bytes(&self.session_id)
             .map_err(kv_to_session_error)?
             .ok_or(SessionError::NoSuchSession)?;
 
@@ -321,7 +313,7 @@ impl GuestSession for SessionImpl {
         // Read current storage
         let data = self
             .bucket
-            .get(&self.session_id)
+            .get_bytes(&self.session_id)
             .map_err(kv_to_session_error)?
             .ok_or(SessionError::NoSuchSession)?;
 
@@ -337,7 +329,7 @@ impl GuestSession for SessionImpl {
             .map_err(|e| SessionError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
 
         self.bucket
-            .set(&self.session_id, storage_json.as_bytes())
+            .set_bytes(&self.session_id, storage_json.as_bytes())
             .map_err(kv_to_session_error)?;
 
         Ok(())

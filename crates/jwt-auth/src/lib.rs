@@ -11,8 +11,8 @@ mod bindings {
 
 mod config;
 mod error;
-mod jwt;
 mod jwks;
+mod jwt;
 mod policy;
 
 use bindings::exports::wasmcp::mcp_v20250618::server_auth::Guest;
@@ -92,9 +92,7 @@ impl Guest for Component {
                     claims: claims
                         .iter()
                         .filter_map(|(k, v)| {
-                            serde_json::from_str(v)
-                                .ok()
-                                .map(|val| (k.clone(), val))
+                            serde_json::from_str(v).ok().map(|val| (k.clone(), val))
                         })
                         .collect(),
                 };
@@ -130,10 +128,7 @@ fn extract_scopes_from_claims(claims: &Claims) -> Vec<String> {
     for (key, value) in claims {
         if key == "scope" {
             // Split space-separated scopes
-            return value
-                .split_whitespace()
-                .map(String::from)
-                .collect();
+            return value.split_whitespace().map(String::from).collect();
         }
     }
 
@@ -148,10 +143,7 @@ fn extract_scopes_from_claims(claims: &Claims) -> Vec<String> {
                     .collect();
             }
             // Fall back to space-separated
-            return value
-                .split_whitespace()
-                .map(String::from)
-                .collect();
+            return value.split_whitespace().map(String::from).collect();
         }
     }
 

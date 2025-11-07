@@ -1,4 +1,9 @@
 [keyvalue]
+path = "../../../wit/keyvalue"
+sha256 = "4635d984ca9f96152a8c71607c80e532157ec6339e2d5d183c150f594d701159"
+sha512 = "184dd6b65ac3ccf48fcc2f25ff01c8a3886abc342cf46ba4d8fa905b1ae9ba5aacd9b110039ced78e41075cbec9313648fdcb8e562b9c80fa5b88ebb1a7db628"
+
+[wasi-keyvalue]
 url = "https://github.com/WebAssembly/wasi-keyvalue/archive/v0.2.0-draft.tar.gz"
 sha256 = "d2de617fe31ec0abc6072f75f97dd22bf95b3231d5b3111471d73871df9081cd"
 sha512 = "6f0b4e44c684d760c54552e2bde9bc976e0a4f6525fc1d47acb98625e030847276436242f42a41f4da1bb9169fb2968c53d659d61af9b2f709f4eb6f9880e2c7"

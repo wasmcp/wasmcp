@@ -1,4 +1,4 @@
-package wasmcp:storage@0.1.0;
+package wasmcp:keyvalue@0.1.0;
 
 /// Key-value storage interface with typed value support
 ///
@@ -6,10 +6,28 @@ package wasmcp:storage@0.1.0;
 /// - Abstracts away version differences (draft vs draft2)
 /// - Stores type metadata with each value for runtime type safety
 /// - Provides both generic and typed convenience methods
-interface kv {
-    use wasi:keyvalue/store.{error, key-response};
-    use wasi:keyvalue/batch;
-    use wasi:keyvalue/atomics;
+interface store {
+    /// The set of errors which may be raised by functions in this package
+    variant error {
+        /// The host does not recognize the store identifier requested.
+        no-such-store,
+
+        /// The requesting component does not have access to the specified store
+        /// (which may or may not exist).
+        access-denied,
+
+        /// Some implementation-specific error has occurred (e.g. I/O)
+        other(string)
+    }
+
+    /// A response to a `list-keys` operation.
+    record key-response {
+        /// The list of keys returned by the query.
+        keys: list<string>,
+        /// The continuation token to use to fetch the next page of keys. If this is `none`, then
+        /// there are no more keys to fetch.
+        cursor: option<string>
+    }
 
     /// A typed value that can be stored in the key-value store.
     ///
@@ -138,18 +156,19 @@ interface kv {
         /// Note: This is an expensive operation and should be used judiciously.
         /// Keys are not guaranteed to be returned in any particular order.
         /// May show an out-of-date list if there are concurrent writes.
-        list-keys: func(cursor: option<u64>) -> result<key-response, error>;
+        list-keys: func(cursor: option<string>) -> result<key-response, error>;
 
         // ========== Atomic Operations ==========
 
-        /// Atomically increment a u64 counter by delta, returning the new value
+        /// Atomically increment a counter by delta (positive or negative), returning the new value
         ///
+        /// Positive delta increments, negative delta decrements.
         /// If the key doesn't exist, creates it with value = delta.
-        /// If the key exists but is not a u64, returns an error.
+        /// If the key exists but is not an s64, returns an error.
         ///
         /// Uses wasi:keyvalue/atomics under the hood when available.
         /// Fallback: May use read-modify-write (non-atomic) if runtime doesn't support atomics.
-        increment: func(key: string, delta: u64) -> result<u64, error>;
+        increment: func(key: string, delta: s64) -> result<s64, error>;
     }
 
     /// Open or create a bucket

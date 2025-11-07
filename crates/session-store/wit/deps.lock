@@ -24,9 +24,9 @@ sha256 = "9f1ad5da70f621bbd4c69e3bd90250a0c12ecfde266aa8f99684fc44bc1e7c15"
 sha512 = "6d0a9db6848f24762933d1c168a5b5b1065ba838c253ee20454afeb8dd1a049b918d25deff556083d68095dd3126ae131ac3e738774320eee5d918f5a4b5354e"
 
 [keyvalue]
-url = "https://github.com/WebAssembly/wasi-keyvalue/archive/refs/tags/v0.2.0-draft.tar.gz"
-sha256 = "d2de617fe31ec0abc6072f75f97dd22bf95b3231d5b3111471d73871df9081cd"
-sha512 = "6f0b4e44c684d760c54552e2bde9bc976e0a4f6525fc1d47acb98625e030847276436242f42a41f4da1bb9169fb2968c53d659d61af9b2f709f4eb6f9880e2c7"
+path = "../../../wit/keyvalue"
+sha256 = "4635d984ca9f96152a8c71607c80e532157ec6339e2d5d183c150f594d701159"
+sha512 = "184dd6b65ac3ccf48fcc2f25ff01c8a3886abc342cf46ba4d8fa905b1ae9ba5aacd9b110039ced78e41075cbec9313648fdcb8e562b9c80fa5b88ebb1a7db628"
 
 [mcp-v20250618]
 url = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.6/wasmcp-mcp-v2025-06-18-0.1.6-source.tar.gz"

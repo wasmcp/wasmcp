@@ -1,10 +1,8 @@
 //! JWKS (JSON Web Key Set) fetching and caching
 
-use crate::bindings::wasmcp::storage::kv;
 use crate::bindings::wasi::http::outgoing_handler;
-use crate::bindings::wasi::http::types::{
-    Fields, Method, OutgoingRequest, Scheme,
-};
+use crate::bindings::wasi::http::types::{Fields, Method, OutgoingRequest, Scheme};
+use crate::bindings::wasmcp::storage::kv;
 use crate::error::{AuthError, Result};
 use jsonwebtoken::DecodingKey;
 use serde::{Deserialize, Serialize};
@@ -100,16 +98,22 @@ pub fn fetch_jwks(jwks_uri: &str) -> Result<Jwks> {
 /// Fetch JWKS via HTTP
 fn fetch_jwks_http(uri: &str) -> Result<Jwks> {
     // Parse URI
-    let url = uri.parse::<url::Url>()
+    let url = uri
+        .parse::<url::Url>()
         .map_err(|e| AuthError::Configuration(format!("Invalid JWKS URI: {}", e)))?;
 
     let scheme = match url.scheme() {
         "https" => Scheme::Https,
         "http" => Scheme::Http,
-        _ => return Err(AuthError::Configuration("JWKS URI must use HTTP(S)".to_string())),
+        _ => {
+            return Err(AuthError::Configuration(
+                "JWKS URI must use HTTP(S)".to_string(),
+            ));
+        }
     };
 
-    let authority = url.host_str()
+    let authority = url
+        .host_str()
         .ok_or_else(|| AuthError::Configuration("Missing host in JWKS URI".to_string()))?
         .to_string();
 
@@ -121,38 +125,52 @@ fn fetch_jwks_http(uri: &str) -> Result<Jwks> {
 
     // Create outgoing request
     let headers = Fields::new();
-    headers.append(&"Accept".to_string(), &"application/json".as_bytes().to_vec())
+    headers
+        .append(
+            &"Accept".to_string(),
+            &"application/json".as_bytes().to_vec(),
+        )
         .map_err(|_| AuthError::Internal("Failed to set Accept header".to_string()))?;
 
     let request = OutgoingRequest::new(headers);
-    request.set_scheme(Some(&scheme))
+    request
+        .set_scheme(Some(&scheme))
         .map_err(|_| AuthError::Internal("Failed to set scheme".to_string()))?;
-    request.set_authority(Some(&authority))
+    request
+        .set_authority(Some(&authority))
         .map_err(|_| AuthError::Internal("Failed to set authority".to_string()))?;
-    request.set_path_with_query(Some(&path_and_query))
+    request
+        .set_path_with_query(Some(&path_and_query))
         .map_err(|_| AuthError::Internal("Failed to set path".to_string()))?;
-    request.set_method(&Method::Get)
+    request
+        .set_method(&Method::Get)
         .map_err(|_| AuthError::Internal("Failed to set method".to_string()))?;
 
     // Send request
     let future_response = outgoing_handler::handle(request, None)
         .map_err(|e| AuthError::Internal(format!("Failed to send JWKS request: {:?}", e)))?;
 
-    let incoming_response = future_response.get()
+    let incoming_response = future_response
+        .get()
         .ok_or_else(|| AuthError::Internal("JWKS request not ready".to_string()))?
         .map_err(|e| AuthError::Internal(format!("JWKS request failed: {:?}", e)))?
         .map_err(|e| AuthError::Internal(format!("JWKS HTTP error: {:?}", e)))?;
 
     let status = incoming_response.status();
     if status != 200 {
-        return Err(AuthError::Internal(format!("JWKS fetch failed with status: {}", status)));
+        return Err(AuthError::Internal(format!(
+            "JWKS fetch failed with status: {}",
+            status
+        )));
     }
 
     // Read response body
-    let body = incoming_response.consume()
+    let body = incoming_response
+        .consume()
         .map_err(|_| AuthError::Internal("Failed to consume response body".to_string()))?;
 
-    let stream = body.stream()
+    let stream = body
+        .stream()
         .map_err(|_| AuthError::Internal("Failed to get body stream".to_string()))?;
 
     let mut body_bytes = Vec::new();

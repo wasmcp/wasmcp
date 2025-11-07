@@ -1,1 +1,2 @@
-keyvalue = { path = "../../wit" }
+wasi-keyvalue = { path = "../../../crates/wit" }
+keyvalue = { path = "../../../wit/keyvalue" }
