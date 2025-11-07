@@ -364,6 +364,7 @@ fn handle_mcp_request(
 }
 
 /// Handle POST request in JSON mode (single buffered response)
+#[allow(clippy::too_many_arguments)]
 fn handle_json_mode(
     request_id: RequestId,
     client_request: ClientRequest,
@@ -469,6 +470,7 @@ fn handle_json_mode(
 /// - Writes with check_write() to respect backpressure
 /// - Yields to async executor between writes via .await
 /// - Allows channel buffer to drain between messages
+#[allow(clippy::too_many_arguments)]
 async fn handle_sse_streaming_mode(
     request_id: RequestId,
     client_request: ClientRequest,
@@ -570,6 +572,7 @@ async fn handle_sse_streaming_mode(
 }
 
 /// Handle POST request in SSE buffered mode (accumulate and flush once)
+#[allow(clippy::too_many_arguments)]
 fn handle_sse_buffered_mode(
     request_id: RequestId,
     client_request: ClientRequest,
