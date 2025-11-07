@@ -77,7 +77,7 @@ impl InterfaceType {
     /// # Examples
     ///
     /// ```
-    /// # use wasmcp::commands::compose::interfaces::InterfaceType;
+    /// # use wasmcp::commands::compose::inspection::interfaces::InterfaceType;
     /// let interface = InterfaceType::ServerHandler.interface_name("mcp-v20250618", "0.1.4");
     /// assert_eq!(interface, "wasmcp:mcp-v20250618/server-handler@0.1.4");
     /// ```
@@ -101,7 +101,7 @@ impl InterfaceType {
     /// # Examples
     ///
     /// ```
-    /// # use wasmcp::commands::compose::interfaces::InterfaceType;
+    /// # use wasmcp::commands::compose::inspection::interfaces::InterfaceType;
     /// let prefix = InterfaceType::ServerHandler.interface_prefix("mcp-v20250618");
     /// assert_eq!(prefix, "wasmcp:mcp-v20250618/server-handler@");
     /// ```
@@ -161,7 +161,7 @@ impl ComponentType {
     /// # Examples
     ///
     /// ```
-    /// # use wasmcp::commands::compose::interfaces::ComponentType;
+    /// # use wasmcp::commands::compose::inspection::interfaces::ComponentType;
     /// let spec = ComponentType::HttpTransport.package_spec("0.1.4");
     /// assert_eq!(spec, "wasmcp:transport@0.1.4");
     /// ```
@@ -176,7 +176,7 @@ impl ComponentType {
     /// # Examples
     ///
     /// ```
-    /// # use wasmcp::commands::compose::interfaces::ComponentType;
+    /// # use wasmcp::commands::compose::inspection::interfaces::ComponentType;
     /// let filename = ComponentType::HttpTransport.filename("0.1.4");
     /// assert_eq!(filename, "wasmcp_transport@0.1.4.wasm");
     /// ```
@@ -218,7 +218,7 @@ impl ComponentType {
 /// # Examples
 ///
 /// ```
-/// # use wasmcp::commands::compose::interfaces::server_handler;
+/// # use wasmcp::commands::compose::inspection::interfaces::server_handler;
 /// let interface = server_handler("0.1.4");
 /// assert_eq!(interface, "wasmcp:mcp-v20250618/server-handler@0.1.4");
 /// ```

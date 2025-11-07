@@ -523,8 +523,8 @@ mod tests {
     /// Test that inspection module interfaces are accessible
     #[test]
     fn test_interface_constants_available() {
-        use crate::commands::compose::inspection::interfaces;
         use crate::DEFAULT_WASMCP_VERSION;
+        use crate::commands::compose::inspection::interfaces;
 
         // Verify we can call interface naming functions
         let server_handler = interfaces::server_handler(DEFAULT_WASMCP_VERSION);
