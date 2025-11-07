@@ -100,7 +100,7 @@ impl Guest for ServerIo {
 
     /// Flush buffered data to stream (for buffered mode)
     ///
-    /// In buffered mode (MCP_SERVER_MODE=sse_buffer or json), all writes accumulate in memory.
+    /// In buffered mode (MCP_SERVER_MODE=json), all writes accumulate in memory.
     /// This function writes the entire buffer to the stream in one blocking operation.
     fn flush_buffer(output: &OutputStream) -> Result<(), IoError> {
         if !is_buffer_mode() {
@@ -537,7 +537,6 @@ thread_local! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ServerMode {
     Sse,
-    SseBuffer,
     Json,
     Stdio,
 }
@@ -549,19 +548,18 @@ fn get_server_mode() -> ServerMode {
         .ok()
         .and_then(|v| match v.to_lowercase().as_str() {
             "sse" => Some(ServerMode::Sse),
-            "sse_buffer" => Some(ServerMode::SseBuffer),
             "json" => Some(ServerMode::Json),
             "stdio" => Some(ServerMode::Stdio),
             _ => None,
         })
-        .unwrap_or(ServerMode::Stdio) // Default to stdio mode (immediate writes, allows notifications)
+        .unwrap_or(ServerMode::Sse) // Default to SSE mode (immediate writes, allows notifications)
 }
 
 /// Check if we're in buffer mode
 fn is_buffer_mode() -> bool {
-    // Buffer for: sse_buffer and json modes
+    // Buffer for: json mode
     // Don't buffer for: sse and stdio modes (immediate writes)
-    matches!(get_server_mode(), ServerMode::SseBuffer | ServerMode::Json)
+    matches!(get_server_mode(), ServerMode::Json)
 }
 
 /// Check if we're in JSON mode (suppresses notifications)
