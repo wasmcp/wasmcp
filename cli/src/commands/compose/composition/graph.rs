@@ -384,7 +384,7 @@ mod tests {
     /// Test server handler interface construction
     #[test]
     fn test_server_handler_interface_construction() {
-        use super::dependencies::interfaces;
+        use crate::commands::compose::inspection::interfaces;
 
         let version = "0.1.0";
         let interface = interfaces::server_handler(version);

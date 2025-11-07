@@ -483,11 +483,8 @@ mod tests {
             inspection::interfaces::tools("0.1.0"),
             "wasmcp:mcp-v20250618/tools@0.1.0"
         );
-        assert_eq!(
-            inspection::interfaces::WASI_HTTP_HANDLER,
-            "wasi:http/incoming-handler@0.2.6"
-        );
-        assert_eq!(dependencies::interfaces::WASI_CLI_RUN, "wasi:cli/run@0.2.6");
+        // Note: WASI interface versions now come from VersionResolver, not constants
+        // These would require a resolver instance to test properly
     }
 
     #[test]

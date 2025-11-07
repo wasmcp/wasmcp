@@ -520,16 +520,17 @@ mod tests {
         assert_eq!(name3, "component");
     }
 
-    /// Test that dependencies module interfaces are accessible
+    /// Test that inspection module interfaces are accessible
     #[test]
     fn test_interface_constants_available() {
+        use crate::commands::compose::inspection::interfaces;
         use crate::DEFAULT_WASMCP_VERSION;
 
         // Verify we can call interface naming functions
-        let server_handler = dependencies::interfaces::server_handler(DEFAULT_WASMCP_VERSION);
-        let tools = dependencies::interfaces::tools(DEFAULT_WASMCP_VERSION);
-        let resources = dependencies::interfaces::resources(DEFAULT_WASMCP_VERSION);
-        let prompts = dependencies::interfaces::prompts(DEFAULT_WASMCP_VERSION);
+        let server_handler = interfaces::server_handler(DEFAULT_WASMCP_VERSION);
+        let tools = interfaces::tools(DEFAULT_WASMCP_VERSION);
+        let resources = interfaces::resources(DEFAULT_WASMCP_VERSION);
+        let prompts = interfaces::prompts(DEFAULT_WASMCP_VERSION);
 
         // Verify format
         assert!(server_handler.starts_with("wasmcp:mcp-v20250618/server-handler@"));
