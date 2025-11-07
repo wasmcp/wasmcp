@@ -1,5 +1,5 @@
-package wasmcp:server-io@0.1.1;
+package wasmcp:server-io@0.1.2;
 
 world server-io {
-    export wasmcp:mcp-v20250618/server-io@0.1.5;
+    export wasmcp:mcp-v20250618/server-io@0.1.6;
 }

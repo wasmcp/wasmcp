@@ -12,9 +12,13 @@ import type {
   CallToolRequest,
   CallToolResult,
   Tool,
-} from 'wasmcp:mcp-v20250618/mcp@0.1.3';
-import type { RequestCtx } from 'wasmcp:mcp-v20250618/tools@0.1.3';
-import { notify } from 'wasmcp:mcp-v20250618/server-messages@0.1.3';
+  ServerMessage,
+  ServerNotification,
+  LoggingMessageNotification,
+  LogLevel,
+} from 'wasmcp:mcp-v20250618/mcp@0.1.6';
+import type { RequestCtx } from 'wasmcp:mcp-v20250618/tools@0.1.6';
+import { sendMessage } from 'wasmcp:mcp-v20250618/server-io@0.1.6';
 
 // Tool input schemas
 const GetWeatherSchema = z.object({
@@ -70,15 +74,20 @@ async function callTool(
   request: CallToolRequest
 ): Promise<CallToolResult | undefined> {
   const log = (message: string) => {
-    if (ctx.messages) {
-      notify(ctx.messages, {
+    if (ctx.clientStream) {
+      const notification: ServerNotification = {
         tag: 'log',
         val: {
           data: message,
-          level: 'info',
+          level: 'info' as LogLevel,
           logger: 'weather-tools',
-        },
-      });
+        } as LoggingMessageNotification,
+      };
+      const serverMessage: ServerMessage = {
+        tag: 'notification',
+        val: notification,
+      };
+      sendMessage(ctx.clientStream, serverMessage, ctx.frame);
     }
   };
 

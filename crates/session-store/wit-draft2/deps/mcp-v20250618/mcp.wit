@@ -1,14 +1,14 @@
 /// A WebAssembly component development kit for the Model Context Protocol (MCP) version 2025-06-18.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18>
-package wasmcp:mcp-v20250618@0.1.5;
+package wasmcp:mcp-v20250618@0.1.6;
 
 /// Model Context Protocol (MCP) types and messages.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18>
 @since(version = 0.1.0)
 interface mcp {
-    use wasi:io/streams@0.2.3.{
+    use wasi:io/streams@0.2.8.{
         input-stream,
     };
 

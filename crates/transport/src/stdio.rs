@@ -27,7 +27,7 @@ impl Guest for StdioTransportGuest {
 
         // Event loop: read messages from stdin, process, write to stdout
         loop {
-            // Parse incoming message
+            // Parse incoming message (blocks waiting for input)
             let message = match common::parse_mcp_message(
                 &stdin,
                 common::stdio_read_limit(),
@@ -35,6 +35,10 @@ impl Guest for StdioTransportGuest {
             ) {
                 Ok(msg) => msg,
                 Err(e) => {
+                    // Stream closed means client disconnected - exit gracefully
+                    if e.contains("Stream closed") {
+                        return Ok(());
+                    }
                     eprintln!("[ERROR] Failed to parse message: {}", e);
                     continue;
                 }
@@ -97,7 +101,7 @@ impl Guest for StdioTransportGuest {
                         Ok(result) => {
                             if let Err(e) = common::write_mcp_result(
                                 &stdout,
-                                request_id,
+                                request_id.clone(),
                                 result,
                                 &common::stdio_frame(),
                             ) {

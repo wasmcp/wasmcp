@@ -27,7 +27,7 @@ build-draft2:
 	@mv $(OUT_DIR)/$(COMPONENT_NAME).wasm $(OUT_DIR)/$(COMPONENT_NAME)-d2.wasm
 	@echo "✓ Draft2 version built: $(OUT_DIR)/$(COMPONENT_NAME)-d2.wasm"
 
-build: lint build-draft build-draft2
+build: lint build-draft2 build-draft 
 
 clean:
 	@cargo clean

@@ -3,7 +3,7 @@
 //! Environment variables:
 //! - `MCP_SESSION_ENABLED`: "true"/"false" (default: "false") - Enable session support
 //! - `MCP_SESSION_BUCKET`: Bucket name (default: "") - KV bucket for sessions
-//! - `MCP_SERVER_MODE`: "sse"/"sse_buffer"/"json" (default: "sse_buffer") - Server response mode
+//! - `MCP_SERVER_MODE`: "sse"/"json" (default: "sse") - Server response mode
 
 use crate::bindings::wasi::cli::environment::get_environment;
 use std::collections::HashMap;
@@ -11,11 +11,9 @@ use std::collections::HashMap;
 /// Server mode for handling responses
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ServerMode {
-    /// True streaming SSE - immediate writes
-    Sse,
-    /// Buffered SSE - accumulate and flush once (default)
+    /// True streaming SSE - immediate writes (default)
     #[default]
-    SseBuffer,
+    Sse,
     /// Plain JSON-RPC - single response, no SSE
     Json,
 }
@@ -33,7 +31,7 @@ impl SessionConfig {
     ///
     /// - `MCP_SESSION_ENABLED`: "true"/"false" (case-insensitive, default: false)
     /// - `MCP_SESSION_BUCKET`: Bucket name (default: empty string)
-    /// - `MCP_SERVER_MODE`: "sse"/"sse_buffer"/"json" (case-insensitive, default: sse_buffer)
+    /// - `MCP_SERVER_MODE`: "sse"/"json" (case-insensitive, default: sse)
     pub fn from_env() -> Self {
         let env_vars = get_environment();
         let env_map: HashMap<String, String> = env_vars.into_iter().collect();
@@ -52,11 +50,10 @@ impl SessionConfig {
             .get("MCP_SERVER_MODE")
             .and_then(|v| match v.to_lowercase().as_str() {
                 "sse" => Some(ServerMode::Sse),
-                "sse_buffer" => Some(ServerMode::SseBuffer),
                 "json" => Some(ServerMode::Json),
                 _ => None,
             })
-            .unwrap_or(ServerMode::SseBuffer); // Default to buffered mode (safe everywhere)
+            .unwrap_or(ServerMode::Sse); // Default to SSE mode
 
         SessionConfig {
             enabled,

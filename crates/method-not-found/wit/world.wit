@@ -1,5 +1,5 @@
-package wasmcp:method-not-found@0.1.6;
+package wasmcp:method-not-found@0.1.7;
 
 world method-not-found {
-    export wasmcp:mcp-v20250618/server-handler@0.1.5;
+    export wasmcp:mcp-v20250618/server-handler@0.1.6;
 }
