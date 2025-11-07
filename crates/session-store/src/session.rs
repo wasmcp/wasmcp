@@ -10,8 +10,26 @@ use crate::bindings::exports::wasmcp::mcp_v20250618::sessions::{
 };
 use crate::bindings::wasi::io::poll::Pollable;
 use crate::bindings::wasi::io::streams::OutputStream;
-use crate::bindings::wasi::keyvalue::store::{self as kv_store, Bucket};
+use crate::bindings::wasmcp::storage::kv::{self as kv_store, Bucket, Error as KvError};
 use serde::{Deserialize, Serialize};
+
+/// Convert KV store error to ManagerError
+fn kv_to_manager_error(e: KvError) -> ManagerError {
+    match e {
+        KvError::NoSuchStore => ManagerError::Store("Store does not exist".to_string()),
+        KvError::AccessDenied => ManagerError::Store("Access denied to store".to_string()),
+        KvError::Other(msg) => ManagerError::Store(msg),
+    }
+}
+
+/// Convert KV store error to SessionError
+fn kv_to_session_error(e: KvError) -> SessionError {
+    match e {
+        KvError::NoSuchStore => SessionError::Store("Store does not exist".to_string()),
+        KvError::AccessDenied => SessionError::Store("Access denied to store".to_string()),
+        KvError::Other(msg) => SessionError::Store(msg),
+    }
+}
 
 // ============================================================================
 // Internal Storage Types (NOT exposed via WIT)
@@ -94,9 +112,7 @@ impl SessionManager {
         eprintln!("[SessionManager] Initializing new session: {}", session_id);
 
         // Open bucket
-        let bucket = kv_store::open(&store_id).map_err(|e| {
-            ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e))
-        })?;
+        let bucket = kv_store::open(&store_id).map_err(kv_to_manager_error)?;
 
         // Create initial storage structure with empty data
         let storage = SessionStorage::default();
@@ -106,7 +122,7 @@ impl SessionManager {
         // Store in KV
         bucket
             .set(&session_id, storage_json.as_bytes())
-            .map_err(|e| ManagerError::Store(format!("Failed to store session: {:?}", e)))?;
+            .map_err(kv_to_manager_error)?;
 
         eprintln!(
             "[SessionManager] Session {} created successfully",
@@ -123,14 +139,12 @@ impl SessionManager {
     pub fn validate(session_id: String, store_id: String) -> Result<bool, ManagerError> {
         eprintln!("[SessionManager] Validating session: {}", session_id);
 
-        let bucket = kv_store::open(&store_id).map_err(|e| {
-            ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e))
-        })?;
+        let bucket = kv_store::open(&store_id).map_err(kv_to_manager_error)?;
 
         // Check if session exists
         if !bucket
             .exists(&session_id)
-            .map_err(|e| ManagerError::Store(format!("Failed to check existence: {:?}", e)))?
+            .map_err(kv_to_manager_error)?
         {
             eprintln!("[SessionManager] Session {} does not exist", session_id);
             return Err(ManagerError::NoSuchSession);
@@ -139,7 +153,7 @@ impl SessionManager {
         // Read storage and check termination status
         let data = bucket
             .get(&session_id)
-            .map_err(|e| ManagerError::Store(format!("Failed to read session: {:?}", e)))?
+            .map_err(kv_to_manager_error)?
             .ok_or_else(|| {
                 eprintln!(
                     "[SessionManager] Session {} exists but has no data",
@@ -178,14 +192,12 @@ impl SessionManager {
             eprintln!("[SessionManager] Reason: {}", r);
         }
 
-        let bucket = kv_store::open(&store_id).map_err(|e| {
-            ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e))
-        })?;
+        let bucket = kv_store::open(&store_id).map_err(kv_to_manager_error)?;
 
         // Read current storage
         let data = bucket
             .get(&session_id)
-            .map_err(|e| ManagerError::Store(format!("Failed to read session: {:?}", e)))?
+            .map_err(kv_to_manager_error)?
             .ok_or(ManagerError::NoSuchSession)?;
 
         let mut storage: SessionStorage = serde_json::from_slice(&data)
@@ -201,7 +213,7 @@ impl SessionManager {
 
         bucket
             .set(&session_id, storage_json.as_bytes())
-            .map_err(|e| ManagerError::Store(format!("Failed to update session: {:?}", e)))?;
+            .map_err(kv_to_manager_error)?;
 
         eprintln!(
             "[SessionManager] Session {} marked as terminated",
@@ -217,13 +229,11 @@ impl SessionManager {
     pub fn delete_session(session_id: String, store_id: String) -> Result<(), ManagerError> {
         eprintln!("[SessionManager] Deleting session {}", session_id);
 
-        let bucket = kv_store::open(&store_id).map_err(|e| {
-            ManagerError::Store(format!("Failed to open store '{}': {:?}", store_id, e))
-        })?;
+        let bucket = kv_store::open(&store_id).map_err(kv_to_manager_error)?;
 
         bucket
             .delete(&session_id)
-            .map_err(|e| ManagerError::Store(format!("Failed to delete session: {:?}", e)))?;
+            .map_err(kv_to_manager_error)?;
 
         eprintln!(
             "[SessionManager] Session {} deleted successfully",
@@ -255,13 +265,12 @@ const MAX_VALUE_SIZE: usize = 1024 * 1024;
 
 impl GuestSession for SessionImpl {
     fn open(session_id: String, store_id: String) -> Result<Session, SessionError> {
-        let bucket = kv_store::open(&store_id)
-            .map_err(|e| SessionError::Store(format!("Failed to open store: {:?}", e)))?;
+        let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
         // Validate session exists
         if !bucket
             .exists(&session_id)
-            .map_err(|e| SessionError::Store(format!("Failed to check existence: {:?}", e)))?
+            .map_err(kv_to_session_error)?
         {
             return Err(SessionError::NoSuchSession);
         }
@@ -285,7 +294,7 @@ impl GuestSession for SessionImpl {
         let data = self
             .bucket
             .get(&self.session_id)
-            .map_err(|e| SessionError::Store(format!("Failed to read session: {:?}", e)))?
+            .map_err(kv_to_session_error)?
             .ok_or(SessionError::NoSuchSession)?;
 
         let storage: SessionStorage = serde_json::from_slice(&data)
@@ -313,7 +322,7 @@ impl GuestSession for SessionImpl {
         let data = self
             .bucket
             .get(&self.session_id)
-            .map_err(|e| SessionError::Store(format!("Failed to read session: {:?}", e)))?
+            .map_err(kv_to_session_error)?
             .ok_or(SessionError::NoSuchSession)?;
 
         let mut storage: SessionStorage = serde_json::from_slice(&data)
@@ -329,7 +338,7 @@ impl GuestSession for SessionImpl {
 
         self.bucket
             .set(&self.session_id, storage_json.as_bytes())
-            .map_err(|e| SessionError::Store(format!("Failed to update session: {:?}", e)))?;
+            .map_err(kv_to_session_error)?;
 
         Ok(())
     }
