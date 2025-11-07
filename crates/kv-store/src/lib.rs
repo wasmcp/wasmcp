@@ -24,7 +24,7 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::storage::kv::{
+use bindings::exports::wasmcp::keyvalue::store::{
     Bucket, Error, Guest, GuestBucket, KeyResponse, TypedValue,
 };
 use bindings::wasi::keyvalue::{atomics, batch, store as wasi_kv};
@@ -319,10 +319,7 @@ impl GuestBucket for BucketImpl {
 
     // ========== Batch Operations ==========
 
-    fn get_many(
-        &self,
-        keys: Vec<String>,
-    ) -> Result<Vec<Option<(String, TypedValue)>>, Error> {
+    fn get_many(&self, keys: Vec<String>) -> Result<Vec<Option<(String, TypedValue)>>, Error> {
         let results = batch::get_many(&self.inner, &keys).map_err(convert_error)?;
 
         results
@@ -364,20 +361,52 @@ impl GuestBucket for BucketImpl {
         self.inner.exists(&key).map_err(convert_error)
     }
 
-    fn list_keys(&self, cursor: Option<u64>) -> Result<KeyResponse, Error> {
-        let response = self.inner.list_keys(cursor).map_err(convert_error)?;
+    fn list_keys(&self, cursor: Option<String>) -> Result<KeyResponse, Error> {
+        // Convert string cursor to u64 for draft version (draft2 uses string)
+        #[cfg(not(feature = "draft2"))]
+        let cursor_param = cursor.as_ref().and_then(|s| s.parse::<u64>().ok());
+
+        #[cfg(feature = "draft2")]
+        let cursor_param = cursor.as_deref();
+
+        let response = self.inner.list_keys(cursor_param).map_err(convert_error)?;
+
+        // Convert response cursor back to string
+        #[cfg(not(feature = "draft2"))]
+        let cursor_result = response.cursor.map(|n| n.to_string());
+
+        #[cfg(feature = "draft2")]
+        let cursor_result = response.cursor.map(|s| s.to_string());
 
         Ok(KeyResponse {
             keys: response.keys,
-            cursor: response.cursor,
+            cursor: cursor_result,
         })
     }
 
     // ========== Atomic Operations ==========
 
-    fn increment(&self, key: String, delta: u64) -> Result<u64, Error> {
-        // Try native atomics first
-        atomics::increment(&self.inner, &key, delta).map_err(convert_error)
+    fn increment(&self, key: String, delta: i64) -> Result<i64, Error> {
+        // Draft version uses u64, draft2 uses s64
+        #[cfg(not(feature = "draft2"))]
+        let result = {
+            let delta_u64 = if delta < 0 {
+                return Err(Error::Other(format!(
+                    "Draft version does not support negative deltas: {}",
+                    delta
+                )));
+            } else {
+                delta as u64
+            };
+            atomics::increment(&self.inner, &key, delta_u64)
+                .map(|v| v as i64)
+                .map_err(convert_error)?
+        };
+
+        #[cfg(feature = "draft2")]
+        let result = atomics::increment(&self.inner, &key, delta).map_err(convert_error)?;
+
+        Ok(result)
     }
 }
 

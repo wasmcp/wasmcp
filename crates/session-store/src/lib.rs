@@ -15,16 +15,6 @@
 //! - Internal storage format: { "__meta__": {...}, "data": {...} }
 //! - Generates UUIDs using wasi:random for session IDs
 
-#[cfg(feature = "draft2")]
-mod bindings {
-    wit_bindgen::generate!({
-        path: "wit-draft2",
-        world: "sessions-draft2",
-        generate_all,
-    });
-}
-
-#[cfg(not(feature = "draft2"))]
 mod bindings {
     wit_bindgen::generate!({
         world: "sessions",

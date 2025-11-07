@@ -1,9 +1,9 @@
-package wasmcp:storage@0.1.0;
+package wasmcp:kv-store-draft2@0.1.0;
 
 world kv-store-draft2 {
     import wasi:keyvalue/store@0.2.0-draft2;
     import wasi:keyvalue/batch@0.2.0-draft2;
     import wasi:keyvalue/atomics@0.2.0-draft2;
 
-    export kv;
+    export wasmcp:keyvalue/store@0.1.0;
 }
