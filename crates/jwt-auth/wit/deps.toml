@@ -1,4 +1,4 @@
-mcp-v2025-06-18 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.5/wasmcp-mcp-v2025-06-18-0.1.5-source.tar.gz"
-cli = "https://github.com/WebAssembly/wasi-cli/archive/v0.2.3.tar.gz"
-http = "https://github.com/WebAssembly/wasi-http/archive/v0.2.3.tar.gz"
+mcp-v2025-06-18 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.6/wasmcp-mcp-v2025-06-18-0.1.6-source.tar.gz"
+cli = "https://github.com/WebAssembly/wasi-cli/archive/v0.2.8.tar.gz"
+http = "https://github.com/WebAssembly/wasi-http/archive/v0.2.8.tar.gz"
 storage = { path = "../../kv-store/wit" }

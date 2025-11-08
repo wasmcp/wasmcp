@@ -187,8 +187,8 @@ pub async fn resolve_server_io_component(
     .await
 }
 
-/// Resolve session-store component (override or default)
-pub async fn resolve_session_store_component(
+/// Resolve kv-store component (override or default)
+pub async fn resolve_kv_store_component(
     override_spec: Option<&str>,
     resolver: &VersionResolver,
     deps_dir: &Path,
@@ -199,17 +199,17 @@ pub async fn resolve_session_store_component(
     // If override provided, use it
     if let Some(spec) = override_spec {
         if verbose {
-            println!("\nUsing override session-store: {}", spec);
+            println!("\nUsing override kv-store: {}", spec);
         }
         return spec::resolve_component_spec(spec, deps_dir, client, verbose).await;
     }
 
     // Determine package name based on runtime
-    // "spin" uses session-store-d2 (draft 2 WASI)
-    // "wasmcloud" and "wasmtime" use session-store (standard WASI)
+    // "spin" uses kv-store-d2 (draft 2 WASI)
+    // "wasmcloud" and "wasmtime" use kv-store (standard WASI)
     let component_name = match runtime {
-        "spin" => "session-store-d2",
-        "wasmcloud" | "wasmtime" => "session-store",
+        "spin" => "kv-store-d2",
+        "wasmcloud" | "wasmtime" => "kv-store",
         _ => anyhow::bail!(
             "unsupported runtime: '{}' (must be 'spin', 'wasmcloud', or 'wasmtime')",
             runtime
@@ -217,6 +217,28 @@ pub async fn resolve_session_store_component(
     };
 
     dependencies::get_dependency_path(component_name, resolver, deps_dir)
+}
+
+/// Resolve session-store component (override or default)
+///
+/// Session-store is now a single unified component that imports wasmcp:keyvalue/store.
+/// The kv-store component handles runtime-specific WASI versions (draft vs draft2).
+pub async fn resolve_session_store_component(
+    override_spec: Option<&str>,
+    resolver: &VersionResolver,
+    deps_dir: &Path,
+    client: &PackageClient,
+    verbose: bool,
+) -> Result<PathBuf> {
+    resolve_framework_component(
+        FrameworkComponent::SessionStore,
+        override_spec,
+        resolver,
+        deps_dir,
+        client,
+        verbose,
+    )
+    .await
 }
 
 /// Resolve method-not-found component (override or default)

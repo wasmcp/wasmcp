@@ -165,6 +165,10 @@ enum ComposeCommand {
         #[arg(long)]
         override_server_io: Option<String>,
 
+        /// Override kv-store component (path or package spec)
+        #[arg(long)]
+        override_kv_store: Option<String>,
+
         /// Override session-store component (path or package spec)
         #[arg(long)]
         override_session_store: Option<String>,
@@ -521,6 +525,7 @@ async fn main() -> Result<()> {
                 version_overrides,
                 override_transport,
                 override_server_io,
+                override_kv_store,
                 override_session_store,
                 override_method_not_found,
                 override_tools_middleware,
@@ -564,6 +569,7 @@ async fn main() -> Result<()> {
                 let final_transport = transport.to_string();
                 let final_override_transport = override_transport;
                 let final_override_server_io = override_server_io;
+                let final_override_kv_store = override_kv_store;
                 let final_override_session_store = override_session_store;
                 let final_override_method_not_found = override_method_not_found;
                 let final_force = force;
@@ -591,6 +597,7 @@ async fn main() -> Result<()> {
                     version_resolver,
                     override_transport: final_override_transport,
                     override_server_io: final_override_server_io,
+                    override_kv_store: final_override_kv_store,
                     override_session_store: final_override_session_store,
                     override_method_not_found: final_override_method_not_found,
                     override_tools_middleware,
@@ -639,6 +646,7 @@ async fn main() -> Result<()> {
                     version_resolver,
                     override_transport: None,
                     override_server_io: None,
+                    override_kv_store: None,
                     override_session_store: None,
                     override_method_not_found: None,
                     override_tools_middleware: None,

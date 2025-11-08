@@ -34,13 +34,13 @@ DEBUG_BIN := $(BUILD_DIR)/debug/wasmcp
 work: release 
 
 # Release build (optimized)
-release: build
+release: build test
 	@echo "Building wasmcp CLI for $(TARGET) (release)..."
 	cargo build --release --target $(TARGET)
 	@echo "✓ Built: $(RELEASE_BIN)"
 
 # Debug build (faster compile)
-debug: build
+debug: build test
 	@echo "Building wasmcp CLI for $(TARGET) (debug)..."
 	cargo build --target $(TARGET)
 	@echo "✓ Built: $(DEBUG_BIN)"
