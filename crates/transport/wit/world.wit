@@ -14,4 +14,7 @@ world transport {
 
     // Import session-manager for session lifecycle management
     import wasmcp:mcp-v20250618/session-manager@0.1.6;
+
+    // Import server-auth for JWT validation
+    import wasmcp:mcp-v20250618/server-auth@0.1.6;
 }
