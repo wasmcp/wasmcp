@@ -94,6 +94,7 @@ impl Guest for StdioTransportGuest {
                         client_request,
                         protocol_version,
                         Some("0"),     // Session ID "0" indicates stdio mode
+                        None,          // No identity in stdio mode
                         String::new(), // No session bucket in stdio
                         &stdout,
                         &common::stdio_frame(),
@@ -135,6 +136,7 @@ impl Guest for StdioTransportGuest {
                         None,
                         protocol_version,
                         Some("0"), // Session ID "0" indicates stdio mode
+                        None,
                         "",
                         &common::stdio_frame(),
                     );
@@ -152,6 +154,7 @@ impl Guest for StdioTransportGuest {
                         None,
                         protocol_version,
                         Some("0"), // Session ID "0" indicates stdio mode
+                        None,
                         "",
                         &common::stdio_frame(),
                     );

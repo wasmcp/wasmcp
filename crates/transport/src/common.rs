@@ -79,6 +79,7 @@ pub fn create_message_context<'a>(
     client_stream: Option<&'a OutputStream>,
     protocol_version: ProtocolVersion,
     session_id: Option<&str>,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
     bucket_name: &str,
     frame: &MessageFrame,
 ) -> MessageContext<'a> {
@@ -86,7 +87,7 @@ pub fn create_message_context<'a>(
         client_stream,
         protocol_version: protocol_version_to_string(protocol_version),
         session: create_session(session_id, bucket_name),
-        identity: None, // TODO: Add user identity support
+        identity: identity.cloned(),
         frame: frame.clone(),
     }
 }
@@ -252,7 +253,7 @@ fn discover_capabilities(
     let mut has_completions = false;
 
     // Probe for tools support
-    let tools_ctx = create_message_context(None, protocol_version, None, "", frame);
+    let tools_ctx = create_message_context(None, protocol_version, None, None, "", frame);
     let tools_request = ClientRequest::ToolsList(ListToolsRequest { cursor: None });
     let tools_message = ClientMessage::Request((
         RequestId::Number(CAPABILITY_PROBE_REQUEST_ID),
@@ -263,7 +264,7 @@ fn discover_capabilities(
     }
 
     // Probe for resources support
-    let resources_ctx = create_message_context(None, protocol_version, None, "", frame);
+    let resources_ctx = create_message_context(None, protocol_version, None, None, "", frame);
     let resources_request = ClientRequest::ResourcesList(ListResourcesRequest { cursor: None });
     let resources_message = ClientMessage::Request((
         RequestId::Number(CAPABILITY_PROBE_REQUEST_ID),
@@ -274,7 +275,7 @@ fn discover_capabilities(
     }
 
     // Probe for prompts support and use result to test completions
-    let prompts_ctx = create_message_context(None, protocol_version, None, "", frame);
+    let prompts_ctx = create_message_context(None, protocol_version, None, None, "", frame);
     let prompts_request = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
     let prompts_message = ClientMessage::Request((
         RequestId::Number(CAPABILITY_PROBE_REQUEST_ID),
@@ -309,7 +310,7 @@ fn discover_capabilities(
 
                 // Test if completions are supported
                 let completion_ctx =
-                    create_message_context(None, protocol_version, None, "", frame);
+                    create_message_context(None, protocol_version, None, None, "", frame);
                 let req = ClientRequest::CompletionComplete(completion_request);
                 let completion_message =
                     ClientMessage::Request((RequestId::Number(CAPABILITY_PROBE_REQUEST_ID), req));
@@ -348,11 +349,13 @@ fn discover_capabilities(
 }
 
 /// Delegate non-transport methods to middleware via server-handler
+#[allow(clippy::too_many_arguments)]
 pub fn delegate_to_middleware(
     request_id: RequestId,
     client_request: ClientRequest,
     protocol_version: ProtocolVersion,
     session_id: Option<&str>,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
     bucket_name: String,
     output_stream: &OutputStream,
     frame: &MessageFrame,
@@ -362,6 +365,7 @@ pub fn delegate_to_middleware(
         Some(output_stream),
         protocol_version,
         session_id,
+        identity,
         &bucket_name,
         frame,
     );
@@ -392,7 +396,14 @@ pub fn delegate_notification(
     frame: &MessageFrame,
 ) -> Result<(), ErrorCode> {
     // Create message context (no client-stream for notifications - they're one-way)
-    let ctx = create_message_context(None, protocol_version, session_id, &bucket_name, frame);
+    let ctx = create_message_context(
+        None,
+        protocol_version,
+        session_id,
+        None,
+        &bucket_name,
+        frame,
+    );
 
     // Create client message
     let message = ClientMessage::Notification(client_notification);

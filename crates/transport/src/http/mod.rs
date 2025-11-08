@@ -8,8 +8,9 @@
 //!
 //! Delegates I/O to http-server-io via server-io interface
 
+mod validation;
+
 use crate::bindings::exports::wasi::http::incoming_handler::Guest;
-use crate::bindings::wasi::cli::environment::get_environment;
 use crate::bindings::wasi::http::types::{
     Fields, IncomingRequest, Method, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
@@ -42,14 +43,14 @@ async fn handle_http_request_async(request: IncomingRequest, response_out: Respo
     let session_config = SessionConfig::from_env();
 
     // 2. Validate Origin header (DNS rebinding protection)
-    if let Err(e) = validate_origin(&request) {
+    if let Err(e) = validation::validate_origin(&request) {
         let response = transport_error_to_response(&e);
         ResponseOutparam::set(response_out, Ok(response));
         return;
     }
 
     // 3. Extract and validate MCP-Protocol-Version header
-    let protocol_version = match validate_protocol_version(&request) {
+    let protocol_version = match validation::validate_protocol_version(&request) {
         Ok(v) => v,
         Err(e) => {
             let response = transport_error_to_response(&e);
@@ -83,14 +84,14 @@ async fn handle_post(
     session_config: &SessionConfig,
 ) {
     // Validate Accept header per spec
-    if let Err(e) = validate_accept_header(&request) {
+    if let Err(e) = validation::validate_accept_header(&request) {
         let response = transport_error_to_response(&e);
         ResponseOutparam::set(response_out, Ok(response));
         return;
     }
 
     // Check for session header and validate if present
-    let session_id_raw = match extract_session_id_header(&request) {
+    let session_id_raw = match validation::extract_session_id_header(&request) {
         Ok(opt) => opt,
         Err(e) => {
             let response = transport_error_to_response(&e);
@@ -131,6 +132,39 @@ async fn handle_post(
         }
     } else {
         None
+    };
+
+    // Validate JWT if provided
+    let identity = match validation::extract_authorization_header(&request) {
+        Ok(Some(jwt)) => {
+            // Import server-auth for JWT validation
+            use crate::bindings::wasmcp::mcp_v20250618::server_auth;
+
+            match server_auth::decode(&jwt) {
+                Ok(claims) => {
+                    eprintln!("[transport] JWT validated successfully");
+                    Some(crate::bindings::wasmcp::mcp_v20250618::mcp::Identity { jwt, claims })
+                }
+                Err(e) => {
+                    eprintln!("[transport] JWT validation failed: {:?}", e);
+                    // Per user requirement: "if ANYTHIGN in the flow for auth fails,
+                    // jsut move on and 'pretend' we don't need auth"
+                    None
+                }
+            }
+        }
+        Ok(None) => {
+            eprintln!("[transport] No Authorization header present");
+            None
+        }
+        Err(e) => {
+            eprintln!(
+                "[transport] Authorization header extraction failed: {:?}",
+                e
+            );
+            // Per user requirement: gracefully degrade on auth failure
+            None
+        }
     };
 
     // Get request body stream
@@ -204,6 +238,7 @@ async fn handle_post(
                     client_request,
                     protocol_version,
                     session_id.as_deref(),
+                    identity.as_ref(),
                     input_stream,
                     body_stream,
                     response_out,
@@ -215,6 +250,7 @@ async fn handle_post(
                         client_request,
                         protocol_version,
                         session_id.as_deref(),
+                        identity.as_ref(),
                         input_stream,
                         body_stream,
                         response_out,
@@ -262,11 +298,13 @@ async fn handle_post(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_mcp_request(
     request_id: RequestId,
     client_request: ClientRequest,
     protocol_version: String,
     session_id: Option<&str>,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
     output_stream: &OutputStream,
     frame: &common::MessageFrame,
     config: &SessionConfig,
@@ -311,6 +349,7 @@ fn handle_mcp_request(
                 client_request,
                 proto_ver,
                 session_id,
+                identity,
                 bucket,
                 output_stream,
                 frame,
@@ -333,6 +372,7 @@ fn handle_json_mode(
     client_request: ClientRequest,
     protocol_version: String,
     session_id: Option<&str>,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
     input_stream: crate::bindings::wasi::io::streams::InputStream,
     body_stream: crate::bindings::wasi::http::types::IncomingBody,
     response_out: ResponseOutparam,
@@ -387,6 +427,7 @@ fn handle_json_mode(
         client_request,
         protocol_version,
         session_id,
+        identity,
         &output_stream,
         &common::plain_json_frame(),
         config,
@@ -436,6 +477,7 @@ async fn handle_sse_streaming_mode(
     client_request: ClientRequest,
     protocol_version: String,
     session_id: Option<&str>,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
     input_stream: crate::bindings::wasi::io::streams::InputStream,
     body_stream: crate::bindings::wasi::http::types::IncomingBody,
     response_out: ResponseOutparam,
@@ -499,6 +541,7 @@ async fn handle_sse_streaming_mode(
         client_request,
         protocol_version,
         session_id,
+        identity,
         &output_stream,
         &common::http_sse_frame(),
         config,
@@ -543,20 +586,6 @@ fn respond_with_result(result: Result<(), TransportError>, response_out: Respons
             ResponseOutparam::set(response_out, Ok(response));
         }
     }
-}
-
-/// Extract session ID from request headers
-fn extract_session_id_header(request: &IncomingRequest) -> Result<Option<String>, TransportError> {
-    let headers = request.headers();
-    let session_id_values = headers.get("mcp-session-id");
-
-    if session_id_values.is_empty() {
-        return Ok(None);
-    }
-
-    String::from_utf8(session_id_values[0].clone())
-        .map(Some)
-        .map_err(|_| TransportError::validation("Invalid Mcp-Session-Id header encoding"))
 }
 
 fn handle_mcp_notification(
@@ -622,7 +651,7 @@ fn handle_delete(
     }
 
     // Extract session ID from header
-    let session_id = match extract_session_id_header(&request) {
+    let session_id = match validation::extract_session_id_header(&request) {
         Ok(Some(id)) => id,
         Ok(None) => {
             let error = TransportError::session("No session to delete");
@@ -665,125 +694,6 @@ fn handle_delete(
             ResponseOutparam::set(response_out, Ok(response));
         }
     }
-}
-
-/// Validate Accept header per MCP spec
-fn validate_accept_header(request: &IncomingRequest) -> Result<(), TransportError> {
-    let headers = request.headers();
-    let accept_values = headers.get("accept");
-
-    if accept_values.is_empty() {
-        return Err(TransportError::validation("Missing Accept header"));
-    }
-
-    let accept_str = String::from_utf8(accept_values[0].clone())
-        .map_err(|_| TransportError::validation("Invalid Accept header encoding"))?;
-
-    let has_json = accept_str.contains("application/json") || accept_str.contains("*/*");
-    let has_sse = accept_str.contains("text/event-stream") || accept_str.contains("*/*");
-
-    if !has_json || !has_sse {
-        return Err(TransportError::validation(
-            "Accept header must include both application/json and text/event-stream",
-        ));
-    }
-
-    Ok(())
-}
-
-/// Validate MCP-Protocol-Version header
-fn validate_protocol_version(request: &IncomingRequest) -> Result<String, TransportError> {
-    let headers = request.headers();
-    let version_values = headers.get("mcp-protocol-version");
-
-    if version_values.is_empty() {
-        // Default to 2025-03-26 for backwards compatibility
-        return Ok("2025-03-26".to_string());
-    }
-
-    let version_str = String::from_utf8(version_values[0].clone())
-        .map_err(|_| TransportError::validation("Invalid MCP-Protocol-Version header encoding"))?;
-
-    match version_str.as_str() {
-        "2025-06-18" | "2025-03-26" | "2024-11-05" => Ok(version_str),
-        _ => Err(TransportError::protocol(format!(
-            "Unsupported MCP-Protocol-Version: {}",
-            version_str
-        ))),
-    }
-}
-
-/// Validate Origin header to prevent DNS rebinding attacks
-fn validate_origin(request: &IncomingRequest) -> Result<(), TransportError> {
-    let headers = request.headers();
-    let origin_values = headers.get("origin");
-
-    let env_vars = get_environment();
-    let require_origin = env_vars
-        .iter()
-        .find(|(k, _)| k == "MCP_REQUIRE_ORIGIN")
-        .map(|(_, v)| v.as_str())
-        .unwrap_or("false");
-
-    let allowed_origins = env_vars
-        .iter()
-        .find(|(k, _)| k == "MCP_ALLOWED_ORIGINS")
-        .map(|(_, v)| v.as_str());
-
-    let origin = if origin_values.is_empty() {
-        if require_origin == "true" {
-            return Err(TransportError::validation(
-                "Origin header required but not provided",
-            ));
-        }
-        return Ok(());
-    } else {
-        String::from_utf8(origin_values[0].clone())
-            .map_err(|_| TransportError::validation("Invalid Origin header encoding"))?
-    };
-
-    match allowed_origins {
-        Some(allowed) => {
-            let allowed_list: Vec<&str> = allowed.split(',').map(|s| s.trim()).collect();
-
-            if allowed_list.contains(&"*") {
-                return Ok(());
-            }
-
-            if allowed_list.contains(&origin.as_str()) {
-                Ok(())
-            } else {
-                Err(TransportError::validation(format!(
-                    "Origin '{}' not in allowed list. Set MCP_ALLOWED_ORIGINS environment variable.",
-                    origin
-                )))
-            }
-        }
-        None => validate_localhost_origin(&origin),
-    }
-}
-
-/// Validate localhost origin (default secure behavior)
-fn validate_localhost_origin(origin: &str) -> Result<(), TransportError> {
-    let localhost_patterns = [
-        "http://localhost",
-        "https://localhost",
-        "http://127.0.0.1",
-        "https://127.0.0.1",
-        "http://[::1]",
-        "https://[::1]",
-    ];
-
-    for pattern in &localhost_patterns {
-        if origin.starts_with(pattern) {
-            return Ok(());
-        }
-    }
-
-    Err(TransportError::validation(format!(
-        "Origin '{}' not allowed. By default, only localhost origins are permitted.",
-        origin
-    )))
 }
 
 /// Convert TransportError to HTTP response
@@ -859,6 +769,7 @@ fn handle_mcp_result(
         None,
         proto_ver,
         session_id,
+        None,
         session_config.get_bucket(),
         &common::plain_json_frame(),
     );
@@ -891,6 +802,7 @@ fn handle_mcp_error(
         None,
         proto_ver,
         session_id,
+        None,
         session_config.get_bucket(),
         &common::plain_json_frame(),
     );
