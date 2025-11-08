@@ -1,0 +1,92 @@
+package wasmcp:oauth@0.1.0;
+
+/// Helper functions for working with JWT claims.
+/// These utilities make it easier for tools to perform common
+/// authorization checks without parsing claims manually.
+
+interface helpers {
+    use types.{jwt-claims};
+
+    /// Check if a custom claim exists and return its value.
+    /// Returns none if the claim is not present.
+    ///
+    /// Example:
+    /// ```
+    /// if let Some(role) = get-claim(claims, "role") {
+    ///     // Use role value
+    /// }
+    /// ```
+    get-claim: func(claims: jwt-claims, key: string) -> option<string>;
+
+    /// Check if a specific scope is present in the token.
+    /// Scopes are case-sensitive.
+    ///
+    /// Example:
+    /// ```
+    /// if has-scope(claims, "admin") {
+    ///     // Allow admin operation
+    /// }
+    /// ```
+    has-scope: func(claims: jwt-claims, scope: string) -> bool;
+
+    /// Check if ANY of the provided scopes are present.
+    /// Useful for "user needs at least one of these permissions" checks.
+    ///
+    /// Example:
+    /// ```
+    /// if has-any-scope(claims, ["read:users", "admin"]) {
+    ///     // User can read users OR is admin
+    /// }
+    /// ```
+    has-any-scope: func(claims: jwt-claims, scopes: list<string>) -> bool;
+
+    /// Check if ALL of the provided scopes are present.
+    /// Useful for "user needs all these permissions" checks.
+    ///
+    /// Example:
+    /// ```
+    /// if has-all-scopes(claims, ["read:posts", "write:posts"]) {
+    ///     // User has both read and write permissions
+    /// }
+    /// ```
+    has-all-scopes: func(claims: jwt-claims, scopes: list<string>) -> bool;
+
+    /// Check if a specific audience is present in the token.
+    /// Audience validation is CRITICAL for security.
+    ///
+    /// Example:
+    /// ```
+    /// if !has-audience(claims, "https://api.example.com") {
+    ///     return Err("Token not intended for this service");
+    /// }
+    /// ```
+    has-audience: func(claims: jwt-claims, audience: string) -> bool;
+
+    /// Check if the token is expired based on the 'exp' claim.
+    /// Compares against current system time.
+    ///
+    /// Returns true if:
+    /// - No expiration claim present (token doesn't expire)
+    /// - Current time >= expiration time
+    is-expired: func(claims: jwt-claims) -> bool;
+
+    /// Check if the token is valid based on time claims (nbf, exp).
+    /// This checks both "not before" and expiration.
+    ///
+    /// Returns true if:
+    /// - Current time >= not-before (if present)
+    /// - Current time < expiration (if present)
+    is-valid-time: func(claims: jwt-claims) -> bool;
+
+    /// Get the subject (user ID) from the token.
+    /// This is a convenience wrapper since 'sub' is always required.
+    get-subject: func(claims: jwt-claims) -> string;
+
+    /// Get the issuer from the token.
+    /// Returns none if issuer claim is not present.
+    get-issuer: func(claims: jwt-claims) -> option<string>;
+
+    /// Get all scopes from the token as a list.
+    /// Returns empty list if no scopes present.
+    get-scopes: func(claims: jwt-claims) -> list<string>;
+}

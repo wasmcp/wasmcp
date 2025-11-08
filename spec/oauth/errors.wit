@@ -1,0 +1,221 @@
+package wasmcp:oauth@0.1.0;
+
+/// Complete OAuth 2.1 error taxonomy covering all error scenarios
+/// from RFC 6749, RFC 6750, RFC 7591, RFC 8414, RFC 9728
+///
+/// This interface provides RFC-compliant error handling for OAuth 2.1
+/// Resource Servers, including proper WWW-Authenticate challenges and
+/// JSON error responses.
+
+interface errors {
+    /// OAuth error with RFC-compliant structure
+    /// Used for error responses in token endpoints and resource access
+    record oauth-error {
+        /// Error code (standard or extension)
+        error: error-code,
+
+        /// Human-readable ASCII description for debugging
+        /// MUST NOT include non-ASCII characters (RFC 6749 §5.2)
+        /// SHOULD NOT include sensitive information in production
+        error-description: option<string>,
+
+        /// URI to web page with error information
+        /// Helps developers understand and fix the error
+        error-uri: option<string>,
+    }
+
+    /// Complete error code taxonomy from OAuth specifications
+    ///
+    /// Organized by context where error occurs:
+    /// - Authorization endpoint (RFC 6749 §4.1.2.1)
+    /// - Token endpoint (RFC 6749 §5.2)
+    /// - Resource access (RFC 6750 §3.1)
+    /// - Client registration (RFC 7591 §3.2.2)
+    variant error-code {
+        // === Authorization Errors (RFC 6749 §4.1.2.1) ===
+
+        /// Request missing required parameter, includes invalid parameter value,
+        /// includes duplicate parameter, or is otherwise malformed
+        invalid-request,
+
+        /// Client is not authorized to request an authorization code
+        /// using this method (e.g., client not registered)
+        unauthorized-client,
+
+        /// Resource owner or authorization server denied the request
+        /// User explicitly rejected authorization
+        access-denied,
+
+        /// Authorization server does not support obtaining an authorization
+        /// code using this method (e.g., response_type not supported)
+        unsupported-response-type,
+
+        /// Requested scope is invalid, unknown, malformed, or exceeds
+        /// the scope granted by the resource owner
+        invalid-scope,
+
+        /// Authorization server encountered an unexpected condition
+        /// that prevented it from fulfilling the request
+        server-error,
+
+        /// Authorization server is currently unable to handle the request
+        /// due to temporary overloading or maintenance
+        temporarily-unavailable,
+
+        // === Token Endpoint Errors (RFC 6749 §5.2) ===
+
+        /// Client authentication failed (e.g., unknown client, no client
+        /// authentication included, or unsupported authentication method)
+        invalid-client,
+
+        /// Authorization grant is invalid, expired, revoked, does not match
+        /// the redirection URI used in authorization request, or was issued
+        /// to another client
+        invalid-grant,
+
+        /// Authorization server does not support this authorization grant type
+        unsupported-grant-type,
+
+        // === Resource Access Errors (RFC 6750 §3.1) ===
+
+        /// Access token is missing, expired, malformed, or invalid for other reasons
+        /// Presented token is not valid for accessing this resource
+        invalid-token,
+
+        /// Request requires higher privileges than provided by the access token
+        /// Token is valid but does not have required scopes
+        insufficient-scope,
+
+        // === Registration Errors (RFC 7591 §3.2.2) ===
+
+        /// One or more redirect_uri values are invalid
+        invalid-redirect-uri,
+
+        /// Value of one of the client metadata fields is invalid
+        invalid-client-metadata,
+
+        /// Software statement presented is invalid (malformed JWT, signature invalid)
+        invalid-software-statement,
+
+        /// Software statement presented is not approved by authorization server
+        /// (e.g., from untrusted source or revoked)
+        unapproved-software-statement,
+
+        // === Extension Support ===
+
+        /// Custom error code for OAuth extensions
+        /// Use for non-standard errors or OpenID Connect extensions
+        /// Example: "interaction_required", "login_required", "consent_required"
+        extension(string),
+    }
+
+    /// Convert error-code to RFC-standard string representation
+    ///
+    /// Maps variant cases to their RFC-defined string values.
+    /// Extension errors return their contained string.
+    ///
+    /// Example:
+    /// ```
+    /// let code = error-code::invalid-token;
+    /// let str = error-code-to-string(code);
+    /// // Returns: "invalid_token"
+    /// ```
+    error-code-to-string: func(code: error-code) -> string;
+
+    /// Parse RFC-standard error string to error-code
+    ///
+    /// Returns none if error string is not recognized.
+    /// Unrecognized strings can be wrapped in error-code::extension.
+    ///
+    /// Example:
+    /// ```
+    /// let code = parse-error-code("insufficient_scope");
+    /// // Returns: Some(error-code::insufficient-scope)
+    ///
+    /// let unknown = parse-error-code("custom_error");
+    /// // Returns: None (or could wrap as extension)
+    /// ```
+    parse-error-code: func(error-string: string) -> option<error-code>;
+
+    /// Create WWW-Authenticate challenge for resource server responses
+    ///
+    /// Generates RFC 6750 §3 compliant challenge header value for HTTP 401 responses.
+    /// Resource servers MUST include this header when rejecting requests due to
+    /// authentication/authorization failures.
+    ///
+    /// Parameters:
+    /// - realm: Optional protection space identifier (typically resource URL)
+    /// - error: Optional error code describing why request was rejected
+    /// - error-description: Optional human-readable error description
+    /// - scope: List of scopes required for the resource (space-separated in output)
+    ///
+    /// Returns: Complete WWW-Authenticate header value
+    ///
+    /// Example:
+    /// ```
+    /// let challenge = create-bearer-challenge(
+    ///     Some("https://api.example.com"),
+    ///     Some(error-code::invalid-token),
+    ///     Some("The access token expired"),
+    ///     ["read", "write"]
+    /// );
+    /// // Returns:
+    /// // Bearer realm="https://api.example.com",
+    /// //        error="invalid_token",
+    /// //        error_description="The access token expired",
+    /// //        scope="read write"
+    ///
+    /// // Minimal challenge (no error details):
+    /// let minimal = create-bearer-challenge(None, None, None, []);
+    /// // Returns: "Bearer"
+    /// ```
+    ///
+    /// Security Note:
+    /// - In production, avoid detailed error_description to prevent information leakage
+    /// - Always include realm to help clients identify the protection space
+    /// - Include scope to help clients request appropriate permissions
+    create-bearer-challenge: func(
+        realm: option<string>,
+        error: option<error-code>,
+        error-description: option<string>,
+        scope: list<string>,
+    ) -> string;
+
+    /// Create error response body for token endpoint
+    ///
+    /// Generates RFC 6749 §5.2 compliant JSON error response for token endpoint failures.
+    /// Returns JSON string to be used as HTTP response body with Content-Type: application/json
+    ///
+    /// Response format:
+    /// ```json
+    /// {
+    ///   "error": "invalid_grant",
+    ///   "error_description": "Authorization code has expired",
+    ///   "error_uri": "https://example.com/docs/errors/invalid_grant"
+    /// }
+    /// ```
+    ///
+    /// Example:
+    /// ```
+    /// let error = oauth-error {
+    ///     error: error-code::invalid-grant,
+    ///     error-description: Some("Authorization code has expired"),
+    ///     error-uri: Some("https://example.com/docs/errors"),
+    /// };
+    ///
+    /// let body = create-token-error-response(error);
+    /// // Returns JSON string
+    ///
+    /// // HTTP Response:
+    /// // HTTP/1.1 400 Bad Request
+    /// // Content-Type: application/json
+    /// // Cache-Control: no-store
+    /// //
+    /// // {"error":"invalid_grant","error_description":"Authorization code has expired","error_uri":"https://example.com/docs/errors"}
+    /// ```
+    ///
+    /// Security Note:
+    /// - error_description SHOULD be brief and SHOULD NOT include sensitive information
+    /// - In production, consider omitting error_description or using generic messages
+    create-token-error-response: func(error: oauth-error) -> string;
+}
