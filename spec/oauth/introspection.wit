@@ -1,0 +1,220 @@
+package wasmcp:oauth@0.1.0;
+
+/// OAuth 2.0 Token Introspection (RFC 7662)
+///
+/// Allows resource servers to query authorization servers about the
+/// current state of opaque access tokens. This is essential when:
+/// - Tokens are not self-contained JWTs
+/// - Real-time revocation status is required
+/// - Token metadata needs to be retrieved
+///
+/// Security Notes:
+/// - Introspection endpoint requires client authentication
+/// - Results should be cached to reduce latency
+/// - Introspection reveals token information to the caller
+
+interface introspection {
+    use types.{jwt-claims};
+    use errors.{oauth-error};
+
+    /// Token introspection request (RFC 7662 §2.1)
+    ///
+    /// Sent to the authorization server's introspection endpoint
+    /// to query the status and metadata of an access or refresh token.
+    record introspection-request {
+        /// REQUIRED: The token to introspect
+        /// Can be an access token or refresh token (opaque or JWT)
+        token: string,
+
+        /// OPTIONAL: Hint about token type
+        ///
+        /// Values: "access_token" or "refresh_token"
+        /// Helps the authorization server optimize token lookup
+        /// Server MAY ignore this hint
+        ///
+        /// Example: If you know it's an access token, set to "access_token"
+        token-type-hint: option<string>,
+    }
+
+    /// Token introspection response (RFC 7662 §2.2)
+    ///
+    /// Contains the current state and metadata of the token.
+    /// If active=false, all optional fields MUST be omitted.
+    /// If active=true, fields describe the token's current state.
+    record introspection-response {
+        /// REQUIRED: Whether token is currently active
+        ///
+        /// Returns false if token is:
+        /// - Expired (past exp time)
+        /// - Revoked
+        /// - Invalid
+        /// - Unknown to the authorization server
+        ///
+        /// If false, all fields below MUST be omitted per RFC 7662
+        active: bool,
+
+        // ===== Fields below ONLY present if active=true =====
+
+        /// Space-separated scope values authorized for this token
+        /// Example: ["read:users", "write:posts"]
+        scope: option<list<string>>,
+
+        /// Client identifier this token was issued to
+        /// The OAuth 2.0 client_id of the client that requested this token
+        client-id: option<string>,
+
+        /// Human-readable username of the resource owner
+        /// End-user identifier (not necessarily unique)
+        username: option<string>,
+
+        /// Type of token (e.g., "Bearer", "mac")
+        /// Indicates how the token should be used
+        token-type: option<string>,
+
+        /// Token expiration time (unix timestamp)
+        /// Seconds since 1970-01-01T00:00:00Z UTC
+        /// Token MUST NOT be accepted after this time
+        exp: option<u64>,
+
+        /// Token issued-at time (unix timestamp)
+        /// When the token was originally issued
+        iat: option<u64>,
+
+        /// Token not-before time (unix timestamp)
+        /// Token MUST NOT be accepted before this time
+        nbf: option<u64>,
+
+        /// Subject identifier (who the token represents)
+        /// Usually the resource owner or end-user identifier
+        /// For client_credentials grant, may be the client_id
+        sub: option<string>,
+
+        /// Intended audience for this token
+        /// Resource servers that should accept this token
+        /// Can be a single value or array
+        aud: option<list<string>>,
+
+        /// Token issuer identifier
+        /// Authorization server that issued the token
+        /// Typically an HTTPS URL
+        iss: option<string>,
+
+        /// JWT ID - unique identifier for this token
+        /// Prevents replay attacks
+        jti: option<string>,
+
+        /// Additional extension claims (as JSON strings)
+        /// Authorization server-specific metadata
+        /// Examples: roles, permissions, tenant_id, etc.
+        additional-claims: list<tuple<string, string>>,
+    }
+
+    /// Convert introspection response to jwt-claims structure
+    ///
+    /// Maps the introspection response fields to the standard jwt-claims
+    /// record, allowing use of all helpers from wasmcp:oauth/helpers.
+    ///
+    /// Returns none if token is not active.
+    ///
+    /// Example:
+    /// ```
+    /// let response = introspect-token(endpoint, request, credentials)?;
+    ///
+    /// if let Some(claims) = to-jwt-claims(response) {
+    ///     // Now use standard helpers
+    ///     use helpers.{has-scope, has-audience};
+    ///
+    ///     if !has-audience(claims, "https://api.example.com") {
+    ///         return Err("Wrong audience");
+    ///     }
+    ///
+    ///     if !has-scope(claims, "admin") {
+    ///         return Err("Requires admin scope");
+    ///     }
+    ///
+    ///     // Token is valid and authorized
+    /// } else {
+    ///     // Token is not active (expired, revoked, or invalid)
+    ///     return Err(error-code::invalid-token);
+    /// }
+    /// ```
+    to-jwt-claims: func(response: introspection-response) -> option<jwt-claims>;
+
+    /// Make introspection request to authorization server
+    ///
+    /// Sends a token introspection request to the AS introspection endpoint
+    /// and returns the response. Requires client authentication.
+    ///
+    /// Parameters:
+    /// - introspection-endpoint: AS introspection URL (from AS metadata)
+    /// - request: Token and optional type hint
+    /// - client-credentials: (client_id, client_secret) for authentication
+    ///
+    /// Returns:
+    /// - Ok: introspection-response with token status
+    /// - Err: oauth-error if request fails
+    ///
+    /// HTTP Request Format:
+    /// ```
+    /// POST /introspect HTTP/1.1
+    /// Host: as.example.com
+    /// Content-Type: application/x-www-form-urlencoded
+    /// Authorization: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
+    ///
+    /// token=mF_9.B5f-4.1JqM&token_type_hint=access_token
+    /// ```
+    ///
+    /// Example:
+    /// ```
+    /// // After extracting token from Authorization header
+    /// let token = "opaque-token-abc123";
+    ///
+    /// let request = introspection-request {
+    ///     token,
+    ///     token-type-hint: Some("access_token"),
+    /// };
+    ///
+    /// let response = introspect-token(
+    ///     "https://as.example.com/introspect",
+    ///     request,
+    ///     ("my-resource-server", "secret123")
+    /// )?;
+    ///
+    /// if !response.active {
+    ///     return Err("Token is not active");
+    /// }
+    ///
+    /// // Check expiration
+    /// if let Some(exp) = response.exp {
+    ///     let now = current-unix-timestamp();
+    ///     if now >= exp {
+    ///         return Err("Token has expired");
+    ///     }
+    /// }
+    ///
+    /// // Check scope
+    /// if let Some(scopes) = response.scope {
+    ///     if !scopes.contains("read") {
+    ///         return Err("Insufficient scope");
+    ///     }
+    /// }
+    ///
+    /// // Token is valid, proceed with request
+    /// ```
+    ///
+    /// Performance Note:
+    /// Introspection adds network latency to every request. Consider:
+    /// - Caching introspection responses (with short TTL)
+    /// - Using self-contained JWTs instead of opaque tokens
+    /// - Rate limiting introspection requests
+    ///
+    /// Security Note:
+    /// - Always use HTTPS for introspection endpoint
+    /// - Protect client credentials (store securely)
+    /// - Validate the introspection response signature if signed
+    introspect-token: func(
+        introspection-endpoint: string,
+        request: introspection-request,
+        client-credentials: tuple<string, string>,
+    ) -> result<introspection-response, oauth-error>;
+}

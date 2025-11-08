@@ -1,0 +1,92 @@
+package wasmcp:oauth@0.1.0;
+
+/// Bridge between MCP's flat claims representation and structured OAuth claims.
+/// This allows tools to work with either the simple MCP identity.claims
+/// or the rich wasmcp:oauth/helpers interface.
+
+interface session-claims {
+    use types.{jwt-claims, auth-error};
+
+    /// Convert flat MCP claims to structured JWT claims.
+    /// This parses the list<tuple<string, string>> format from MCP
+    /// into the rich jwt-claims structure.
+    ///
+    /// Standard claims are extracted to their typed fields:
+    /// - "sub" -> subject
+    /// - "iss" -> issuer
+    /// - "aud" -> audience (parsed as array if comma-separated)
+    /// - "exp" -> expiration (parsed as u64)
+    /// - "iat" -> issued-at (parsed as u64)
+    /// - "nbf" -> not-before (parsed as u64)
+    /// - "jti" -> jwt-id
+    /// - "scope" or "scp" -> scopes (split by whitespace)
+    ///
+    /// All other claims go into custom-claims.
+    ///
+    /// Example:
+    /// ```
+    /// // From MCP MessageContext
+    /// if let Some(identity) = ctx.identity {
+    ///     let structured = parse-claims(identity.claims)?;
+    ///     if !has-scope(structured, "admin") {
+    ///         return Err("Admin required");
+    ///     }
+    /// }
+    /// ```
+    parse-claims: func(
+        flat-claims: list<tuple<string, string>>
+    ) -> result<jwt-claims, auth-error>;
+
+    /// Convert structured JWT claims back to flat MCP format.
+    /// This is useful when you need to store claims in MCP's format
+    /// or pass them to MCP-specific functions.
+    ///
+    /// Example:
+    /// ```
+    /// let structured = /* ... */;
+    /// let flat = flatten-claims(structured);
+    /// // Can now pass to MCP functions expecting list<tuple<string, string>>
+    /// ```
+    flatten-claims: func(claims: jwt-claims) -> list<tuple<string, string>>;
+
+    /// Check if a session has a specific claim using session ID.
+    /// This is a convenience function for the pattern mentioned in requirements:
+    /// `claims::hasClaim(&session.sessionid, "herp-derp")`
+    ///
+    /// This function:
+    /// 1. Looks up the session by ID
+    /// 2. Retrieves the stored claims
+    /// 3. Checks if the claim exists
+    ///
+    /// Returns none if session not found or claim not present.
+    ///
+    /// Example:
+    /// ```
+    /// if let Some(role) = has-claim(session_id, "role") {
+    ///     // Use role value
+    /// }
+    /// ```
+    has-claim: func(session-id: string, claim-key: string) -> option<string>;
+
+    /// Check if a session has a specific scope using session ID.
+    /// Similar to has-claim but specifically for OAuth scopes.
+    ///
+    /// Example:
+    /// ```
+    /// if has-session-scope(session_id, "admin") {
+    ///     // Allow admin operation
+    /// }
+    /// ```
+    has-session-scope: func(session-id: string, scope: string) -> bool;
+
+    /// Get the full structured claims from a session.
+    /// Returns none if session not found or has no identity.
+    ///
+    /// Example:
+    /// ```
+    /// if let Some(claims) = get-session-claims(session_id) {
+    ///     // Work with structured claims
+    /// }
+    /// ```
+    get-session-claims: func(session-id: string) -> option<jwt-claims>;
+}

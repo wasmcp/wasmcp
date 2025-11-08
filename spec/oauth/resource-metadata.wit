@@ -1,0 +1,287 @@
+package wasmcp:oauth@0.1.0;
+
+/// OAuth 2.0 Protected Resource Metadata (RFC 9728)
+///
+/// Enables resource servers to publish their capabilities and requirements
+/// via a well-known discovery endpoint. This allows:
+/// - Clients to discover which authorization servers protect this resource
+/// - Automatic configuration of OAuth clients
+/// - Publishing supported scopes, bearer methods, and advanced features
+///
+/// Well-Known URL Pattern:
+/// https://resource.example.com/.well-known/oauth-protected-resource
+/// https://resource.example.com/.well-known/oauth-protected-resource/resource1
+
+interface resource-metadata {
+    /// Protected resource metadata (RFC 9728 §2)
+    ///
+    /// Published at /.well-known/oauth-protected-resource
+    /// Describes the resource server's OAuth capabilities and requirements.
+    record protected-resource-metadata {
+        /// REQUIRED: Resource identifier
+        ///
+        /// Must be an HTTPS URL with no fragment component
+        /// Identifies this protected resource uniquely
+        ///
+        /// Example: "https://api.example.com"
+        resource: string,
+
+        /// OPTIONAL: List of authorization server issuers
+        ///
+        /// Array of AS issuer identifiers from RFC 8414
+        /// Clients should obtain tokens from one of these servers
+        /// Each issuer should have a corresponding AS metadata endpoint
+        ///
+        /// Example: ["https://auth.example.com", "https://login.example.com"]
+        ///
+        /// If omitted, clients must discover the AS through other means
+        authorization-servers: list<string>,
+
+        /// OPTIONAL: Resource server's JWK Set URL
+        ///
+        /// Contains public keys for verifying signed responses from this resource
+        /// Not used for token validation (use AS jwks_uri for that)
+        ///
+        /// Example: "https://api.example.com/.well-known/jwks.json"
+        jwks-uri: option<string>,
+
+        /// RECOMMENDED: Scopes used for this resource
+        ///
+        /// Array of OAuth scope values that apply to this resource
+        /// Helps clients understand what permissions are available
+        ///
+        /// Example: ["read:users", "write:users", "admin"]
+        scopes-supported: list<string>,
+
+        /// OPTIONAL: Supported bearer token methods
+        ///
+        /// How this resource accepts bearer tokens (RFC 6750 §2)
+        /// Values: "header", "body", "query"
+        ///
+        /// Example: ["header"] (most secure - recommended)
+        ///
+        /// Empty array indicates no bearer methods supported
+        /// If omitted, clients should assume header method is supported
+        bearer-methods-supported: list<string>,
+
+        /// OPTIONAL: Signing algorithms for signed responses
+        ///
+        /// JWS algorithms supported for signing responses from this resource
+        /// Values from IANA JOSE Algorithm registry (RS256, ES256, etc.)
+        ///
+        /// Example: ["RS256", "ES256"]
+        resource-signing-alg-values-supported: list<string>,
+
+        /// OPTIONAL: Human-readable resource name
+        ///
+        /// Localized name for display to end-users
+        /// Can include language tag (e.g., "resource_name#en")
+        ///
+        /// Example: "Example API", "Example API#en", "API de ejemplo#es"
+        resource-name: option<string>,
+
+        /// OPTIONAL: Developer documentation URL
+        ///
+        /// Link to API documentation for developers
+        /// Helps clients understand how to use this resource
+        ///
+        /// Example: "https://docs.example.com/api"
+        resource-documentation: option<string>,
+
+        /// OPTIONAL: Data usage policy URL
+        ///
+        /// Link to policy describing how data is used/stored
+        /// Privacy policy or data handling practices
+        ///
+        /// Example: "https://example.com/privacy"
+        resource-policy-uri: option<string>,
+
+        /// OPTIONAL: Terms of service URL
+        ///
+        /// Link to legal terms for using this resource
+        ///
+        /// Example: "https://example.com/terms"
+        resource-tos-uri: option<string>,
+
+        /// OPTIONAL: Mutual TLS support (RFC 8705)
+        ///
+        /// Whether this resource requires/supports mTLS certificate-bound tokens
+        /// If true, tokens must include cnf.x5t#S256 claim
+        ///
+        /// Default: false
+        tls-client-certificate-bound-access-tokens: bool,
+
+        /// OPTIONAL: Authorization details types (RFC 9396)
+        ///
+        /// Rich authorization request types supported by this resource
+        /// Enables fine-grained authorization beyond scopes
+        ///
+        /// Example: ["payment_initiation", "account_information"]
+        authorization-details-types-supported: list<string>,
+
+        /// OPTIONAL: DPoP signing algorithms (RFC 9449)
+        ///
+        /// JWS algorithms supported for DPoP proof validation
+        /// If present, resource supports DPoP-bound tokens
+        ///
+        /// Example: ["RS256", "ES256"]
+        dpop-signing-alg-values-supported: list<string>,
+
+        /// OPTIONAL: DPoP requirement
+        ///
+        /// Whether DPoP-bound tokens are required (not just supported)
+        /// If true, tokens without DPoP binding will be rejected
+        ///
+        /// Default: false
+        dpop-bound-access-tokens-required: bool,
+
+        /// OPTIONAL: Signed metadata as JWT
+        ///
+        /// Self-signed JWT containing this metadata as claims
+        /// Enables third-party attestation and offline verification
+        /// Must include 'iss' claim matching the resource identifier
+        ///
+        /// Format: JWS with metadata as payload
+        signed-metadata: option<string>,
+    }
+
+    /// Fetch resource metadata from well-known location
+    ///
+    /// Performs HTTP GET to /.well-known/oauth-protected-resource
+    /// and parses the JSON response.
+    ///
+    /// Parameters:
+    /// - resource-url: Base URL of the resource server
+    ///
+    /// Returns:
+    /// - Ok: parsed protected-resource-metadata
+    /// - Err: error message if fetch or parse fails
+    ///
+    /// Example:
+    /// ```
+    /// let metadata = fetch-metadata("https://api.example.com")?;
+    ///
+    /// // Check which authorization servers are accepted
+    /// for as_issuer in metadata.authorization-servers {
+    ///     println!("Accepted AS: {}", as_issuer);
+    ///     // as_issuer = "https://auth.example.com"
+    /// }
+    ///
+    /// // Check supported scopes
+    /// println!("Available scopes: {:?}", metadata.scopes-supported);
+    ///
+    /// // Check bearer methods
+    /// if metadata.bearer-methods-supported.contains("header") {
+    ///     println!("Use Authorization: Bearer header");
+    /// }
+    /// ```
+    ///
+    /// HTTP Request:
+    /// ```
+    /// GET /.well-known/oauth-protected-resource HTTP/1.1
+    /// Host: api.example.com
+    /// Accept: application/json
+    /// ```
+    ///
+    /// HTTP Response:
+    /// ```
+    /// HTTP/1.1 200 OK
+    /// Content-Type: application/json
+    ///
+    /// {
+    ///   "resource": "https://api.example.com",
+    ///   "authorization_servers": ["https://auth.example.com"],
+    ///   "scopes_supported": ["read", "write", "admin"],
+    ///   "bearer_methods_supported": ["header"]
+    /// }
+    /// ```
+    fetch-metadata: func(
+        resource-url: string
+    ) -> result<protected-resource-metadata, string>;
+
+    /// Validate resource metadata
+    ///
+    /// Ensures metadata is valid and matches expected resource identifier.
+    /// Critical security check per RFC 9728 §3.3 - prevents metadata confusion.
+    ///
+    /// Checks:
+    /// - 'resource' field is present
+    /// - 'resource' matches expected value
+    /// - 'resource' is HTTPS URL
+    /// - 'resource' has no fragment
+    ///
+    /// Parameters:
+    /// - metadata: Fetched metadata to validate
+    /// - expected-resource: Resource identifier we expect
+    ///
+    /// Returns:
+    /// - Ok: metadata is valid
+    /// - Err: validation error message
+    ///
+    /// Example:
+    /// ```
+    /// let resource_url = "https://api.example.com";
+    /// let metadata = fetch-metadata(resource_url)?;
+    ///
+    /// validate-metadata(metadata, resource_url)?;
+    /// // Safe to use metadata now
+    ///
+    /// // Store for configuration
+    /// if !metadata.authorization-servers.is-empty() {
+    ///     let as_url = metadata.authorization-servers[0];
+    ///     // Fetch AS metadata from as_url
+    /// }
+    /// ```
+    ///
+    /// Security Note:
+    /// ALWAYS validate metadata before using it. Attackers could serve
+    /// malicious metadata pointing to rogue authorization servers.
+    validate-metadata: func(
+        metadata: protected-resource-metadata,
+        expected-resource: string
+    ) -> result<_, string>;
+
+    /// Parse WWW-Authenticate header for resource metadata URL
+    ///
+    /// Extracts the resource_metadata parameter from a Bearer challenge.
+    /// Resource servers use this to advertise their metadata URL dynamically.
+    ///
+    /// Per RFC 9728 §5, resource servers MAY include resource_metadata in
+    /// WWW-Authenticate headers to signal metadata changes.
+    ///
+    /// Parameters:
+    /// - www-authenticate-header: Value of WWW-Authenticate header
+    ///
+    /// Returns: Metadata URL if present, none otherwise
+    ///
+    /// Example:
+    /// ```
+    /// // HTTP Response:
+    /// // HTTP/1.1 401 Unauthorized
+    /// // WWW-Authenticate: Bearer realm="https://api.example.com",
+    /// //                           resource_metadata="https://api.example.com/.well-known/oauth-protected-resource",
+    /// //                           error="invalid_token"
+    ///
+    /// let header = "Bearer realm=\"https://api.example.com\", resource_metadata=\"https://api.example.com/.well-known/oauth-protected-resource\", error=\"invalid_token\"";
+    ///
+    /// if let Some(metadata_url) = parse-www-authenticate-metadata(header) {
+    ///     // metadata_url = "https://api.example.com/.well-known/oauth-protected-resource"
+    ///
+    ///     // Fetch updated metadata
+    ///     let metadata = fetch-metadata-from-url(metadata_url)?;
+    ///
+    ///     // Check if authorization servers changed
+    ///     if metadata.authorization-servers != old_metadata.authorization-servers {
+    ///         println!("Authorization servers updated!");
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Use Case:
+    /// Resource servers can signal metadata changes without clients
+    /// having to poll the well-known endpoint. When clients receive
+    /// this header, they should re-fetch and cache the metadata.
+    parse-www-authenticate-metadata: func(
+        www-authenticate-header: string
+    ) -> option<string>;
+}

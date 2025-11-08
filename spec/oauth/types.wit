@@ -1,0 +1,68 @@
+package wasmcp:oauth@0.1.0;
+
+/// Core OAuth/JWT types for authentication and authorization.
+/// This package provides structured access to JWT claims and can be
+/// used independently of the MCP protocol.
+
+interface types {
+    /// Raw JWT token bytes
+    type jwt = list<u8>;
+
+    /// Structured JWT claims with standard and custom fields.
+    /// This provides type-safe access to common JWT claims while
+    /// preserving custom claims as key-value pairs.
+    record jwt-claims {
+        /// Subject identifier (required - who the token represents)
+        subject: string,
+
+        /// Issuer (who created and signed the token)
+        issuer: option<string>,
+
+        /// Audience (who the token is intended for - can be multiple)
+        /// CRITICAL: Must be validated to prevent confused deputy attacks
+        audience: list<string>,
+
+        /// Expiration timestamp (unix epoch seconds)
+        expiration: option<u64>,
+
+        /// Issued at timestamp (unix epoch seconds)
+        issued-at: option<u64>,
+
+        /// Not before timestamp (unix epoch seconds)
+        not-before: option<u64>,
+
+        /// JWT ID (unique identifier for this token)
+        jwt-id: option<string>,
+
+        /// OAuth scopes from 'scope' or 'scp' claim
+        /// Example: ["read:users", "write:posts"]
+        scopes: list<string>,
+
+        /// Token binding confirmation (cnf claim)
+        /// Used for sender-constrained tokens (mTLS, DPoP)
+        /// If present, token is bound to specific client
+        confirmation: option<token-confirmation>,
+
+        /// All other claims as JSON strings
+        /// For nested objects, arrays, or non-standard claims
+        custom-claims: list<tuple<string, string>>,
+    }
+
+    /// Token confirmation (cnf claim) for sender-constrained tokens
+    ///
+    /// This claim binds the token to a specific client, preventing token theft.
+    /// Two binding methods are supported:
+    /// - mTLS certificate binding (RFC 8705)
+    /// - DPoP proof-of-possession (RFC 9449)
+    record token-confirmation {
+        /// Certificate thumbprint for mTLS-bound tokens (RFC 8705)
+        /// SHA-256 hash of X.509 certificate (base64url-encoded)
+        /// Resource server verifies this matches the client certificate
+        x5t-s256: option<string>,
+
+        /// DPoP key thumbprint for DPoP-bound tokens (RFC 9449)
+        /// JWK thumbprint (base64url-encoded SHA-256 hash)
+        /// Resource server verifies DPoP proof signed with this key
+        jkt: option<string>,
+    }
+}

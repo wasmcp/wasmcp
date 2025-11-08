@@ -1,0 +1,196 @@
+package wasmcp:oauth@0.1.0;
+
+/// OAuth 2.0 Bearer Token Usage (RFC 6750)
+///
+/// This interface provides utilities for OAuth 2.1 Resource Servers to
+/// extract and validate bearer tokens from HTTP requests.
+///
+/// RFC 6750 defines three methods for clients to present bearer tokens:
+/// 1. Authorization Request Header Field (RECOMMENDED)
+/// 2. Form-Encoded Body Parameter (NOT RECOMMENDED)
+/// 3. URI Query Parameter (NOT RECOMMENDED - security risk)
+///
+/// Security Recommendations:
+/// - Resource servers SHOULD only accept the Authorization header method
+/// - Tokens in query parameters may appear in server logs, referrer headers
+/// - Tokens in body parameters are less secure than header method
+/// - Always validate token format before attempting to parse/verify
+
+interface bearer {
+    use errors.{oauth-error, error-code};
+
+    /// Method by which bearer token was presented in HTTP request
+    ///
+    /// Based on RFC 6750 §2 - three authentication methods are defined,
+    /// but only the header method is recommended for production use.
+    enum bearer-method {
+        /// Authorization request header field (RFC 6750 §2.1)
+        ///
+        /// Format: `Authorization: Bearer mF_9.B5f-4.1JqM`
+        ///
+        /// This is the RECOMMENDED method as it:
+        /// - Does not appear in URL (logs, referrer headers)
+        /// - Is not cached by proxies
+        /// - Has clear authentication semantics
+        ///
+        /// Resource servers SHOULD only accept this method.
+        header,
+
+        /// Form-encoded body parameter (RFC 6750 §2.2)
+        ///
+        /// Format: `access_token=mF_9.B5f-4.1JqM` in request body
+        ///
+        /// Requirements:
+        /// - Content-Type MUST be `application/x-www-form-urlencoded`
+        /// - MUST NOT be used with HTTP GET
+        /// - MUST NOT be used if Authorization header present
+        ///
+        /// NOT RECOMMENDED - use header method instead.
+        body,
+
+        /// URI query parameter (RFC 6750 §2.3)
+        ///
+        /// Format: `?access_token=mF_9.B5f-4.1JqM` in request URL
+        ///
+        /// Security Concerns:
+        /// - Tokens may appear in server logs
+        /// - Tokens may appear in referrer headers when following links
+        /// - URLs may be cached by proxies
+        ///
+        /// NOT RECOMMENDED - use header method instead.
+        /// MAY be used when header method is not feasible (e.g., HTML forms).
+        query,
+    }
+
+    /// Extract bearer token from HTTP request
+    ///
+    /// Examines all three presentation methods (header, body, query) and returns
+    /// the token if found. Returns error if token is presented in multiple locations
+    /// (RFC 6750 §3.1 - MUST NOT use more than one method).
+    ///
+    /// This function does NOT validate the token itself (signature, expiration, etc.),
+    /// it only extracts and validates the presentation format.
+    ///
+    /// Parameters:
+    /// - headers: HTTP request headers as key-value pairs
+    /// - body-params: Optional form-encoded body parameters (for POST requests)
+    /// - query-params: Optional URL query parameters
+    ///
+    /// Returns:
+    /// - Ok: (token, method) - extracted token and the method used
+    /// - Err: oauth-error with error-code::invalid-request if malformed
+    ///
+    /// Errors:
+    /// - Multiple methods used (token in header AND body/query)
+    /// - Malformed Authorization header
+    /// - Invalid token format (non-b64token characters)
+    ///
+    /// Example:
+    /// ```
+    /// // Request: GET /resource HTTP/1.1
+    /// //          Authorization: Bearer abc123xyz
+    ///
+    /// let headers = [("authorization", "Bearer abc123xyz")];
+    /// let result = extract-bearer-token(headers, None, None);
+    ///
+    /// match result {
+    ///     Ok((token, method)) => {
+    ///         // token = "abc123xyz"
+    ///         // method = bearer-method::header
+    ///
+    ///         // Now validate token (signature, expiration, etc.)
+    ///         validate-jwt(token)?;
+    ///     },
+    ///     Err(err) => {
+    ///         // err.error = error-code::invalid-request
+    ///         // err.error-description = "Multiple bearer tokens presented"
+    ///         return http-401(err);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Security Note:
+    /// After extraction, always:
+    /// 1. Verify the bearer-method is allowed (use is-method-allowed)
+    /// 2. Validate token signature and expiration
+    /// 3. Validate audience and scope
+    extract-bearer-token: func(
+        headers: list<tuple<string, string>>,
+        body-params: option<list<tuple<string, string>>>,
+        query-params: option<list<tuple<string, string>>>,
+    ) -> result<tuple<string, bearer-method>, oauth-error>;
+
+    /// Check if bearer method is allowed by resource server policy
+    ///
+    /// Resource servers define which bearer token presentation methods they accept.
+    /// RFC 6750 recommends only accepting the Authorization header method.
+    ///
+    /// Parameters:
+    /// - method: The method used to present the token
+    /// - allowed-methods: List of methods accepted by this resource server
+    ///
+    /// Returns: true if method is allowed, false otherwise
+    ///
+    /// Example:
+    /// ```
+    /// // Policy: Only accept Authorization header
+    /// let allowed = [bearer-method::header];
+    ///
+    /// let (token, method) = extract-bearer-token(...)?;
+    ///
+    /// if !is-method-allowed(method, allowed) {
+    ///     return Err(oauth-error {
+    ///         error: error-code::invalid-request,
+    ///         error-description: Some("Only Authorization header accepted"),
+    ///         error-uri: None,
+    ///     });
+    /// }
+    ///
+    /// // Safe to proceed with token validation
+    /// ```
+    ///
+    /// Recommended Policies:
+    /// - Production: [bearer-method::header] (most secure)
+    /// - Development: [bearer-method::header, bearer-method::query] (for testing)
+    /// - Never recommended: All three methods (reduces security)
+    is-method-allowed: func(
+        method: bearer-method,
+        allowed-methods: list<bearer-method>
+    ) -> bool;
+
+    /// Validate bearer token format per RFC 6750
+    ///
+    /// Checks that token contains only characters allowed in b64token grammar.
+    /// Does NOT validate token signature or expiration (use JWT validation for that).
+    ///
+    /// RFC 6750 §2.1 defines b64token as:
+    /// ```
+    /// b64token = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
+    /// ```
+    ///
+    /// Parameters:
+    /// - token: The bearer token string to validate
+    ///
+    /// Returns: true if format is valid, false otherwise
+    ///
+    /// Example:
+    /// ```
+    /// if !is-valid-bearer-token-format("abc123") {
+    ///     return Err(oauth-error {
+    ///         error: error-code::invalid-request,
+    ///         error-description: Some("Token contains invalid characters"),
+    ///         error-uri: None,
+    ///     });
+    /// }
+    ///
+    /// // Format is valid, proceed to JWT validation
+    /// ```
+    ///
+    /// Note: This is a lightweight format check. Even if format is valid,
+    /// the token may still be:
+    /// - Expired (check exp claim)
+    /// - Revoked (check with introspection endpoint)
+    /// - Invalid signature (verify with JWKS)
+    /// - Wrong audience (check aud claim)
+    is-valid-bearer-token-format: func(token: string) -> bool;
+}
