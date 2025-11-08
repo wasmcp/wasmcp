@@ -1,0 +1,91 @@
+//! HTTP session management
+//!
+//! This module provides session lifecycle management for HTTP transport:
+//! - Session validation and retrieval from headers
+//! - Session initialization during connection setup
+//! - Session deletion on client disconnect
+//! - Session requirement enforcement for non-initialize requests
+
+use crate::bindings::wasi::http::types::IncomingRequest;
+use crate::bindings::wasmcp::mcp_v20250618::session_manager::{
+    SessionError, delete_session as manager_delete_session, initialize as manager_initialize,
+    validate as manager_validate,
+};
+use crate::config::SessionConfig;
+use crate::error::TransportError;
+use crate::http::validation;
+
+/// Validate and retrieve session ID from request
+///
+/// Returns:
+/// - Ok(Some(session_id)) if session header present and valid
+/// - Ok(None) if no session header or sessions disabled
+/// - Err(TransportError) if validation fails
+pub fn validate_session_from_request(
+    request: &IncomingRequest,
+    session_config: &SessionConfig,
+) -> Result<Option<String>, TransportError> {
+    // Extract session ID from header
+    let session_id_raw = validation::extract_session_id_header(request)?;
+
+    if let Some(session_str) = session_id_raw {
+        // Only validate if sessions are enabled
+        if session_config.enabled {
+            let bucket = session_config.get_bucket();
+
+            match manager_validate(&session_str, bucket) {
+                Ok(true) => Ok(Some(session_str)),
+                Ok(false) => Err(TransportError::session("Session terminated")),
+                Err(SessionError::NoSuchSession) => {
+                    Err(TransportError::session("Session not found"))
+                }
+                Err(_) => Err(TransportError::session("Session validation error")),
+            }
+        } else {
+            // Sessions disabled but client sent session ID - ignore it
+            Ok(None)
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+/// Check if session is required for the current request
+///
+/// For non-initialize requests when sessions are enabled, a session ID must be present.
+/// Returns true if session requirement is satisfied, false otherwise.
+pub fn check_session_required(session_config: &SessionConfig, session_id: Option<&str>) -> bool {
+    // If sessions enabled, session ID must be present for non-initialize requests
+    !(session_config.enabled && session_id.is_none())
+}
+
+/// Initialize a new session during connection setup
+///
+/// Returns session ID if sessions are enabled and initialization succeeds,
+/// None otherwise.
+pub fn initialize_session(session_config: &SessionConfig) -> Option<String> {
+    if session_config.enabled {
+        let bucket = session_config.get_bucket();
+        manager_initialize(bucket).ok()
+    } else {
+        None
+    }
+}
+
+/// Delete session by ID
+///
+/// Returns:
+/// - Ok(()) if session deleted successfully
+/// - Err(TransportError) with appropriate error message
+pub fn delete_session_by_id(
+    session_id: &str,
+    session_config: &SessionConfig,
+) -> Result<(), TransportError> {
+    let bucket = session_config.get_bucket();
+
+    match manager_delete_session(session_id, bucket) {
+        Ok(_) => Ok(()),
+        Err(SessionError::NoSuchSession) => Err(TransportError::session("Session not found")),
+        Err(_) => Err(TransportError::session("Failed to delete session")),
+    }
+}
