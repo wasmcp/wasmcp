@@ -76,16 +76,49 @@ enum ScopeValue {
 
 /// Verify a JWT token using the provided configuration
 pub fn verify(token: &str, provider: &JwtProvider) -> Result<TokenInfo> {
-    // Decode header to get algorithm
-    let _header = decode_header(token)?;
+    eprintln!("[oauth-auth:jwt] Starting JWT verification");
+    eprintln!("[oauth-auth:jwt] Token length: {}", token.len());
 
-    // Get decoding key from static public key
-    let public_key = provider.public_key.as_ref().ok_or_else(|| {
-        AuthError::Configuration("No public key configured (Phase 1: static keys only)".to_string())
+    // Decode header to get algorithm and key ID
+    let header = decode_header(token).map_err(|e| {
+        eprintln!("[oauth-auth:jwt] ✗ Failed to decode JWT header: {:?}", e);
+        e
     })?;
 
-    let decoding_key = DecodingKey::from_rsa_pem(public_key.as_bytes())
-        .map_err(|e| AuthError::Configuration(format!("Invalid public key: {e}")))?;
+    eprintln!(
+        "[oauth-auth:jwt] ✓ Decoded JWT header - algorithm: {:?}, kid: {:?}",
+        header.alg, header.kid
+    );
+
+    // Get decoding key - JWKS takes precedence over static key
+    let decoding_key = if let Some(ref jwks_uri) = provider.jwks_uri {
+        eprintln!("[oauth-auth:jwt] Using JWKS URI: {}", jwks_uri);
+
+        // Dynamic key fetching via JWKS
+        let jwks = crate::jwks::fetch_jwks(jwks_uri).map_err(|e| {
+            eprintln!("[oauth-auth:jwt] ✗ Failed to fetch JWKS: {:?}", e);
+            e
+        })?;
+
+        eprintln!(
+            "[oauth-auth:jwt] ✓ Fetched JWKS with {} keys",
+            jwks.keys.len()
+        );
+
+        // Find key matching the KID from token header
+        crate::jwks::find_key(&jwks, header.kid.as_deref()).map_err(|e| {
+            eprintln!("[oauth-auth:jwt] ✗ Failed to find key in JWKS: {:?}", e);
+            e
+        })?
+    } else if let Some(ref public_key) = provider.public_key {
+        // Static public key fallback
+        DecodingKey::from_rsa_pem(public_key.as_bytes())
+            .map_err(|e| AuthError::Configuration(format!("Invalid public key: {e}")))?
+    } else {
+        return Err(AuthError::Configuration(
+            "No public key or JWKS URI configured".to_string(),
+        ));
+    };
 
     // Set up validation using configured algorithm (defaults to RS256)
     let algorithm = match provider.algorithm.as_deref().unwrap_or("RS256") {
@@ -108,13 +141,28 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<TokenInfo> {
     };
     let mut validation = Validation::new(algorithm);
 
+    eprintln!("[oauth-auth:jwt] Validation config:");
+    eprintln!("[oauth-auth:jwt]   Algorithm: {:?}", algorithm);
+
     // Set issuer validation (only if configured)
     if !provider.issuer.is_empty() {
+        eprintln!("[oauth-auth:jwt]   Expected issuer: {}", provider.issuer);
         validation.set_issuer(&[&provider.issuer]);
+    } else {
+        eprintln!("[oauth-auth:jwt]   Issuer validation: disabled");
     }
 
-    // Set audience validation (always required for security)
-    validation.set_audience(&provider.audience);
+    // Set audience validation (only if configured)
+    if !provider.audience.is_empty() {
+        eprintln!(
+            "[oauth-auth:jwt]   Expected audience(s): {:?}",
+            provider.audience
+        );
+        validation.set_audience(&provider.audience);
+    } else {
+        eprintln!("[oauth-auth:jwt]   Audience validation: disabled (for dynamic registration)");
+        validation.validate_aud = false;
+    }
 
     // Enable nbf (not before) validation if present in token
     validation.validate_nbf = true;
@@ -125,15 +173,78 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<TokenInfo> {
     // Set required claims
     validation.set_required_spec_claims(&["exp", "sub", "iss"]);
 
-    // Decode and validate token
-    let token_data = decode::<Claims>(token, &decoding_key, &validation)?;
+    eprintln!("[oauth-auth:jwt] Decoding and validating token...");
+
+    // First decode WITHOUT validation to see the actual claims
+    let mut temp_validation = Validation::new(algorithm);
+    temp_validation.insecure_disable_signature_validation();
+    temp_validation.validate_aud = false;
+    temp_validation.validate_exp = false;
+    temp_validation.required_spec_claims.clear();
+
+    if let Ok(unvalidated) = decode::<Claims>(token, &DecodingKey::from_secret(&[]), &temp_validation) {
+        eprintln!("[oauth-auth:jwt] Token claims (unvalidated):");
+        eprintln!("[oauth-auth:jwt]   Actual audience in token: {:?}", unvalidated.claims.aud);
+        eprintln!("[oauth-auth:jwt]   Actual issuer in token: {}", unvalidated.claims.iss);
+    }
+
+    // Now decode and validate token properly
+    let token_data = decode::<Claims>(token, &decoding_key, &validation).map_err(|e| {
+        eprintln!("[oauth-auth:jwt] ✗ Token validation failed: {:?}", e);
+        match e.kind() {
+            jsonwebtoken::errors::ErrorKind::InvalidToken => {
+                AuthError::InvalidToken(format!("Invalid token: {}", e))
+            }
+            jsonwebtoken::errors::ErrorKind::InvalidSignature => {
+                AuthError::InvalidToken("Invalid signature".to_string())
+            }
+            jsonwebtoken::errors::ErrorKind::InvalidEcdsaKey => {
+                AuthError::InvalidToken("Invalid ECDSA key".to_string())
+            }
+            jsonwebtoken::errors::ErrorKind::InvalidRsaKey(_) => {
+                AuthError::InvalidToken("Invalid RSA key".to_string())
+            }
+            jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+                AuthError::InvalidToken("Token expired".to_string())
+            }
+            jsonwebtoken::errors::ErrorKind::InvalidIssuer => {
+                AuthError::InvalidToken("Invalid issuer".to_string())
+            }
+            jsonwebtoken::errors::ErrorKind::InvalidAudience => {
+                AuthError::InvalidToken("Invalid audience".to_string())
+            }
+            jsonwebtoken::errors::ErrorKind::InvalidSubject => {
+                AuthError::InvalidToken("Invalid subject".to_string())
+            }
+            jsonwebtoken::errors::ErrorKind::ImmatureSignature => {
+                AuthError::InvalidToken("Token not yet valid (nbf)".to_string())
+            }
+            jsonwebtoken::errors::ErrorKind::InvalidAlgorithm => {
+                AuthError::InvalidToken("Invalid algorithm".to_string())
+            }
+            _ => AuthError::InvalidToken(format!("Token validation error: {}", e)),
+        }
+    })?;
     let claims = token_data.claims;
+
+    eprintln!("[oauth-auth:jwt] ✓ Token successfully decoded and validated");
+    eprintln!("[oauth-auth:jwt] Token claims:");
+    eprintln!("[oauth-auth:jwt]   sub: {}", claims.sub);
+    eprintln!("[oauth-auth:jwt]   iss: {}", claims.iss);
+    eprintln!("[oauth-auth:jwt]   aud: {:?}", claims.aud);
+    eprintln!("[oauth-auth:jwt]   exp: {}", claims.exp);
+    eprintln!("[oauth-auth:jwt]   iat: {}", claims.iat);
 
     // Extract scopes
     let scopes = extract_scopes(&claims);
+    eprintln!("[oauth-auth:jwt]   scopes: {:?}", scopes);
 
     // Check required scopes
     if let Some(required_scopes) = &provider.required_scopes {
+        eprintln!(
+            "[oauth-auth:jwt] Checking required scopes: {:?}",
+            required_scopes
+        );
         use std::collections::HashSet;
 
         let token_scopes: HashSet<String> = scopes.iter().cloned().collect();
@@ -142,10 +253,15 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<TokenInfo> {
         if !required_set.is_subset(&token_scopes) {
             let missing_scopes: Vec<String> =
                 required_set.difference(&token_scopes).cloned().collect();
+            eprintln!(
+                "[oauth-auth:jwt] ✗ Missing required scopes: {:?}",
+                missing_scopes
+            );
             return Err(AuthError::Unauthorized(format!(
                 "Token missing required scopes: {missing_scopes:?}"
             )));
         }
+        eprintln!("[oauth-auth:jwt] ✓ All required scopes present");
     }
 
     // Build complete claims map
@@ -188,6 +304,11 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<TokenInfo> {
     for (key, value) in claims.additional {
         all_claims.insert(key, value);
     }
+
+    eprintln!(
+        "[oauth-auth:jwt] ✓ JWT verification complete - user: {}",
+        claims.sub
+    );
 
     Ok(TokenInfo {
         sub: claims.sub,

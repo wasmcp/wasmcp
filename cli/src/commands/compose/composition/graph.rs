@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
-use super::{build_middleware_chain, wire_transport};
+use super::{build_middleware_chain, wire_if_imports, wire_transport};
 use super::{load_and_register_components, load_package};
 use crate::commands::compose::inspection::UnsatisfiedImports;
 use crate::commands::compose::inspection::interfaces::{self, DEFAULT_SPEC_VERSION, InterfaceType};
@@ -31,12 +31,13 @@ use crate::versioning::VersionResolver;
 /// Each component's `server-handler` import is satisfied by the next component's
 /// `server-handler` export, creating a linear middleware pipeline.
 ///
-/// TODO: Refactor to reduce argument count (8/7). Consider grouping related parameters
+/// TODO: Refactor to reduce argument count (9/7). Consider grouping related parameters
 /// into a CompositionConfig struct (paths, interface names, options).
 #[allow(clippy::too_many_arguments)]
 pub async fn build_composition(
     transport_path: &Path,
     server_io_path: &Path,
+    oauth_auth_path: &Path,
     kv_store_path: &Path,
     session_store_path: &Path,
     component_paths: &[PathBuf],
@@ -73,6 +74,11 @@ pub async fn build_composition(
         find_component_export(session_store_path, &session_manager_prefix)
             .context("Failed to discover session-manager interface from session-store component")?;
 
+    // Discover server-auth interface from oauth-auth component
+    let server_auth_prefix = InterfaceType::ServerAuth.interface_prefix(DEFAULT_SPEC_VERSION);
+    let server_auth_interface = find_component_export(oauth_auth_path, &server_auth_prefix)
+        .context("Failed to discover server-auth interface from oauth-auth component")?;
+
     if verbose {
         println!("   Discovered interfaces:");
         println!("     server-handler: {}", server_handler_interface);
@@ -80,6 +86,7 @@ pub async fn build_composition(
         println!("     kv-store: {}", kv_store_interface);
         println!("     sessions: {}", sessions_interface);
         println!("     session-manager: {}", session_manager_interface);
+        println!("     server-auth: {}", server_auth_interface);
     }
 
     let mut graph = CompositionGraph::new();
@@ -89,6 +96,7 @@ pub async fn build_composition(
         println!("   Loading components...");
         println!("     transport: {}", transport_path.display());
         println!("     server-io: {}", server_io_path.display());
+        println!("     oauth-auth: {}", oauth_auth_path.display());
         println!("     kv-store: {}", kv_store_path.display());
         println!("     session-store: {}", session_store_path.display());
         println!("     method-not-found: {}", method_not_found_path.display());
@@ -100,6 +108,7 @@ pub async fn build_composition(
         &mut graph,
         transport_path,
         server_io_path,
+        oauth_auth_path,
         kv_store_path,
         session_store_path,
         component_paths,
@@ -171,6 +180,25 @@ pub async fn build_composition(
         eprintln!("   ✓ Wired kv-store to session-store");
     }
 
+    // Instantiate oauth-auth component (needed by transport for JWT validation)
+    let oauth_auth_inst = graph.instantiate(packages.oauth_auth_id);
+
+    if verbose {
+        eprintln!("   ✓ Instantiated oauth-auth component");
+    }
+
+    // Automatically wire kv-store to oauth-auth if it imports it (for JWKS caching)
+    wire_if_imports(
+        &mut graph,
+        oauth_auth_inst,
+        oauth_auth_path,
+        "oauth-auth",
+        kv_store_inst,
+        &kv_store_interface,
+        "kv-store",
+        verbose,
+    )?;
+
     // Build the middleware chain
     if verbose {
         println!("   Building composition graph...");
@@ -179,10 +207,12 @@ pub async fn build_composition(
         &mut graph,
         &packages,
         server_io_inst,
+        kv_store_inst,
         session_store_inst,
         component_paths,
         &server_handler_interface,
         &server_io_interface,
+        &kv_store_interface,
         &sessions_interface,
         &mut unsatisfied,
         verbose,
@@ -193,14 +223,17 @@ pub async fn build_composition(
         &mut graph,
         packages.transport_id,
         server_io_inst,
+        oauth_auth_inst,
         session_store_inst,
         handler_export,
         &server_handler_interface,
         &server_io_interface,
+        &server_auth_interface,
         &sessions_interface,
         &session_manager_interface,
         transport_path,
         server_io_path,
+        oauth_auth_path,
         session_store_path,
         _resolver,
         verbose,

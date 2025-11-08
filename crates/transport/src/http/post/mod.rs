@@ -39,36 +39,103 @@ pub async fn handle_post(
         Err(e) => send_error!(response_out, e),
     };
 
-    // Validate JWT if provided
+    // Check if JWT authentication is configured
+    let jwt_configured = is_jwt_auth_configured();
+
+    // Validate JWT - strict validation if configured
     let identity = match validation::extract_authorization_header(&request) {
         Ok(Some(jwt)) => {
+            eprintln!("[transport:auth] Found Authorization header, validating JWT...");
+
             // Import server-auth for JWT validation
             use crate::bindings::wasmcp::mcp_v20250618::server_auth;
 
             match server_auth::decode(&jwt) {
                 Ok(claims) => {
-                    eprintln!("[transport] JWT validated successfully");
+                    eprintln!("[transport:auth] ✓ JWT validated successfully");
+                    eprintln!(
+                        "[transport:auth]   - Subject: {}",
+                        claims
+                            .iter()
+                            .find(|(k, _)| k == "sub")
+                            .map(|(_, v)| v.as_str())
+                            .unwrap_or("unknown")
+                    );
+                    eprintln!(
+                        "[transport:auth]   - Scopes: {}",
+                        claims
+                            .iter()
+                            .find(|(k, _)| k == "scope" || k == "scp")
+                            .map(|(_, v)| v.as_str())
+                            .unwrap_or("none")
+                    );
+
                     Some(crate::bindings::wasmcp::mcp_v20250618::mcp::Identity { jwt, claims })
                 }
                 Err(e) => {
-                    eprintln!("[transport] JWT validation failed: {:?}", e);
-                    // Per user requirement: "if ANYTHIGN in the flow for auth fails,
-                    // jsut move on and 'pretend' we don't need auth"
-                    None
+                    eprintln!("[transport:auth] ✗ JWT validation failed: {:?}", e);
+
+                    // Strict validation: return 401 with WWW-Authenticate header
+                    let www_authenticate = create_www_authenticate_challenge(
+                        &request,
+                        "invalid_token",
+                        "The access token provided is invalid, expired, or malformed",
+                    );
+
+                    let error = TransportError::unauthorized_with_challenge(
+                        format!("JWT validation failed: {:?}", e),
+                        www_authenticate,
+                    );
+
+                    send_error!(response_out, error);
                 }
             }
         }
         Ok(None) => {
-            eprintln!("[transport] No Authorization header present");
-            None
+            if jwt_configured {
+                eprintln!(
+                    "[transport:auth] ✗ JWT authentication is configured but no Authorization header provided"
+                );
+
+                // Strict validation: require JWT if configured
+                let www_authenticate = create_www_authenticate_challenge(
+                    &request,
+                    "invalid_request",
+                    "Authorization header with Bearer token is required",
+                );
+
+                let error = TransportError::unauthorized_with_challenge(
+                    "Missing required Authorization header",
+                    www_authenticate,
+                );
+
+                send_error!(response_out, error);
+            } else {
+                eprintln!(
+                    "[transport:auth] No Authorization header present (JWT not configured, continuing without auth)"
+                );
+                None
+            }
         }
         Err(e) => {
             eprintln!(
-                "[transport] Authorization header extraction failed: {:?}",
+                "[transport:auth] ✗ Authorization header extraction failed: {:?}",
                 e
             );
-            // Per user requirement: gracefully degrade on auth failure
-            None
+
+            // Malformed header - always error
+            let www_authenticate = create_www_authenticate_challenge(
+                &request,
+                "invalid_request",
+                "Malformed Authorization header",
+            );
+
+            let error = TransportError::unauthorized_with_challenge(
+                format!("Invalid Authorization header: {}", e),
+                www_authenticate,
+            );
+
+            send_error!(response_out, error);
         }
     };
 
@@ -191,4 +258,74 @@ pub async fn handle_post(
             message_handlers::respond_with_result(result, response_out);
         }
     }
+}
+
+/// Check if JWT authentication is configured
+/// Returns true if either JWT_PUBLIC_KEY or JWT_JWKS_URI is set
+fn is_jwt_auth_configured() -> bool {
+    use crate::bindings::wasi::cli::environment::get_environment;
+
+    let env_vars = get_environment();
+
+    // Check for JWT_PUBLIC_KEY or JWT_JWKS_URI
+    env_vars
+        .iter()
+        .any(|(k, v)| (k == "JWT_PUBLIC_KEY" || k == "JWT_JWKS_URI") && !v.is_empty())
+}
+
+/// Create WWW-Authenticate challenge header per RFC 6750
+/// Includes error code, description, and resource metadata URL
+fn create_www_authenticate_challenge(
+    request: &IncomingRequest,
+    error: &str,
+    error_description: &str,
+) -> String {
+    use crate::bindings::wasi::cli::environment::get_environment;
+
+    // Get server URI for resource metadata
+    let env_vars = get_environment();
+
+    // First check env var
+    let server_uri: Option<String> = env_vars
+        .iter()
+        .find(|(k, _)| k == "MCP_SERVER_URI")
+        .map(|(_, v)| v.clone())
+        .or_else(|| {
+            // Try to construct from request Host header
+            let headers = request.headers();
+            let host_values = headers.get("host");
+            if !host_values.is_empty() {
+                if let Ok(host) = String::from_utf8(host_values[0].clone()) {
+                    // Assume HTTPS for production (HTTP for localhost)
+                    let scheme = if host.starts_with("localhost") || host.starts_with("127.0.0.1") {
+                        "http"
+                    } else {
+                        "https"
+                    };
+                    Some(format!("{}://{}", scheme, host))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        });
+
+    // Build WWW-Authenticate header
+    let mut parts = vec!["Bearer".to_string()];
+
+    if let Some(uri) = server_uri {
+        parts.push(format!("realm=\"{}\"", uri));
+
+        // Add resource_metadata URL per RFC 9728
+        parts.push(format!(
+            "resource_metadata=\"{}/.well-known/oauth-protected-resource\"",
+            uri
+        ));
+    }
+
+    parts.push(format!("error=\"{}\"", error));
+    parts.push(format!("error_description=\"{}\"", error_description));
+
+    parts.join(", ")
 }

@@ -49,7 +49,7 @@ impl Guest for StdioTransportGuest {
                 common::McpMessage::Request(request_id, client_request) => {
                     // Handle initialize specially (capabilities discovery)
                     if let ClientRequest::Initialize(init_req) = &client_request {
-                        protocol_version = handle_initialize(&stdout, request_id, &init_req)?;
+                        protocol_version = handle_initialize(&stdout, request_id, init_req)?;
                         continue;
                     }
 
@@ -72,7 +72,7 @@ impl Guest for StdioTransportGuest {
 
                     // Handle logging/setLevel directly
                     if let ClientRequest::LoggingSetLevel(level) = &client_request {
-                        let level_str = common::protocol::log_level_to_string(level.clone());
+                        let level_str = common::protocol::log_level_to_string(*level);
                         if let Err(e) = common::handle_set_log_level(level_str) {
                             write_error(&stdout, Some(request_id.clone()), e);
                             continue;

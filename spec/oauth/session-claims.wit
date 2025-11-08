@@ -5,7 +5,8 @@ package wasmcp:oauth@0.1.0;
 /// or the rich wasmcp:oauth/helpers interface.
 
 interface session-claims {
-    use types.{jwt-claims, auth-error};
+    use types.{jwt-claims};
+    use errors.{oauth-error};
 
     /// Convert flat MCP claims to structured JWT claims.
     /// This parses the list<tuple<string, string>> format from MCP
@@ -35,7 +36,7 @@ interface session-claims {
     /// ```
     parse-claims: func(
         flat-claims: list<tuple<string, string>>
-    ) -> result<jwt-claims, auth-error>;
+    ) -> result<jwt-claims, oauth-error>;
 
     /// Convert structured JWT claims back to flat MCP format.
     /// This is useful when you need to store claims in MCP's format

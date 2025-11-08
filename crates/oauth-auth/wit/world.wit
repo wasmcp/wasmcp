@@ -1,0 +1,18 @@
+package wasmcp:oauth-auth@0.1.0;
+
+world oauth-auth {
+    import wasi:cli/environment@0.2.8;
+    import wasi:http/outgoing-handler@0.2.8;
+    import wasmcp:keyvalue/store@0.1.0;
+
+    // MCP-required interface
+    export wasmcp:mcp-v20250618/server-auth@0.1.6;
+
+    // OAuth 2.1 Resource Server interfaces
+    export wasmcp:oauth/errors@0.1.0;
+    export wasmcp:oauth/bearer@0.1.0;
+    export wasmcp:oauth/helpers@0.1.0;
+    export wasmcp:oauth/session-claims@0.1.0;
+    export wasmcp:oauth/introspection@0.1.0;
+    export wasmcp:oauth/resource-metadata@0.1.0;
+}

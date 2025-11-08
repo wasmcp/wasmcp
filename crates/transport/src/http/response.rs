@@ -113,6 +113,15 @@ pub fn transport_error_to_response(error: &TransportError) -> OutgoingResponse {
     let headers = response.headers();
     let _ = headers.set("content-type", &[b"application/json".to_vec()]);
 
+    // Add WWW-Authenticate header for 401 Unauthorized responses
+    if let Some(www_authenticate) = error.www_authenticate_header() {
+        eprintln!(
+            "[transport:response] Adding WWW-Authenticate header: {}",
+            www_authenticate
+        );
+        let _ = headers.set("www-authenticate", &[www_authenticate.as_bytes().to_vec()]);
+    }
+
     if let Ok(body) = response.body() {
         if let Ok(stream) = body.write() {
             let error_json = serde_json::json!({
