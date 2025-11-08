@@ -7,20 +7,20 @@ package wasi:keyvalue@0.2.0-draft2;
 /// 2. Atomic `increment` and CAS (compare-and-swap) operations.
 /// 3. Batch operations that can reduce the number of round trips to the network.
 world imports {
-	/// The `store` capability allows the component to perform eventually consistent operations on
-	/// the key-value store.
-	import store;
+  /// The `store` capability allows the component to perform eventually consistent operations on
+  /// the key-value store.
+  import store;
 
-	/// The `atomic` capability allows the component to perform atomic / `increment` and CAS
-	/// (compare-and-swap) operations.
-	import atomics;
+  /// The `atomic` capability allows the component to perform atomic / `increment` and CAS
+  /// (compare-and-swap) operations.
+  import atomics;
 
-	/// The `batch` capability allows the component to perform eventually consistent batch
-	/// operations that can reduce the number of round trips to the network.
-	import batch;
+  /// The `batch` capability allows the component to perform eventually consistent batch
+  /// operations that can reduce the number of round trips to the network.
+  import batch;
 }
 
 world watch-service {
-	include imports;
-	export watcher;
+  include imports;
+  export watcher;
 }

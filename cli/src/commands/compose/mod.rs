@@ -50,7 +50,8 @@ use self::output::{
     print_success_message,
 };
 use self::resolution::{
-    download_dependencies, resolve_method_not_found_component, resolve_server_io_component,
+    DownloadConfig, download_dependencies, resolve_kv_store_component,
+    resolve_method_not_found_component, resolve_server_io_component,
     resolve_session_store_component, resolve_transport_component,
 };
 
@@ -83,6 +84,9 @@ pub struct ComposeOptions {
 
     /// Override server-io component (path or package spec)
     pub override_server_io: Option<String>,
+
+    /// Override kv-store component (path or package spec)
+    pub override_kv_store: Option<String>,
 
     /// Override session-store component (path or package spec)
     pub override_session_store: Option<String>,
@@ -144,6 +148,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         version_resolver,
         override_transport,
         override_server_io,
+        override_kv_store,
         override_session_store,
         override_method_not_found,
         override_tools_middleware,
@@ -167,6 +172,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 version_resolver,
                 override_transport,
                 override_server_io,
+                override_kv_store,
                 override_session_store,
                 override_method_not_found,
                 override_tools_middleware,
@@ -206,6 +212,7 @@ async fn compose_server(
     version_resolver: VersionResolver,
     override_transport: Option<String>,
     override_server_io: Option<String>,
+    override_kv_store: Option<String>,
     override_session_store: Option<String>,
     override_method_not_found: Option<String>,
     override_tools_middleware: Option<String>,
@@ -256,11 +263,23 @@ async fn compose_server(
     let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
 
     // Download framework dependencies once upfront (unless skip_download is set)
+    // Skip downloading components that have overrides provided
     if !skip_download {
         if verbose {
             println!("\nDownloading framework dependencies...");
         }
-        download_dependencies(&version_resolver, &deps_dir, &client).await?;
+        let download_config = DownloadConfig::from_overrides(
+            &version_resolver,
+            override_transport.as_deref(),
+            override_server_io.as_deref(),
+            override_kv_store.as_deref(),
+            override_session_store.as_deref(),
+            override_method_not_found.as_deref(),
+            override_tools_middleware.as_deref(),
+            override_resources_middleware.as_deref(),
+            override_prompts_middleware.as_deref(),
+        );
+        download_dependencies(&download_config, &deps_dir, &client).await?;
     }
 
     // Resolve transport component
@@ -283,14 +302,24 @@ async fn compose_server(
     )
     .await?;
 
-    // Resolve session-store component
+    // Resolve kv-store component
+    let kv_store_path = resolve_kv_store_component(
+        override_kv_store.as_deref(),
+        &version_resolver,
+        &deps_dir,
+        &client,
+        verbose,
+        &runtime,
+    )
+    .await?;
+
+    // Resolve session-store component (unified, no longer runtime-specific)
     let session_store_path = resolve_session_store_component(
         override_session_store.as_deref(),
         &version_resolver,
         &deps_dir,
         &client,
         verbose,
-        &runtime,
     )
     .await?;
 
@@ -329,6 +358,7 @@ async fn compose_server(
     let bytes = build_composition(
         &transport_path,
         &server_io_path,
+        &kv_store_path,
         &session_store_path,
         &wrapped_components,
         &method_not_found_path,

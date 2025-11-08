@@ -15,33 +15,101 @@ use crate::commands::compose::inspection::interfaces;
 pub type PackageClient =
     wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>;
 
-/// Download required framework dependencies (transport, server-io, session-store variants, method-not-found, and all middleware)
+/// Configuration for which dependencies to skip downloading
+pub struct DownloadConfig<'a> {
+    pub skip_transport: bool,
+    pub skip_server_io: bool,
+    pub skip_kv_store: bool,
+    pub skip_session_store: bool,
+    pub skip_method_not_found: bool,
+    pub skip_tools_middleware: bool,
+    pub skip_resources_middleware: bool,
+    pub skip_prompts_middleware: bool,
+    pub resolver: &'a VersionResolver,
+}
+
+impl<'a> DownloadConfig<'a> {
+    /// Create config from override options
+    pub fn from_overrides(
+        resolver: &'a VersionResolver,
+        override_transport: Option<&str>,
+        override_server_io: Option<&str>,
+        override_kv_store: Option<&str>,
+        override_session_store: Option<&str>,
+        override_method_not_found: Option<&str>,
+        override_tools_middleware: Option<&str>,
+        override_resources_middleware: Option<&str>,
+        override_prompts_middleware: Option<&str>,
+    ) -> Self {
+        Self {
+            skip_transport: override_transport.is_some(),
+            skip_server_io: override_server_io.is_some(),
+            skip_kv_store: override_kv_store.is_some(),
+            skip_session_store: override_session_store.is_some(),
+            skip_method_not_found: override_method_not_found.is_some(),
+            skip_tools_middleware: override_tools_middleware.is_some(),
+            skip_resources_middleware: override_resources_middleware.is_some(),
+            skip_prompts_middleware: override_prompts_middleware.is_some(),
+            resolver,
+        }
+    }
+}
+
+/// Download required framework dependencies (transport, server-io, kv-store variants, session-store, method-not-found, and all middleware)
+///
+/// Only downloads components that don't have overrides provided
 pub async fn download_dependencies(
-    resolver: &VersionResolver,
+    config: &DownloadConfig<'_>,
     deps_dir: &Path,
     client: &PackageClient,
 ) -> Result<()> {
-    // Get component-specific versions from the resolver
-    let transport_version = resolver.get_version("transport")?;
-    let server_io_version = resolver.get_version("server-io")?;
-    let session_store_version = resolver.get_version("session-store")?;
-    let method_not_found_version = resolver.get_version("method-not-found")?;
-    let tools_middleware_version = resolver.get_version("tools-middleware")?;
-    let resources_middleware_version = resolver.get_version("resources-middleware")?;
-    let prompts_middleware_version = resolver.get_version("prompts-middleware")?;
+    let mut specs = Vec::new();
 
-    // Build package specs with component-specific versions
-    // Download both session-store variants (d2 for Spin, standard for wasmcloud/wasmtime)
-    let specs = vec![
-        interfaces::package("transport", &transport_version),
-        interfaces::package("server-io", &server_io_version),
-        interfaces::package("session-store", &session_store_version),
-        interfaces::package("session-store-d2", &session_store_version),
-        interfaces::package("method-not-found", &method_not_found_version),
-        interfaces::package("tools-middleware", &tools_middleware_version),
-        interfaces::package("resources-middleware", &resources_middleware_version),
-        interfaces::package("prompts-middleware", &prompts_middleware_version),
-    ];
+    // Only download components that aren't overridden
+    if !config.skip_transport {
+        let version = config.resolver.get_version("transport")?;
+        specs.push(interfaces::package("transport", &version));
+    }
+
+    if !config.skip_server_io {
+        let version = config.resolver.get_version("server-io")?;
+        specs.push(interfaces::package("server-io", &version));
+    }
+
+    if !config.skip_kv_store {
+        let version = config.resolver.get_version("kv-store")?;
+        specs.push(interfaces::package("kv-store", &version));
+        specs.push(interfaces::package("kv-store-d2", &version));
+    }
+
+    if !config.skip_session_store {
+        let version = config.resolver.get_version("session-store")?;
+        specs.push(interfaces::package("session-store", &version));
+    }
+
+    if !config.skip_method_not_found {
+        let version = config.resolver.get_version("method-not-found")?;
+        specs.push(interfaces::package("method-not-found", &version));
+    }
+
+    if !config.skip_tools_middleware {
+        let version = config.resolver.get_version("tools-middleware")?;
+        specs.push(interfaces::package("tools-middleware", &version));
+    }
+
+    if !config.skip_resources_middleware {
+        let version = config.resolver.get_version("resources-middleware")?;
+        specs.push(interfaces::package("resources-middleware", &version));
+    }
+
+    if !config.skip_prompts_middleware {
+        let version = config.resolver.get_version("prompts-middleware")?;
+        specs.push(interfaces::package("prompts-middleware", &version));
+    }
+
+    if specs.is_empty() {
+        return Ok(());
+    }
 
     pkg::download_packages(client, &specs, deps_dir).await
 }
@@ -49,15 +117,17 @@ pub async fn download_dependencies(
 /// Get the file path for a framework dependency
 ///
 /// Framework dependencies are always stored as `wasmcp_{name}@{version}.wasm`
-/// Special case: session-store-d2 uses the version from session-store entry
+/// Special cases: *-d2 variants use the version from the base component entry
 pub fn get_dependency_path(
     name: &str,
     resolver: &VersionResolver,
     deps_dir: &Path,
 ) -> Result<PathBuf> {
-    // session-store-d2 uses the same version as session-store
+    // *-d2 variants use the same version as their base component
     let version_key = if name == "session-store-d2" {
         "session-store"
+    } else if name == "kv-store-d2" {
+        "kv-store"
     } else {
         name
     };

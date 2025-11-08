@@ -49,6 +49,7 @@ pub struct ComposeOptionsBuilder {
     output: PathBuf,
     override_transport: Option<String>,
     override_server_io: Option<String>,
+    override_kv_store: Option<String>,
     override_session_store: Option<String>,
     override_method_not_found: Option<String>,
     override_tools_middleware: Option<String>,
@@ -91,6 +92,7 @@ impl ComposeOptionsBuilder {
             output: PathBuf::from("server.wasm"),
             override_transport: None,
             override_server_io: None,
+            override_kv_store: None,
             override_session_store: None,
             override_method_not_found: None,
             override_tools_middleware: None,
@@ -136,6 +138,15 @@ impl ComposeOptionsBuilder {
     /// This allows using a custom server-io implementation.
     pub fn override_server_io(mut self, spec: impl Into<String>) -> Self {
         self.override_server_io = Some(spec.into());
+        self
+    }
+
+    /// Override the kv-store component with a custom spec
+    ///
+    /// By default, the kv-store component is downloaded from the wasmcp registry.
+    /// This allows using a custom kv-store implementation.
+    pub fn override_kv_store(mut self, spec: impl Into<String>) -> Self {
+        self.override_kv_store = Some(spec.into());
         self
     }
 
@@ -234,6 +245,7 @@ impl ComposeOptionsBuilder {
             version_resolver,
             override_transport: self.override_transport,
             override_server_io: self.override_server_io,
+            override_kv_store: self.override_kv_store,
             override_session_store: self.override_session_store,
             override_method_not_found: self.override_method_not_found,
             override_tools_middleware: self.override_tools_middleware,

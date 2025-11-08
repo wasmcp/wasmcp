@@ -37,6 +37,7 @@ use crate::versioning::VersionResolver;
 pub async fn build_composition(
     transport_path: &Path,
     server_io_path: &Path,
+    kv_store_path: &Path,
     session_store_path: &Path,
     component_paths: &[PathBuf],
     method_not_found_path: &Path,
@@ -57,6 +58,11 @@ pub async fn build_composition(
     let server_io_interface = find_component_export(server_io_path, &server_io_prefix)
         .context("Failed to discover server-io interface from server-io component")?;
 
+    // Discover kv-store interface from kv-store component
+    let kv_store_prefix = "wasmcp:keyvalue/store";
+    let kv_store_interface = find_component_export(kv_store_path, kv_store_prefix)
+        .context("Failed to discover kv-store interface from kv-store component")?;
+
     let sessions_prefix = InterfaceType::Sessions.interface_prefix(DEFAULT_SPEC_VERSION);
     let sessions_interface = find_component_export(session_store_path, &sessions_prefix)
         .context("Failed to discover sessions interface from session-store component")?;
@@ -71,6 +77,7 @@ pub async fn build_composition(
         println!("   Discovered interfaces:");
         println!("     server-handler: {}", server_handler_interface);
         println!("     server-io: {}", server_io_interface);
+        println!("     kv-store: {}", kv_store_interface);
         println!("     sessions: {}", sessions_interface);
         println!("     session-manager: {}", session_manager_interface);
     }
@@ -82,6 +89,7 @@ pub async fn build_composition(
         println!("   Loading components...");
         println!("     transport: {}", transport_path.display());
         println!("     server-io: {}", server_io_path.display());
+        println!("     kv-store: {}", kv_store_path.display());
         println!("     session-store: {}", session_store_path.display());
         println!("     method-not-found: {}", method_not_found_path.display());
         for (i, path) in component_paths.iter().enumerate() {
@@ -92,6 +100,7 @@ pub async fn build_composition(
         &mut graph,
         transport_path,
         server_io_path,
+        kv_store_path,
         session_store_path,
         component_paths,
         method_not_found_path,
@@ -143,7 +152,24 @@ pub async fn build_composition(
     }
 
     let server_io_inst = graph.instantiate(packages.server_io_id);
+
+    // Instantiate kv-store first (needed by session-store)
+    let kv_store_inst = graph.instantiate(packages.kv_store_id);
+
+    // Get kv-store export to wire to session-store
+    let kv_store_export = graph
+        .alias_instance_export(kv_store_inst, &kv_store_interface)
+        .context("Failed to get kv-store export from kv-store component")?;
+
+    // Instantiate session-store and wire its kv-store import
     let session_store_inst = graph.instantiate(packages.session_store_id);
+    graph
+        .set_instantiation_argument(session_store_inst, &kv_store_interface, kv_store_export)
+        .context("Failed to wire session-store kv-store import to kv-store export")?;
+
+    if verbose {
+        eprintln!("   ✓ Wired kv-store to session-store");
+    }
 
     // Build the middleware chain
     if verbose {

@@ -3,6 +3,11 @@
 # Default target
 all: build
 
+work: setup wit build
+
+wit:
+	@wit-deps update
+
 # Install required tools
 setup:
 	@rustup target add wasm32-wasip2

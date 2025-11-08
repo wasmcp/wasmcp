@@ -50,28 +50,34 @@ fn encode_typed_value(value: &TypedValue) -> Result<Vec<u8>, Error> {
 
     match value {
         TypedValue::AsString(s) => {
+            eprintln!("[kv-store] Encoding string: {} bytes", s.len());
             bytes.push(TAG_STRING);
             bytes.extend_from_slice(s.as_bytes());
         }
         TypedValue::AsJson(json) => {
+            eprintln!("[kv-store] Encoding JSON: {} bytes", json.len());
             // Validate JSON syntax
             validate_json(json)?;
             bytes.push(TAG_JSON);
             bytes.extend_from_slice(json.as_bytes());
         }
         TypedValue::AsU64(n) => {
+            eprintln!("[kv-store] Encoding u64: {}", n);
             bytes.push(TAG_U64);
             bytes.extend_from_slice(&n.to_le_bytes());
         }
         TypedValue::AsS64(n) => {
+            eprintln!("[kv-store] Encoding s64: {}", n);
             bytes.push(TAG_S64);
             bytes.extend_from_slice(&n.to_le_bytes());
         }
         TypedValue::AsBool(b) => {
+            eprintln!("[kv-store] Encoding bool: {}", b);
             bytes.push(TAG_BOOL);
             bytes.push(if *b { 1 } else { 0 });
         }
         TypedValue::AsBytes(data) => {
+            eprintln!("[kv-store] Encoding bytes: {} bytes", data.len());
             bytes.push(TAG_BYTES);
             bytes.extend_from_slice(data);
         }
@@ -93,11 +99,13 @@ fn decode_typed_value(bytes: &[u8]) -> Result<TypedValue, Error> {
         TAG_STRING => {
             let s = std::str::from_utf8(payload)
                 .map_err(|e| Error::Other(format!("Invalid UTF-8 in string value: {}", e)))?;
+            eprintln!("[kv-store] Decoded string: {} bytes", s.len());
             Ok(TypedValue::AsString(s.to_string()))
         }
         TAG_JSON => {
             let s = std::str::from_utf8(payload)
                 .map_err(|e| Error::Other(format!("Invalid UTF-8 in JSON value: {}", e)))?;
+            eprintln!("[kv-store] Decoded JSON: {} bytes", s.len());
             Ok(TypedValue::AsJson(s.to_string()))
         }
         TAG_U64 => {
@@ -108,6 +116,7 @@ fn decode_typed_value(bytes: &[u8]) -> Result<TypedValue, Error> {
                 )));
             }
             let n = u64::from_le_bytes(payload.try_into().unwrap());
+            eprintln!("[kv-store] Decoded u64: {}", n);
             Ok(TypedValue::AsU64(n))
         }
         TAG_S64 => {
@@ -118,6 +127,7 @@ fn decode_typed_value(bytes: &[u8]) -> Result<TypedValue, Error> {
                 )));
             }
             let n = i64::from_le_bytes(payload.try_into().unwrap());
+            eprintln!("[kv-store] Decoded s64: {}", n);
             Ok(TypedValue::AsS64(n))
         }
         TAG_BOOL => {
@@ -127,9 +137,14 @@ fn decode_typed_value(bytes: &[u8]) -> Result<TypedValue, Error> {
                     payload.len()
                 )));
             }
-            Ok(TypedValue::AsBool(payload[0] != 0))
+            let b = payload[0] != 0;
+            eprintln!("[kv-store] Decoded bool: {}", b);
+            Ok(TypedValue::AsBool(b))
         }
-        TAG_BYTES => Ok(TypedValue::AsBytes(payload.to_vec())),
+        TAG_BYTES => {
+            eprintln!("[kv-store] Decoded bytes: {} bytes", payload.len());
+            Ok(TypedValue::AsBytes(payload.to_vec()))
+        }
         _ => Err(Error::Other(format!("Unknown type tag: 0x{:02x}", tag))),
     }
 }
@@ -187,6 +202,7 @@ impl Guest for Component {
     type Bucket = BucketImpl;
 
     fn open(identifier: String) -> Result<Bucket, Error> {
+        eprintln!("[kv-store] Opening bucket: {}", identifier);
         let bucket = wasi_kv::open(&identifier).map_err(convert_error)?;
 
         Ok(Bucket::new(BucketImpl { inner: bucket }))
@@ -202,13 +218,21 @@ impl GuestBucket for BucketImpl {
     // ========== Generic API ==========
 
     fn get(&self, key: String) -> Result<Option<TypedValue>, Error> {
+        eprintln!("[kv-store] get({})", key);
         match self.inner.get(&key).map_err(convert_error)? {
-            Some(bytes) => Ok(Some(decode_typed_value(&bytes)?)),
-            None => Ok(None),
+            Some(bytes) => {
+                let value = decode_typed_value(&bytes)?;
+                Ok(Some(value))
+            }
+            None => {
+                eprintln!("[kv-store] Key not found: {}", key);
+                Ok(None)
+            }
         }
     }
 
     fn set(&self, key: String, value: TypedValue) -> Result<(), Error> {
+        eprintln!("[kv-store] set({})", key);
         let bytes = encode_typed_value(&value)?;
         self.inner.set(&key, &bytes).map_err(convert_error)
     }
@@ -322,16 +346,36 @@ impl GuestBucket for BucketImpl {
     fn get_many(&self, keys: Vec<String>) -> Result<Vec<Option<(String, TypedValue)>>, Error> {
         let results = batch::get_many(&self.inner, &keys).map_err(convert_error)?;
 
-        results
-            .into_iter()
-            .map(|opt| match opt {
-                Some((key, bytes)) => {
-                    let typed_value = decode_typed_value(&bytes)?;
-                    Ok(Some((key, typed_value)))
-                }
-                None => Ok(None),
-            })
-            .collect()
+        #[cfg(feature = "draft2")]
+        {
+            // Spin's batch returns: list<tuple<string, option<list<u8>>>>
+            results
+                .into_iter()
+                .map(|(key, opt_bytes)| {
+                    if let Some(ref bytes) = opt_bytes {
+                        let typed_value = decode_typed_value(bytes)?;
+                        Ok(Some((key, typed_value)))
+                    } else {
+                        Ok(None)
+                    }
+                })
+                .collect()
+        }
+
+        #[cfg(not(feature = "draft2"))]
+        {
+            // Official draft returns: list<option<tuple<string, list<u8>>>>
+            results
+                .into_iter()
+                .map(|opt| match opt {
+                    Some((key, bytes)) => {
+                        let typed_value = decode_typed_value(&bytes)?;
+                        Ok(Some((key, typed_value)))
+                    }
+                    None => Ok(None),
+                })
+                .collect()
+        }
     }
 
     fn set_many(&self, pairs: Vec<(String, TypedValue)>) -> Result<(), Error> {
