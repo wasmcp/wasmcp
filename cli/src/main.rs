@@ -173,6 +173,10 @@ enum ComposeCommand {
         #[arg(long)]
         override_session_store: Option<String>,
 
+        /// Override oauth-auth component (path or package spec)
+        #[arg(long)]
+        override_oauth_auth: Option<String>,
+
         /// Override method-not-found component (path or package spec)
         #[arg(long)]
         override_method_not_found: Option<String>,
@@ -527,6 +531,7 @@ async fn main() -> Result<()> {
                 override_server_io,
                 override_kv_store,
                 override_session_store,
+                override_oauth_auth,
                 override_method_not_found,
                 override_tools_middleware,
                 override_resources_middleware,
@@ -571,6 +576,7 @@ async fn main() -> Result<()> {
                 let final_override_server_io = override_server_io;
                 let final_override_kv_store = override_kv_store;
                 let final_override_session_store = override_session_store;
+                let final_override_oauth_auth = override_oauth_auth;
                 let final_override_method_not_found = override_method_not_found;
                 let final_force = force;
 
@@ -599,6 +605,7 @@ async fn main() -> Result<()> {
                     override_server_io: final_override_server_io,
                     override_kv_store: final_override_kv_store,
                     override_session_store: final_override_session_store,
+                    override_oauth_auth: final_override_oauth_auth,
                     override_method_not_found: final_override_method_not_found,
                     override_tools_middleware,
                     override_resources_middleware,
@@ -648,6 +655,7 @@ async fn main() -> Result<()> {
                     override_server_io: None,
                     override_kv_store: None,
                     override_session_store: None,
+                    override_oauth_auth: None,
                     override_method_not_found: None,
                     override_tools_middleware: None,
                     override_resources_middleware: None,

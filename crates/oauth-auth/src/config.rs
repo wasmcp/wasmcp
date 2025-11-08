@@ -68,26 +68,16 @@ impl Config {
             ));
         }
 
-        // Load audience (required for security)
-        let audience_str = get_env("JWT_AUDIENCE").ok_or_else(|| {
-            AuthError::Configuration(
-                "JWT_AUDIENCE is required for JWT authentication (security best practice)"
-                    .to_string(),
-            )
-        })?;
-
-        // Parse audience - can be comma-separated for multiple audiences
-        let audience: Vec<String> = audience_str
-            .split(',')
-            .map(|aud| aud.trim().to_string())
-            .filter(|aud| !aud.is_empty())
-            .collect();
-
-        if audience.is_empty() {
-            return Err(AuthError::Configuration(
-                "JWT_AUDIENCE cannot be empty".to_string(),
-            ));
-        }
+        // Load audience (optional for dynamic registration scenarios)
+        let audience: Vec<String> = get_env("JWT_AUDIENCE")
+            .map(|audience_str| {
+                audience_str
+                    .split(',')
+                    .map(|aud| aud.trim().to_string())
+                    .filter(|aud| !aud.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default();
 
         // Load algorithm (optional, defaults to RS256)
         let algorithm = get_env("JWT_ALGORITHM").and_then(|alg| {

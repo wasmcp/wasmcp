@@ -51,7 +51,7 @@ use self::output::{
 };
 use self::resolution::{
     DownloadConfig, download_dependencies, resolve_kv_store_component,
-    resolve_method_not_found_component, resolve_server_io_component,
+    resolve_method_not_found_component, resolve_oauth_auth_component, resolve_server_io_component,
     resolve_session_store_component, resolve_transport_component,
 };
 
@@ -90,6 +90,9 @@ pub struct ComposeOptions {
 
     /// Override session-store component (path or package spec)
     pub override_session_store: Option<String>,
+
+    /// Override oauth-auth component (path or package spec)
+    pub override_oauth_auth: Option<String>,
 
     /// Override method-not-found component (path or package spec)
     pub override_method_not_found: Option<String>,
@@ -150,6 +153,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
         override_server_io,
         override_kv_store,
         override_session_store,
+        override_oauth_auth,
         override_method_not_found,
         override_tools_middleware,
         override_resources_middleware,
@@ -174,6 +178,7 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
                 override_server_io,
                 override_kv_store,
                 override_session_store,
+                override_oauth_auth,
                 override_method_not_found,
                 override_tools_middleware,
                 override_resources_middleware,
@@ -214,6 +219,7 @@ async fn compose_server(
     override_server_io: Option<String>,
     override_kv_store: Option<String>,
     override_session_store: Option<String>,
+    override_oauth_auth: Option<String>,
     override_method_not_found: Option<String>,
     override_tools_middleware: Option<String>,
     override_resources_middleware: Option<String>,
@@ -323,6 +329,16 @@ async fn compose_server(
     )
     .await?;
 
+    // Resolve oauth-auth component
+    let oauth_auth_path = resolve_oauth_auth_component(
+        override_oauth_auth.as_deref(),
+        &version_resolver,
+        &deps_dir,
+        &client,
+        verbose,
+    )
+    .await?;
+
     // Resolve method-not-found component
     let method_not_found_path = resolve_method_not_found_component(
         override_method_not_found.as_deref(),
@@ -358,6 +374,7 @@ async fn compose_server(
     let bytes = build_composition(
         &transport_path,
         &server_io_path,
+        &oauth_auth_path,
         &kv_store_path,
         &session_store_path,
         &wrapped_components,

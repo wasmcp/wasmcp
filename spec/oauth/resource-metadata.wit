@@ -24,7 +24,8 @@ interface resource-metadata {
         /// Identifies this protected resource uniquely
         ///
         /// Example: "https://api.example.com"
-        resource: string,
+        /// JSON field name: "resource"
+        %resource: string,
 
         /// OPTIONAL: List of authorization server issuers
         ///

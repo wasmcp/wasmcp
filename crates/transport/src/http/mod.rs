@@ -9,6 +9,7 @@
 //! Delegates I/O to http-server-io via server-io interface
 
 mod delete;
+pub mod discovery;
 mod get;
 pub mod post;
 pub(crate) mod response;

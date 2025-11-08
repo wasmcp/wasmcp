@@ -13,21 +13,74 @@ use crate::commands::compose::inspection::interfaces;
 use crate::commands::compose::inspection::{component_imports_interface, get_interface_details};
 use crate::versioning::VersionResolver;
 
+/// Automatically wire an interface to a component if it imports it
+///
+/// Checks if the component imports the specified interface, and if so,
+/// wires the provided export to satisfy that import.
+///
+/// Returns Ok(true) if wiring occurred, Ok(false) if not needed
+pub fn wire_if_imports(
+    graph: &mut CompositionGraph,
+    component_inst: NodeId,
+    component_path: &Path,
+    component_name: &str,
+    service_inst: NodeId,
+    interface: &str,
+    service_name: &str,
+    verbose: bool,
+) -> Result<bool> {
+    if component_imports_interface(component_path, interface)? {
+        if verbose {
+            eprintln!(
+                "   ✓ {} imports {}, wiring it",
+                component_name, service_name
+            );
+        }
+
+        let export = graph
+            .alias_instance_export(service_inst, interface)
+            .with_context(|| format!("Failed to get {} export from {}", interface, service_name))?;
+
+        graph
+            .set_instantiation_argument(component_inst, interface, export)
+            .with_context(|| format!("Failed to wire {} {} import", component_name, interface))?;
+
+        if verbose {
+            eprintln!(
+                "   ✓ Successfully wired {} to {}",
+                service_name, component_name
+            );
+        }
+
+        Ok(true)
+    } else {
+        if verbose {
+            eprintln!(
+                "   ✗ {} does NOT import {}, skipping",
+                component_name, service_name
+            );
+        }
+        Ok(false)
+    }
+}
+
 /// Build the middleware chain by connecting components
 ///
 /// Returns the final handler export that should be wired to transport
 ///
-/// TODO: Refactor to reduce argument count (10/7). Consider grouping into a
+/// TODO: Refactor to reduce argument count (12/7). Consider grouping into a
 /// MiddlewareChainConfig struct (instances, interfaces, paths, tracker).
 #[allow(clippy::too_many_arguments)]
 pub fn build_middleware_chain(
     graph: &mut CompositionGraph,
     packages: &CompositionPackages,
     server_io_inst: NodeId,
+    kv_store_inst: NodeId,
     session_store_inst: NodeId,
     component_paths: &[PathBuf],
     server_handler_interface: &str,
     server_io_interface: &str,
+    kv_store_interface: &str,
     sessions_interface: &str,
     _unsatisfied: &mut UnsatisfiedImports,
     verbose: bool,
@@ -50,72 +103,68 @@ pub fn build_middleware_chain(
             .set_instantiation_argument(inst, server_handler_interface, next_handler_export)
             .with_context(|| format!("Failed to wire component-{} server-handler import", i))?;
 
-        // Check if this component imports server-io and wire it if so
+        // Automatically wire server-io if component imports it
         if verbose {
             eprintln!(
                 "[MIDDLEWARE] Checking if component-{} imports server-io...",
                 i
             );
         }
-        if component_imports_interface(&component_paths[i], server_io_interface)? {
-            if verbose {
-                eprintln!(
-                    "[MIDDLEWARE]   ✓ component-{} DOES import server-io, wiring it",
-                    i
-                );
-            }
-            let server_io_export = graph
-                .alias_instance_export(server_io_inst, server_io_interface)
-                .context("Failed to get server-io export from server-io")?;
-
-            graph
-                .set_instantiation_argument(inst, server_io_interface, server_io_export)
-                .with_context(|| format!("Failed to wire component-{} server-io import", i))?;
-            if verbose {
-                eprintln!(
-                    "[MIDDLEWARE]   ✓ Successfully wired server-io to component-{}",
-                    i
-                );
-            }
-        } else if verbose {
-            eprintln!(
-                "[MIDDLEWARE]   ✗ component-{} does NOT import server-io, skipping",
-                i
-            );
+        let component_name = format!("component-{}", i);
+        wire_if_imports(
+            graph,
+            inst,
+            &component_paths[i],
+            &component_name,
+            server_io_inst,
+            server_io_interface,
+            "server-io",
+            false, // Don't double-log in verbose mode
+        )?;
+        if verbose {
+            eprintln!("[MIDDLEWARE]   (wiring complete for server-io)");
         }
 
-        // Check if this component imports sessions and wire it if so
+        // Automatically wire sessions if component imports it
         if verbose {
             eprintln!(
                 "[MIDDLEWARE] Checking if component-{} imports sessions...",
                 i
             );
         }
-        if component_imports_interface(&component_paths[i], sessions_interface)? {
-            if verbose {
-                eprintln!(
-                    "[MIDDLEWARE]   ✓ component-{} DOES import sessions, wiring it",
-                    i
-                );
-            }
-            let sessions_export = graph
-                .alias_instance_export(session_store_inst, sessions_interface)
-                .context("Failed to get sessions export from session-store")?;
+        wire_if_imports(
+            graph,
+            inst,
+            &component_paths[i],
+            &component_name,
+            session_store_inst,
+            sessions_interface,
+            "sessions",
+            false,
+        )?;
+        if verbose {
+            eprintln!("[MIDDLEWARE]   (wiring complete for sessions)");
+        }
 
-            graph
-                .set_instantiation_argument(inst, sessions_interface, sessions_export)
-                .with_context(|| format!("Failed to wire component-{} sessions import", i))?;
-            if verbose {
-                eprintln!(
-                    "[MIDDLEWARE]   ✓ Successfully wired sessions to component-{}",
-                    i
-                );
-            }
-        } else if verbose {
+        // Automatically wire kv-store if component imports it
+        if verbose {
             eprintln!(
-                "[MIDDLEWARE]   ✗ component-{} does NOT import sessions, skipping",
+                "[MIDDLEWARE] Checking if component-{} imports kv-store...",
                 i
             );
+        }
+        wire_if_imports(
+            graph,
+            inst,
+            &component_paths[i],
+            &component_name,
+            kv_store_inst,
+            kv_store_interface,
+            "kv-store",
+            false,
+        )?;
+        if verbose {
+            eprintln!("[MIDDLEWARE]   (wiring complete for kv-store)");
         }
 
         // This component's export becomes the next input
@@ -135,14 +184,17 @@ pub fn wire_transport(
     graph: &mut CompositionGraph,
     transport_id: PackageId,
     server_io_inst: NodeId,
+    oauth_auth_inst: NodeId,
     session_store_inst: NodeId,
     handler_export: NodeId,
     server_handler_interface: &str,
     server_io_interface: &str,
+    server_auth_interface: &str,
     sessions_interface: &str,
     session_manager_interface: &str,
     transport_path: &Path,
     server_io_path: &Path,
+    _oauth_auth_path: &Path,
     _session_store_path: &Path,
     resolver: &VersionResolver,
     verbose: bool,
@@ -288,6 +340,32 @@ pub fn wire_transport(
                 eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
             }
             return Err(e).context("Failed to wire transport session-manager import");
+        }
+    }
+
+    // Wire transport's server-auth import to the oauth-auth service
+    if verbose {
+        eprintln!("\n[WIRE] 5. Wiring server-auth (JWT validation)...");
+        eprintln!("[WIRE]    Interface: {}", server_auth_interface);
+    }
+    let server_auth_export = graph
+        .alias_instance_export(oauth_auth_inst, server_auth_interface)
+        .context("Failed to get server-auth export from oauth-auth")?;
+    match graph.set_instantiation_argument(
+        transport_inst,
+        server_auth_interface,
+        server_auth_export,
+    ) {
+        Ok(_) => {
+            if verbose {
+                eprintln!("[WIRE]    ✓ Success");
+            }
+        }
+        Err(e) => {
+            if verbose {
+                eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
+            }
+            return Err(e).context("Failed to wire transport server-auth import");
         }
     }
 

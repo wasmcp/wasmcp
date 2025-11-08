@@ -48,6 +48,11 @@ pub enum FrameworkComponent {
     /// Provides universal I/O operations (parse_message, send_message, set_frame).
     ServerIO,
 
+    /// OAuth authentication component
+    ///
+    /// Provides JWT validation and OAuth 2.1 authentication.
+    OAuthAuth,
+
     /// Session store component
     ///
     /// Provides session management for stateful MCP servers.
@@ -79,6 +84,7 @@ impl FrameworkComponent {
         match self {
             Self::Transport => "transport".to_string(),
             Self::ServerIO => "server-io".to_string(),
+            Self::OAuthAuth => "oauth-auth".to_string(),
             Self::SessionStore => "session-store".to_string(),
             Self::MethodNotFound => "method-not-found".to_string(),
         }
@@ -102,6 +108,7 @@ impl FrameworkComponent {
         match self {
             Self::Transport => "transport",
             Self::ServerIO => "server-io",
+            Self::OAuthAuth => "oauth-auth",
             Self::SessionStore => "session-store",
             Self::MethodNotFound => "method-not-found",
         }
@@ -232,6 +239,27 @@ pub async fn resolve_session_store_component(
 ) -> Result<PathBuf> {
     resolve_framework_component(
         FrameworkComponent::SessionStore,
+        override_spec,
+        resolver,
+        deps_dir,
+        client,
+        verbose,
+    )
+    .await
+}
+
+/// Resolve oauth-auth component (override or default)
+///
+/// Convenience wrapper for resolving the OAuth authentication component.
+pub async fn resolve_oauth_auth_component(
+    override_spec: Option<&str>,
+    resolver: &VersionResolver,
+    deps_dir: &Path,
+    client: &PackageClient,
+    verbose: bool,
+) -> Result<PathBuf> {
+    resolve_framework_component(
+        FrameworkComponent::OAuthAuth,
         override_spec,
         resolver,
         deps_dir,

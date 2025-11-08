@@ -50,6 +50,8 @@ pub enum InterfaceType {
     Prompts,
     /// server-io interface
     ServerIo,
+    /// server-auth interface (JWT validation)
+    ServerAuth,
     /// sessions interface
     Sessions,
     /// session-manager interface
@@ -65,6 +67,7 @@ impl InterfaceType {
             Self::Resources => "resources",
             Self::Prompts => "prompts",
             Self::ServerIo => "server-io",
+            Self::ServerAuth => "server-auth",
             Self::Sessions => "sessions",
             Self::SessionManager => "session-manager",
         }

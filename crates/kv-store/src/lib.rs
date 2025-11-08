@@ -202,8 +202,21 @@ impl Guest for Component {
     type Bucket = BucketImpl;
 
     fn open(identifier: String) -> Result<Bucket, Error> {
-        eprintln!("[kv-store] Opening bucket: {}", identifier);
-        let bucket = wasi_kv::open(&identifier).map_err(convert_error)?;
+        // Use MCP_SESSION_BUCKET if identifier is empty
+        let bucket_name = if identifier.is_empty() {
+            use bindings::wasi::cli::environment::get_environment;
+            let env_vars = get_environment();
+            env_vars
+                .iter()
+                .find(|(k, _)| k == "MCP_SESSION_BUCKET")
+                .map(|(_, v)| v.clone())
+                .unwrap_or_else(|| "default".to_string())
+        } else {
+            identifier
+        };
+
+        eprintln!("[kv-store] Opening bucket: {}", bucket_name);
+        let bucket = wasi_kv::open(&bucket_name).map_err(convert_error)?;
 
         Ok(Bucket::new(BucketImpl { inner: bucket }))
     }

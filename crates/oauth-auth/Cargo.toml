@@ -1,5 +1,5 @@
 [package]
-name = "jwt-auth"
+name = "oauth-auth"
 version = "0.1.0"
 edition = "2024"
 

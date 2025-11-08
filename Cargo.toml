@@ -3,7 +3,7 @@
 
 [workspace]
 members = [
-    "crates/*",
+    "crates/*", "dev-tools",
 ]
 exclude = [
     "cli",
@@ -11,10 +11,6 @@ exclude = [
     "examples/*",
     "tmp/*",
     "crates/wit",
-    # Outdated crates pending removal
-    "crates/http-server-io",
-    "crates/http-transport",
-    "crates/stdio-transport",
 ]
 resolver = "2"
 
@@ -23,3 +19,11 @@ resolver = "2"
 wit-bindgen-rt = { version = "0.44.0", features = ["bitflags"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+# Workspace-wide profile settings for all WebAssembly components
+# panic = "abort" eliminates wasi:cli dependencies for panic infrastructure
+[profile.release]
+panic = "abort"
+strip = true
+lto = true
+opt-level = "z"
