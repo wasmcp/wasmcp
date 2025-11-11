@@ -22,6 +22,7 @@ mod bindings {
     });
 }
 
+mod oauth_helpers;
 mod session;
 
 use bindings::exports::wasmcp::mcp_v20250618::session_manager::Guest as SessionManagerGuest;
@@ -33,6 +34,67 @@ struct Component;
 impl SessionsGuest for Component {
     type Session = session::SessionImpl;
     type FutureElicitResult = session::FutureElicitResultImpl;
+
+    // OAuth claim helpers (NO parse_claims - claims arrive structured!)
+    fn flatten_claims(claims: bindings::wasmcp::oauth::types::JwtClaims) -> Vec<(String, String)> {
+        oauth_helpers::flatten_claims(&claims)
+    }
+
+    fn has_scope(claims: bindings::wasmcp::oauth::types::JwtClaims, scope: String) -> bool {
+        oauth_helpers::has_scope(&claims, &scope)
+    }
+
+    fn has_any_scope(
+        claims: bindings::wasmcp::oauth::types::JwtClaims,
+        scopes: Vec<String>,
+    ) -> bool {
+        oauth_helpers::has_any_scope(&claims, &scopes)
+    }
+
+    fn has_all_scopes(
+        claims: bindings::wasmcp::oauth::types::JwtClaims,
+        scopes: Vec<String>,
+    ) -> bool {
+        oauth_helpers::has_all_scopes(&claims, &scopes)
+    }
+
+    fn get_claim(claims: bindings::wasmcp::oauth::types::JwtClaims, key: String) -> Option<String> {
+        oauth_helpers::get_claim(&claims, &key)
+    }
+
+    fn has_audience(claims: bindings::wasmcp::oauth::types::JwtClaims, audience: String) -> bool {
+        oauth_helpers::has_audience(&claims, &audience)
+    }
+
+    fn is_expired(
+        claims: bindings::wasmcp::oauth::types::JwtClaims,
+        clock_skew_seconds: Option<u64>,
+    ) -> bool {
+        oauth_helpers::is_expired(&claims, clock_skew_seconds)
+    }
+
+    fn is_valid_time(
+        claims: bindings::wasmcp::oauth::types::JwtClaims,
+        clock_skew_seconds: Option<u64>,
+    ) -> bool {
+        oauth_helpers::is_valid_time(&claims, clock_skew_seconds)
+    }
+
+    fn get_subject(claims: bindings::wasmcp::oauth::types::JwtClaims) -> String {
+        oauth_helpers::get_subject(&claims)
+    }
+
+    fn get_issuer(claims: bindings::wasmcp::oauth::types::JwtClaims) -> Option<String> {
+        oauth_helpers::get_issuer(&claims)
+    }
+
+    fn get_scopes(claims: bindings::wasmcp::oauth::types::JwtClaims) -> Vec<String> {
+        oauth_helpers::get_scopes(&claims)
+    }
+
+    fn get_audiences(claims: bindings::wasmcp::oauth::types::JwtClaims) -> Vec<String> {
+        oauth_helpers::get_audiences(&claims)
+    }
 }
 
 // Export transport-facing session-manager interface
@@ -64,6 +126,14 @@ impl SessionManagerGuest for Component {
         store_id: String,
     ) -> Result<(), bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError> {
         session::SessionManager::delete_session(session_id, store_id)
+    }
+
+    fn set_expiration(
+        session_id: String,
+        store_id: String,
+        expires_at: u64,
+    ) -> Result<(), bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError> {
+        session::SessionManager::set_expiration(session_id, store_id, expires_at)
     }
 }
 

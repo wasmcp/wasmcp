@@ -61,6 +61,7 @@ pub fn create_message_context<'a>(
     identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
     bucket_name: &str,
     frame: &MessageFrame,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
 ) -> MessageContext<'a> {
     MessageContext {
         client_stream,
@@ -68,5 +69,6 @@ pub fn create_message_context<'a>(
         session: create_session(session_id, bucket_name),
         identity: identity.cloned(),
         frame: frame.clone(),
+        http_context,
     }
 }

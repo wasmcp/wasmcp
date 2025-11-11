@@ -98,6 +98,7 @@ impl Guest for StdioTransportGuest {
                         String::new(), // No session bucket in stdio
                         &stdout,
                         &common::stdio_frame(),
+                        None, // No HTTP context in stdio mode
                     ) {
                         Ok(result) => {
                             if let Err(e) = common::write_mcp_result(
@@ -122,6 +123,7 @@ impl Guest for StdioTransportGuest {
                         Some("0"),     // Session ID "0" indicates stdio mode
                         String::new(), // No session bucket in stdio
                         &common::stdio_frame(),
+                        None, // No HTTP context in stdio mode
                     ) {
                         eprintln!("[ERROR] Notification handling failed: {:?}", e);
                     }
@@ -139,6 +141,7 @@ impl Guest for StdioTransportGuest {
                         None,
                         "",
                         &common::stdio_frame(),
+                        None, // No HTTP context in stdio mode
                     );
 
                     let message = ClientMessage::Result((result_id, client_result));
@@ -157,6 +160,7 @@ impl Guest for StdioTransportGuest {
                         None,
                         "",
                         &common::stdio_frame(),
+                        None, // No HTTP context in stdio mode
                     );
 
                     let message = ClientMessage::Error((error_id, error_code));

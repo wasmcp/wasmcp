@@ -30,10 +30,19 @@ pub fn handle_get(
 
     eprintln!("[transport:get] Request path: {}", path);
 
-    // Strip /mcp suffix if present (some clients append this)
+    // MCP Spec: Support both /.well-known/oauth-protected-resource and
+    // /.well-known/oauth-protected-resource/mcp (same for all discovery endpoints)
+    // Normalize by stripping /mcp suffix if present
     let normalized_path = path.strip_suffix("/mcp").unwrap_or(&path);
 
-    // Route discovery endpoints
+    if path != normalized_path {
+        eprintln!(
+            "[transport:get] Normalized path: {} -> {}",
+            path, normalized_path
+        );
+    }
+
+    // Route discovery endpoints (both with and without /mcp suffix)
     match normalized_path {
         "/.well-known/oauth-protected-resource" => {
             discovery::handle_protected_resource_metadata(&request, response_out);

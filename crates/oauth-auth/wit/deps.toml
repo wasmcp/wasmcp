@@ -1,5 +1,5 @@
-mcp-v2025-06-18 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.6/wasmcp-mcp-v2025-06-18-0.1.6-source.tar.gz"
+mcp-v20250618 = { path = "../../../spec/2025-06-18/wit" }
 cli = "https://github.com/WebAssembly/wasi-cli/archive/v0.2.8.tar.gz"
 http = "https://github.com/WebAssembly/wasi-http/archive/v0.2.8.tar.gz"
 storage = { path = "../../kv-store/wit" }
-oauth = { path = "../../../spec/oauth" }
+oauth = { path = "../../../spec/oauth/wit" }

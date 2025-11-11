@@ -34,7 +34,7 @@ fn discover_capabilities(
     let mut has_completions = false;
 
     // Probe for tools support
-    let tools_ctx = create_message_context(None, protocol_version, None, None, "", frame);
+    let tools_ctx = create_message_context(None, protocol_version, None, None, "", frame, None);
     let tools_request = ClientRequest::ToolsList(ListToolsRequest { cursor: None });
     let tools_message = ClientMessage::Request((
         RequestId::Number(CAPABILITY_PROBE_REQUEST_ID),
@@ -45,7 +45,7 @@ fn discover_capabilities(
     }
 
     // Probe for resources support
-    let resources_ctx = create_message_context(None, protocol_version, None, None, "", frame);
+    let resources_ctx = create_message_context(None, protocol_version, None, None, "", frame, None);
     let resources_request = ClientRequest::ResourcesList(ListResourcesRequest { cursor: None });
     let resources_message = ClientMessage::Request((
         RequestId::Number(CAPABILITY_PROBE_REQUEST_ID),
@@ -56,7 +56,7 @@ fn discover_capabilities(
     }
 
     // Probe for prompts support and use result to test completions
-    let prompts_ctx = create_message_context(None, protocol_version, None, None, "", frame);
+    let prompts_ctx = create_message_context(None, protocol_version, None, None, "", frame, None);
     let prompts_request = ClientRequest::PromptsList(ListPromptsRequest { cursor: None });
     let prompts_message = ClientMessage::Request((
         RequestId::Number(CAPABILITY_PROBE_REQUEST_ID),
@@ -91,7 +91,7 @@ fn discover_capabilities(
 
                 // Test if completions are supported
                 let completion_ctx =
-                    create_message_context(None, protocol_version, None, None, "", frame);
+                    create_message_context(None, protocol_version, None, None, "", frame, None);
                 let req = ClientRequest::CompletionComplete(completion_request);
                 let completion_message =
                     ClientMessage::Request((RequestId::Number(CAPABILITY_PROBE_REQUEST_ID), req));

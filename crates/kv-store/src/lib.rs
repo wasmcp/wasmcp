@@ -99,13 +99,11 @@ fn decode_typed_value(bytes: &[u8]) -> Result<TypedValue, Error> {
         TAG_STRING => {
             let s = std::str::from_utf8(payload)
                 .map_err(|e| Error::Other(format!("Invalid UTF-8 in string value: {}", e)))?;
-            eprintln!("[kv-store] Decoded string: {} bytes", s.len());
             Ok(TypedValue::AsString(s.to_string()))
         }
         TAG_JSON => {
             let s = std::str::from_utf8(payload)
                 .map_err(|e| Error::Other(format!("Invalid UTF-8 in JSON value: {}", e)))?;
-            eprintln!("[kv-store] Decoded JSON: {} bytes", s.len());
             Ok(TypedValue::AsJson(s.to_string()))
         }
         TAG_U64 => {
@@ -116,7 +114,6 @@ fn decode_typed_value(bytes: &[u8]) -> Result<TypedValue, Error> {
                 )));
             }
             let n = u64::from_le_bytes(payload.try_into().unwrap());
-            eprintln!("[kv-store] Decoded u64: {}", n);
             Ok(TypedValue::AsU64(n))
         }
         TAG_S64 => {
@@ -127,7 +124,6 @@ fn decode_typed_value(bytes: &[u8]) -> Result<TypedValue, Error> {
                 )));
             }
             let n = i64::from_le_bytes(payload.try_into().unwrap());
-            eprintln!("[kv-store] Decoded s64: {}", n);
             Ok(TypedValue::AsS64(n))
         }
         TAG_BOOL => {
@@ -138,13 +134,9 @@ fn decode_typed_value(bytes: &[u8]) -> Result<TypedValue, Error> {
                 )));
             }
             let b = payload[0] != 0;
-            eprintln!("[kv-store] Decoded bool: {}", b);
             Ok(TypedValue::AsBool(b))
         }
-        TAG_BYTES => {
-            eprintln!("[kv-store] Decoded bytes: {} bytes", payload.len());
-            Ok(TypedValue::AsBytes(payload.to_vec()))
-        }
+        TAG_BYTES => Ok(TypedValue::AsBytes(payload.to_vec())),
         _ => Err(Error::Other(format!("Unknown type tag: 0x{:02x}", tag))),
     }
 }
@@ -215,7 +207,6 @@ impl Guest for Component {
             identifier
         };
 
-        eprintln!("[kv-store] Opening bucket: {}", bucket_name);
         let bucket = wasi_kv::open(&bucket_name).map_err(convert_error)?;
 
         Ok(Bucket::new(BucketImpl { inner: bucket }))

@@ -89,3 +89,93 @@ pub fn delete_session_by_id(
         Err(_) => Err(TransportError::session("Failed to delete session")),
     }
 }
+
+/// Bind JWT identity to session during initialization
+///
+/// Stores JWT claims in session storage for:
+/// - Identity persistence across requests
+/// - Session TTL matching JWT expiration
+/// - Authorization without re-validating JWT
+pub fn bind_identity_to_session(
+    session_id: &str,
+    identity: &crate::bindings::wasmcp::mcp_v20250618::mcp::Identity,
+    session_config: &SessionConfig,
+) {
+    use crate::bindings::wasmcp::mcp_v20250618::sessions::{self, Session};
+
+    let bucket = session_config.get_bucket();
+
+    // Open session resource
+    let session = match Session::open(session_id, bucket) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!(
+                "[transport:session] Failed to open session for identity binding: {:?}",
+                e
+            );
+            return;
+        }
+    };
+
+    // Store subject (user ID) from JWT claims
+    let subject = sessions::get_subject(&identity.claims);
+    if let Err(e) = session.set("jwt:sub", subject.as_bytes()) {
+        eprintln!("[transport:session] Failed to store JWT subject: {:?}", e);
+    }
+
+    // Store issuer
+    if let Some(issuer) = sessions::get_issuer(&identity.claims)
+        && let Err(e) = session.set("jwt:iss", issuer.as_bytes())
+    {
+        eprintln!("[transport:session] Failed to store JWT issuer: {:?}", e);
+    }
+
+    // Store scopes as comma-separated list
+    let scopes = sessions::get_scopes(&identity.claims);
+    let scopes_str = scopes.join(",");
+    if let Err(e) = session.set("jwt:scopes", scopes_str.as_bytes()) {
+        eprintln!("[transport:session] Failed to store JWT scopes: {:?}", e);
+    }
+
+    // Store audiences as comma-separated list
+    let audiences = sessions::get_audiences(&identity.claims);
+    let audiences_str = audiences.join(",");
+    if let Err(e) = session.set("jwt:audiences", audiences_str.as_bytes()) {
+        eprintln!("[transport:session] Failed to store JWT audiences: {:?}", e);
+    }
+
+    // Store expiration timestamp if available and set session TTL
+    if let Some(exp) = identity.claims.expiration {
+        let exp_str = exp.to_string();
+        if let Err(e) = session.set("jwt:exp", exp_str.as_bytes()) {
+            eprintln!(
+                "[transport:session] Failed to store JWT expiration: {:?}",
+                e
+            );
+        }
+
+        // Set session expiration to match JWT expiration
+        use crate::bindings::wasmcp::mcp_v20250618::session_manager;
+        if let Err(e) = session_manager::set_expiration(session_id, bucket, exp) {
+            eprintln!(
+                "[transport:session] Failed to set session expiration: {:?}",
+                e
+            );
+        } else {
+            eprintln!("[transport:session] Session will expire at {}", exp);
+        }
+    }
+
+    // Store issued-at timestamp if available
+    if let Some(iat) = identity.claims.issued_at {
+        let iat_str = iat.to_string();
+        if let Err(e) = session.set("jwt:iat", iat_str.as_bytes()) {
+            eprintln!("[transport:session] Failed to store JWT issued-at: {:?}", e);
+        }
+    }
+
+    eprintln!(
+        "[transport:session] Bound identity to session: sub={}, scopes={}",
+        subject, scopes_str
+    );
+}

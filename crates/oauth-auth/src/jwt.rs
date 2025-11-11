@@ -1,26 +1,10 @@
 //! JWT token verification
 
+use crate::bindings::wasmcp::oauth::types::JwtClaims;
 use crate::config::JwtProvider;
 use crate::error::{AuthError, Result};
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
-/// Token information extracted from a verified JWT
-#[derive(Debug, Clone)]
-pub struct TokenInfo {
-    /// Subject (user ID)
-    pub sub: String,
-
-    /// Issuer
-    pub iss: String,
-
-    /// Scopes
-    pub scopes: Vec<String>,
-
-    /// All claims from the token (for authorization and forwarding)
-    pub claims: HashMap<String, serde_json::Value>,
-}
 
 /// JWT Claims structure
 #[derive(Debug, Serialize, Deserialize)]
@@ -75,39 +59,25 @@ enum ScopeValue {
 }
 
 /// Verify a JWT token using the provided configuration
-pub fn verify(token: &str, provider: &JwtProvider) -> Result<TokenInfo> {
-    eprintln!("[oauth-auth:jwt] Starting JWT verification");
-    eprintln!("[oauth-auth:jwt] Token length: {}", token.len());
-
+/// Returns structured JwtClaims directly (WIT type)
+pub fn verify(token: &str, provider: &JwtProvider) -> Result<JwtClaims> {
     // Decode header to get algorithm and key ID
     let header = decode_header(token).map_err(|e| {
-        eprintln!("[oauth-auth:jwt] ✗ Failed to decode JWT header: {:?}", e);
+        eprintln!("[oauth-auth:jwt] Failed to decode JWT header: {:?}", e);
         e
     })?;
 
-    eprintln!(
-        "[oauth-auth:jwt] ✓ Decoded JWT header - algorithm: {:?}, kid: {:?}",
-        header.alg, header.kid
-    );
-
     // Get decoding key - JWKS takes precedence over static key
     let decoding_key = if let Some(ref jwks_uri) = provider.jwks_uri {
-        eprintln!("[oauth-auth:jwt] Using JWKS URI: {}", jwks_uri);
-
         // Dynamic key fetching via JWKS
         let jwks = crate::jwks::fetch_jwks(jwks_uri).map_err(|e| {
-            eprintln!("[oauth-auth:jwt] ✗ Failed to fetch JWKS: {:?}", e);
+            eprintln!("[oauth-auth:jwt] Failed to fetch JWKS: {:?}", e);
             e
         })?;
 
-        eprintln!(
-            "[oauth-auth:jwt] ✓ Fetched JWKS with {} keys",
-            jwks.keys.len()
-        );
-
         // Find key matching the KID from token header
         crate::jwks::find_key(&jwks, header.kid.as_deref()).map_err(|e| {
-            eprintln!("[oauth-auth:jwt] ✗ Failed to find key in JWKS: {:?}", e);
+            eprintln!("[oauth-auth:jwt] Failed to find key in JWKS: {:?}", e);
             e
         })?
     } else if let Some(ref public_key) = provider.public_key {
@@ -141,26 +111,15 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<TokenInfo> {
     };
     let mut validation = Validation::new(algorithm);
 
-    eprintln!("[oauth-auth:jwt] Validation config:");
-    eprintln!("[oauth-auth:jwt]   Algorithm: {:?}", algorithm);
-
     // Set issuer validation (only if configured)
     if !provider.issuer.is_empty() {
-        eprintln!("[oauth-auth:jwt]   Expected issuer: {}", provider.issuer);
         validation.set_issuer(&[&provider.issuer]);
-    } else {
-        eprintln!("[oauth-auth:jwt]   Issuer validation: disabled");
     }
 
     // Set audience validation (only if configured)
     if !provider.audience.is_empty() {
-        eprintln!(
-            "[oauth-auth:jwt]   Expected audience(s): {:?}",
-            provider.audience
-        );
         validation.set_audience(&provider.audience);
     } else {
-        eprintln!("[oauth-auth:jwt]   Audience validation: disabled (for dynamic registration)");
         validation.validate_aud = false;
     }
 
@@ -173,24 +132,9 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<TokenInfo> {
     // Set required claims
     validation.set_required_spec_claims(&["exp", "sub", "iss"]);
 
-    eprintln!("[oauth-auth:jwt] Decoding and validating token...");
-
-    // First decode WITHOUT validation to see the actual claims
-    let mut temp_validation = Validation::new(algorithm);
-    temp_validation.insecure_disable_signature_validation();
-    temp_validation.validate_aud = false;
-    temp_validation.validate_exp = false;
-    temp_validation.required_spec_claims.clear();
-
-    if let Ok(unvalidated) = decode::<Claims>(token, &DecodingKey::from_secret(&[]), &temp_validation) {
-        eprintln!("[oauth-auth:jwt] Token claims (unvalidated):");
-        eprintln!("[oauth-auth:jwt]   Actual audience in token: {:?}", unvalidated.claims.aud);
-        eprintln!("[oauth-auth:jwt]   Actual issuer in token: {}", unvalidated.claims.iss);
-    }
-
-    // Now decode and validate token properly
+    // Decode and validate token
     let token_data = decode::<Claims>(token, &decoding_key, &validation).map_err(|e| {
-        eprintln!("[oauth-auth:jwt] ✗ Token validation failed: {:?}", e);
+        eprintln!("[oauth-auth:jwt] Token validation failed: {:?}", e);
         match e.kind() {
             jsonwebtoken::errors::ErrorKind::InvalidToken => {
                 AuthError::InvalidToken(format!("Invalid token: {}", e))
@@ -227,24 +171,11 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<TokenInfo> {
     })?;
     let claims = token_data.claims;
 
-    eprintln!("[oauth-auth:jwt] ✓ Token successfully decoded and validated");
-    eprintln!("[oauth-auth:jwt] Token claims:");
-    eprintln!("[oauth-auth:jwt]   sub: {}", claims.sub);
-    eprintln!("[oauth-auth:jwt]   iss: {}", claims.iss);
-    eprintln!("[oauth-auth:jwt]   aud: {:?}", claims.aud);
-    eprintln!("[oauth-auth:jwt]   exp: {}", claims.exp);
-    eprintln!("[oauth-auth:jwt]   iat: {}", claims.iat);
-
     // Extract scopes
     let scopes = extract_scopes(&claims);
-    eprintln!("[oauth-auth:jwt]   scopes: {:?}", scopes);
 
     // Check required scopes
     if let Some(required_scopes) = &provider.required_scopes {
-        eprintln!(
-            "[oauth-auth:jwt] Checking required scopes: {:?}",
-            required_scopes
-        );
         use std::collections::HashSet;
 
         let token_scopes: HashSet<String> = scopes.iter().cloned().collect();
@@ -253,68 +184,62 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<TokenInfo> {
         if !required_set.is_subset(&token_scopes) {
             let missing_scopes: Vec<String> =
                 required_set.difference(&token_scopes).cloned().collect();
-            eprintln!(
-                "[oauth-auth:jwt] ✗ Missing required scopes: {:?}",
-                missing_scopes
-            );
             return Err(AuthError::Unauthorized(format!(
                 "Token missing required scopes: {missing_scopes:?}"
             )));
         }
-        eprintln!("[oauth-auth:jwt] ✓ All required scopes present");
     }
 
-    // Build complete claims map
-    let mut all_claims = HashMap::new();
-    all_claims.insert(
-        "sub".to_string(),
-        serde_json::Value::String(claims.sub.clone()),
-    );
-    all_claims.insert(
-        "iss".to_string(),
-        serde_json::Value::String(claims.iss.clone()),
-    );
-    if let Some(aud) = claims.aud {
-        all_claims.insert(
-            "aud".to_string(),
-            match aud {
-                AudienceValue::Single(s) => serde_json::Value::String(s),
-                AudienceValue::Multiple(v) => serde_json::json!(v),
-            },
-        );
-    }
-    all_claims.insert("exp".to_string(), serde_json::json!(claims.exp));
-    all_claims.insert("iat".to_string(), serde_json::json!(claims.iat));
-    if let Some(nbf) = claims.nbf {
-        all_claims.insert("nbf".to_string(), serde_json::json!(nbf));
-    }
-    if let Some(scope) = claims.scope {
-        all_claims.insert("scope".to_string(), serde_json::Value::String(scope));
-    }
-    if let Some(scp) = claims.scp {
-        all_claims.insert(
-            "scp".to_string(),
-            match scp {
-                ScopeValue::String(s) => serde_json::Value::String(s),
-                ScopeValue::List(v) => serde_json::json!(v),
-            },
-        );
-    }
-    // Add all additional claims
-    for (key, value) in claims.additional {
-        all_claims.insert(key, value);
-    }
+    // Extract audience
+    let audience = match claims.aud {
+        Some(AudienceValue::Single(s)) => vec![s],
+        Some(AudienceValue::Multiple(v)) => v,
+        None => Vec::new(),
+    };
 
-    eprintln!(
-        "[oauth-auth:jwt] ✓ JWT verification complete - user: {}",
-        claims.sub
-    );
+    // Extract timestamps (convert i64 to u64)
+    let expiration = Some(claims.exp as u64);
+    let issued_at = Some(claims.iat as u64);
+    let not_before = claims.nbf.map(|nbf| nbf as u64);
 
-    Ok(TokenInfo {
-        sub: claims.sub,
-        iss: claims.iss,
+    // Extract JWT ID if present
+    let jwt_id = claims
+        .additional
+        .get("jti")
+        .and_then(|v| v.as_str().map(String::from));
+
+    // Build custom claims (exclude standard fields)
+    let standard_fields = [
+        "sub", "iss", "aud", "exp", "iat", "nbf", "jti", "scope", "scp", "cnf",
+    ];
+    let custom_claims: Vec<(String, String)> = claims
+        .additional
+        .into_iter()
+        .filter(|(k, _)| !standard_fields.contains(&k.as_str()))
+        .map(|(k, v)| {
+            let value_str = match v {
+                serde_json::Value::String(s) => s,
+                serde_json::Value::Number(n) => n.to_string(),
+                serde_json::Value::Bool(b) => b.to_string(),
+                serde_json::Value::Null => "null".to_string(),
+                _ => serde_json::to_string(&v).unwrap_or_else(|_| "{}".to_string()),
+            };
+            (k, value_str)
+        })
+        .collect();
+
+    // Build JwtClaims directly - NO intermediate type!
+    Ok(JwtClaims {
+        subject: claims.sub,
+        issuer: Some(claims.iss),
+        audience,
+        expiration,
+        issued_at,
+        not_before,
+        jwt_id,
         scopes,
-        claims: all_claims,
+        confirmation: None, // TODO: Extract cnf claim if present
+        custom_claims,
     })
 }
 

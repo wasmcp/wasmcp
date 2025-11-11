@@ -4,7 +4,6 @@
 //! Implements both user-facing data access (sessions interface) and
 //! transport-layer lifecycle management (session-manager interface).
 
-use crate::bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError as ManagerError;
 use crate::bindings::exports::wasmcp::mcp_v20250618::sessions::{
     ElicitRequest, ElicitResult, GuestFutureElicitResult, GuestSession, Session, SessionError,
 };
@@ -12,15 +11,6 @@ use crate::bindings::wasi::io::poll::Pollable;
 use crate::bindings::wasi::io::streams::OutputStream;
 use crate::bindings::wasmcp::keyvalue::store::{self as kv_store, Bucket, Error as KvError};
 use serde::{Deserialize, Serialize};
-
-/// Convert KV store error to ManagerError
-fn kv_to_manager_error(e: KvError) -> ManagerError {
-    match e {
-        KvError::NoSuchStore => ManagerError::Store("Store does not exist".to_string()),
-        KvError::AccessDenied => ManagerError::Store("Access denied to store".to_string()),
-        KvError::Other(msg) => ManagerError::Store(msg),
-    }
-}
 
 /// Convert KV store error to SessionError
 fn kv_to_session_error(e: KvError) -> SessionError {
@@ -47,6 +37,11 @@ struct SessionMetadata {
     /// Unix timestamp in milliseconds when session was created
     created_at: u64,
 
+    /// Unix timestamp in seconds when session expires (from JWT exp claim)
+    /// If None, session has no expiration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expires_at: Option<u64>,
+
     /// Optional reason for termination (if terminated)
     #[serde(skip_serializing_if = "Option::is_none")]
     reason: Option<String>,
@@ -57,6 +52,7 @@ impl Default for SessionMetadata {
         Self {
             terminated: false,
             created_at: current_timestamp_ms(),
+            expires_at: None,
             reason: None,
         }
     }
@@ -105,24 +101,24 @@ impl SessionManager {
     ///
     /// Creates a new session with generated UUID, stores initial metadata,
     /// and returns the session ID for inclusion in response headers.
-    pub fn initialize(store_id: String) -> Result<String, ManagerError> {
+    pub fn initialize(store_id: String) -> Result<String, SessionError> {
         // Generate new session ID
         let session_id = generate_uuid_v4();
 
         eprintln!("[SessionManager] Initializing new session: {}", session_id);
 
         // Open bucket
-        let bucket = kv_store::open(&store_id).map_err(kv_to_manager_error)?;
+        let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
         // Create initial storage structure with empty data
         let storage = SessionStorage::default();
         let storage_json = serde_json::to_string(&storage)
-            .map_err(|e| ManagerError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
+            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
 
         // Store in KV
         bucket
             .set_bytes(&session_id, storage_json.as_bytes())
-            .map_err(kv_to_manager_error)?;
+            .map_err(kv_to_session_error)?;
 
         eprintln!(
             "[SessionManager] Session {} created successfully",
@@ -131,45 +127,27 @@ impl SessionManager {
         Ok(session_id)
     }
 
-    /// Validate session exists and is not terminated
+    /// Validate session is active
     ///
-    /// Checks that:
-    /// 1. Session exists in storage
-    /// 2. Session is not marked as terminated
-    pub fn validate(session_id: String, store_id: String) -> Result<bool, ManagerError> {
+    /// Returns true if session exists, is not terminated, and is not expired.
+    /// Returns false if session is inactive for any reason.
+    pub fn validate(session_id: String, store_id: String) -> Result<bool, SessionError> {
         eprintln!("[SessionManager] Validating session: {}", session_id);
 
-        let bucket = kv_store::open(&store_id).map_err(kv_to_manager_error)?;
+        let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
-        // Check if session exists
-        if !bucket.exists(&session_id).map_err(kv_to_manager_error)? {
-            eprintln!("[SessionManager] Session {} does not exist", session_id);
-            return Err(ManagerError::NoSuchSession);
+        // Check if session is active (exists, not terminated, not expired)
+        match is_session_active(&bucket, &session_id) {
+            Ok(_) => {
+                eprintln!("[SessionManager] Session {} is active", session_id);
+                Ok(true)
+            }
+            Err(SessionError::NoSuchSession) => {
+                // Session doesn't exist, is terminated, or is expired
+                Ok(false)
+            }
+            Err(e) => Err(e),
         }
-
-        // Read storage and check termination status
-        let data = bucket
-            .get_bytes(&session_id)
-            .map_err(kv_to_manager_error)?
-            .ok_or_else(|| {
-                eprintln!(
-                    "[SessionManager] Session {} exists but has no data",
-                    session_id
-                );
-                ManagerError::NoSuchSession
-            })?;
-
-        let storage: SessionStorage = serde_json::from_slice(&data)
-            .map_err(|e| ManagerError::Unexpected(format!("Failed to parse storage: {}", e)))?;
-
-        let is_active = !storage.meta.terminated;
-        eprintln!(
-            "[SessionManager] Session {} is {}",
-            session_id,
-            if is_active { "active" } else { "terminated" }
-        );
-
-        Ok(is_active)
     }
 
     /// Mark session as terminated (soft delete)
@@ -180,7 +158,7 @@ impl SessionManager {
         session_id: String,
         store_id: String,
         reason: Option<String>,
-    ) -> Result<(), ManagerError> {
+    ) -> Result<(), SessionError> {
         eprintln!(
             "[SessionManager] Marking session {} as terminated",
             session_id
@@ -189,16 +167,16 @@ impl SessionManager {
             eprintln!("[SessionManager] Reason: {}", r);
         }
 
-        let bucket = kv_store::open(&store_id).map_err(kv_to_manager_error)?;
+        let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
         // Read current storage
         let data = bucket
             .get_bytes(&session_id)
-            .map_err(kv_to_manager_error)?
-            .ok_or(ManagerError::NoSuchSession)?;
+            .map_err(kv_to_session_error)?
+            .ok_or(SessionError::NoSuchSession)?;
 
         let mut storage: SessionStorage = serde_json::from_slice(&data)
-            .map_err(|e| ManagerError::Unexpected(format!("Failed to parse storage: {}", e)))?;
+            .map_err(|e| SessionError::Unexpected(format!("Failed to parse storage: {}", e)))?;
 
         // Update metadata
         storage.meta.terminated = true;
@@ -206,11 +184,11 @@ impl SessionManager {
 
         // Write back
         let storage_json = serde_json::to_string(&storage)
-            .map_err(|e| ManagerError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
+            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
 
         bucket
             .set_bytes(&session_id, storage_json.as_bytes())
-            .map_err(kv_to_manager_error)?;
+            .map_err(kv_to_session_error)?;
 
         eprintln!(
             "[SessionManager] Session {} marked as terminated",
@@ -223,16 +201,59 @@ impl SessionManager {
     ///
     /// Completely removes session and all associated data from storage.
     /// This is a destructive operation that cannot be undone.
-    pub fn delete_session(session_id: String, store_id: String) -> Result<(), ManagerError> {
+    pub fn delete_session(session_id: String, store_id: String) -> Result<(), SessionError> {
         eprintln!("[SessionManager] Deleting session {}", session_id);
 
-        let bucket = kv_store::open(&store_id).map_err(kv_to_manager_error)?;
+        let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
-        bucket.delete(&session_id).map_err(kv_to_manager_error)?;
+        bucket.delete(&session_id).map_err(kv_to_session_error)?;
 
         eprintln!(
             "[SessionManager] Session {} deleted successfully",
             session_id
+        );
+        Ok(())
+    }
+
+    /// Set session expiration timestamp
+    ///
+    /// Updates session metadata to expire at the specified Unix timestamp (seconds).
+    /// Sessions are automatically invalidated when current time >= expires_at.
+    pub fn set_expiration(
+        session_id: String,
+        store_id: String,
+        expires_at: u64,
+    ) -> Result<(), SessionError> {
+        eprintln!(
+            "[SessionManager] Setting expiration for session {} to {}",
+            session_id, expires_at
+        );
+
+        let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
+
+        // Read current storage
+        let data = bucket
+            .get_bytes(&session_id)
+            .map_err(kv_to_session_error)?
+            .ok_or(SessionError::NoSuchSession)?;
+
+        let mut storage: SessionStorage = serde_json::from_slice(&data)
+            .map_err(|e| SessionError::Unexpected(format!("Failed to parse storage: {}", e)))?;
+
+        // Update expiration in metadata
+        storage.meta.expires_at = Some(expires_at);
+
+        // Write back
+        let storage_json = serde_json::to_string(&storage)
+            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
+
+        bucket
+            .set_bytes(&session_id, storage_json.as_bytes())
+            .map_err(kv_to_session_error)?;
+
+        eprintln!(
+            "[SessionManager] Session {} expiration set to {}",
+            session_id, expires_at
         );
         Ok(())
     }
@@ -262,10 +283,9 @@ impl GuestSession for SessionImpl {
     fn open(session_id: String, store_id: String) -> Result<Session, SessionError> {
         let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
-        // Validate session exists
-        if !bucket.exists(&session_id).map_err(kv_to_session_error)? {
-            return Err(SessionError::NoSuchSession);
-        }
+        // Validate session is active (exists, not terminated, not expired)
+        // SessionError and SessionError are the same type, so we can return directly
+        is_session_active(&bucket, &session_id)?;
 
         Ok(Session::new(SessionImpl {
             bucket,
@@ -358,10 +378,10 @@ impl GuestSession for SessionImpl {
         // Call internal SessionManager implementation directly
         SessionManager::mark_terminated(self.session_id.clone(), self.store_id.clone(), reason)
             .map_err(|e| match e {
-                ManagerError::Store(msg) => SessionError::Store(msg),
-                ManagerError::NoSuchSession => SessionError::NoSuchSession,
-                ManagerError::Unexpected(msg) => SessionError::Unexpected(msg),
-                ManagerError::Io(_) => SessionError::Unexpected("IO error".to_string()),
+                SessionError::Store(msg) => SessionError::Store(msg),
+                SessionError::NoSuchSession => SessionError::NoSuchSession,
+                SessionError::Unexpected(msg) => SessionError::Unexpected(msg),
+                SessionError::Io(_) => SessionError::Unexpected("IO error".to_string()),
             })
     }
 }
@@ -476,6 +496,61 @@ fn current_timestamp_ms() -> u64 {
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_millis() as u64
+}
+
+fn current_timestamp_s() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs()
+}
+
+/// Check if a session is active (exists, not terminated, not expired)
+///
+/// This is the canonical validation function used by both SessionManager::validate()
+/// and SessionImpl::open() to ensure consistent behavior.
+///
+/// Returns:
+/// - Ok(storage) if session is active
+/// - Err(SessionError::NoSuchSession) if session doesn't exist, is terminated, or is expired
+///
+/// Per MCP spec, clients don't need to distinguish why a session is inactive - they all
+/// result in HTTP 404 and require reinitialization.
+fn is_session_active(bucket: &Bucket, session_id: &str) -> Result<SessionStorage, SessionError> {
+    // Check 1: Session exists
+    if !bucket.exists(session_id).map_err(kv_to_session_error)? {
+        return Err(SessionError::NoSuchSession);
+    }
+
+    // Read storage
+    let data = bucket
+        .get_bytes(session_id)
+        .map_err(kv_to_session_error)?
+        .ok_or(SessionError::NoSuchSession)?;
+
+    let storage: SessionStorage = serde_json::from_slice(&data)
+        .map_err(|e| SessionError::Unexpected(format!("Failed to parse storage: {}", e)))?;
+
+    // Check 2: Not terminated
+    if storage.meta.terminated {
+        eprintln!("[SessionManager] Session {} is terminated", session_id);
+        return Err(SessionError::NoSuchSession);
+    }
+
+    // Check 3: Not expired
+    if let Some(expires_at) = storage.meta.expires_at {
+        let now = current_timestamp_s();
+        if now >= expires_at {
+            eprintln!(
+                "[SessionManager] Session {} expired at {} (now: {})",
+                session_id, expires_at, now
+            );
+            return Err(SessionError::NoSuchSession);
+        }
+    }
+
+    Ok(storage)
 }
 
 // ============================================================================
