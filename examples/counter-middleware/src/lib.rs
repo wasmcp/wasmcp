@@ -32,6 +32,7 @@ impl Guest for Counter {
                 session: ctx.session,
                 identity: ctx.identity,
                 frame: ctx.frame,
+                http_context: ctx.http_context,
             };
             return downstream::handle(&downstream_ctx, message);
         };
@@ -51,6 +52,7 @@ impl Guest for Counter {
                     session: ctx.session,
                     identity: ctx.identity,
                     frame: ctx.frame,
+                    http_context: ctx.http_context,
                 };
                 downstream::handle(&downstream_ctx, message)
             }
@@ -88,6 +90,7 @@ fn handle_list_tools(
         session: ctx.session.clone(),
         identity: ctx.identity.clone(),
         frame: ctx.frame.clone(),
+        http_context: ctx.http_context.clone(),
     };
 
     let downstream_msg = ClientMessage::Request((
@@ -134,6 +137,7 @@ fn handle_call_tool(
         session: ctx.session.clone(),
         identity: ctx.identity.clone(),
         frame: ctx.frame.clone(),
+        http_context: ctx.http_context.clone(),
     };
 
     let downstream_msg = ClientMessage::Request((

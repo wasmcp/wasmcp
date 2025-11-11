@@ -53,22 +53,8 @@ pub async fn handle_post(
             match server_auth::decode(&jwt) {
                 Ok(claims) => {
                     eprintln!("[transport:auth] ✓ JWT validated successfully");
-                    eprintln!(
-                        "[transport:auth]   - Subject: {}",
-                        claims
-                            .iter()
-                            .find(|(k, _)| k == "sub")
-                            .map(|(_, v)| v.as_str())
-                            .unwrap_or("unknown")
-                    );
-                    eprintln!(
-                        "[transport:auth]   - Scopes: {}",
-                        claims
-                            .iter()
-                            .find(|(k, _)| k == "scope" || k == "scp")
-                            .map(|(_, v)| v.as_str())
-                            .unwrap_or("none")
-                    );
+                    eprintln!("[transport:auth]   - Subject: {}", &claims.subject);
+                    eprintln!("[transport:auth]   - Scopes: {}", claims.scopes.join(" "));
 
                     Some(crate::bindings::wasmcp::mcp_v20250618::mcp::Identity { jwt, claims })
                 }
@@ -168,6 +154,9 @@ pub async fn handle_post(
         }
     };
 
+    // Build HTTP context to pass to downstream components
+    let http_context = build_http_context(&request);
+
     match message {
         common::McpMessage::Request(request_id, client_request) => {
             // Check if it's initialize - handle specially with plain JSON
@@ -178,6 +167,7 @@ pub async fn handle_post(
                     request_id,
                     client_request,
                     protocol_version,
+                    identity.as_ref(),
                     response_out,
                     session_config,
                 );
@@ -273,6 +263,58 @@ fn is_jwt_auth_configured() -> bool {
         .any(|(k, v)| (k == "JWT_PUBLIC_KEY" || k == "JWT_JWKS_URI") && !v.is_empty())
 }
 
+/// Build HTTP context for authorization
+fn build_http_context(
+    request: &IncomingRequest,
+) -> crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext {
+    // Extract HTTP method
+    let method = match request.method() {
+        crate::bindings::wasi::http::types::Method::Get => "GET",
+        crate::bindings::wasi::http::types::Method::Post => "POST",
+        crate::bindings::wasi::http::types::Method::Put => "PUT",
+        crate::bindings::wasi::http::types::Method::Delete => "DELETE",
+        crate::bindings::wasi::http::types::Method::Head => "HEAD",
+        crate::bindings::wasi::http::types::Method::Options => "OPTIONS",
+        crate::bindings::wasi::http::types::Method::Patch => "PATCH",
+        crate::bindings::wasi::http::types::Method::Connect => "CONNECT",
+        crate::bindings::wasi::http::types::Method::Trace => "TRACE",
+        _ => "UNKNOWN",
+    }
+    .to_string();
+
+    // Extract path from request
+    let path = request.path_with_query().unwrap_or("/".to_string());
+
+    // Extract headers
+    let headers_obj = request.headers();
+    let mut headers = Vec::new();
+
+    // Common headers to include for policy decisions
+    let header_names = [
+        "host",
+        "user-agent",
+        "origin",
+        "referer",
+        "x-forwarded-for",
+        "x-real-ip",
+    ];
+
+    for name in &header_names {
+        let values = headers_obj.get(name);
+        if !values.is_empty()
+            && let Ok(value) = String::from_utf8(values[0].clone())
+        {
+            headers.push((name.to_string(), value));
+        }
+    }
+
+    crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext {
+        method,
+        path,
+        headers,
+    }
+}
+
 /// Create WWW-Authenticate challenge header per RFC 6750
 /// Includes error code, description, and resource metadata URL
 fn create_www_authenticate_challenge(
@@ -289,24 +331,41 @@ fn create_www_authenticate_challenge(
     let server_uri: Option<String> = env_vars
         .iter()
         .find(|(k, _)| k == "MCP_SERVER_URI")
-        .map(|(_, v)| v.clone())
+        .map(|(_, v)| {
+            eprintln!(
+                "[transport:www-authenticate] Using MCP_SERVER_URI from env: {}",
+                v
+            );
+            v.clone()
+        })
         .or_else(|| {
             // Try to construct from request Host header
             let headers = request.headers();
             let host_values = headers.get("host");
             if !host_values.is_empty() {
                 if let Ok(host) = String::from_utf8(host_values[0].clone()) {
-                    // Assume HTTPS for production (HTTP for localhost)
-                    let scheme = if host.starts_with("localhost") || host.starts_with("127.0.0.1") {
-                        "http"
-                    } else {
-                        "https"
-                    };
-                    Some(format!("{}://{}", scheme, host))
+                    // Use scheme from request, default to https if not available
+                    let scheme = request
+                        .scheme()
+                        .and_then(|s| match s {
+                            crate::bindings::wasi::http::types::Scheme::Http => Some("http"),
+                            crate::bindings::wasi::http::types::Scheme::Https => Some("https"),
+                            _ => None,
+                        })
+                        .unwrap_or("https");
+                    let uri = format!("{}://{}", scheme, host);
+                    eprintln!(
+                        "[transport:www-authenticate] Constructed URI from Host: {} (scheme: {:?})",
+                        uri,
+                        request.scheme()
+                    );
+                    Some(uri)
                 } else {
+                    eprintln!("[transport:www-authenticate] Failed to parse Host header");
                     None
                 }
             } else {
+                eprintln!("[transport:www-authenticate] No Host header found");
                 None
             }
         });
@@ -314,7 +373,11 @@ fn create_www_authenticate_challenge(
     // Build WWW-Authenticate header
     let mut parts = vec!["Bearer".to_string()];
 
-    if let Some(uri) = server_uri {
+    if let Some(ref uri) = server_uri {
+        eprintln!(
+            "[transport:www-authenticate] Building challenge with URI: {}",
+            uri
+        );
         parts.push(format!("realm=\"{}\"", uri));
 
         // Add resource_metadata URL per RFC 9728
@@ -322,6 +385,8 @@ fn create_www_authenticate_challenge(
             "resource_metadata=\"{}/.well-known/oauth-protected-resource\"",
             uri
         ));
+    } else {
+        eprintln!("[transport:www-authenticate] No server URI available");
     }
 
     parts.push(format!("error=\"{}\"", error));

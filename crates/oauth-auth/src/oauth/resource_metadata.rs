@@ -46,10 +46,10 @@ pub fn parse_www_authenticate_metadata(www_authenticate_header: &str) -> Option<
         let param = param.trim();
         if param.starts_with("resource_metadata") {
             // Extract value from: resource_metadata="value"
-            if let Some(start) = param.find('"') {
-                if let Some(end) = param[start + 1..].find('"') {
-                    return Some(param[start + 1..start + 1 + end].to_string());
-                }
+            if let Some(start) = param.find('"')
+                && let Some(end) = param[start + 1..].find('"')
+            {
+                return Some(param[start + 1..start + 1 + end].to_string());
             }
         }
     }

@@ -80,6 +80,7 @@ pub fn handle_mcp_request(
                 bucket,
                 output_stream,
                 frame,
+                None, // HTTP context not available in this path
             )
             .map_err(|e| {
                 TransportError::protocol(format!("Middleware delegation failed: {:?}", e))
@@ -115,6 +116,7 @@ pub fn handle_mcp_notification(
         session_id,
         bucket,
         &common::plain_json_frame(),
+        None, // HTTP context not available for notifications
     )
     .map_err(|e| TransportError::protocol(format!("Notification handling failed: {:?}", e)))?;
 
@@ -143,6 +145,7 @@ pub fn handle_mcp_result(
         None,
         session_config.get_bucket(),
         &common::plain_json_frame(),
+        None, // HTTP context not available for results
     );
 
     // Create client message
@@ -178,6 +181,7 @@ pub fn handle_mcp_error(
         None,
         session_config.get_bucket(),
         &common::plain_json_frame(),
+        None, // HTTP context not available for errors
     );
 
     // Create client message

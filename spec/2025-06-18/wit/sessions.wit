@@ -23,6 +23,7 @@ interface sessions {
         elicit-request,
         elicit-result,
     };
+    use wasmcp:oauth/types@0.1.0.{jwt-claims};
 
     /// Errors that can occur during session operations
     @since(version = 0.1.0)
@@ -142,6 +143,65 @@ interface sessions {
             reason: option<string>,
         ) -> result<_, session-error>;
     }
+
+    // ===== OAuth Claim Helper Functions =====
+    //
+    // NOTE: Claims arrive as structured jwt-claims in MessageContext.identity.claims
+    // No parsing is needed - use these helpers directly on the structured claims!
+
+    /// Convert structured JWT claims to flat format for storage/serialization
+    ///
+    /// Useful when storing claims in session KV or passing to external systems.
+    /// Most tools won't need this - claims are already structured in MessageContext!
+    flatten-claims: func(claims: jwt-claims) -> list<tuple<string, string>>;
+
+    /// Check if claims contain specific scope
+    ///
+    /// OAuth scopes are space-separated in the 'scope' or 'scp' claim.
+    /// This checks if the specified scope exists in the token.
+    ///
+    /// Example:
+    /// ```
+    /// if sessions::has-scope(claims, "read:users") { ... }
+    /// ```
+    has-scope: func(claims: jwt-claims, scope: string) -> bool;
+
+    /// Check if claims contain any of the specified scopes
+    has-any-scope: func(claims: jwt-claims, scopes: list<string>) -> bool;
+
+    /// Check if claims contain all of the specified scopes
+    has-all-scopes: func(claims: jwt-claims, scopes: list<string>) -> bool;
+
+    /// Get custom claim value by key
+    ///
+    /// Returns value if claim exists in custom-claims or standard fields.
+    get-claim: func(claims: jwt-claims, key: string) -> option<string>;
+
+    /// Validate audience claim
+    ///
+    /// Checks if any of the token's audiences match the expected value.
+    /// Critical for preventing confused deputy attacks.
+    has-audience: func(claims: jwt-claims, audience: string) -> bool;
+
+    /// Check if token is expired
+    ///
+    /// Compares exp claim against current time with optional clock skew.
+    is-expired: func(claims: jwt-claims, clock-skew-seconds: option<u64>) -> bool;
+
+    /// Check if token time is valid (nbf <= now < exp)
+    is-valid-time: func(claims: jwt-claims, clock-skew-seconds: option<u64>) -> bool;
+
+    /// Get subject (user ID)
+    get-subject: func(claims: jwt-claims) -> string;
+
+    /// Get issuer
+    get-issuer: func(claims: jwt-claims) -> option<string>;
+
+    /// Get all scopes as list
+    get-scopes: func(claims: jwt-claims) -> list<string>;
+
+    /// Get all audiences as list
+    get-audiences: func(claims: jwt-claims) -> list<string>;
 }
 
 /// Transport-layer session lifecycle management interface
@@ -216,4 +276,23 @@ interface session-manager {
     ///
     /// @since(version = 0.1.4)
     delete-session: func(session-id: string, store-id: string) -> result<_, session-error>;
+
+    /// Set session expiration timestamp
+    ///
+    /// Updates session metadata to expire at the specified Unix timestamp (seconds).
+    /// Sessions are automatically invalidated when current time >= expires-at.
+    ///
+    /// Typically called by transport layer after JWT validation to align session
+    /// lifetime with JWT expiration claim.
+    ///
+    /// # Arguments
+    /// * `session-id` - Session to set expiration for
+    /// * `store-id` - WASI KV bucket name
+    /// * `expires-at` - Unix timestamp in seconds when session should expire
+    ///
+    set-expiration: func(
+        session-id: string,
+        store-id: string,
+        expires-at: u64
+    ) -> result<_, session-error>;
 }

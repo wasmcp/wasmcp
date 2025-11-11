@@ -10,6 +10,21 @@ use crate::bindings::wasi::http::types::{IncomingRequest, ResponseOutparam};
 use crate::http::response::ResponseBuilder;
 use serde_json::json;
 
+/// Default cache TTL for discovery endpoints in seconds (1 hour)
+/// Can be overridden via MCP_DISCOVERY_CACHE_TTL environment variable
+const DEFAULT_DISCOVERY_CACHE_TTL: u32 = 3600;
+
+/// Get cache TTL from environment or use default
+fn get_discovery_cache_ttl() -> String {
+    let ttl = get_environment()
+        .iter()
+        .find(|(k, _)| k == "MCP_DISCOVERY_CACHE_TTL")
+        .and_then(|(_, v)| v.parse::<u32>().ok())
+        .unwrap_or(DEFAULT_DISCOVERY_CACHE_TTL);
+
+    format!("public, max-age={}", ttl)
+}
+
 /// Handle /.well-known/oauth-protected-resource (RFC 9728)
 ///
 /// Returns metadata about this protected resource server including:
@@ -33,7 +48,7 @@ pub fn handle_protected_resource_metadata(
     let response = match ResponseBuilder::new()
         .status(200)
         .header("content-type", b"application/json")
-        .header("cache-control", b"public, max-age=3600")
+        .header("cache-control", get_discovery_cache_ttl().as_bytes())
         .build()
     {
         Ok(r) => r,
@@ -79,7 +94,7 @@ pub fn handle_authorization_server_metadata(
     let response = match ResponseBuilder::new()
         .status(200)
         .header("content-type", b"application/json")
-        .header("cache-control", b"public, max-age=3600")
+        .header("cache-control", get_discovery_cache_ttl().as_bytes())
         .build()
     {
         Ok(r) => r,
@@ -122,7 +137,7 @@ pub fn handle_openid_configuration(_request: &IncomingRequest, response_out: Res
     let response = match ResponseBuilder::new()
         .status(200)
         .header("content-type", b"application/json")
-        .header("cache-control", b"public, max-age=3600")
+        .header("cache-control", get_discovery_cache_ttl().as_bytes())
         .build()
     {
         Ok(r) => r,
@@ -150,8 +165,10 @@ pub fn handle_openid_configuration(_request: &IncomingRequest, response_out: Res
 fn build_protected_resource_metadata(request: &IncomingRequest) -> serde_json::Value {
     let env_vars = get_environment();
 
-    // Get resource identifier (server URI)
+    // Get resource identifier - ALWAYS use actual server URI
+    // MCP clients validate that resource field matches connection URL
     let resource = get_server_uri(&env_vars, request);
+    eprintln!("[transport:discovery] Resource (server URI): {}", resource);
 
     // Get authorization server(s) from config
     let auth_servers: Vec<String> = env_vars
@@ -261,6 +278,10 @@ fn build_openid_configuration() -> serde_json::Value {
 fn get_server_uri(env_vars: &[(String, String)], request: &IncomingRequest) -> String {
     // First try environment variable
     if let Some((_, uri)) = env_vars.iter().find(|(k, _)| k == "MCP_SERVER_URI") {
+        eprintln!(
+            "[transport:discovery] Using MCP_SERVER_URI from env: {}",
+            uri
+        );
         return uri.clone();
     }
 
@@ -271,15 +292,25 @@ fn get_server_uri(env_vars: &[(String, String)], request: &IncomingRequest) -> S
     if !host_values.is_empty()
         && let Ok(host) = String::from_utf8(host_values[0].clone())
     {
-        // Assume HTTPS for production (HTTP for localhost)
-        let scheme = if host.starts_with("localhost") || host.starts_with("127.0.0.1") {
-            "http"
-        } else {
-            "https"
-        };
-        return format!("{}://{}", scheme, host);
+        // Use scheme from request, default to https if not available
+        let scheme = request
+            .scheme()
+            .and_then(|s| match s {
+                crate::bindings::wasi::http::types::Scheme::Http => Some("http"),
+                crate::bindings::wasi::http::types::Scheme::Https => Some("https"),
+                _ => None,
+            })
+            .unwrap_or("https");
+        let uri = format!("{}://{}", scheme, host);
+        eprintln!(
+            "[transport:discovery] Constructed URI from Host header: {} (scheme from request: {:?})",
+            uri,
+            request.scheme()
+        );
+        return uri;
     }
 
     // Last resort fallback
+    eprintln!("[transport:discovery] Using fallback URI (no env var, no Host header)");
     "https://localhost:3000".to_string()
 }

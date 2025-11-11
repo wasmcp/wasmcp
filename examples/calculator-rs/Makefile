@@ -1,4 +1,4 @@
-.PHONY: all setup build clean
+.PHONY: all setup build clean wit work
 
 # Default target
 all: build

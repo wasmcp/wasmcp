@@ -1,7 +1,12 @@
-.PHONY: all setup build clean
+.PHONY: all setup build clean wit work
 
 OUT_DIR = dist
 COMPONENT_NAME = weather
+
+work: setup wit build
+
+wit:
+	@wit-deps update
 
 # Default target - build (setup if needed)
 all: node_modules build

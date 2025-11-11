@@ -1,10 +1,11 @@
 //! Policy-based authorization using Regorous (Rego interpreter)
 
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{ClientMessage, Session};
+use crate::bindings::wasmcp::oauth::types::JwtClaims;
 use crate::error::{AuthError, Result};
-use crate::jwt::TokenInfo;
 use regorus::{Engine, Value};
 use serde_json::json;
+use std::collections::HashMap;
 
 /// Policy engine for authorization decisions
 pub struct PolicyEngine {
@@ -36,12 +37,15 @@ impl PolicyEngine {
     /// Evaluate authorization policy
     pub fn evaluate(
         &mut self,
-        token_info: &TokenInfo,
+        jwt_claims: &JwtClaims,
         request: &ClientMessage,
         _session: Option<&Session>,
+        http_context: Option<
+            &crate::bindings::exports::wasmcp::mcp_v20250618::server_auth::HttpContext,
+        >,
     ) -> Result<bool> {
         // Build the input for policy evaluation
-        let input = build_policy_input(token_info, request)?;
+        let input = build_policy_input(jwt_claims, request, http_context)?;
 
         // Set the input
         self.engine.set_input(input);
@@ -70,19 +74,79 @@ impl PolicyEngine {
 }
 
 /// Build policy input from request context
-fn build_policy_input(token_info: &TokenInfo, request: &ClientMessage) -> Result<Value> {
+fn build_policy_input(
+    jwt_claims: &JwtClaims,
+    request: &ClientMessage,
+    http_context: Option<
+        &crate::bindings::exports::wasmcp::mcp_v20250618::server_auth::HttpContext,
+    >,
+) -> Result<Value> {
     // Extract MCP context from ClientMessage
     let mcp_context = extract_mcp_context(request);
+
+    // Build claims map from JwtClaims
+    let mut claims_map = HashMap::new();
+    claims_map.insert(
+        "sub".to_string(),
+        serde_json::Value::String(jwt_claims.subject.clone()),
+    );
+    if let Some(ref iss) = jwt_claims.issuer {
+        claims_map.insert("iss".to_string(), serde_json::Value::String(iss.clone()));
+    }
+    if !jwt_claims.audience.is_empty() {
+        claims_map.insert("aud".to_string(), serde_json::json!(jwt_claims.audience));
+    }
+    if let Some(exp) = jwt_claims.expiration {
+        claims_map.insert("exp".to_string(), serde_json::json!(exp));
+    }
+    if let Some(iat) = jwt_claims.issued_at {
+        claims_map.insert("iat".to_string(), serde_json::json!(iat));
+    }
+    if let Some(nbf) = jwt_claims.not_before {
+        claims_map.insert("nbf".to_string(), serde_json::json!(nbf));
+    }
+    if !jwt_claims.scopes.is_empty() {
+        claims_map.insert(
+            "scope".to_string(),
+            serde_json::Value::String(jwt_claims.scopes.join(" ")),
+        );
+    }
+    // Add custom claims
+    for (k, v) in &jwt_claims.custom_claims {
+        if let Ok(json_val) = serde_json::from_str(v) {
+            claims_map.insert(k.clone(), json_val);
+        } else {
+            claims_map.insert(k.clone(), serde_json::Value::String(v.clone()));
+        }
+    }
+
+    // Build HTTP context if provided
+    let http_ctx = if let Some(http) = http_context {
+        let headers: HashMap<String, String> = http
+            .headers
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+
+        json!({
+            "method": http.method,
+            "path": http.path,
+            "headers": headers
+        })
+    } else {
+        json!(null)
+    };
 
     // Build input JSON
     let input = json!({
         "token": {
-            "sub": token_info.sub,
-            "iss": token_info.iss,
-            "claims": token_info.claims,
-            "scopes": token_info.scopes
+            "sub": jwt_claims.subject,
+            "iss": jwt_claims.issuer.clone().unwrap_or_default(),
+            "claims": claims_map,
+            "scopes": jwt_claims.scopes
         },
-        "mcp": mcp_context
+        "mcp": mcp_context,
+        "http": http_ctx
     });
 
     Value::from_json_str(&input.to_string())

@@ -20,6 +20,7 @@ pub fn handle_initialize_request(
     request_id: RequestId,
     _client_request: ClientRequest,
     protocol_version: String,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
     response_out: ResponseOutparam,
     session_config: &SessionConfig,
 ) {
@@ -38,6 +39,11 @@ pub fn handle_initialize_request(
 
     // Create session if enabled
     let new_session_id = session::initialize_session(session_config);
+
+    // Bind JWT claims to session if both exist
+    if let (Some(session_id), Some(identity)) = (&new_session_id, identity) {
+        session::bind_identity_to_session(session_id, identity, session_config);
+    }
 
     // Create plain JSON response with optional session header
     let mut builder = response::ResponseBuilder::new()

@@ -17,8 +17,10 @@ mod jwt;
 mod oauth;
 mod policy;
 
-use bindings::exports::wasmcp::mcp_v20250618::server_auth::Guest;
-use bindings::wasmcp::mcp_v20250618::mcp::{Claims, ClientMessage, Jwt, Session};
+use bindings::exports::wasmcp::mcp_v20250618::server_auth::{Guest, HttpContext};
+use bindings::wasmcp::mcp_v20250618::mcp::{ClientMessage, Session};
+use bindings::wasmcp::oauth::types::{Jwt, JwtClaims};
+use std::collections::HashMap;
 use std::sync::OnceLock;
 
 static CONFIG: OnceLock<config::Config> = OnceLock::new();
@@ -34,40 +36,158 @@ fn get_config() -> &'static config::Config {
 
 struct Component;
 
+/// Fetch userinfo from the OIDC userinfo endpoint
+fn fetch_userinfo(
+    issuer: &str,
+    access_token: &str,
+) -> Result<HashMap<String, serde_json::Value>, String> {
+    use bindings::wasi::http::outgoing_handler;
+    use bindings::wasi::http::types::{Fields, Method, OutgoingRequest, Scheme};
+    use bindings::wasi::io::poll;
+    use bindings::wasi::io::streams::StreamError;
+
+    // Construct userinfo URL (standard OIDC endpoint)
+    let userinfo_url = format!("{}/oauth2/userinfo", issuer.trim_end_matches('/'));
+
+    eprintln!("[oauth-auth] Fetching userinfo from: {}", userinfo_url);
+
+    // Parse URL
+    let url = userinfo_url
+        .parse::<url::Url>()
+        .map_err(|e| format!("Invalid userinfo URL: {}", e))?;
+
+    let scheme = match url.scheme() {
+        "https" => Scheme::Https,
+        "http" => Scheme::Http,
+        _ => return Err("Invalid URL scheme".to_string()),
+    };
+
+    let authority = url
+        .host_str()
+        .ok_or_else(|| "No host in URL".to_string())?
+        .to_string();
+
+    let path = if url.query().is_some() {
+        format!("{}?{}", url.path(), url.query().unwrap())
+    } else {
+        url.path().to_string()
+    };
+
+    // Create headers with Authorization Bearer token
+    let headers = Fields::new();
+    let auth_value = format!("Bearer {}", access_token);
+    headers
+        .append("Authorization", auth_value.as_bytes())
+        .map_err(|_| "Failed to set Authorization header".to_string())?;
+
+    // Create request with headers
+    let request = OutgoingRequest::new(headers);
+    request
+        .set_scheme(Some(&scheme))
+        .map_err(|_| "Failed to set scheme".to_string())?;
+    request
+        .set_authority(Some(&authority))
+        .map_err(|_| "Failed to set authority".to_string())?;
+    request
+        .set_path_with_query(Some(&path))
+        .map_err(|_| "Failed to set path".to_string())?;
+    request
+        .set_method(&Method::Get)
+        .map_err(|_| "Failed to set method".to_string())?;
+
+    // Send request
+    let future_response = outgoing_handler::handle(request, None)
+        .map_err(|e| format!("Failed to send request: {:?}", e))?;
+
+    // Poll for response (use correct polling pattern)
+    let pollable = future_response.subscribe();
+    poll::poll(&[&pollable]);
+    drop(pollable);
+
+    // Get response
+    let incoming_response = future_response
+        .get()
+        .ok_or_else(|| "Response not ready after poll".to_string())?
+        .map_err(|e| format!("Request failed: {:?}", e))?
+        .map_err(|e| format!("HTTP error: {:?}", e))?;
+
+    let status = incoming_response.status();
+
+    if status != 200 {
+        return Err(format!("Userinfo request failed with status: {}", status));
+    }
+
+    // Read response body
+    let incoming_body = incoming_response
+        .consume()
+        .map_err(|_| "Failed to get response body".to_string())?;
+
+    let input_stream = incoming_body
+        .stream()
+        .map_err(|_| "Failed to get response stream".to_string())?;
+
+    let mut body_bytes = Vec::new();
+    loop {
+        match input_stream.blocking_read(4096) {
+            Ok(chunk) => {
+                if chunk.is_empty() {
+                    break;
+                }
+                body_bytes.extend_from_slice(&chunk);
+            }
+            Err(StreamError::Closed) => break,
+            Err(e) => return Err(format!("Failed to read response: {:?}", e)),
+        }
+    }
+
+    // Parse JSON response
+    let body_str =
+        String::from_utf8(body_bytes).map_err(|e| format!("Invalid UTF-8 in response: {}", e))?;
+
+    let userinfo: HashMap<String, serde_json::Value> = serde_json::from_str(&body_str)
+        .map_err(|e| format!("Failed to parse userinfo JSON: {}", e))?;
+
+    Ok(userinfo)
+}
+
 impl Guest for Component {
     /// Decode and validate a JWT token
-    fn decode(jwt_bytes: Jwt) -> Result<Claims, ()> {
+    fn decode(jwt_bytes: Jwt) -> Result<JwtClaims, ()> {
         // Convert JWT bytes to string
         let token_str = std::str::from_utf8(&jwt_bytes).map_err(|_| ())?;
 
         // Get configuration
         let config = get_config();
 
-        // Verify JWT
-        let token_info = jwt::verify(token_str, &config.provider).map_err(|_| ())?;
+        // Verify JWT - returns JwtClaims directly!
+        let jwt_claims = jwt::verify(token_str, &config.provider).map_err(|_| ())?;
 
-        // Convert claims to WIT format: list<tuple<string, string>>
-        let claims: Vec<(String, String)> = token_info
-            .claims
-            .iter()
-            .map(|(k, v)| {
-                // Convert JSON values to strings
-                let value_str = match v {
-                    serde_json::Value::String(s) => s.clone(),
-                    serde_json::Value::Number(n) => n.to_string(),
-                    serde_json::Value::Bool(b) => b.to_string(),
-                    serde_json::Value::Null => "null".to_string(),
-                    _ => serde_json::to_string(v).unwrap_or_else(|_| "{}".to_string()),
-                };
-                (k.clone(), value_str)
-            })
-            .collect();
+        // Log entire decoded JWT structure
+        eprintln!("[oauth-auth] Decoded JWT: {:#?}", jwt_claims);
 
-        Ok(claims)
+        // Try to fetch userinfo to see additional claims
+        if !config.provider.issuer.is_empty() {
+            match fetch_userinfo(&config.provider.issuer, token_str) {
+                Ok(userinfo) => {
+                    eprintln!("[oauth-auth] Userinfo response: {:#?}", userinfo);
+                }
+                Err(e) => {
+                    eprintln!("[oauth-auth] Failed to fetch userinfo: {}", e);
+                }
+            }
+        }
+
+        // Return JwtClaims directly - NO conversion needed!
+        Ok(jwt_claims)
     }
 
     /// Authorize a request based on claims
-    fn authorize(request: ClientMessage, claims: Claims, session: Option<Session>) -> bool {
+    fn authorize(
+        request: ClientMessage,
+        claims: JwtClaims,
+        session: Option<Session>,
+        http_context: Option<HttpContext>,
+    ) -> bool {
         let config = get_config();
 
         // If policy is configured, use policy engine
@@ -78,28 +198,10 @@ impl Guest for Component {
                 policy_str,
                 config.policy_data.as_deref(),
             ) {
-                // Convert claims back to TokenInfo for policy evaluation
-                let token_info = jwt::TokenInfo {
-                    sub: claims
-                        .iter()
-                        .find(|(k, _)| k == "sub")
-                        .map(|(_, v)| v.clone())
-                        .unwrap_or_default(),
-                    iss: claims
-                        .iter()
-                        .find(|(k, _)| k == "iss")
-                        .map(|(_, v)| v.clone())
-                        .unwrap_or_default(),
-                    scopes: extract_scopes_from_claims(&claims),
-                    claims: claims
-                        .iter()
-                        .filter_map(|(k, v)| {
-                            serde_json::from_str(v).ok().map(|val| (k.clone(), val))
-                        })
-                        .collect(),
-                };
-
-                if let Ok(allowed) = engine.evaluate(&token_info, &request, session.as_ref()) {
+                // Pass JwtClaims and HTTP context to policy engine
+                if let Ok(allowed) =
+                    engine.evaluate(&claims, &request, session.as_ref(), http_context.as_ref())
+                {
                     return allowed;
                 }
             }
@@ -112,44 +214,15 @@ impl Guest for Component {
             return true;
         };
 
-        let scopes = extract_scopes_from_claims(&claims);
-
+        // Use structured scopes directly - NO extraction needed!
         for required_scope in required_scopes {
-            if !scopes.contains(required_scope) {
+            if !claims.scopes.contains(required_scope) {
                 return false;
             }
         }
 
         true
     }
-}
-
-/// Extract scopes from claims (looking for "scope" or "scp" claim)
-fn extract_scopes_from_claims(claims: &Claims) -> Vec<String> {
-    // Look for "scope" claim (OAuth2 standard)
-    for (key, value) in claims {
-        if key == "scope" {
-            // Split space-separated scopes
-            return value.split_whitespace().map(String::from).collect();
-        }
-    }
-
-    // Look for "scp" claim (Microsoft style)
-    for (key, value) in claims {
-        if key == "scp" {
-            // Try to parse as JSON array first, fall back to space-separated
-            if let Ok(serde_json::Value::Array(scopes)) = serde_json::from_str(value) {
-                return scopes
-                    .iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect();
-            }
-            // Fall back to space-separated
-            return value.split_whitespace().map(String::from).collect();
-        }
-    }
-
-    Vec::new()
 }
 
 // === OAuth Interface Implementations ===
@@ -207,83 +280,6 @@ impl bindings::exports::wasmcp::oauth::bearer::Guest for Component {
 
     fn is_valid_bearer_token_format(token: String) -> bool {
         oauth::bearer::is_valid_bearer_token_format(&token)
-    }
-}
-
-// Helpers interface
-impl bindings::exports::wasmcp::oauth::helpers::Guest for Component {
-    fn get_claim(claims: bindings::wasmcp::oauth::types::JwtClaims, key: String) -> Option<String> {
-        oauth::helpers::get_claim(&claims, &key)
-    }
-
-    fn has_scope(claims: bindings::wasmcp::oauth::types::JwtClaims, scope: String) -> bool {
-        oauth::helpers::has_scope(&claims, &scope)
-    }
-
-    fn has_any_scope(
-        claims: bindings::wasmcp::oauth::types::JwtClaims,
-        scopes: Vec<String>,
-    ) -> bool {
-        oauth::helpers::has_any_scope(&claims, &scopes)
-    }
-
-    fn has_all_scopes(
-        claims: bindings::wasmcp::oauth::types::JwtClaims,
-        scopes: Vec<String>,
-    ) -> bool {
-        oauth::helpers::has_all_scopes(&claims, &scopes)
-    }
-
-    fn has_audience(claims: bindings::wasmcp::oauth::types::JwtClaims, audience: String) -> bool {
-        oauth::helpers::has_audience(&claims, &audience)
-    }
-
-    fn is_expired(claims: bindings::wasmcp::oauth::types::JwtClaims) -> bool {
-        oauth::helpers::is_expired(&claims)
-    }
-
-    fn is_valid_time(claims: bindings::wasmcp::oauth::types::JwtClaims) -> bool {
-        oauth::helpers::is_valid_time(&claims)
-    }
-
-    fn get_subject(claims: bindings::wasmcp::oauth::types::JwtClaims) -> String {
-        oauth::helpers::get_subject(&claims)
-    }
-
-    fn get_issuer(claims: bindings::wasmcp::oauth::types::JwtClaims) -> Option<String> {
-        oauth::helpers::get_issuer(&claims)
-    }
-
-    fn get_scopes(claims: bindings::wasmcp::oauth::types::JwtClaims) -> Vec<String> {
-        oauth::helpers::get_scopes(&claims)
-    }
-}
-
-// Session Claims interface
-impl bindings::exports::wasmcp::oauth::session_claims::Guest for Component {
-    fn parse_claims(
-        flat_claims: Vec<(String, String)>,
-    ) -> Result<
-        bindings::wasmcp::oauth::types::JwtClaims,
-        bindings::exports::wasmcp::oauth::errors::OauthError,
-    > {
-        oauth::session_claims::parse_claims(flat_claims)
-    }
-
-    fn flatten_claims(claims: bindings::wasmcp::oauth::types::JwtClaims) -> Vec<(String, String)> {
-        oauth::session_claims::flatten_claims(&claims)
-    }
-
-    fn has_claim(session_id: String, claim_key: String) -> Option<String> {
-        oauth::session_claims::has_claim(&session_id, &claim_key)
-    }
-
-    fn has_session_scope(session_id: String, scope: String) -> bool {
-        oauth::session_claims::has_session_scope(&session_id, &scope)
-    }
-
-    fn get_session_claims(session_id: String) -> Option<bindings::wasmcp::oauth::types::JwtClaims> {
-        oauth::session_claims::get_session_claims(&session_id)
     }
 }
 

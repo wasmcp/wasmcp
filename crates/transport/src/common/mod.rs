@@ -113,6 +113,7 @@ pub fn delegate_to_middleware(
     bucket_name: String,
     output_stream: &OutputStream,
     frame: &MessageFrame,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
 ) -> Result<ServerResult, ErrorCode> {
     // Create message context
     let ctx = create_message_context(
@@ -122,6 +123,7 @@ pub fn delegate_to_middleware(
         identity,
         &bucket_name,
         frame,
+        http_context,
     );
 
     // Create client message
@@ -148,6 +150,7 @@ pub fn delegate_notification(
     session_id: Option<&str>,
     bucket_name: String,
     frame: &MessageFrame,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
 ) -> Result<(), ErrorCode> {
     // Create message context (no client-stream for notifications - they're one-way)
     let ctx = create_message_context(
@@ -157,6 +160,7 @@ pub fn delegate_notification(
         None,
         &bucket_name,
         frame,
+        http_context,
     );
 
     // Create client message
