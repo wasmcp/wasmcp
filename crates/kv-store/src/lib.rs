@@ -50,34 +50,28 @@ fn encode_typed_value(value: &TypedValue) -> Result<Vec<u8>, Error> {
 
     match value {
         TypedValue::AsString(s) => {
-            eprintln!("[kv-store] Encoding string: {} bytes", s.len());
             bytes.push(TAG_STRING);
             bytes.extend_from_slice(s.as_bytes());
         }
         TypedValue::AsJson(json) => {
-            eprintln!("[kv-store] Encoding JSON: {} bytes", json.len());
             // Validate JSON syntax
             validate_json(json)?;
             bytes.push(TAG_JSON);
             bytes.extend_from_slice(json.as_bytes());
         }
         TypedValue::AsU64(n) => {
-            eprintln!("[kv-store] Encoding u64: {}", n);
             bytes.push(TAG_U64);
             bytes.extend_from_slice(&n.to_le_bytes());
         }
         TypedValue::AsS64(n) => {
-            eprintln!("[kv-store] Encoding s64: {}", n);
             bytes.push(TAG_S64);
             bytes.extend_from_slice(&n.to_le_bytes());
         }
         TypedValue::AsBool(b) => {
-            eprintln!("[kv-store] Encoding bool: {}", b);
             bytes.push(TAG_BOOL);
             bytes.push(if *b { 1 } else { 0 });
         }
         TypedValue::AsBytes(data) => {
-            eprintln!("[kv-store] Encoding bytes: {} bytes", data.len());
             bytes.push(TAG_BYTES);
             bytes.extend_from_slice(data);
         }
@@ -113,7 +107,11 @@ fn decode_typed_value(bytes: &[u8]) -> Result<TypedValue, Error> {
                     payload.len()
                 )));
             }
-            let n = u64::from_le_bytes(payload.try_into().unwrap());
+            let n = u64::from_le_bytes(
+                payload
+                    .try_into()
+                    .map_err(|_| Error::Other("Failed to parse u64 bytes".to_string()))?,
+            );
             Ok(TypedValue::AsU64(n))
         }
         TAG_S64 => {
@@ -123,7 +121,11 @@ fn decode_typed_value(bytes: &[u8]) -> Result<TypedValue, Error> {
                     payload.len()
                 )));
             }
-            let n = i64::from_le_bytes(payload.try_into().unwrap());
+            let n = i64::from_le_bytes(
+                payload
+                    .try_into()
+                    .map_err(|_| Error::Other("Failed to parse i64 bytes".to_string()))?,
+            );
             Ok(TypedValue::AsS64(n))
         }
         TAG_BOOL => {
@@ -222,21 +224,16 @@ impl GuestBucket for BucketImpl {
     // ========== Generic API ==========
 
     fn get(&self, key: String) -> Result<Option<TypedValue>, Error> {
-        eprintln!("[kv-store] get({})", key);
         match self.inner.get(&key).map_err(convert_error)? {
             Some(bytes) => {
                 let value = decode_typed_value(&bytes)?;
                 Ok(Some(value))
             }
-            None => {
-                eprintln!("[kv-store] Key not found: {}", key);
-                Ok(None)
-            }
+            None => Ok(None),
         }
     }
 
     fn set(&self, key: String, value: TypedValue) -> Result<(), Error> {
-        eprintln!("[kv-store] set({})", key);
         let bytes = encode_typed_value(&value)?;
         self.inner.set(&key, &bytes).map_err(convert_error)
     }
@@ -249,7 +246,9 @@ impl GuestBucket for BucketImpl {
                 expect_type(&value, TAG_JSON)?;
                 match value {
                     TypedValue::AsJson(json) => Ok(Some(json)),
-                    _ => unreachable!(),
+                    _ => Err(Error::Other(
+                        "Type mismatch after validation (should never happen)".to_string(),
+                    )),
                 }
             }
             None => Ok(None),
@@ -266,7 +265,9 @@ impl GuestBucket for BucketImpl {
                 expect_type(&value, TAG_STRING)?;
                 match value {
                     TypedValue::AsString(s) => Ok(Some(s)),
-                    _ => unreachable!(),
+                    _ => Err(Error::Other(
+                        "Type mismatch after validation (should never happen)".to_string(),
+                    )),
                 }
             }
             None => Ok(None),
@@ -283,7 +284,9 @@ impl GuestBucket for BucketImpl {
                 expect_type(&value, TAG_U64)?;
                 match value {
                     TypedValue::AsU64(n) => Ok(Some(n)),
-                    _ => unreachable!(),
+                    _ => Err(Error::Other(
+                        "Type mismatch after validation (should never happen)".to_string(),
+                    )),
                 }
             }
             None => Ok(None),
@@ -300,7 +303,9 @@ impl GuestBucket for BucketImpl {
                 expect_type(&value, TAG_S64)?;
                 match value {
                     TypedValue::AsS64(n) => Ok(Some(n)),
-                    _ => unreachable!(),
+                    _ => Err(Error::Other(
+                        "Type mismatch after validation (should never happen)".to_string(),
+                    )),
                 }
             }
             None => Ok(None),
@@ -317,7 +322,9 @@ impl GuestBucket for BucketImpl {
                 expect_type(&value, TAG_BOOL)?;
                 match value {
                     TypedValue::AsBool(b) => Ok(Some(b)),
-                    _ => unreachable!(),
+                    _ => Err(Error::Other(
+                        "Type mismatch after validation (should never happen)".to_string(),
+                    )),
                 }
             }
             None => Ok(None),
@@ -334,7 +341,9 @@ impl GuestBucket for BucketImpl {
                 expect_type(&value, TAG_BYTES)?;
                 match value {
                     TypedValue::AsBytes(bytes) => Ok(Some(bytes)),
-                    _ => unreachable!(),
+                    _ => Err(Error::Other(
+                        "Type mismatch after validation (should never happen)".to_string(),
+                    )),
                 }
             }
             None => Ok(None),

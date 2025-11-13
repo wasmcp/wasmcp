@@ -166,14 +166,36 @@ Only the middleware that owns the tool executes it.
 All components in chain use same interface from `spec/2025-06-18/wit/server.wit` (server-handler interface):
 
 ```wit
-interface handler {
-  handle: func(request: string) -> result<string, error>
+interface server-handler {
+  record message-context {
+    client-stream: option<borrow<output-stream>>,
+    protocol-version: string,
+    session: option<session>,
+    identity: option<identity>,
+    frame: message-frame,
+    http-context: option<http-context>,
+  }
+
+  handle: func(
+    ctx: message-context,
+    message: client-message,
+  ) -> option<result<server-result, error-code>>;
 }
 ```
 
 **Contract:**
-- Input: JSON-RPC request string
-- Output: JSON-RPC response string (or error)
+- Input: `MessageContext` (request metadata) + `ClientMessage` (MCP message)
+- Output: Optional result with `ServerResult` or error
+
+**MessageContext fields:**
+- `client-stream` - For sending real-time notifications
+- `protocol-version` - MCP protocol version (e.g., "2025-06-18")
+- `session` - Session ID and store ID (if sessions enabled)
+- `identity` - User identity with JWT claims (if authenticated)
+- `frame` - Message framing for transport
+- `http-context` - HTTP request details (if HTTP transport)
+
+**See:** [../../message-context.md](../../message-context.md) for complete field reference
 
 **Chain structure:**
 - Each component **imports** `handle` from next component
@@ -342,38 +364,122 @@ Published to `ghcr.io/wasmcp`, auto-downloaded by CLI:
 | `prompts-middleware` | Prompts wrapper | Middle |
 | `method-not-found` | Error handler | Bottom |
 
-## Sessions and Notifications
+## Sessions, Authentication, and Notifications
 
 ### Sessions
 
 **Interface:** `spec/2025-06-18/wit/sessions.wit`
 
-For middleware needing state across requests:
+Provides stateful storage across multiple requests from the same client:
 
 ```wit
-interface sessions {
-  initialize: func(session-id: string) -> result<_, error>
-  terminate: func(session-id: string) -> result<_, error>
+resource session {
+  open: static func(session-id: string, store-id: string) -> result<session, session-error>;
+  id: func() -> string;
+  get: func(key: string) -> result<option<typed-value>, session-error>;
+  set: func(key: string, value: typed-value) -> result<_, session-error>;
+  terminate: func(reason: option<string>) -> result<_, session-error>;
 }
 ```
 
-**Use cases:** Connection pooling, authentication state
+**How it works:**
+1. Transport receives `Mcp-Session-Id` header (HTTP) or session ID via transport protocol
+2. If no session ID provided, transport initializes new session
+3. Transport passes session info in `MessageContext.session`
+4. Tools open session and use get/set for persistent data
+5. Session automatically expires when JWT expires (if using auth)
+
+**Use cases:**
+- Multi-step workflows (wizards, forms)
+- Shopping carts
+- User preferences
+- Caching expensive computations
+
+**See:** [../../sessions.md](../../sessions.md) for complete guide
+
+**Auto-composition:** When tools import sessions interface, CLI automatically includes session-store component during composition.
+
+---
+
+### Authentication
+
+**Interface:** `spec/oauth/wit/` and `spec/2025-06-18/wit/mcp.wit`
+
+Provides JWT/OAuth bearer token validation:
+
+**Flow:**
+1. Client sends `Authorization: Bearer <jwt>` header
+2. Transport validates JWT signature, expiration, issuer, audience
+3. Transport parses claims into structured `jwt-claims`
+4. Transport passes `Identity` in `MessageContext.identity`
+5. Tools check scopes/claims for authorization
+
+**Identity structure:**
+```wit
+record identity {
+  claims: jwt-claims
+}
+
+record jwt-claims {
+  subject: string,                    // User ID
+  issuer: option<string>,             // Token issuer
+  audience: list<string>,             // Intended audiences
+  expiration: option<u64>,            // Unix timestamp
+  scopes: list<string>,               // OAuth 2.0 scopes
+  custom-claims: list<tuple<string, string>>,  // org_id, etc.
+}
+```
+
+**Helper functions:**
+```wit
+// OAuth helpers package (wasmcp:oauth/helpers)
+has-scope: func(claims: jwt-claims, scope: string) -> bool
+has-audience: func(claims: jwt-claims, audience: string) -> bool
+is-expired: func(claims: jwt-claims, clock-skew-seconds: option<u64>) -> bool
+get-subject: func(claims: jwt-claims) -> string
+get-claim: func(claims: jwt-claims, key: string) -> option<string>
+// ... and more
+```
+
+**Use cases:**
+- Scope-based authorization
+- User-scoped data access
+- Multi-tenant applications
+- Audit logging
+
+**See:** [../../authentication-and-authorization.md](../../authentication-and-authorization.md) for complete guide
+
+---
 
 ### Notifications
 
-**Interface:** `spec/2025-06-18/wit/notifications.wit`
+**Interface:** Via `MessageContext.client-stream`
 
-For server-to-client notifications:
+Tools can send real-time notifications to clients:
 
-```wit
-interface notifications {
-  send-progress: func(progress: progress-notification) -> result<_, error>
-  send-log: func(log: log-notification) -> result<_, error>
-  send-resource-updated: func(update: resource-update) -> result<_, error>
+```rust
+use server_io::send_message;
+use mcp::{ServerMessage, ServerNotification, LoggingMessageNotification};
+
+fn send_log(ctx: &MessageContext, message: String) {
+    if let Some(stream) = &ctx.client_stream {
+        let notification = ServerNotification::Log(LoggingMessageNotification {
+            data: message,
+            level: LogLevel::Info,
+            logger: Some("my-tool".to_string()),
+        });
+        let msg = ServerMessage::Notification(notification);
+        let _ = send_message(stream, msg, &ctx.frame);
+    }
 }
 ```
 
-**Use cases:** Progress updates, logging, real-time data changes
+**Notification types:**
+- Progress updates during long operations
+- Log messages
+- Resource update notifications
+
+**Use cases:** Progress bars, status updates, real-time logging
 
 ## Custom Components
 

@@ -52,7 +52,8 @@ pub fn serialize_server_message(message: &ServerMessage) -> Result<serde_json::V
         }
         ServerMessage::Notification(notification) => {
             // Generate JSON-RPC notification
-            let (method, params) = super::notifications::serialize_server_notification(notification);
+            let (method, params) =
+                super::notifications::serialize_server_notification(notification);
             Ok(serde_json::json!({
                 "jsonrpc": "2.0",
                 "method": method,

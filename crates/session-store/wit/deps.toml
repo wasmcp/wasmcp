@@ -4,4 +4,4 @@ http = "https://github.com/WebAssembly/wasi-http/archive/refs/tags/v0.2.8.tar.gz
 random = "https://github.com/WebAssembly/wasi-random/archive/refs/tags/v0.2.8.tar.gz"
 oauth = { path = "../../../spec/oauth/wit" }
 mcp-v20250618 = { path = "../../../spec/2025-06-18/wit" }
-keyvalue = { path = "../../../wit/keyvalue" }
+keyvalue = { path = "../../../spec/keyvalue/wit" }

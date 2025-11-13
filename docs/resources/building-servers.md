@@ -229,8 +229,178 @@ wasmtime serve -Scli combined.wasm
 
 Both components' tools/resources/prompts automatically merge into single unified catalog.
 
+## Using Sessions
+
+Sessions provide stateful storage across multiple requests. **Automatically enabled** in HTTP transport.
+
+### Accessing Session in Tools
+
+**Rust:**
+```rust
+use crate::bindings::wasmcp::mcp_v20250618::sessions::Session;
+use crate::bindings::wasmcp::keyvalue::store::TypedValue;
+
+fn call_tool(ctx: MessageContext, request: CallToolRequest)
+    -> Result<CallToolResult, String>
+{
+    // Check if session available
+    let Some(session_info) = ctx.session else {
+        return Err("Session required".to_string());
+    };
+
+    // Open session
+    let session = Session::open(&session_info.session_id, &session_info.store_id)?;
+
+    // Store data
+    session.set("counter", &TypedValue::AsU64(1))?;
+
+    // Retrieve data
+    match session.get("counter")? {
+        Some(TypedValue::AsU64(count)) => {
+            println!("Counter: {}", count);
+        }
+        _ => {}
+    }
+
+    Ok(result)
+}
+```
+
+**Python:**
+```python
+from wasmcp.mcp_v20250618.sessions import Session
+from wasmcp.keyvalue.store import TypedValue
+
+def call_tool(ctx, request):
+    if not ctx.session:
+        raise Exception("Session required")
+
+    # Open session
+    session = Session.open(ctx.session.session_id, ctx.session.store_id)
+
+    # Store data
+    session.set("counter", TypedValue.AsU64(1))
+
+    # Retrieve data
+    value = session.get("counter")
+    if isinstance(value, TypedValue.AsU64):
+        print(f"Counter: {value.value}")
+
+    return result
+```
+
+### Testing with Sessions
+
+**Start server with key-value support:**
+```bash
+wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+```
+
+**Test session persistence:**
+```bash
+# First request - server creates session
+curl -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "increment"}}'
+
+# Note the Mcp-Session-Id in response headers
+
+# Second request - reuse session
+curl -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: <session-id-from-response>" \
+  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "increment"}}'
+```
+
+**See:** [../../sessions.md](../../sessions.md) for complete guide
+
+**Example:** [examples/counter-middleware](../../examples/counter-middleware/) demonstrates session usage
+
+---
+
+## Using Authentication
+
+Protect tools with JWT/OAuth bearer token authentication.
+
+### Checking Authentication in Tools
+
+**Rust:**
+```rust
+use crate::bindings::wasmcp::oauth::helpers;
+
+fn call_tool(ctx: MessageContext, request: CallToolRequest)
+    -> Result<CallToolResult, String>
+{
+    // Require authentication
+    let Some(identity) = ctx.identity else {
+        return Err("Authentication required".to_string());
+    };
+
+    // Check authorization
+    if !helpers::has_scope(&identity.claims, "api:write") {
+        return Err("Missing required scope: api:write".to_string());
+    };
+
+    // Get user ID
+    let user_id = helpers::get_subject(&identity.claims);
+
+    // Perform authorized operation
+    Ok(result)
+}
+```
+
+**Python:**
+```python
+from wasmcp.oauth import helpers
+
+def call_tool(ctx, request):
+    if not ctx.identity:
+        raise Exception("Authentication required")
+
+    # Check authorization
+    if not helpers.has_scope(ctx.identity.claims, "api:write"):
+        raise Exception("Missing required scope: api:write")
+
+    # Get user ID
+    user_id = helpers.get_subject(ctx.identity.claims)
+
+    # Perform authorized operation
+    return result
+```
+
+### Testing with Authentication
+
+**Generate test JWT:**
+```bash
+# Use jwt.io or a JWT library to create a token with:
+# - subject: "test-user"
+# - scopes: ["api:read", "api:write"]
+# - audience: "https://api.example.com"
+# - expiration: future timestamp
+
+TEST_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+**Test with token:**
+```bash
+curl -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TEST_TOKEN" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "protected-tool"}}'
+```
+
+**See:** [../../authentication-and-authorization.md](../../authentication-and-authorization.md) for complete guide
+
+**See:** [../../jwt-helper-functions.md](../../jwt-helper-functions.md) for helper function reference
+
+---
+
 ## Related Resources
 
+- **Sessions:** See [../../sessions.md](../../sessions.md) for stateful workflows
+- **Authentication:** See [../../authentication-and-authorization.md](../../authentication-and-authorization.md) for JWT/OAuth
+- **MessageContext:** See [../../message-context.md](../../message-context.md) for accessing session/identity
+- **TypedValue:** See [../../typed-value.md](../../typed-value.md) for session storage types
 - **Registry management:** See `registry` resource for aliases and profiles
 - **CLI reference:** See `reference` resource for detailed command flags and options
 - **Architecture:** See `architecture` resource for how composition pipeline works

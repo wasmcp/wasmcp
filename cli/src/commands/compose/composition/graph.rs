@@ -79,6 +79,11 @@ pub async fn build_composition(
     let server_auth_interface = find_component_export(oauth_auth_path, &server_auth_prefix)
         .context("Failed to discover server-auth interface from oauth-auth component")?;
 
+    // Discover oauth/helpers interface from oauth-auth component
+    let oauth_helpers_prefix = "wasmcp:oauth/helpers";
+    let oauth_helpers_interface = find_component_export(oauth_auth_path, oauth_helpers_prefix)
+        .context("Failed to discover oauth/helpers interface from oauth-auth component")?;
+
     if verbose {
         println!("   Discovered interfaces:");
         println!("     server-handler: {}", server_handler_interface);
@@ -87,6 +92,7 @@ pub async fn build_composition(
         println!("     sessions: {}", sessions_interface);
         println!("     session-manager: {}", session_manager_interface);
         println!("     server-auth: {}", server_auth_interface);
+        println!("     oauth/helpers: {}", oauth_helpers_interface);
     }
 
     let mut graph = CompositionGraph::new();
@@ -229,6 +235,7 @@ pub async fn build_composition(
         &server_handler_interface,
         &server_io_interface,
         &server_auth_interface,
+        &oauth_helpers_interface,
         &sessions_interface,
         &session_manager_interface,
         transport_path,

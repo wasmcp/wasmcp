@@ -12,6 +12,7 @@ mod bindings {
 
 mod config;
 mod error;
+mod helpers;
 mod jwks;
 mod jwt;
 mod oauth;
@@ -327,6 +328,57 @@ impl bindings::exports::wasmcp::oauth::resource_metadata::Guest for Component {
 
     fn parse_www_authenticate_metadata(www_authenticate_header: String) -> Option<String> {
         oauth::resource_metadata::parse_www_authenticate_metadata(&www_authenticate_header)
+    }
+}
+
+// JWT Claim Helpers interface
+impl bindings::exports::wasmcp::oauth::helpers::Guest for Component {
+    fn flatten_claims(claims: JwtClaims) -> Vec<(String, String)> {
+        helpers::flatten_claims(&claims)
+    }
+
+    fn has_scope(claims: JwtClaims, scope: String) -> bool {
+        helpers::has_scope(&claims, &scope)
+    }
+
+    fn has_any_scope(claims: JwtClaims, scopes: Vec<String>) -> bool {
+        helpers::has_any_scope(&claims, &scopes)
+    }
+
+    fn has_all_scopes(claims: JwtClaims, scopes: Vec<String>) -> bool {
+        helpers::has_all_scopes(&claims, &scopes)
+    }
+
+    fn get_claim(claims: JwtClaims, key: String) -> Option<String> {
+        helpers::get_claim(&claims, &key)
+    }
+
+    fn has_audience(claims: JwtClaims, audience: String) -> bool {
+        helpers::has_audience(&claims, &audience)
+    }
+
+    fn is_expired(claims: JwtClaims, clock_skew_seconds: Option<u64>) -> bool {
+        helpers::is_expired(&claims, clock_skew_seconds)
+    }
+
+    fn is_valid_time(claims: JwtClaims, clock_skew_seconds: Option<u64>) -> bool {
+        helpers::is_valid_time(&claims, clock_skew_seconds)
+    }
+
+    fn get_subject(claims: JwtClaims) -> String {
+        helpers::get_subject(&claims)
+    }
+
+    fn get_issuer(claims: JwtClaims) -> Option<String> {
+        helpers::get_issuer(&claims)
+    }
+
+    fn get_scopes(claims: JwtClaims) -> Vec<String> {
+        helpers::get_scopes(&claims)
+    }
+
+    fn get_audiences(claims: JwtClaims) -> Vec<String> {
+        helpers::get_audiences(&claims)
     }
 }
 

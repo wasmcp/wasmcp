@@ -53,11 +53,13 @@ impl Guest for ServerIo {
     ) -> Result<ClientMessage, IoError> {
         // Read raw bytes based on limit
         let raw_bytes = match limit {
-            ReadLimit::Delimiter(delim) => reading::read_until_delimiter(input, &delim).map_err(|e| {
-                // Clear READ_BUFFER on error to prevent stale data
-                reading::READ_BUFFER.with(|rb| rb.borrow_mut().clear());
-                e
-            })?,
+            ReadLimit::Delimiter(delim) => {
+                reading::read_until_delimiter(input, &delim).map_err(|e| {
+                    // Clear READ_BUFFER on error to prevent stale data
+                    reading::READ_BUFFER.with(|rb| rb.borrow_mut().clear());
+                    e
+                })?
+            }
             ReadLimit::MaxBytes(max) => reading::read_max_bytes(input, max)?,
         };
 

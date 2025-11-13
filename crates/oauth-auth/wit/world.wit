@@ -13,4 +13,7 @@ world oauth-auth {
     export wasmcp:oauth/bearer@0.1.0;
     export wasmcp:oauth/introspection@0.1.0;
     export wasmcp:oauth/resource-metadata@0.1.0;
+
+    // JWT claim helper functions
+    export wasmcp:oauth/helpers@0.1.0;
 }

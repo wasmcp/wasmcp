@@ -1,6 +1,7 @@
-//! DELETE request handler for session cleanup
+//! DELETE request handler for session termination
 //!
-//! Handles session termination when sessions are enabled.
+//! Performs soft delete (mark-terminated) on sessions when requested by client.
+//! Session data remains in storage for background cleanup processes.
 //! Returns 405 Method Not Allowed when sessions are disabled.
 
 use crate::bindings::wasi::http::types::{IncomingRequest, ResponseOutparam};
@@ -38,10 +39,10 @@ pub fn handle_delete(
         Err(e) => send_error!(response_out, e),
     };
 
-    // Delete session using session helper
+    // Terminate session (soft delete) using session helper
     match session::delete_session_by_id(&session_id, session_config) {
         Ok(_) => {
-            // Return 200 OK
+            // Return 200 OK - session marked as terminated
             let _ = response::ResponseBuilder::new()
                 .status(200)
                 .build_and_send(response_out);

@@ -190,11 +190,12 @@ pub fn wire_transport(
     server_handler_interface: &str,
     server_io_interface: &str,
     server_auth_interface: &str,
+    oauth_helpers_interface: &str,
     sessions_interface: &str,
     session_manager_interface: &str,
     transport_path: &Path,
     server_io_path: &Path,
-    _oauth_auth_path: &Path,
+    oauth_auth_path: &Path,
     _session_store_path: &Path,
     resolver: &VersionResolver,
     verbose: bool,
@@ -366,6 +367,32 @@ pub fn wire_transport(
                 eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
             }
             return Err(e).context("Failed to wire transport server-auth import");
+        }
+    }
+
+    // Wire transport's oauth/helpers import to the oauth-auth service
+    if verbose {
+        eprintln!("\n[WIRE] 6. Wiring oauth/helpers...");
+        eprintln!("[WIRE]    Interface: {}", oauth_helpers_interface);
+    }
+    let oauth_helpers_export = graph
+        .alias_instance_export(oauth_auth_inst, oauth_helpers_interface)
+        .context("Failed to get oauth/helpers export from oauth-auth")?;
+    match graph.set_instantiation_argument(
+        transport_inst,
+        oauth_helpers_interface,
+        oauth_helpers_export,
+    ) {
+        Ok(_) => {
+            if verbose {
+                eprintln!("[WIRE]    ✓ Success");
+            }
+        }
+        Err(e) => {
+            if verbose {
+                eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
+            }
+            return Err(e).context("Failed to wire transport oauth/helpers import");
         }
     }
 

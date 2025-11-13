@@ -15,6 +15,12 @@ world transport {
     // Import session-manager for session lifecycle management
     import wasmcp:mcp-v20250618/session-manager@0.1.6;
 
+    // Import sessions for Session resource (used to bind identity)
+    import wasmcp:mcp-v20250618/sessions@0.1.6;
+
+    // Import OAuth helpers for JWT claim extraction
+    import wasmcp:oauth/helpers@0.1.0;
+
     // Import server-auth for JWT validation
     import wasmcp:mcp-v20250618/server-auth@0.1.6;
 }

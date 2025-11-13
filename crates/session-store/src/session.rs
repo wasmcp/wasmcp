@@ -9,7 +9,9 @@ use crate::bindings::exports::wasmcp::mcp_v20250618::sessions::{
 };
 use crate::bindings::wasi::io::poll::Pollable;
 use crate::bindings::wasi::io::streams::OutputStream;
-use crate::bindings::wasmcp::keyvalue::store::{self as kv_store, Bucket, Error as KvError};
+use crate::bindings::wasmcp::keyvalue::store::{
+    self as kv_store, Bucket, Error as KvError, TypedValue,
+};
 use serde::{Deserialize, Serialize};
 
 /// Convert KV store error to SessionError
@@ -24,6 +26,9 @@ fn kv_to_session_error(e: KvError) -> SessionError {
 // ============================================================================
 // Internal Storage Types (NOT exposed via WIT)
 // ============================================================================
+
+/// Default session lifetime (24 hours) for sessions without JWT expiration
+const DEFAULT_SESSION_LIFETIME_SECONDS: u64 = 24 * 60 * 60; // 24 hours
 
 /// Internal metadata - NOT exposed via WIT
 ///
@@ -49,43 +54,15 @@ struct SessionMetadata {
 
 impl Default for SessionMetadata {
     fn default() -> Self {
+        let created_at = current_timestamp_ms();
+        // Set default expiration to 24 hours from creation
+        let expires_at = Some((created_at / 1000) + DEFAULT_SESSION_LIFETIME_SECONDS);
+
         Self {
             terminated: false,
-            created_at: current_timestamp_ms(),
-            expires_at: None,
+            created_at,
+            expires_at,
             reason: None,
-        }
-    }
-}
-
-/// Complete session storage schema
-///
-/// This is the actual format stored in WASI KV. NOT exposed via WIT.
-///
-/// Storage structure:
-/// {
-///   "__meta__": {
-///     "terminated": false,
-///     "created_at": 1698765432000,
-///     "reason": null
-///   },
-///   "data": {
-///     "user_key_1": "base64_encoded_value",
-///     "user_key_2": "base64_encoded_value"
-///   }
-/// }
-#[derive(Debug, Serialize, Deserialize)]
-struct SessionStorage {
-    #[serde(rename = "__meta__")]
-    meta: SessionMetadata,
-    data: serde_json::Map<String, serde_json::Value>,
-}
-
-impl Default for SessionStorage {
-    fn default() -> Self {
-        Self {
-            meta: SessionMetadata::default(),
-            data: serde_json::Map::new(),
         }
     }
 }
@@ -105,25 +82,25 @@ impl SessionManager {
         // Generate new session ID
         let session_id = generate_uuid_v4();
 
-        eprintln!("[SessionManager] Initializing new session: {}", session_id);
-
         // Open bucket
         let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
-        // Create initial storage structure with empty data
-        let storage = SessionStorage::default();
-        let storage_json = serde_json::to_string(&storage)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
+        // Create initial metadata
+        let metadata = SessionMetadata::default();
+        let metadata_json = serde_json::to_string(&metadata).map_err(|e| {
+            SessionError::Unexpected(format!("Failed to serialize metadata: {}", e))
+        })?;
 
-        // Store in KV
-        bucket
-            .set_bytes(&session_id, storage_json.as_bytes())
-            .map_err(kv_to_session_error)?;
+        // Store metadata at session_id:__meta__ as JSON string
+        let kv_key = meta_key(&session_id);
+        bucket.set_json(&kv_key, &metadata_json).map_err(|e| {
+            eprintln!(
+                "[SessionManager] CRITICAL: Failed to write session {} during initialization: {:?}",
+                session_id, e
+            );
+            kv_to_session_error(e)
+        })?;
 
-        eprintln!(
-            "[SessionManager] Session {} created successfully",
-            session_id
-        );
         Ok(session_id)
     }
 
@@ -132,16 +109,11 @@ impl SessionManager {
     /// Returns true if session exists, is not terminated, and is not expired.
     /// Returns false if session is inactive for any reason.
     pub fn validate(session_id: String, store_id: String) -> Result<bool, SessionError> {
-        eprintln!("[SessionManager] Validating session: {}", session_id);
-
         let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
         // Check if session is active (exists, not terminated, not expired)
         match is_session_active(&bucket, &session_id) {
-            Ok(_) => {
-                eprintln!("[SessionManager] Session {} is active", session_id);
-                Ok(true)
-            }
+            Ok(_) => Ok(true),
             Err(SessionError::NoSuchSession) => {
                 // Session doesn't exist, is terminated, or is expired
                 Ok(false)
@@ -159,59 +131,83 @@ impl SessionManager {
         store_id: String,
         reason: Option<String>,
     ) -> Result<(), SessionError> {
-        eprintln!(
-            "[SessionManager] Marking session {} as terminated",
-            session_id
-        );
-        if let Some(ref r) = reason {
-            eprintln!("[SessionManager] Reason: {}", r);
-        }
-
         let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
-        // Read current storage
-        let data = bucket
-            .get_bytes(&session_id)
+        // Read current metadata
+        let kv_key = meta_key(&session_id);
+        let metadata_json = bucket
+            .get_json(&kv_key)
             .map_err(kv_to_session_error)?
             .ok_or(SessionError::NoSuchSession)?;
 
-        let mut storage: SessionStorage = serde_json::from_slice(&data)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to parse storage: {}", e)))?;
+        let mut metadata: SessionMetadata = serde_json::from_str(&metadata_json).map_err(|e| {
+            SessionError::Unexpected(format!(
+                "Failed to parse metadata for session {}: {} - corrupt data: {}",
+                session_id,
+                e,
+                &metadata_json[..metadata_json.len().min(200)]
+            ))
+        })?;
 
         // Update metadata
-        storage.meta.terminated = true;
-        storage.meta.reason = reason;
+        metadata.terminated = true;
+        metadata.reason = reason;
 
         // Write back
-        let storage_json = serde_json::to_string(&storage)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
+        let updated_json = serde_json::to_string(&metadata).map_err(|e| {
+            SessionError::Unexpected(format!("Failed to serialize metadata: {}", e))
+        })?;
 
-        bucket
-            .set_bytes(&session_id, storage_json.as_bytes())
-            .map_err(kv_to_session_error)?;
+        bucket.set_json(&kv_key, &updated_json).map_err(|e| {
+            eprintln!(
+                "[SessionManager] CRITICAL: Failed to write termination for session {}: {:?}",
+                session_id, e
+            );
+            kv_to_session_error(e)
+        })?;
 
-        eprintln!(
-            "[SessionManager] Session {} marked as terminated",
-            session_id
-        );
         Ok(())
     }
 
     /// Delete session from storage (hard delete)
     ///
-    /// Completely removes session and all associated data from storage.
-    /// This is a destructive operation that cannot be undone.
+    /// Deletes all session data including metadata and user keys.
+    /// Uses paginated list_keys() to find all keys with session_id prefix
+    /// and deletes them in batches.
     pub fn delete_session(session_id: String, store_id: String) -> Result<(), SessionError> {
-        eprintln!("[SessionManager] Deleting session {}", session_id);
-
         let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
-        bucket.delete(&session_id).map_err(kv_to_session_error)?;
+        // Build session prefix (session_id:)
+        let session_prefix = format!("{}:", session_id);
 
-        eprintln!(
-            "[SessionManager] Session {} deleted successfully",
-            session_id
-        );
+        // Paginate through all keys and delete those matching this session
+        let mut cursor: Option<String> = None;
+        loop {
+            let response = bucket
+                .list_keys(cursor.as_deref())
+                .map_err(kv_to_session_error)?;
+
+            // Filter keys belonging to this session
+            let session_keys: Vec<String> = response
+                .keys
+                .into_iter()
+                .filter(|k| k.starts_with(&session_prefix))
+                .collect();
+
+            // Delete in batch if any found
+            if !session_keys.is_empty() {
+                bucket
+                    .delete_many(&session_keys)
+                    .map_err(kv_to_session_error)?;
+            }
+
+            // Check if more pages exist
+            cursor = response.cursor;
+            if cursor.is_none() {
+                break;
+            }
+        }
+
         Ok(())
     }
 
@@ -224,37 +220,40 @@ impl SessionManager {
         store_id: String,
         expires_at: u64,
     ) -> Result<(), SessionError> {
-        eprintln!(
-            "[SessionManager] Setting expiration for session {} to {}",
-            session_id, expires_at
-        );
-
         let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
-        // Read current storage
-        let data = bucket
-            .get_bytes(&session_id)
+        // Read current metadata
+        let kv_key = meta_key(&session_id);
+        let metadata_json = bucket
+            .get_json(&kv_key)
             .map_err(kv_to_session_error)?
             .ok_or(SessionError::NoSuchSession)?;
 
-        let mut storage: SessionStorage = serde_json::from_slice(&data)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to parse storage: {}", e)))?;
+        let mut metadata: SessionMetadata = serde_json::from_str(&metadata_json).map_err(|e| {
+            SessionError::Unexpected(format!(
+                "Failed to parse metadata for session {}: {} - corrupt data: {}",
+                session_id,
+                e,
+                &metadata_json[..metadata_json.len().min(200)]
+            ))
+        })?;
 
-        // Update expiration in metadata
-        storage.meta.expires_at = Some(expires_at);
+        // Update expiration
+        metadata.expires_at = Some(expires_at);
 
         // Write back
-        let storage_json = serde_json::to_string(&storage)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
+        let updated_json = serde_json::to_string(&metadata).map_err(|e| {
+            SessionError::Unexpected(format!("Failed to serialize metadata: {}", e))
+        })?;
 
-        bucket
-            .set_bytes(&session_id, storage_json.as_bytes())
-            .map_err(kv_to_session_error)?;
+        bucket.set_json(&kv_key, &updated_json).map_err(|e| {
+            eprintln!(
+                "[SessionManager] CRITICAL: Failed to write expiration for session {}: {:?}",
+                session_id, e
+            );
+            kv_to_session_error(e)
+        })?;
 
-        eprintln!(
-            "[SessionManager] Session {} expiration set to {}",
-            session_id, expires_at
-        );
         Ok(())
     }
 }
@@ -264,14 +263,31 @@ impl SessionManager {
 // ============================================================================
 
 /// Session resource that manages stateful data in WASI KV
+///
+/// Storage model: session_id:key pattern
+/// - Metadata: session_id:__meta__
+/// - User keys: session_id:user_key
 pub struct SessionImpl {
     bucket: Bucket,
     session_id: String,
     store_id: String, // Needed for terminate() to call session-manager
 }
 
+/// Magic string for metadata field in session storage
+const META_FIELD: &str = "__meta__";
+
 /// Reserved key names that user tools cannot use
-const RESERVED_KEYS: &[&str] = &["__meta__", "__metadata__", "metadata", "meta"];
+const RESERVED_KEYS: &[&str] = &[META_FIELD, "__metadata__", "metadata", "meta"];
+
+/// Build KV key for session metadata
+fn meta_key(session_id: &str) -> String {
+    format!("{}:{}", session_id, META_FIELD)
+}
+
+/// Build KV key for user data
+fn user_key(session_id: &str, key: &str) -> String {
+    format!("{}:{}", session_id, key)
+}
 
 /// Maximum size for a single key (1KB)
 const MAX_KEY_SIZE: usize = 1024;
@@ -279,12 +295,58 @@ const MAX_KEY_SIZE: usize = 1024;
 /// Maximum size for a single value (1MB)
 const MAX_VALUE_SIZE: usize = 1024 * 1024;
 
+/// Validate that a session ID is a properly formatted UUID v4
+///
+/// UUID v4 format: 8-4-4-4-12 hex digits with hyphens (36 characters total)
+/// Example: "550e8400-e29b-41d4-a716-446655440000"
+fn validate_session_id(session_id: &str) -> Result<(), SessionError> {
+    // Check length (UUID v4 is always 36 characters with hyphens)
+    if session_id.len() != 36 {
+        return Err(SessionError::Unexpected(format!(
+            "Invalid session ID format: expected 36 characters, got {}",
+            session_id.len()
+        )));
+    }
+
+    // Check structure: 8-4-4-4-12 with hyphens at positions 8, 13, 18, 23
+    let parts: Vec<&str> = session_id.split('-').collect();
+    if parts.len() != 5 {
+        return Err(SessionError::Unexpected(
+            "Invalid session ID format: expected UUID format (8-4-4-4-12)".to_string(),
+        ));
+    }
+
+    // Validate each part length and hex characters
+    let expected_lengths = [8, 4, 4, 4, 12];
+    for (i, (part, &expected_len)) in parts.iter().zip(&expected_lengths).enumerate() {
+        if part.len() != expected_len {
+            return Err(SessionError::Unexpected(format!(
+                "Invalid session ID format: part {} has length {}, expected {}",
+                i + 1,
+                part.len(),
+                expected_len
+            )));
+        }
+
+        if !part.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(SessionError::Unexpected(format!(
+                "Invalid session ID format: part {} contains non-hex characters",
+                i + 1
+            )));
+        }
+    }
+
+    Ok(())
+}
+
 impl GuestSession for SessionImpl {
     fn open(session_id: String, store_id: String) -> Result<Session, SessionError> {
+        // Validate session ID format (UUID v4)
+        validate_session_id(&session_id)?;
+
         let bucket = kv_store::open(&store_id).map_err(kv_to_session_error)?;
 
-        // Validate session is active (exists, not terminated, not expired)
-        // SessionError and SessionError are the same type, so we can return directly
+        // Validate session is active (checks metadata key exists and is valid)
         is_session_active(&bucket, &session_id)?;
 
         Ok(Session::new(SessionImpl {
@@ -298,58 +360,28 @@ impl GuestSession for SessionImpl {
         self.session_id.clone()
     }
 
-    fn get(&self, key: String) -> Result<Option<Vec<u8>>, SessionError> {
+    fn get(&self, key: String) -> Result<Option<TypedValue>, SessionError> {
         // Validate key before accessing storage
         validate_user_key(&key)?;
 
-        // Read storage
-        let data = self
-            .bucket
-            .get_bytes(&self.session_id)
-            .map_err(kv_to_session_error)?
-            .ok_or(SessionError::NoSuchSession)?;
+        // Read typed value directly from KV using session_id:key pattern
+        let kv_key = user_key(&self.session_id, &key);
+        let value = self.bucket.get(&kv_key).map_err(kv_to_session_error)?;
 
-        let storage: SessionStorage = serde_json::from_slice(&data)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to parse storage: {}", e)))?;
-
-        // Access data field
-        if let Some(value) = storage.data.get(&key) {
-            if let Some(s) = value.as_str() {
-                let decoded = base64_decode(s)?;
-                Ok(Some(decoded))
-            } else {
-                Ok(None)
-            }
-        } else {
-            Ok(None)
-        }
+        Ok(value)
     }
 
-    fn set(&self, key: String, value: Vec<u8>) -> Result<(), SessionError> {
-        // Validate key and value
+    fn set(&self, key: String, value: TypedValue) -> Result<(), SessionError> {
+        // Validate key
         validate_user_key(&key)?;
-        validate_value_size(&value)?;
 
-        // Read current storage
-        let data = self
-            .bucket
-            .get_bytes(&self.session_id)
-            .map_err(kv_to_session_error)?
-            .ok_or(SessionError::NoSuchSession)?;
+        // Validate value size based on type
+        validate_typed_value_size(&value)?;
 
-        let mut storage: SessionStorage = serde_json::from_slice(&data)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to parse storage: {}", e)))?;
-
-        // Update data field (preserving __meta__)
-        let encoded = base64_encode(&value);
-        storage.data.insert(key, serde_json::Value::String(encoded));
-
-        // Write back
-        let storage_json = serde_json::to_string(&storage)
-            .map_err(|e| SessionError::Unexpected(format!("Failed to serialize storage: {}", e)))?;
-
+        // Write typed value directly to KV using session_id:key pattern
+        let kv_key = user_key(&self.session_id, &key);
         self.bucket
-            .set_bytes(&self.session_id, storage_json.as_bytes())
+            .set(&kv_key, &value)
             .map_err(kv_to_session_error)?;
 
         Ok(())
@@ -370,19 +402,9 @@ impl GuestSession for SessionImpl {
     }
 
     fn terminate(&self, reason: Option<String>) -> Result<(), SessionError> {
-        eprintln!(
-            "[Session] Terminating session {} (user-initiated)",
-            self.session_id
-        );
-
         // Call internal SessionManager implementation directly
+        // SessionManager returns SessionError, which is the same type we return, so no mapping needed
         SessionManager::mark_terminated(self.session_id.clone(), self.store_id.clone(), reason)
-            .map_err(|e| match e {
-                SessionError::Store(msg) => SessionError::Store(msg),
-                SessionError::NoSuchSession => SessionError::NoSuchSession,
-                SessionError::Unexpected(msg) => SessionError::Unexpected(msg),
-                SessionError::Io(_) => SessionError::Unexpected("IO error".to_string()),
-            })
     }
 }
 
@@ -427,29 +449,24 @@ fn validate_user_key(key: &str) -> Result<(), SessionError> {
     Ok(())
 }
 
-/// Validate value size
-fn validate_value_size(value: &[u8]) -> Result<(), SessionError> {
-    if value.len() > MAX_VALUE_SIZE {
+/// Validate typed value size
+fn validate_typed_value_size(value: &TypedValue) -> Result<(), SessionError> {
+    let size = match value {
+        TypedValue::AsString(s) => s.len(),
+        TypedValue::AsJson(j) => j.len(),
+        TypedValue::AsU64(_) => 8,
+        TypedValue::AsS64(_) => 8,
+        TypedValue::AsBool(_) => 1,
+        TypedValue::AsBytes(b) => b.len(),
+    };
+
+    if size > MAX_VALUE_SIZE {
         return Err(SessionError::Unexpected(format!(
             "Value exceeds maximum size of {} bytes",
             MAX_VALUE_SIZE
         )));
     }
     Ok(())
-}
-
-/// Base64 encode bytes for storage in JSON
-fn base64_encode(bytes: &[u8]) -> String {
-    use base64::{Engine as _, engine::general_purpose};
-    general_purpose::STANDARD.encode(bytes)
-}
-
-/// Base64 decode string from JSON storage
-fn base64_decode(s: &str) -> Result<Vec<u8>, SessionError> {
-    use base64::{Engine as _, engine::general_purpose};
-    general_purpose::STANDARD
-        .decode(s)
-        .map_err(|e| SessionError::Unexpected(format!("Failed to decode base64: {}", e)))
 }
 
 /// Generate UUID v4 using wasi:random
@@ -491,18 +508,18 @@ fn generate_uuid_v4() -> String {
 
 /// Get current Unix timestamp in milliseconds
 fn current_timestamp_ms() -> u64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
+        .unwrap_or(Duration::ZERO)  // Handle time going backwards gracefully
         .as_millis() as u64
 }
 
 fn current_timestamp_s() -> u64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
+        .unwrap_or(Duration::ZERO)  // Handle time going backwards gracefully
         .as_secs()
 }
 
@@ -512,45 +529,78 @@ fn current_timestamp_s() -> u64 {
 /// and SessionImpl::open() to ensure consistent behavior.
 ///
 /// Returns:
-/// - Ok(storage) if session is active
+/// - Ok(()) if session is active
 /// - Err(SessionError::NoSuchSession) if session doesn't exist, is terminated, or is expired
 ///
 /// Per MCP spec, clients don't need to distinguish why a session is inactive - they all
 /// result in HTTP 404 and require reinitialization.
-fn is_session_active(bucket: &Bucket, session_id: &str) -> Result<SessionStorage, SessionError> {
-    // Check 1: Session exists
-    if !bucket.exists(session_id).map_err(kv_to_session_error)? {
+///
+/// # TOCTOU Race Condition
+///
+/// Note: There is a theoretical time-of-check/time-of-use (TOCTOU) race condition where
+/// a session could expire or be terminated between validation and first use. In practice,
+/// this is negligible in the WASM per-request model (microseconds between calls), and
+/// cannot be fixed without compare-and-swap atomic operations in the KV store.
+/// Session validation is "best effort" and not atomic.
+fn is_session_active(bucket: &Bucket, session_id: &str) -> Result<(), SessionError> {
+    let kv_key = meta_key(session_id);
+
+    // Check 1: Metadata exists
+    if !bucket.exists(&kv_key).map_err(kv_to_session_error)? {
+        eprintln!(
+            "[Session] Validation failed for {}: metadata not found",
+            session_id
+        );
         return Err(SessionError::NoSuchSession);
     }
 
-    // Read storage
-    let data = bucket
-        .get_bytes(session_id)
+    // Read metadata
+    let json = bucket
+        .get_json(&kv_key)
         .map_err(kv_to_session_error)?
-        .ok_or(SessionError::NoSuchSession)?;
+        .ok_or_else(|| {
+            eprintln!(
+                "[Session] Validation failed for {}: metadata disappeared (race condition)",
+                session_id
+            );
+            SessionError::NoSuchSession
+        })?;
 
-    let storage: SessionStorage = serde_json::from_slice(&data)
-        .map_err(|e| SessionError::Unexpected(format!("Failed to parse storage: {}", e)))?;
+    let metadata: SessionMetadata = serde_json::from_str(&json).map_err(|e| {
+        eprintln!(
+            "[Session] Validation failed for {}: corrupt metadata - {}",
+            session_id, e
+        );
+        SessionError::Unexpected(format!(
+            "Failed to parse metadata for session {}: {} - corrupt data: {}",
+            session_id,
+            e,
+            &json[..json.len().min(200)]
+        ))
+    })?;
 
     // Check 2: Not terminated
-    if storage.meta.terminated {
-        eprintln!("[SessionManager] Session {} is terminated", session_id);
+    if metadata.terminated {
+        eprintln!(
+            "[Session] Validation failed for {}: terminated (reason: {:?})",
+            session_id, metadata.reason
+        );
         return Err(SessionError::NoSuchSession);
     }
 
     // Check 3: Not expired
-    if let Some(expires_at) = storage.meta.expires_at {
+    if let Some(expires_at) = metadata.expires_at {
         let now = current_timestamp_s();
         if now >= expires_at {
             eprintln!(
-                "[SessionManager] Session {} expired at {} (now: {})",
+                "[Session] Validation failed for {}: expired at {} (now: {})",
                 session_id, expires_at, now
             );
             return Err(SessionError::NoSuchSession);
         }
     }
 
-    Ok(storage)
+    Ok(())
 }
 
 // ============================================================================
@@ -558,16 +608,25 @@ fn is_session_active(bucket: &Bucket, session_id: &str) -> Result<SessionStorage
 // ============================================================================
 
 /// Future for elicit results - MVP stub
+///
+/// NOTE: This is unreachable in MVP because Session::elicit() always returns an error.
+/// These methods should never be called since the FutureElicitResult is never returned successfully.
 pub struct FutureElicitResultImpl;
 
 impl GuestFutureElicitResult for FutureElicitResultImpl {
     fn subscribe(&self) -> Pollable {
-        // MVP: Return a pollable that never becomes ready
-        panic!("FutureElicitResult::subscribe not implemented in MVP")
+        // MVP: This should never be called since elicit() returns error
+        // Using unimplemented!() instead of panic!() to document intentional non-implementation
+        unimplemented!(
+            "FutureElicitResult::subscribe not implemented in MVP - elicit() always errors"
+        )
     }
 
     fn elicit_result(&self) -> ElicitResult {
-        // MVP: Panic if called (shouldn't be called since subscribe never returns ready)
-        panic!("FutureElicitResult::elicit_result not implemented in MVP")
+        // MVP: This should never be called since elicit() returns error
+        // Using unimplemented!() instead of panic!() to document intentional non-implementation
+        unimplemented!(
+            "FutureElicitResult::elicit_result not implemented in MVP - elicit() always errors"
+        )
     }
 }

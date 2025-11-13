@@ -11,6 +11,7 @@ mod bindings {
 }
 
 use bindings::exports::wasmcp::mcp_v20250618::server_handler::{Guest, MessageContext};
+use bindings::wasmcp::keyvalue::store::TypedValue;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
 use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
 use bindings::wasmcp::mcp_v20250618::server_io;
@@ -179,16 +180,20 @@ fn increment_counter(ctx: &MessageContext) {
     if let Some(session_info) = &ctx.session {
         if let Ok(session) = Session::open(&session_info.session_id, &session_info.store_id) {
             let current_count = match session.get(counter_key) {
-                Ok(Some(bytes)) => {
+                Ok(Some(TypedValue::AsBytes(bytes))) => {
                     let count_str = String::from_utf8(bytes).unwrap_or_default();
                     count_str.parse::<u64>().unwrap_or(0)
                 }
+                Ok(Some(TypedValue::AsString(s))) => s.parse::<u64>().unwrap_or(0),
+                Ok(Some(TypedValue::AsU64(n))) => n,
                 _ => 0,
             };
 
             let new_count = current_count + 1;
-            let count_bytes = new_count.to_string().into_bytes();
-            let _ = session.set(counter_key, &count_bytes);
+            let _ = session.set(
+                counter_key,
+                &TypedValue::AsU64(new_count),
+            );
 
             // Send notification about the counter increment
             log_notification(
@@ -206,10 +211,17 @@ fn get_current_count(ctx: &MessageContext) -> (u64, bool) {
     if let Some(session_info) = &ctx.session {
         if let Ok(session) = Session::open(&session_info.session_id, &session_info.store_id) {
             match session.get(counter_key) {
-                Ok(Some(bytes)) => {
+                Ok(Some(TypedValue::AsBytes(bytes))) => {
                     let count_str = String::from_utf8(bytes).unwrap_or_default();
                     let count = count_str.parse::<u64>().unwrap_or(0);
                     return (count, true);
+                }
+                Ok(Some(TypedValue::AsString(s))) => {
+                    let count = s.parse::<u64>().unwrap_or(0);
+                    return (count, true);
+                }
+                Ok(Some(TypedValue::AsU64(n))) => {
+                    return (n, true);
                 }
                 _ => return (0, true),
             }

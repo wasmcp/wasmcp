@@ -3,12 +3,12 @@
 //! This module provides session lifecycle management for HTTP transport:
 //! - Session validation and retrieval from headers
 //! - Session initialization during connection setup
-//! - Session deletion on client disconnect
+//! - Session termination (soft delete) on client disconnect
 //! - Session requirement enforcement for non-initialize requests
 
 use crate::bindings::wasi::http::types::IncomingRequest;
 use crate::bindings::wasmcp::mcp_v20250618::session_manager::{
-    SessionError, delete_session as manager_delete_session, initialize as manager_initialize,
+    SessionError, initialize as manager_initialize, mark_terminated as manager_mark_terminated,
     validate as manager_validate,
 };
 use crate::config::SessionConfig;
@@ -72,10 +72,13 @@ pub fn initialize_session(session_config: &SessionConfig) -> Option<String> {
     }
 }
 
-/// Delete session by ID
+/// Terminate session by ID (soft delete)
+///
+/// Marks the session as terminated without removing data.
+/// Background cleanup processes will hard-delete terminated sessions later.
 ///
 /// Returns:
-/// - Ok(()) if session deleted successfully
+/// - Ok(()) if session terminated successfully
 /// - Err(TransportError) with appropriate error message
 pub fn delete_session_by_id(
     session_id: &str,
@@ -83,10 +86,10 @@ pub fn delete_session_by_id(
 ) -> Result<(), TransportError> {
     let bucket = session_config.get_bucket();
 
-    match manager_delete_session(session_id, bucket) {
+    match manager_mark_terminated(session_id, bucket, Some("Client requested deletion")) {
         Ok(_) => Ok(()),
         Err(SessionError::NoSuchSession) => Err(TransportError::session("Session not found")),
-        Err(_) => Err(TransportError::session("Failed to delete session")),
+        Err(_) => Err(TransportError::session("Failed to terminate session")),
     }
 }
 
@@ -101,7 +104,9 @@ pub fn bind_identity_to_session(
     identity: &crate::bindings::wasmcp::mcp_v20250618::mcp::Identity,
     session_config: &SessionConfig,
 ) {
-    use crate::bindings::wasmcp::mcp_v20250618::sessions::{self, Session};
+    use crate::bindings::wasmcp::keyvalue::store::TypedValue;
+    use crate::bindings::wasmcp::mcp_v20250618::sessions::Session;
+    use crate::bindings::wasmcp::oauth::helpers;
 
     let bucket = session_config.get_bucket();
 
@@ -118,36 +123,42 @@ pub fn bind_identity_to_session(
     };
 
     // Store subject (user ID) from JWT claims
-    let subject = sessions::get_subject(&identity.claims);
-    if let Err(e) = session.set("jwt:sub", subject.as_bytes()) {
+    let subject = helpers::get_subject(&identity.claims);
+    if let Err(e) = session.set("jwt:sub", &TypedValue::AsBytes(subject.as_bytes().to_vec())) {
         eprintln!("[transport:session] Failed to store JWT subject: {:?}", e);
     }
 
     // Store issuer
-    if let Some(issuer) = sessions::get_issuer(&identity.claims)
-        && let Err(e) = session.set("jwt:iss", issuer.as_bytes())
+    if let Some(issuer) = helpers::get_issuer(&identity.claims)
+        && let Err(e) = session.set("jwt:iss", &TypedValue::AsBytes(issuer.as_bytes().to_vec()))
     {
         eprintln!("[transport:session] Failed to store JWT issuer: {:?}", e);
     }
 
     // Store scopes as comma-separated list
-    let scopes = sessions::get_scopes(&identity.claims);
+    let scopes = helpers::get_scopes(&identity.claims);
     let scopes_str = scopes.join(",");
-    if let Err(e) = session.set("jwt:scopes", scopes_str.as_bytes()) {
+    if let Err(e) = session.set(
+        "jwt:scopes",
+        &TypedValue::AsBytes(scopes_str.as_bytes().to_vec()),
+    ) {
         eprintln!("[transport:session] Failed to store JWT scopes: {:?}", e);
     }
 
     // Store audiences as comma-separated list
-    let audiences = sessions::get_audiences(&identity.claims);
+    let audiences = helpers::get_audiences(&identity.claims);
     let audiences_str = audiences.join(",");
-    if let Err(e) = session.set("jwt:audiences", audiences_str.as_bytes()) {
+    if let Err(e) = session.set(
+        "jwt:audiences",
+        &TypedValue::AsBytes(audiences_str.as_bytes().to_vec()),
+    ) {
         eprintln!("[transport:session] Failed to store JWT audiences: {:?}", e);
     }
 
     // Store expiration timestamp if available and set session TTL
     if let Some(exp) = identity.claims.expiration {
         let exp_str = exp.to_string();
-        if let Err(e) = session.set("jwt:exp", exp_str.as_bytes()) {
+        if let Err(e) = session.set("jwt:exp", &TypedValue::AsBytes(exp_str.as_bytes().to_vec())) {
             eprintln!(
                 "[transport:session] Failed to store JWT expiration: {:?}",
                 e
@@ -169,7 +180,7 @@ pub fn bind_identity_to_session(
     // Store issued-at timestamp if available
     if let Some(iat) = identity.claims.issued_at {
         let iat_str = iat.to_string();
-        if let Err(e) = session.set("jwt:iat", iat_str.as_bytes()) {
+        if let Err(e) = session.set("jwt:iat", &TypedValue::AsBytes(iat_str.as_bytes().to_vec())) {
             eprintln!("[transport:session] Failed to store JWT issued-at: {:?}", e);
         }
     }

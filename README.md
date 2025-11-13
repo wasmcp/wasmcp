@@ -56,7 +56,17 @@ See [examples/](examples/) for more.
 
 - **[Examples](examples/)**
 - **[CLI Reference](cli/README.md)**
+- **[Sessions](docs/sessions.md)** - Stateful workflows across requests
+- **[Authentication & Authorization](docs/authentication-and-authorization.md)** - JWT/OAuth bearer token validation
 - **[Development MCP server](docs/daemon-management.md)** - Run a local development server that provides context to your coding agent about developing, composing, and running `wasmcp` projects.
+
+## Features
+
+- **Stateful Sessions** - Built-in session management with key-value storage for multi-request workflows
+- **Authentication** - JWT/OAuth bearer token validation with scope-based authorization
+- **Auto-Composition** - Automatically wraps components with appropriate middleware
+- **Type-Safe Storage** - TypedValue enum for runtime type safety in sessions
+- **Real-time Notifications** - Progress updates, logs, and resource changes via streaming
 
 ## Why?
 
@@ -214,9 +224,11 @@ Generated templates demonstrate the capability pattern with working tool impleme
 
 Published to [ghcr.io/wasmcp](https://github.com/orgs/wasmcp/packages):
 
-- **transport** - Universal transport for HTTP / stdio execution
-- **server-io** - Universal MCP message I/O with configurable transport framing support 
-- **session-store** - Key Value session component
+- **transport** - Universal transport for HTTP / stdio execution with JWT validation
+- **server-io** - Universal MCP message I/O with configurable transport framing support
+- **session-store** - Stateful session management with key-value storage
+- **oauth-auth** - JWT/OAuth bearer token validation and claim extraction
+- **kv-store** - Type-safe key-value storage with TypedValue support
 - **method-not-found** - Terminal handler for unhandled methods
 
 The CLI automatically downloads these when composing.

@@ -23,19 +23,35 @@ START HERE if you have no existing context about wasmcp. This resource routes yo
 3. **composition-modes** - Understanding server vs handler modes
 
 ### Intermediate (Built a few tools)
-1. **registry** - Save component aliases and composition profiles
-2. **composition-modes** - Multi-layer composition patterns
-3. **reference** - Advanced CLI options (--version, --override-*, etc.)
+1. **[../../sessions.md](../../sessions.md)** - Stateful workflows across requests
+2. **[../../authentication-and-authorization.md](../../authentication-and-authorization.md)** - JWT/OAuth protection
+3. **registry** - Save component aliases and composition profiles
+4. **composition-modes** - Multi-layer composition patterns
+5. **reference** - Advanced CLI options (--version, --override-*, etc.)
 
 ### Advanced (Understanding internals)
-1. **architecture** - Internal design, composition pipeline, handler interfaces
-2. **composition-modes** - Detection priority, auto-wrapping logic
-3. **WIT interfaces** - Protocol type definitions
+1. **architecture** - Internal design, composition pipeline, handler interfaces, sessions, auth
+2. **[../../message-context.md](../../message-context.md)** - MessageContext field reference
+3. **[../../typed-value.md](../../typed-value.md)** - TypedValue API for session storage
+4. **composition-modes** - Detection priority, auto-wrapping logic
+5. **WIT interfaces** - Protocol type definitions
 
 ## Task-Based Navigation
 
 **"I want to create my first MCP tool"**
 → building-servers (covers: wasmcp new, build, compose, test)
+
+**"I need stateful workflows (shopping cart, forms, etc.)"**
+→ [../../sessions.md](../../sessions.md) (complete sessions guide)
+→ [examples/counter-middleware](../../examples/counter-middleware/) (working example)
+
+**"I want to protect tools with authentication"**
+→ [../../authentication-and-authorization.md](../../authentication-and-authorization.md) (JWT/OAuth guide)
+→ [../../jwt-helper-functions.md](../../jwt-helper-functions.md) (helper reference)
+
+**"How do I access user identity or session in my tool?"**
+→ [../../message-context.md](../../message-context.md) (MessageContext fields)
+→ building-servers (code examples with sessions/auth)
 
 **"I'm composing multiple tools and getting errors"**
 → composition-modes (error scenarios, troubleshooting)
@@ -51,7 +67,7 @@ START HERE if you have no existing context about wasmcp. This resource routes yo
 → reference (path vs OCI vs alias detection)
 
 **"I need to understand how wasmcp works internally"**
-→ architecture (capability/middleware pattern, composition pipeline)
+→ architecture (capability/middleware pattern, composition pipeline, sessions, auth)
 
 **"What interfaces should my component export?"**
 → WIT interfaces (wasmcp:protocol/tools, resources, prompts)
