@@ -34,7 +34,7 @@ sha512 = "d6f45b37747c11ffdf3c40aadea62b75bb5ac6eeaec69b98bc8c6ce7c3110452483a89
 deps = ["keyvalue"]
 
 [oauth]
-path = "../../../spec/oauth/wit"
+path = "../../../wit/oauth/wit"
 sha256 = "2570b481ea1735dcd96753c98a84f50185a728cad62200a73fdd32974796cc6d"
 sha512 = "7362617c15846742a5a7d41c297082cd44239ca31a2d9f2abd45a1a1aa6583c68d51ad74f33b11de49d1a6b1399d591fb73b86804ad14dd4848a224f78874ed6"
 
