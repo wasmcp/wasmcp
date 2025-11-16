@@ -7,10 +7,10 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, NodeId, PackageId};
 
-use super::CompositionPackages;
+use super::{CompositionPackages, ServiceRegistry};
 use crate::commands::compose::inspection::UnsatisfiedImports;
 use crate::commands::compose::inspection::interfaces;
-use crate::commands::compose::inspection::{component_imports_interface, get_interface_details};
+use crate::commands::compose::inspection::{check_component_imports, component_imports_interface};
 use crate::versioning::VersionResolver;
 
 /// Automatically wire an interface to a component if it imports it
@@ -64,24 +64,105 @@ pub fn wire_if_imports(
     }
 }
 
+/// Automatically wire all available service exports to a component based on its imports
+///
+/// This discovers what the component imports and automatically wires any matching
+/// service exports from the registry, eliminating the need to manually wire each interface.
+///
+/// Returns the count of interfaces that were wired
+pub fn wire_all_services(
+    graph: &mut CompositionGraph,
+    component_inst: NodeId,
+    component_path: &Path,
+    component_name: &str,
+    registry: &ServiceRegistry,
+    verbose: bool,
+) -> Result<usize> {
+    // Get all imports from the component
+    let imports = check_component_imports(component_path).with_context(|| {
+        format!(
+            "Failed to check imports for component '{}' at {}",
+            component_name,
+            component_path.display()
+        )
+    })?;
+
+    if verbose && !imports.is_empty() {
+        eprintln!(
+            "\n[AUTO-WIRE] Component '{}' imports {} interface(s):",
+            component_name,
+            imports.len()
+        );
+        for import in &imports {
+            eprintln!("[AUTO-WIRE]   - {}", import);
+        }
+    }
+
+    let mut wired_count = 0;
+
+    // For each import, check if any service in the registry exports it
+    for import in &imports {
+        if let Some((service_name, service_info, full_interface)) = registry.find_export(import) {
+            if verbose {
+                eprintln!(
+                    "[AUTO-WIRE] Wiring '{}' from service '{}' to component '{}'",
+                    full_interface, service_name, component_name
+                );
+            }
+
+            // Get the export from the service instance
+            let export = graph
+                .alias_instance_export(service_info.instance, full_interface)
+                .with_context(|| {
+                    format!(
+                        "Failed to get export '{}' from service '{}'",
+                        full_interface, service_name
+                    )
+                })?;
+
+            // Wire it to the component's import
+            graph
+                .set_instantiation_argument(component_inst, full_interface, export)
+                .with_context(|| {
+                    format!(
+                        "Failed to wire '{}' import for component '{}'",
+                        full_interface, component_name
+                    )
+                })?;
+
+            wired_count += 1;
+
+            if verbose {
+                eprintln!("[AUTO-WIRE]   ✓ Success");
+            }
+        } else if verbose {
+            eprintln!(
+                "[AUTO-WIRE] No service found exporting '{}' (skipping)",
+                import
+            );
+        }
+    }
+
+    if verbose && wired_count > 0 {
+        eprintln!(
+            "[AUTO-WIRE] Wired {} interface(s) to component '{}'\n",
+            wired_count, component_name
+        );
+    }
+
+    Ok(wired_count)
+}
+
 /// Build the middleware chain by connecting components
 ///
-/// Returns the final handler export that should be wired to transport
-///
-/// TODO: Refactor to reduce argument count (12/7). Consider grouping into a
-/// MiddlewareChainConfig struct (instances, interfaces, paths, tracker).
-#[allow(clippy::too_many_arguments)]
+/// Returns the final handler export that should be wired to transport.
+/// Now uses ServiceRegistry for automatic dependency wiring.
 pub fn build_middleware_chain(
     graph: &mut CompositionGraph,
     packages: &CompositionPackages,
-    server_io_inst: NodeId,
-    kv_store_inst: NodeId,
-    session_store_inst: NodeId,
     component_paths: &[PathBuf],
     server_handler_interface: &str,
-    server_io_interface: &str,
-    kv_store_interface: &str,
-    sessions_interface: &str,
+    registry: &ServiceRegistry,
     _unsatisfied: &mut UnsatisfiedImports,
     verbose: bool,
 ) -> Result<NodeId> {
@@ -97,75 +178,22 @@ pub fn build_middleware_chain(
     // This ensures when called, the first component processes first
     for (i, pkg_id) in packages.user_ids.iter().enumerate().rev() {
         let inst = graph.instantiate(*pkg_id);
+        let component_name = format!("component-{}", i);
 
         // Wire this component's server-handler import to the previous component's export
         graph
             .set_instantiation_argument(inst, server_handler_interface, next_handler_export)
             .with_context(|| format!("Failed to wire component-{} server-handler import", i))?;
 
-        // Automatically wire server-io if component imports it
-        if verbose {
-            eprintln!(
-                "[MIDDLEWARE] Checking if component-{} imports server-io...",
-                i
-            );
-        }
-        let component_name = format!("component-{}", i);
-        wire_if_imports(
+        // Automatically wire ALL service dependencies based on component's imports
+        wire_all_services(
             graph,
             inst,
             &component_paths[i],
             &component_name,
-            server_io_inst,
-            server_io_interface,
-            "server-io",
-            false, // Don't double-log in verbose mode
+            registry,
+            verbose,
         )?;
-        if verbose {
-            eprintln!("[MIDDLEWARE]   (wiring complete for server-io)");
-        }
-
-        // Automatically wire sessions if component imports it
-        if verbose {
-            eprintln!(
-                "[MIDDLEWARE] Checking if component-{} imports sessions...",
-                i
-            );
-        }
-        wire_if_imports(
-            graph,
-            inst,
-            &component_paths[i],
-            &component_name,
-            session_store_inst,
-            sessions_interface,
-            "sessions",
-            false,
-        )?;
-        if verbose {
-            eprintln!("[MIDDLEWARE]   (wiring complete for sessions)");
-        }
-
-        // Automatically wire kv-store if component imports it
-        if verbose {
-            eprintln!(
-                "[MIDDLEWARE] Checking if component-{} imports kv-store...",
-                i
-            );
-        }
-        wire_if_imports(
-            graph,
-            inst,
-            &component_paths[i],
-            &component_name,
-            kv_store_inst,
-            kv_store_interface,
-            "kv-store",
-            false,
-        )?;
-        if verbose {
-            eprintln!("[MIDDLEWARE]   (wiring complete for kv-store)");
-        }
 
         // This component's export becomes the next input
         next_handler_export = graph
@@ -179,246 +207,82 @@ pub fn build_middleware_chain(
 }
 
 /// Wire the transport at the front of the chain and export its interface
-#[allow(clippy::too_many_arguments)]
+///
+/// Now uses ServiceRegistry for automatic dependency wiring
 pub fn wire_transport(
     graph: &mut CompositionGraph,
     transport_id: PackageId,
-    server_io_inst: NodeId,
-    oauth_auth_inst: NodeId,
-    session_store_inst: NodeId,
     handler_export: NodeId,
     server_handler_interface: &str,
-    server_io_interface: &str,
-    server_auth_interface: &str,
-    oauth_helpers_interface: &str,
-    sessions_interface: &str,
-    session_manager_interface: &str,
     transport_path: &Path,
-    server_io_path: &Path,
-    oauth_auth_path: &Path,
-    _session_store_path: &Path,
+    registry: &ServiceRegistry,
     resolver: &VersionResolver,
     verbose: bool,
 ) -> Result<()> {
     if verbose {
-        eprintln!("\n[WIRE] ==================== WIRING ANALYSIS ====================");
+        eprintln!("\n[WIRE] ==================== WIRING TRANSPORT ====================");
     }
 
     // Instantiate transport
     let transport_inst = graph.instantiate(transport_id);
     if verbose {
-        eprintln!("[WIRE] Instantiated transport");
-        eprintln!("\n[WIRE] --- Interface Discovery Results ---");
-        eprintln!(
-            "[WIRE] Discovered server-handler: {}",
-            server_handler_interface
-        );
-        eprintln!("[WIRE] Discovered server-io: {}", server_io_interface);
-        eprintln!("[WIRE] Discovered sessions: {}", sessions_interface);
-        eprintln!(
-            "[WIRE] Discovered session-manager: {}",
-            session_manager_interface
-        );
-        eprintln!("\n[WIRE] --- Wiring Transport ---");
-        eprintln!("[WIRE] 1. Wiring server-handler...");
-        eprintln!("[WIRE]    Interface: {}", server_handler_interface);
+        eprintln!("[WIRE] Instantiated transport component");
     }
 
     // Wire transport's server-handler import to the middleware chain
-    match graph.set_instantiation_argument(transport_inst, server_handler_interface, handler_export)
-    {
-        Ok(_) => {
-            if verbose {
-                eprintln!("[WIRE]    ✓ Success");
-            }
-        }
-        Err(e) => {
-            return Err(e).context("Failed to wire transport server-handler import");
-        }
-    }
-
-    // Wire transport's server-io import to the server-io service
     if verbose {
-        eprintln!("\n[WIRE] 2. Wiring server-io...");
-        eprintln!("[WIRE]    Interface: {}", server_io_interface);
-        eprintln!("\n[WIRE]    === SIGNATURE COMPARISON ===");
-        eprintln!("[WIRE]    What transport IMPORTS:");
-        match get_interface_details(transport_path, server_io_interface) {
-            Ok(details) => {
-                for line in details.lines() {
-                    eprintln!("[WIRE]      {}", line);
-                }
-            }
-            Err(e) => eprintln!("[WIRE]      ERROR: {}", e),
-        }
-
-        eprintln!("\n[WIRE]    What server-io EXPORTS:");
-        match get_interface_details(server_io_path, server_io_interface) {
-            Ok(details) => {
-                for line in details.lines() {
-                    eprintln!("[WIRE]      {}", line);
-                }
-            }
-            Err(e) => eprintln!("[WIRE]      ERROR: {}", e),
-        }
-        eprintln!("[WIRE]    === END SIGNATURE COMPARISON ===\n");
-        eprintln!("[WIRE]    Attempting to get export from server-io instance...");
+        eprintln!("\n[WIRE] 1. Wiring server-handler (middleware chain)...");
+        eprintln!("[WIRE]    Interface: {}", server_handler_interface);
     }
-
-    let server_io_export = match graph.alias_instance_export(server_io_inst, server_io_interface) {
-        Ok(export) => {
-            if verbose {
-                eprintln!("[WIRE]    ✓ Got export from server-io");
-            }
-            export
-        }
-        Err(e) => {
-            return Err(e).with_context(|| format!("Failed to get server-io export for interface '{}'. Server-io component may not export this exact interface name.", server_io_interface));
-        }
-    };
-
+    graph
+        .set_instantiation_argument(transport_inst, server_handler_interface, handler_export)
+        .context("Failed to wire transport server-handler import")?;
     if verbose {
-        eprintln!("[WIRE]    Attempting to wire transport import to server-io export...");
-    }
-    match graph.set_instantiation_argument(transport_inst, server_io_interface, server_io_export) {
-        Ok(_) => {
-            if verbose {
-                eprintln!("[WIRE]    ✓ Success");
-            }
-        }
-        Err(e) => {
-            return Err(e).with_context(|| {
-                format!(
-                    "Failed to wire transport server-io import for interface '{}'",
-                    server_io_interface
-                )
-            });
-        }
+        eprintln!("[WIRE]    ✓ Success");
     }
 
-    // Wire transport's sessions import to the session-store service
+    // Automatically wire ALL service dependencies
     if verbose {
-        eprintln!("\n[WIRE] 3. Wiring sessions...");
-        eprintln!("[WIRE]    Interface: {}", sessions_interface);
+        eprintln!("\n[WIRE] 2. Auto-wiring service dependencies...");
     }
-    let sessions_export = graph
-        .alias_instance_export(session_store_inst, sessions_interface)
-        .context("Failed to get sessions export")?;
-    match graph.set_instantiation_argument(transport_inst, sessions_interface, sessions_export) {
-        Ok(_) => {
-            if verbose {
-                eprintln!("[WIRE]    ✓ Success");
-            }
-        }
-        Err(e) => {
-            if verbose {
-                eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
-            }
-            return Err(e).context("Failed to wire transport sessions import");
-        }
-    }
-
-    // Wire transport's session-manager import to the session-store service
-    if verbose {
-        eprintln!("\n[WIRE] 4. Wiring session-manager...");
-        eprintln!("[WIRE]    Interface: {}", session_manager_interface);
-    }
-    let session_manager_export = graph
-        .alias_instance_export(session_store_inst, session_manager_interface)
-        .context("Failed to get session-manager export")?;
-    match graph.set_instantiation_argument(
+    let wired_count = wire_all_services(
+        graph,
         transport_inst,
-        session_manager_interface,
-        session_manager_export,
-    ) {
-        Ok(_) => {
-            if verbose {
-                eprintln!("[WIRE]    ✓ Success");
-            }
-        }
-        Err(e) => {
-            if verbose {
-                eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
-            }
-            return Err(e).context("Failed to wire transport session-manager import");
-        }
-    }
-
-    // Wire transport's server-auth import to the oauth-auth service
-    if verbose {
-        eprintln!("\n[WIRE] 5. Wiring server-auth (JWT validation)...");
-        eprintln!("[WIRE]    Interface: {}", server_auth_interface);
-    }
-    let server_auth_export = graph
-        .alias_instance_export(oauth_auth_inst, server_auth_interface)
-        .context("Failed to get server-auth export from oauth-auth")?;
-    match graph.set_instantiation_argument(
-        transport_inst,
-        server_auth_interface,
-        server_auth_export,
-    ) {
-        Ok(_) => {
-            if verbose {
-                eprintln!("[WIRE]    ✓ Success");
-            }
-        }
-        Err(e) => {
-            if verbose {
-                eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
-            }
-            return Err(e).context("Failed to wire transport server-auth import");
-        }
-    }
-
-    // Wire transport's oauth/helpers import to the oauth-auth service
-    if verbose {
-        eprintln!("\n[WIRE] 6. Wiring oauth/helpers...");
-        eprintln!("[WIRE]    Interface: {}", oauth_helpers_interface);
-    }
-    let oauth_helpers_export = graph
-        .alias_instance_export(oauth_auth_inst, oauth_helpers_interface)
-        .context("Failed to get oauth/helpers export from oauth-auth")?;
-    match graph.set_instantiation_argument(
-        transport_inst,
-        oauth_helpers_interface,
-        oauth_helpers_export,
-    ) {
-        Ok(_) => {
-            if verbose {
-                eprintln!("[WIRE]    ✓ Success");
-            }
-        }
-        Err(e) => {
-            if verbose {
-                eprintln!("[WIRE]    ✗ FAILED: {:?}", e);
-            }
-            return Err(e).context("Failed to wire transport oauth/helpers import");
-        }
-    }
+        transport_path,
+        "transport",
+        registry,
+        verbose,
+    )?;
 
     if verbose {
-        eprintln!("\n[WIRE] --- Exporting Transport Interfaces ---");
+        eprintln!(
+            "[WIRE]    ✓ Auto-wired {} service interface(s)\n",
+            wired_count
+        );
     }
+
     // Export both HTTP and CLI interfaces from the transport component
     // This allows the composed component to be run with either wasmtime serve or wasmtime run
-
     if verbose {
-        eprintln!("[WIRE] Exporting HTTP handler interface");
+        eprintln!("[WIRE] 3. Exporting transport interfaces...");
     }
+
     let wasi_http = interfaces::wasi_http_handler(resolver)?;
     let http_handler = graph.alias_instance_export(transport_inst, &wasi_http)?;
     graph.export(http_handler, &wasi_http)?;
-
     if verbose {
-        eprintln!("[WIRE] Exporting CLI run interface");
+        eprintln!("[WIRE]    ✓ Exported HTTP handler interface");
     }
+
     let wasi_cli = interfaces::wasi_cli_run(resolver)?;
     let cli_run = graph.alias_instance_export(transport_inst, &wasi_cli)?;
     graph.export(cli_run, &wasi_cli)?;
+    if verbose {
+        eprintln!("[WIRE]    ✓ Exported CLI run interface");
+    }
 
     if verbose {
-        eprintln!("[WIRE] Both interfaces exported successfully");
-        eprintln!("[WIRE] ==================== WIRING COMPLETE ====================\n");
+        eprintln!("\n[WIRE] ==================== WIRING COMPLETE ====================\n");
     }
 
     Ok(())

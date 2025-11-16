@@ -416,9 +416,11 @@ impl GuestSession for SessionImpl {
 ///
 /// Rejects:
 /// - Empty keys
-/// - Keys containing ':' (could escape session boundary)
 /// - Reserved key names (metadata, meta, etc.)
 /// - Keys exceeding size limits
+///
+/// Note: Colons are now allowed in keys since the session_id prefix provides
+/// proper namespace isolation (session_id:user_key format).
 fn validate_user_key(key: &str) -> Result<(), SessionError> {
     if key.is_empty() {
         return Err(SessionError::Unexpected("Key cannot be empty".to_string()));
@@ -429,12 +431,6 @@ fn validate_user_key(key: &str) -> Result<(), SessionError> {
             "Key exceeds maximum size of {} bytes",
             MAX_KEY_SIZE
         )));
-    }
-
-    if key.contains(':') {
-        return Err(SessionError::Unexpected(
-            "Key cannot contain ':' character".to_string(),
-        ));
     }
 
     // Check against reserved names (case-insensitive)

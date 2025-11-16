@@ -19,6 +19,36 @@ Sessions enable MCP servers to maintain state across multiple requests from the 
 - Caching expensive computations
 - Request context and history
 
+## Key Naming and Organization
+
+Sessions store key-value data with automatic isolation between sessions.
+
+**Key Naming Guidelines:**
+
+- **Use hierarchical names with colons** for related data:
+  ```rust
+  session.set("cart:items", &value)?;
+  session.set("cart:total", &value)?;
+  session.set("user:preferences:theme", &value)?;
+  session.set("user:preferences:language", &value)?;
+  ```
+
+- **Use flat names** for simple cases:
+  ```rust
+  session.set("counter", &TypedValue::AsU64(1))?;
+  session.set("authenticated", &TypedValue::AsBool(true))?;
+  ```
+
+**Restrictions:**
+- Maximum key size: 1KB
+- Keys are case-sensitive
+- Reserved names: `__meta__`, `__metadata__`, `metadata`, `meta`
+
+**Session Isolation:**
+Each session's data is automatically isolated. Sessions cannot access each other's data, even if using identical key names.
+
+> **Implementation Details:** For technical information about storage format, UUID validation, and isolation mechanisms, see [session-store component README](/crates/session-store/README.md).
+
 ## Session Lifecycle
 
 ### 1. Initialization

@@ -7,13 +7,11 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
-use super::{build_middleware_chain, wire_if_imports, wire_transport};
-use super::{load_and_register_components, load_package};
+use super::{ServiceRegistry, load_and_register_components, load_package};
+use super::{build_middleware_chain, wire_all_services, wire_transport};
 use crate::commands::compose::inspection::UnsatisfiedImports;
+use crate::commands::compose::inspection::find_component_export;
 use crate::commands::compose::inspection::interfaces::{self, DEFAULT_SPEC_VERSION, InterfaceType};
-use crate::commands::compose::inspection::{
-    check_component_exports, check_component_imports, find_component_export,
-};
 use crate::versioning::VersionResolver;
 
 /// Build the component composition using wac-graph
@@ -45,54 +43,18 @@ pub async fn build_composition(
     _resolver: &VersionResolver,
     verbose: bool,
 ) -> Result<Vec<u8>> {
-    // Discover interface versions from actual components before building graph
-    // This decouples composition from our version manifest
+    // Discover server-handler interface from method-not-found (this is still needed for the chain)
     let server_handler_prefix = InterfaceType::ServerHandler.interface_prefix(DEFAULT_SPEC_VERSION);
     let server_handler_interface =
         find_component_export(method_not_found_path, &server_handler_prefix).context(
             "Failed to discover server-handler interface from method-not-found component",
         )?;
 
-    // Discover interface names from the components that EXPORT them
-    // This ensures alias_instance_export gets the exact names the components use
-    let server_io_prefix = InterfaceType::ServerIo.interface_prefix(DEFAULT_SPEC_VERSION);
-    let server_io_interface = find_component_export(server_io_path, &server_io_prefix)
-        .context("Failed to discover server-io interface from server-io component")?;
-
-    // Discover kv-store interface from kv-store component
-    let kv_store_prefix = "wasmcp:keyvalue/store";
-    let kv_store_interface = find_component_export(kv_store_path, kv_store_prefix)
-        .context("Failed to discover kv-store interface from kv-store component")?;
-
-    let sessions_prefix = InterfaceType::Sessions.interface_prefix(DEFAULT_SPEC_VERSION);
-    let sessions_interface = find_component_export(session_store_path, &sessions_prefix)
-        .context("Failed to discover sessions interface from session-store component")?;
-
-    let session_manager_prefix =
-        InterfaceType::SessionManager.interface_prefix(DEFAULT_SPEC_VERSION);
-    let session_manager_interface =
-        find_component_export(session_store_path, &session_manager_prefix)
-            .context("Failed to discover session-manager interface from session-store component")?;
-
-    // Discover server-auth interface from oauth-auth component
-    let server_auth_prefix = InterfaceType::ServerAuth.interface_prefix(DEFAULT_SPEC_VERSION);
-    let server_auth_interface = find_component_export(oauth_auth_path, &server_auth_prefix)
-        .context("Failed to discover server-auth interface from oauth-auth component")?;
-
-    // Discover oauth/helpers interface from oauth-auth component
-    let oauth_helpers_prefix = "wasmcp:oauth/helpers";
-    let oauth_helpers_interface = find_component_export(oauth_auth_path, oauth_helpers_prefix)
-        .context("Failed to discover oauth/helpers interface from oauth-auth component")?;
-
     if verbose {
-        println!("   Discovered interfaces:");
-        println!("     server-handler: {}", server_handler_interface);
-        println!("     server-io: {}", server_io_interface);
-        println!("     kv-store: {}", kv_store_interface);
-        println!("     sessions: {}", sessions_interface);
-        println!("     session-manager: {}", session_manager_interface);
-        println!("     server-auth: {}", server_auth_interface);
-        println!("     oauth/helpers: {}", oauth_helpers_interface);
+        println!(
+            "   Discovered server-handler interface: {}",
+            server_handler_interface
+        );
     }
 
     let mut graph = CompositionGraph::new();
@@ -137,73 +99,65 @@ pub async fn build_composition(
         );
     }
 
-    // Instantiate service components first (needed for middleware wiring)
+    // Build service registry and instantiate all services
     if verbose {
-        println!("   Instantiating service components...");
-
-        // Check what transport actually imports BEFORE instantiation
-        eprintln!("\n[DEBUG] ==================== COMPONENT ANALYSIS ====================");
-        eprintln!("[DEBUG] Transport imports:");
-        if let Ok(imports) = check_component_imports(transport_path) {
-            for import in imports {
-                eprintln!("[DEBUG]   - {}", import);
-            }
-        }
-
-        eprintln!("\n[DEBUG] Server-io exports:");
-        if let Ok(exports) = check_component_exports(server_io_path) {
-            for export in exports {
-                eprintln!("[DEBUG]   - {}", export);
-            }
-        }
-
-        eprintln!("\n[DEBUG] Session-store exports:");
-        if let Ok(exports) = check_component_exports(session_store_path) {
-            for export in exports {
-                eprintln!("[DEBUG]   - {}", export);
-            }
-        }
-        eprintln!("[DEBUG] ==================== END COMPONENT ANALYSIS ====================\n");
+        println!("   Building service registry...");
     }
 
-    let server_io_inst = graph.instantiate(packages.server_io_id);
+    let mut services = ServiceRegistry::new();
 
-    // Instantiate kv-store first (needed by session-store)
+    // Instantiate and register kv-store
     let kv_store_inst = graph.instantiate(packages.kv_store_id);
+    services.register_service("kv-store", kv_store_inst, kv_store_path)?;
 
-    // Get kv-store export to wire to session-store
-    let kv_store_export = graph
-        .alias_instance_export(kv_store_inst, &kv_store_interface)
-        .context("Failed to get kv-store export from kv-store component")?;
+    if verbose {
+        println!("   ✓ Registered kv-store service");
+    }
 
-    // Instantiate session-store and wire its kv-store import
+    // Instantiate and register server-io
+    let server_io_inst = graph.instantiate(packages.server_io_id);
+    services.register_service("server-io", server_io_inst, server_io_path)?;
+
+    if verbose {
+        println!("   ✓ Registered server-io service");
+    }
+
+    // Instantiate session-store and auto-wire its dependencies
     let session_store_inst = graph.instantiate(packages.session_store_id);
-    graph
-        .set_instantiation_argument(session_store_inst, &kv_store_interface, kv_store_export)
-        .context("Failed to wire session-store kv-store import to kv-store export")?;
+    wire_all_services(
+        &mut graph,
+        session_store_inst,
+        session_store_path,
+        "session-store",
+        &services,
+        verbose,
+    )?;
+    services.register_service("session-store", session_store_inst, session_store_path)?;
 
     if verbose {
-        eprintln!("   ✓ Wired kv-store to session-store");
+        println!("   ✓ Registered session-store service");
     }
 
-    // Instantiate oauth-auth component (needed by transport for JWT validation)
+    // Instantiate oauth-auth and auto-wire its dependencies
     let oauth_auth_inst = graph.instantiate(packages.oauth_auth_id);
-
-    if verbose {
-        eprintln!("   ✓ Instantiated oauth-auth component");
-    }
-
-    // Automatically wire kv-store to oauth-auth if it imports it (for JWKS caching)
-    wire_if_imports(
+    wire_all_services(
         &mut graph,
         oauth_auth_inst,
         oauth_auth_path,
         "oauth-auth",
-        kv_store_inst,
-        &kv_store_interface,
-        "kv-store",
+        &services,
         verbose,
     )?;
+    services.register_service("oauth-auth", oauth_auth_inst, oauth_auth_path)?;
+
+    if verbose {
+        println!("   ✓ Registered oauth-auth service");
+        println!("\n   Service Registry Summary:");
+        for (name, base, full) in services.all_exports() {
+            println!("     {} exports: {} ({})", name, base, full);
+        }
+        println!();
+    }
 
     // Build the middleware chain
     if verbose {
@@ -212,14 +166,9 @@ pub async fn build_composition(
     let handler_export = build_middleware_chain(
         &mut graph,
         &packages,
-        server_io_inst,
-        kv_store_inst,
-        session_store_inst,
         component_paths,
         &server_handler_interface,
-        &server_io_interface,
-        &kv_store_interface,
-        &sessions_interface,
+        &services,
         &mut unsatisfied,
         verbose,
     )?;
@@ -228,20 +177,10 @@ pub async fn build_composition(
     wire_transport(
         &mut graph,
         packages.transport_id,
-        server_io_inst,
-        oauth_auth_inst,
-        session_store_inst,
         handler_export,
         &server_handler_interface,
-        &server_io_interface,
-        &server_auth_interface,
-        &oauth_helpers_interface,
-        &sessions_interface,
-        &session_manager_interface,
         transport_path,
-        server_io_path,
-        oauth_auth_path,
-        session_store_path,
+        &services,
         _resolver,
         verbose,
     )?;
