@@ -23,6 +23,11 @@ on:
         description: 'Git tag prefix (e.g. mcp-v2025-06-18-v, protocol-v, server-v)'
         required: true
         type: string
+      skip-wit-deps:
+        description: 'Skip wit-deps step (for foundational packages with no dependencies)'
+        required: false
+        type: boolean
+        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -63,6 +68,7 @@ jobs:
           EOF
 
       - name: Fetch WIT dependencies
+        if: ${{ !inputs.skip-wit-deps }}
         working-directory: ${{ inputs.wit-dir }}/..
         run: wit-deps
 

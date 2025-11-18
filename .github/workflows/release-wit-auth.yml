@@ -21,4 +21,5 @@ jobs:
       wit-dir: wit/auth/wit
       wkg-package: wasmcp:auth
       tag-prefix: auth-v
+      skip-wit-deps: true
     secrets: inherit
