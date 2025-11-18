@@ -21,4 +21,5 @@ jobs:
       wit-dir: wit/keyvalue/wit
       wkg-package: wasmcp:keyvalue
       tag-prefix: keyvalue-v
+      skip-wit-deps: true
     secrets: inherit
