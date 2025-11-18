@@ -18,6 +18,9 @@ interface server-handler {
     use server-io.{
         message-frame,
     };
+    use server-auth.{
+        http-context,
+    };
 
     /// Incoming message from the client
     @since(version = 0.1.4)
@@ -32,6 +35,9 @@ interface server-handler {
         identity: option<identity>,
         /// Message framing for this transport
         frame: message-frame,
+        /// HTTP request context (for HTTP transports only)
+        /// Allows tools/middleware to make authorization decisions based on HTTP layer
+        http-context: option<http-context>,
     }
 
     /// Handle an incoming message from the client
@@ -121,24 +127,40 @@ interface server-io {
 }
 
 /// Decode and validate a JWT
+///
+/// Per MCP spec, HTTP transports use OAuth 2.1 for authentication.
+/// This interface uses structured jwt-claims from wasmcp:auth/types.
 @since(version = 0.1.4)
 interface server-auth {
+    use wasmcp:auth/types@0.1.0.{jwt, jwt-claims};
     use mcp.{
-        claims,
         client-message,
-        jwt,
         session,
     };
 
+    /// HTTP request context for policy evaluation
+    ///
+    /// Provides HTTP-layer information to policy engines for fine-grained
+    /// authorization decisions based on HTTP method, path, or headers.
+    record http-context {
+        /// HTTP method (GET, POST, etc.)
+        method: string,
+        /// Request path (e.g., "/mcp")
+        path: string,
+        /// HTTP headers as key-value pairs
+        /// Common headers: host, user-agent, origin, referer
+        headers: list<tuple<string, string>>,
+    }
+
     /// Decode and validate a JWT.
-    /// Returns the decoded claims if successful.
+    /// Returns the decoded structured claims if successful.
     ///
     /// If the token or its signature is invalid or the claims fail validation, it will return an error.
     @since(version = 0.1.4)
     decode: func(
         /// JWT from the Authorization header
         jwt: jwt,
-    ) -> result<claims>;
+    ) -> result<jwt-claims>;
 
     /// Authorize a request based on the provided claims.
     /// Returns true iff the request is authorized.
@@ -146,10 +168,12 @@ interface server-auth {
     authorize: func(
         /// The incoming message
         request: client-message,
-        /// Identity claims to authorize against
-        claims: claims,
+        /// Identity claims to authorize against (structured)
+        claims: jwt-claims,
         /// The session if enabled
         session: option<session>,
+        /// HTTP request context (optional, for HTTP transports)
+        http-context: option<http-context>,
     ) -> bool;
 }
 

@@ -19,10 +19,14 @@ interface sessions {
     use wasi:io/poll@0.2.8.{
         pollable,
     };
+    use wasmcp:keyvalue/store@0.1.0.{
+        typed-value,
+    };
     use mcp.{
         elicit-request,
         elicit-result,
     };
+    use wasmcp:auth/types@0.1.0.{jwt-claims};
 
     /// Errors that can occur during session operations
     @since(version = 0.1.0)
@@ -91,24 +95,30 @@ interface sessions {
 
         /// Get a persistent session value by key
         ///
+        /// Returns the typed value with its type information. Supports string,
+        /// JSON, u64, s64, bool, and raw bytes.
+        ///
         /// Returns None if the key doesn't exist. Session data persists across
         /// HTTP requests as long as the session exists.
         @since(version = 0.1.0)
         get: func(
             /// The key to retrieve
             key: string,
-        ) -> result<option<list<u8>>, session-error>;
+        ) -> result<option<typed-value>, session-error>;
 
         /// Set a persistent session value by key
         ///
-        /// The value is immediately persisted to the underlying key-value store.
+        /// Accepts a typed value (string, JSON, u64, s64, bool, or bytes).
+        /// The value is immediately persisted to the underlying key-value store
+        /// with a type tag for runtime type safety.
+        ///
         /// Overwriting an existing key replaces the previous value.
         @since(version = 0.1.0)
         set: func(
             /// The key to store under
             key: string,
-            /// The value to store (arbitrary binary data)
-            value: list<u8>,
+            /// The typed value to store
+            value: typed-value,
         ) -> result<_, session-error>;
 
         /// Elicit information from the client
@@ -142,6 +152,31 @@ interface sessions {
             reason: option<string>,
         ) -> result<_, session-error>;
     }
+
+    // ===== OAuth/JWT Claim Helper Functions =====
+    //
+    // JWT claim helper functions are available in wasmcp:oauth/helpers
+    // Import them separately for authorization checks:
+    //
+    // ```wit
+    // use wasmcp:oauth/helpers@0.1.0.{has-scope, has-audience, get-subject};
+    // ```
+    //
+    // Available functions:
+    // - flatten-claims(claims) -> list<tuple<string, string>>
+    // - has-scope(claims, scope) -> bool
+    // - has-any-scope(claims, scopes) -> bool
+    // - has-all-scopes(claims, scopes) -> bool
+    // - get-claim(claims, key) -> option<string>
+    // - has-audience(claims, audience) -> bool
+    // - is-expired(claims, clock-skew-seconds) -> bool
+    // - is-valid-time(claims, clock-skew-seconds) -> bool
+    // - get-subject(claims) -> string
+    // - get-issuer(claims) -> option<string>
+    // - get-scopes(claims) -> list<string>
+    // - get-audiences(claims) -> list<string>
+    //
+    // See spec/oauth/wit/helpers.wit for full documentation and examples.
 }
 
 /// Transport-layer session lifecycle management interface
@@ -216,4 +251,23 @@ interface session-manager {
     ///
     /// @since(version = 0.1.4)
     delete-session: func(session-id: string, store-id: string) -> result<_, session-error>;
+
+    /// Set session expiration timestamp
+    ///
+    /// Updates session metadata to expire at the specified Unix timestamp (seconds).
+    /// Sessions are automatically invalidated when current time >= expires-at.
+    ///
+    /// Typically called by transport layer after JWT validation to align session
+    /// lifetime with JWT expiration claim.
+    ///
+    /// # Arguments
+    /// * `session-id` - Session to set expiration for
+    /// * `store-id` - WASI KV bucket name
+    /// * `expires-at` - Unix timestamp in seconds when session should expire
+    ///
+    set-expiration: func(
+        session-id: string,
+        store-id: string,
+        expires-at: u64
+    ) -> result<_, session-error>;
 }
