@@ -127,9 +127,6 @@ interface server-io {
 }
 
 /// Decode and validate a JWT
-///
-/// Per MCP spec, HTTP transports use OAuth 2.1 for authentication.
-/// This interface uses structured jwt-claims from wasmcp:auth/types.
 @since(version = 0.1.4)
 interface server-auth {
     use wasmcp:auth/types@0.1.0.{jwt, jwt-claims};
@@ -163,7 +160,7 @@ interface server-auth {
     ) -> result<jwt-claims>;
 
     /// Authorize a request based on the provided claims.
-    /// Returns true iff the request is authorized.
+    /// Returns true if the request is authorized.
     @since(version = 0.1.4)
     authorize: func(
         /// The incoming message

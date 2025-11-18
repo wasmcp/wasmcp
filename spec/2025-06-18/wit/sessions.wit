@@ -152,31 +152,6 @@ interface sessions {
             reason: option<string>,
         ) -> result<_, session-error>;
     }
-
-    // ===== OAuth/JWT Claim Helper Functions =====
-    //
-    // JWT claim helper functions are available in wasmcp:oauth/helpers
-    // Import them separately for authorization checks:
-    //
-    // ```wit
-    // use wasmcp:oauth/helpers@0.1.0.{has-scope, has-audience, get-subject};
-    // ```
-    //
-    // Available functions:
-    // - flatten-claims(claims) -> list<tuple<string, string>>
-    // - has-scope(claims, scope) -> bool
-    // - has-any-scope(claims, scopes) -> bool
-    // - has-all-scopes(claims, scopes) -> bool
-    // - get-claim(claims, key) -> option<string>
-    // - has-audience(claims, audience) -> bool
-    // - is-expired(claims, clock-skew-seconds) -> bool
-    // - is-valid-time(claims, clock-skew-seconds) -> bool
-    // - get-subject(claims) -> string
-    // - get-issuer(claims) -> option<string>
-    // - get-scopes(claims) -> list<string>
-    // - get-audiences(claims) -> list<string>
-    //
-    // See spec/oauth/wit/helpers.wit for full documentation and examples.
 }
 
 /// Transport-layer session lifecycle management interface
