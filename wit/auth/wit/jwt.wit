@@ -1,0 +1,298 @@
+package wasmcp:auth@0.1.0;
+
+/// Core JWT types for authentication and authorization.
+/// This package provides structured access to JWT claims and can be
+/// used independently of the MCP protocol or OAuth.
+
+interface types {
+    /// Raw JWT token bytes
+    type jwt = list<u8>;
+
+    /// Structured JWT claims with standard and custom fields.
+    /// This provides type-safe access to common JWT claims while
+    /// preserving custom claims as key-value pairs.
+    record jwt-claims {
+        /// Subject identifier (required - who the token represents)
+        subject: string,
+
+        /// Issuer (who created and signed the token)
+        issuer: option<string>,
+
+        /// Audience (who the token is intended for - can be multiple)
+        /// CRITICAL: Must be validated to prevent confused deputy attacks
+        audience: list<string>,
+
+        /// Expiration timestamp (unix epoch seconds)
+        expiration: option<u64>,
+
+        /// Issued at timestamp (unix epoch seconds)
+        issued-at: option<u64>,
+
+        /// Not before timestamp (unix epoch seconds)
+        not-before: option<u64>,
+
+        /// JWT ID (unique identifier for this token)
+        jwt-id: option<string>,
+
+        /// OAuth scopes from 'scope' or 'scp' claim
+        /// Example: ["read:users", "write:posts"]
+        scopes: list<string>,
+
+        /// Token binding confirmation (cnf claim)
+        /// Used for sender-constrained tokens (mTLS, DPoP)
+        /// If present, token is bound to specific client
+        confirmation: option<token-confirmation>,
+
+        /// All other claims as JSON strings
+        /// For nested objects, arrays, or non-standard claims
+        custom-claims: list<tuple<string, string>>,
+    }
+
+    /// Token confirmation (cnf claim) for sender-constrained tokens
+    ///
+    /// This claim binds the token to a specific client, preventing token theft.
+    /// Two binding methods are supported:
+    /// - mTLS certificate binding (RFC 8705)
+    /// - DPoP proof-of-possession (RFC 9449)
+    record token-confirmation {
+        /// Certificate thumbprint for mTLS-bound tokens (RFC 8705)
+        /// SHA-256 hash of X.509 certificate (base64url-encoded)
+        /// Resource server verifies this matches the client certificate
+        x5t-s256: option<string>,
+
+        /// DPoP key thumbprint for DPoP-bound tokens (RFC 9449)
+        /// JWK thumbprint (base64url-encoded SHA-256 hash)
+        /// Resource server verifies DPoP proof signed with this key
+        jkt: option<string>,
+    }
+}
+
+/// JWT Claims Helper Functions
+///
+/// This interface provides type-safe helper functions for working with JWT claims.
+/// These functions handle common authorization checks and claim extraction patterns,
+/// making it easier to implement secure authentication and authorization logic.
+///
+/// Usage Notes:
+/// - Claims arrive as structured jwt-claims in MessageContext.identity.claims
+/// - No parsing is needed - use these helpers directly on the structured claims!
+/// - All time-based checks (expiration, not-before) include optional clock skew
+/// - Scope checks handle both space-separated strings and array formats
+
+interface helpers {
+    use types.{jwt-claims};
+
+    // ===== Scope Validation =====
+
+    /// Check if claims contain specific scope
+    ///
+    /// OAuth scopes are stored in the 'scopes' field (parsed from 'scope' or 'scp' claim).
+    /// This checks if the specified scope exists in the token.
+    ///
+    /// Example:
+    /// ```
+    /// use wasmcp:auth/helpers.{has-scope};
+    ///
+    /// if has-scope(claims, "read:users") {
+    ///     // User has permission to read users
+    /// }
+    /// ```
+    ///
+    /// Security Note: Always validate scopes before performing sensitive operations.
+    has-scope: func(claims: jwt-claims, scope: string) -> bool;
+
+    /// Check if claims contain any of the specified scopes
+    ///
+    /// Returns true if at least one of the requested scopes is present.
+    /// Useful for "requires one of these permissions" authorization.
+    ///
+    /// Example:
+    /// ```
+    /// if has-any-scope(claims, ["admin", "moderator"]) {
+    ///     // User has either admin OR moderator permissions
+    /// }
+    /// ```
+    has-any-scope: func(claims: jwt-claims, scopes: list<string>) -> bool;
+
+    /// Check if claims contain all of the specified scopes
+    ///
+    /// Returns true only if ALL requested scopes are present.
+    /// Useful for "requires all of these permissions" authorization.
+    ///
+    /// Example:
+    /// ```
+    /// if has-all-scopes(claims, ["read:data", "write:data"]) {
+    ///     // User has both read AND write permissions
+    /// }
+    /// ```
+    has-all-scopes: func(claims: jwt-claims, scopes: list<string>) -> bool;
+
+    /// Get all scopes as list
+    ///
+    /// Returns the complete list of scopes granted to this token.
+    ///
+    /// Example:
+    /// ```
+    /// let scopes = get-scopes(claims);
+    /// // ["read:users", "write:users", "admin"]
+    /// ```
+    get-scopes: func(claims: jwt-claims) -> list<string>;
+
+    // ===== Audience Validation =====
+
+    /// Validate audience claim
+    ///
+    /// Checks if any of the token's audiences match the expected value.
+    /// CRITICAL: Always validate audience to prevent confused deputy attacks.
+    ///
+    /// The audience claim identifies which resource servers should accept this token.
+    /// Accepting tokens intended for other services creates security vulnerabilities.
+    ///
+    /// Example:
+    /// ```
+    /// if !has-audience(claims, "https://api.example.com") {
+    ///     return error("Token not intended for this service");
+    /// }
+    /// ```
+    ///
+    /// RFC Reference: RFC 7519 §4.1.3 (Audience Claim)
+    has-audience: func(claims: jwt-claims, audience: string) -> bool;
+
+    /// Get all audiences as list
+    ///
+    /// Returns the complete list of audiences for this token.
+    /// Tokens can have multiple audiences if intended for multiple services.
+    ///
+    /// Example:
+    /// ```
+    /// let audiences = get-audiences(claims);
+    /// // ["https://api.example.com", "https://admin.example.com"]
+    /// ```
+    get-audiences: func(claims: jwt-claims) -> list<string>;
+
+    // ===== Time-Based Validation =====
+
+    /// Check if token is expired
+    ///
+    /// Compares exp claim against current time with optional clock skew tolerance.
+    /// Returns true if token has expired, false if still valid or no expiration set.
+    ///
+    /// Clock skew allows for small time differences between systems (typically 60 seconds).
+    /// This prevents tokens from being rejected due to minor clock drift.
+    ///
+    /// Example:
+    /// ```
+    /// // Check with 60 second clock skew
+    /// if is-expired(claims, Some(60)) {
+    ///     return error("Token has expired");
+    /// }
+    /// ```
+    ///
+    /// RFC Reference: RFC 7519 §4.1.4 (Expiration Time Claim)
+    is-expired: func(claims: jwt-claims, clock-skew-seconds: option<u64>) -> bool;
+
+    /// Check if token time is valid (nbf <= now < exp)
+    ///
+    /// Validates both not-before (nbf) and expiration (exp) claims.
+    /// Returns true if current time is within the valid window, false otherwise.
+    ///
+    /// This combines two checks:
+    /// 1. Token is not being used before its nbf (not before) time
+    /// 2. Token has not expired past its exp (expiration) time
+    ///
+    /// Example:
+    /// ```
+    /// if !is-valid-time(claims, Some(60)) {
+    ///     return error("Token not yet valid or has expired");
+    /// }
+    /// ```
+    ///
+    /// RFC Reference: RFC 7519 §4.1.4 (exp), §4.1.5 (nbf)
+    is-valid-time: func(claims: jwt-claims, clock-skew-seconds: option<u64>) -> bool;
+
+    // ===== Standard Claim Extraction =====
+
+    /// Get subject (user ID)
+    ///
+    /// Returns the 'sub' claim, which identifies who the token represents.
+    /// For user tokens, this is typically the user ID.
+    /// For M2M tokens, this might be a service identifier.
+    ///
+    /// Example:
+    /// ```
+    /// let user-id = get-subject(claims);
+    /// // "user_123abc"
+    /// ```
+    ///
+    /// RFC Reference: RFC 7519 §4.1.2 (Subject Claim)
+    get-subject: func(claims: jwt-claims) -> string;
+
+    /// Get issuer
+    ///
+    /// Returns the 'iss' claim, which identifies who created and signed the token.
+    /// Typically the URL of the authorization server.
+    ///
+    /// Example:
+    /// ```
+    /// if let Some(issuer) = get-issuer(claims) {
+    ///     // "https://auth.example.com"
+    /// }
+    /// ```
+    ///
+    /// RFC Reference: RFC 7519 §4.1.1 (Issuer Claim)
+    get-issuer: func(claims: jwt-claims) -> option<string>;
+
+    // ===== Custom Claims =====
+
+    /// Get custom claim value by key
+    ///
+    /// Returns value if claim exists in custom-claims or standard fields.
+    /// Useful for accessing provider-specific claims like org_id, roles, etc.
+    ///
+    /// Example:
+    /// ```
+    /// // Get organization ID from custom claims
+    /// if let Some(org-id) = get-claim(claims, "org_id") {
+    ///     // Use org-id for multi-tenant authorization
+    /// }
+    /// ```
+    ///
+    /// Note: Standard claims (sub, iss, aud, exp, etc.) should be accessed
+    /// via their dedicated getter functions for type safety.
+    get-claim: func(claims: jwt-claims, key: string) -> option<string>;
+
+    /// Convert structured JWT claims to flat format for storage/serialization
+    ///
+    /// Useful when storing claims in session KV or passing to external systems.
+    /// Most tools won't need this - claims are already structured in MessageContext!
+    ///
+    /// Returns all claims as string key-value pairs, including:
+    /// - Standard claims (sub, iss, aud, exp, iat, nbf, jti)
+    /// - Scopes as space-separated string
+    /// - Custom claims
+    ///
+    /// Example:
+    /// ```
+    /// let flat-claims = flatten-claims(claims);
+    /// // [("sub", "user_123"), ("iss", "https://auth.example.com"), ...]
+    /// ```
+    flatten-claims: func(claims: jwt-claims) -> list<tuple<string, string>>;
+}
+
+/// JWT validation and claim helpers only.
+///
+/// Use this world for components that need to validate JWTs
+/// and work with structured claims without full OAuth protocol support.
+///
+/// Includes:
+/// - types: jwt, jwt-claims, token-confirmation
+/// - helpers: scope validation, expiration checks, audience validation
+///
+/// Example use cases:
+/// - Simple bearer token validation
+/// - Custom authentication middleware
+/// - JWT claim inspection
+world jwt {
+    export types;
+    export helpers;
+}
