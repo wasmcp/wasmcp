@@ -7,19 +7,17 @@ interface handler {
     };
     use mcp.{
         error-code,
-    };
-    use context.{
         transport-context,
     };
-    use messages.{
+    use methods.{
         server-result,
-        server-message,
+        server-method,
     };
 
     /// Handle an incoming message from the client
     handle: func(
-        ctx: transport-context,
-        message: server-message,
+        method: server-method,
+        transport: transport-context,
     ) -> option<result<server-result, error-code>>;
 }
 
@@ -29,27 +27,25 @@ interface handler {
 interface tools-handler {
     use mcp.{
         error-code,
-    };
-    use context.{
-        request-context,
+        transport-context,
     };
     use tools.{
-        call-tool-request,
+        call-tool-params,
         call-tool-result,
-        list-tools-request,
+        list-tools-params,
         list-tools-result,
     };
 
     /// List tools provided by this component.
     list-tools: func(
-        ctx: request-context,
-        request: list-tools-request,
+        params: list-tools-params,
+        transport: transport-context,
     ) -> result<list-tools-result, error-code>;
 
     /// Execute a tool call. Return none for unrecognized tools.
     call-tool: func(
-        ctx: request-context,
-        request: call-tool-request,
+        params: call-tool-params,
+        transport: transport-context,
     ) -> result<option<call-tool-result>, error-code>;
 }
 
@@ -59,35 +55,33 @@ interface tools-handler {
 interface resources-handler {
     use mcp.{
         error-code,
-    };
-    use context.{
-        request-context,
+        transport-context,
     };
     use resources.{
-        list-resources-request,
+        list-resources-params,
         list-resources-result,
-        read-resource-request,
+        read-resource-params,
         read-resource-result,
-        list-resource-templates-request,
+        list-resource-templates-params,
         list-resource-templates-result,
     };
 
     /// list resources provided by this component.
     list-resources: func(
-        ctx: request-context,
-        request: list-resources-request,
+        params: list-resources-params,
+        transport: transport-context,
     ) -> result<list-resources-result, error-code>;
 
     /// read a resource by uri. return none for unrecognized uris.
     read-resource: func(
-        ctx: request-context,
-        request: read-resource-request,
+        params: read-resource-params,
+        transport: transport-context,
     ) -> result<option<read-resource-result>, error-code>;
 
     /// list resource templates (rfc 6570 uri templates).
     list-resource-templates: func(
-        ctx: request-context,
-        request: list-resource-templates-request,
+        params: list-resource-templates-params,
+        transport: transport-context,
     ) -> result<list-resource-templates-result, error-code>;
 }
 
@@ -97,27 +91,25 @@ interface resources-handler {
 interface prompts-handler {
     use mcp.{
         error-code,
-    };
-    use context.{
-        request-context,
+        transport-context,
     };
     use prompts.{
-        get-prompt-request,
+        get-prompt-params,
         get-prompt-result,
-        list-prompts-request,
+        list-prompts-params,
         list-prompts-result,
     };
 
     /// List prompts provided by this component.
     list-prompts: func(
-        ctx: request-context,
-        request: list-prompts-request,
+        params: list-prompts-params,
+        transport: transport-context,
     ) -> result<list-prompts-result, error-code>;
 
     /// Get a prompt by name. Return none for unrecognized prompts.
     get-prompt: func(
-        ctx: request-context,
-        request: get-prompt-request,
+        params: get-prompt-params,
+        transport: transport-context,
     ) -> result<option<get-prompt-result>, error-code>;
 }
 
@@ -127,19 +119,17 @@ interface prompts-handler {
 interface completions-handler {
     use mcp.{
         error-code,
-    };
-    use context.{
-        request-context,
+        transport-context,
     };
     use completions.{
-        complete-request,
+        complete-params,
         complete-result,
     };
 
     /// Provide completion suggestions for prompt or resource arguments.
     /// Return none for unsupported references.
     complete: func(
-        ctx: request-context,
-        request: complete-request,
+        params: complete-params,
+        transport: transport-context,
     ) -> result<option<complete-result>, error-code>;
 }

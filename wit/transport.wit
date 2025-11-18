@@ -1,126 +1,5 @@
 use wasi:io/streams@0.2.8;
 
-interface messages {
-    use mcp.{
-        error-code,
-        log-level,
-        uri,
-    };
-    use context.{
-        request-meta,
-        result-meta,
-        notification-meta,
-        error-meta,
-    };
-    use notifications.{
-        client-notification,
-        server-notification,
-    };
-    use initialization.{
-        initialize-request,
-        initialize-result,
-    };
-    use tools.{
-        list-tools-request,
-        list-tools-result,
-        call-tool-request,
-        call-tool-result,
-    };
-    use resources.{
-        list-resources-request,
-        list-resources-result,
-        read-resource-request,
-        read-resource-result,
-        list-resource-templates-request,
-        list-resource-templates-result,
-    };
-    use prompts.{
-        list-prompts-request,
-        list-prompts-result,
-        get-prompt-request,
-        get-prompt-result,
-    };
-    use completions.{
-        complete-request,
-        complete-result,
-    };
-    use sampling.{
-        sampling-create-message-request,
-        sampling-create-message-result,
-    };
-    use elicitations.{
-        elicit-request,
-        elicit-result,
-    };
-    use roots.{
-        list-roots-result,
-    };
-
-    /// Requests handled by the server
-    variant server-request {
-        initialize(initialize-request),
-        tools-list(list-tools-request),
-        tools-call(call-tool-request),
-        resources-list(list-resources-request),
-        resources-read(read-resource-request),
-        resources-templates-list(list-resource-templates-request),
-        prompts-list(list-prompts-request),
-        prompts-get(get-prompt-request),
-        completion-complete(complete-request),
-        logging-set-level(log-level),
-        ping,
-        resources-subscribe(uri),
-        resources-unsubscribe(uri),
-    }
-
-    /// Server responses
-    variant server-result {
-        ping,
-        logging-set-level,
-        initialize(initialize-result),
-        tools-list(list-tools-result),
-        tools-call(call-tool-result),
-        resources-list(list-resources-result),
-        resources-read(read-resource-result),
-        resources-templates-list(list-resource-templates-result),
-        prompts-list(list-prompts-result),
-        prompts-get(get-prompt-result),
-        completion-complete(complete-result),
-        resources-subscribe,
-        resources-unsubscribe,
-    }
-
-    /// Requests handled by the client
-    variant client-request {
-        elicitation-create(elicit-request),
-        roots-list,
-        sampling-create-message(sampling-create-message-request),
-        ping,
-    }
-
-    /// Client responses (to server requests)
-    variant client-result {
-        elicitation-create(elicit-result),
-        roots-list(list-roots-result),
-        sampling-create-message(sampling-create-message-result),
-        ping,
-    }
-
-    variant server-message {
-        request(tuple<server-request, request-meta>),
-        %result(tuple<client-result, result-meta>),
-        error(tuple<error-code, error-meta>),
-        notification(tuple<client-notification, notification-meta>),
-    }
-
-    variant client-message {
-        request(tuple<client-request, request-meta>),
-        %result(tuple<server-result, result-meta>),
-        error(tuple<error-code, error-meta>),
-        notification(tuple<server-notification, notification-meta>),
-    }
-}
-
 /// Streaming I/O for MCP servers
 ///
 /// This interface enables servers to parse and send MCP messages over streams.
@@ -131,12 +10,34 @@ interface io {
         stream-error,
     };
     use mcp.{
-        transport,
+        error-code,
+        request-id,
+        transport-protocol,
     };
-    use messages.{
-        server-message,
-        client-message,
+    use notifications.{
+        client-notification,
+        server-notification,
     };
+    use methods.{
+        client-method,
+        client-result,
+        server-method,
+        server-result,
+    };
+
+    variant incoming-client-message {
+        error(tuple<error-code, option<request-id>>),
+        notification(client-notification),
+        request(tuple<server-method, request-id>),
+        %result(tuple<client-result, request-id>),
+    }
+
+    variant outgoing-client-message {
+        error(tuple<error-code, option<request-id>>),
+        notification(server-notification),
+        request(tuple<client-method, request-id>),
+        %result(tuple<server-result, request-id>),
+    }
 
     /// Errors that can occur when sending messages to the client
     variant io-error {
@@ -151,21 +52,21 @@ interface io {
     }
 
     /// Read and deserialize an incoming message from the client
-    parse-message: func(
+    parse: func(
         /// Input stream to read the bytes from
         input: borrow<input-stream>,
         /// The transport type
-        transport: transport,
-    ) -> result<server-message, io-error>;
+        transport: transport-protocol,
+    ) -> result<incoming-client-message, io-error>;
 
     /// Serialize and write an outgoing message to the client
-    send-message: func(
+    send: func(
         /// Output stream to send the request over
         output: borrow<output-stream>,
         /// The transport type
-        transport: transport,
+        transport: transport-protocol,
         /// Outgoing message to the client
-        message: client-message,
+        message: outgoing-client-message,
     ) -> result<_, io-error>;
 }
 
@@ -175,8 +76,8 @@ interface auth {
         claims,
         jwt,
     };
-    use messages.{
-        server-message,
+    use io.{
+        incoming-client-message,
     };
 
     /// Decode and validate a JWT.
@@ -191,7 +92,7 @@ interface auth {
     /// Authorize an incoming message against decoded claims.
     authorize: func(
         /// The incoming message
-        message: server-message,
+        message: incoming-client-message,
         /// Decoded JWT claims
         claims: claims,
     ) -> bool;
@@ -218,7 +119,7 @@ interface sessions {
         pollable,
     };
     use elicitations.{
-        elicit-request,
+        elicit-params,
         elicit-result,
     };
 
@@ -314,7 +215,7 @@ interface sessions {
             /// Output stream to send the elicitation request
             client: borrow<output-stream>,
             /// The elicitation request to send
-            elicitation: elicit-request,
+            elicitation: elicit-params,
         ) -> result<future-elicit-result, session-error>;
 
         /// Terminate the session, optionally providing a reason

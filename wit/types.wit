@@ -53,12 +53,6 @@ interface mcp {
         v20241105,
     }
 
-    /// MCP transport
-    enum transport {
-        stdio,
-        streamable-http,
-    }
-
     /// Log severity level
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/logging#log-levels>
@@ -315,43 +309,16 @@ interface mcp {
         resource-link(resource-link-content),
         embedded-resource(embedded-resource-content),
     }
-}
 
-interface context {
-    use mcp.{
-        meta,
-        request-id,
-        transport,
-        progress-token,
-        protocol-version,
-        session,
-        identity,
-        output-stream,
-    };
-
-    record request-meta {
-        id: request-id,
-        progress-token: option<progress-token>,
-        meta: option<meta>,
-    }
-
-    record result-meta {
-        id: request-id,
-        meta: option<meta>,
-    }
-
-    record error-meta {
-        id: option<request-id>,
-        meta: option<meta>,
-    }
-
-    record notification-meta {
-        meta: option<meta>,
+    /// MCP transport
+    enum transport-protocol {
+        stdio,
+        streamable-http,
     }
 
     record transport-context {
         /// Transport type
-        transport: transport,
+        transport-protocol: transport-protocol,
         /// Model Context Protocol version
         mcp-version: protocol-version,
         /// Client session details, if available
@@ -361,19 +328,15 @@ interface context {
         /// Output stream
         output: option<borrow<output-stream>>,
     }
-
-    record request-context {
-        request: request-meta,
-        transport: transport-context,
-    }
 }
 
 interface tools {
     use mcp.{
+        content-block,
         cursor,
         meta,
         json,
-        content-block,
+        progress-token,
     };
 
     /// Tool-specific annotations
@@ -422,9 +385,11 @@ interface tools {
     /// List tools request
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsrequest>
-    record list-tools-request {
+    record list-tools-params {
         /// Pagination cursor (from previous response)
         cursor: option<cursor>,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// List tools result
@@ -441,11 +406,13 @@ interface tools {
     /// Call tool request
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolrequest>
-    record call-tool-request {
+    record call-tool-params {
         /// Tool name to invoke
         name: string,
         /// JSON-encoded tool arguments
         arguments: option<json>,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// Call tool result
@@ -464,11 +431,12 @@ interface tools {
 
 interface resources {
     use mcp.{
+        annotations,
         cursor,
         meta,
-        uri,
-        annotations,
+        progress-token,
         resource-contents,
+        uri,
     };
 
     /// Resource optional properties
@@ -519,9 +487,11 @@ interface resources {
     /// List resources request
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesrequest>
-    record list-resources-request {
+    record list-resources-params {
         /// Pagination cursor (from previous response)
         cursor: option<cursor>,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// List resources result
@@ -538,9 +508,11 @@ interface resources {
     /// Read resource request
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourcerequest>
-    record read-resource-request {
+    record read-resource-params {
         /// Resource URI to read
         uri: uri,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// Read resource result
@@ -555,9 +527,11 @@ interface resources {
     /// List resource templates request
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesrequest>
-    record list-resource-templates-request {
+    record list-resource-templates-params {
         /// Pagination cursor (from previous response)
         cursor: option<cursor>,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// List resource templates result
@@ -577,6 +551,7 @@ interface prompts {
         content-block,
         cursor,
         meta,
+        progress-token,
         role,
         json,
     };
@@ -624,9 +599,11 @@ interface prompts {
     /// List prompts request
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsrequest>
-    record list-prompts-request {
+    record list-prompts-params {
         /// Pagination cursor (from previous response)
         cursor: option<cursor>,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// List prompts result
@@ -643,11 +620,13 @@ interface prompts {
     /// Get prompt request
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptrequest>
-    record get-prompt-request {
+    record get-prompt-params {
         /// Prompt name to retrieve
         name: string,
         /// JSON-encoded prompt arguments
         arguments: option<json>,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// Get prompt result
@@ -666,6 +645,7 @@ interface completions {
     use mcp.{
         json,
         meta,
+        progress-token,
         uri,
     };
 
@@ -707,13 +687,15 @@ interface completions {
     /// Complete request
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#completerequest>
-    record complete-request {
+    record complete-params {
         /// Argument to complete
         argument: completion-argument,
         /// Reference (prompt or resource template)
         ref: completion-reference,
         /// Additional context
         context: option<completion-context>,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// Complete result
@@ -733,6 +715,7 @@ interface completions {
 interface elicitations {
     use mcp.{
         meta,
+        progress-token,
         json,
     };
 
@@ -826,11 +809,13 @@ interface elicitations {
     /// Elicit request
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitrequest>
-    record elicit-request {
+    record elicit-params {
         /// Message to show client
         message: string,
         /// Schema describing requested information
         requested-schema: requested-schema,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// Elicit result
@@ -849,6 +834,7 @@ interface roots {
     use mcp.{
         json,
         meta,
+        progress-token,
         uri,
     };
 
@@ -877,6 +863,7 @@ interface sampling {
     use mcp.{
         json,
         meta,
+        progress-token,
         content-block,
         role,
     };
@@ -922,7 +909,7 @@ interface sampling {
     /// Sampling create message request
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#createmessagerequest>
-    record sampling-create-message-request {
+    record sampling-create-message-params {
         /// Context to include
         include-context: include-context,
         /// Maximum tokens to generate
@@ -939,6 +926,8 @@ interface sampling {
         system-prompt: option<string>,
         /// Sampling temperature
         temperature: option<f64>,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// Sampling create message result
@@ -973,6 +962,7 @@ interface initialization {
         client-features,
         json,
         meta,
+        progress-token,
         protocol-version,
         server-features,
         server-subscriptions,
@@ -1026,13 +1016,15 @@ interface initialization {
     /// Sent by client to begin an MCP session.
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializerequest>
-    record initialize-request {
+    record initialize-params {
         /// Client capabilities
         capabilities: client-capabilities,
         /// Client implementation info
         client-info: implementation,
         /// Protocol version client supports
         protocol-version: protocol-version,
+        progress-token: option<progress-token>,
+        meta: option<meta>,
     }
 
     /// Initialize result structure
@@ -1057,6 +1049,7 @@ interface notifications {
     use mcp.{
         json,
         log-level,
+        meta,
         progress-token,
         request-id,
         uri,
@@ -1072,6 +1065,7 @@ interface notifications {
         level: log-level,
         /// Logger name
         logger: option<string>,
+        meta: option<meta>,
     }
 
     /// Cancelled notification
@@ -1082,6 +1076,7 @@ interface notifications {
         request-id: request-id,
         /// Cancellation reason
         reason: option<string>,
+        meta: option<meta>,
     }
 
     /// Progress notification
@@ -1098,24 +1093,33 @@ interface notifications {
         message: option<string>,
     }
 
+    record uri-notification {
+        uri: uri,
+        meta: option<meta>,
+    }
+
+    record list-changed-notification {
+        meta: option<meta>,
+    }
+
     /// Notifications sent by the server
-    variant server-notification {
+    variant server-notification-method {
         /// Tools list changed
         ///
         /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#toollistchangednotification>
-        tools-list-changed,
+        tools-list-changed(list-changed-notification),
         /// Resources list changed
         ///
         /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcelistchangednotification>
-        resources-list-changed,
+        resources-list-changed(list-changed-notification),
         /// Resource updated
         ///
         /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourceupdatednotification>
-        resources-updated(uri),
+        resources-updated(uri-notification),
         /// Prompts list changed
         ///
         /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#promptlistchangednotification>
-        prompts-list-changed,
+        prompts-list-changed(list-changed-notification),
         /// Log message
         ///
         /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#loggingmessagenotification>
@@ -1130,10 +1134,15 @@ interface notifications {
         progress(progress-notification),
     }
 
+    record server-notification {
+        method: server-notification-method,
+        meta: option<meta>,
+    }
+
     /// Notifications sent by the client
-    variant client-notification {
+    variant client-notification-method {
         /// Initialization complete
-        ///
+        ///j
         /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializednotification>
         initialized,
         /// Roots list changed
@@ -1148,5 +1157,111 @@ interface notifications {
         ///
         /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#progressnotification>
         progress(progress-notification),
+    }
+
+    record client-notification {
+        method: client-notification-method,
+        meta: option<meta>,
+    }
+}
+
+interface methods {
+    use mcp.{
+        error-code,
+        log-level,
+        uri,
+    };
+    use notifications.{
+        client-notification,
+        server-notification,
+    };
+    use initialization.{
+        initialize-params,
+        initialize-result,
+    };
+    use tools.{
+        list-tools-params,
+        list-tools-result,
+        call-tool-params,
+        call-tool-result,
+    };
+    use resources.{
+        list-resources-params,
+        list-resources-result,
+        read-resource-params,
+        read-resource-result,
+        list-resource-templates-params,
+        list-resource-templates-result,
+    };
+    use prompts.{
+        list-prompts-params,
+        list-prompts-result,
+        get-prompt-params,
+        get-prompt-result,
+    };
+    use completions.{
+        complete-params,
+        complete-result,
+    };
+    use sampling.{
+        sampling-create-message-params,
+        sampling-create-message-result,
+    };
+    use elicitations.{
+        elicit-params,
+        elicit-result,
+    };
+    use roots.{
+        list-roots-result,
+    };
+
+    /// Requests handled by the server
+    variant server-method {
+        completion-complete(complete-params),
+        initialize(initialize-params),
+        logging-set-level(log-level),
+        ping,
+        prompts-get(get-prompt-params),
+        prompts-list(list-prompts-params),
+        resources-list(list-resources-params),
+        resources-read(read-resource-params),
+        resources-subscribe(uri),
+        resources-templates-list(list-resource-templates-params),
+        resources-unsubscribe(uri),
+        tools-call(call-tool-params),
+        tools-list(list-tools-params),
+    }
+
+    /// Server responses
+    variant server-result {
+        completion-complete(complete-result),
+        initialize(initialize-result),
+        logging-set-level,
+        ping,
+        prompts-get(get-prompt-result),
+        prompts-list(list-prompts-result),
+        resources-list(list-resources-result),
+        resources-read(read-resource-result),
+        resources-subscribe,
+        resources-templates-list(list-resource-templates-result),
+        resources-unsubscribe,
+        tools-call(call-tool-result),
+        tools-list(list-tools-result),
+    }
+
+    /// Requests handled by the client
+    variant client-method {
+        elicitation-create(elicit-params),
+        ping,
+        roots-list,
+        sampling-create-message(sampling-create-message-params),
+    }
+
+    /// Client responses (to server requests)
+    variant client-result {
+        elicitation-create(elicit-result),
+        ping,
+        roots-list(list-roots-result),
+        sampling-create-message(sampling-create-message-result),
     }
 }

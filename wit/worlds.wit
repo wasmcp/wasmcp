@@ -1,25 +1,23 @@
 /// A WebAssembly component development kit for the Model Context Protocol (MCP) version 2025-06-18.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18>
-package wasmcp:mcp-v20250618@0.1.4;
+package wasmcp:mcp@0.1.4;
 
 /// Server transport world.
 ///
 /// Import server-handler interface to delegate MCP message processing.
 world transport {
+    include wasi:cli/command@0.2.8;
+    include wasi:http/proxy@0.2.8;
     import handler;
+    import io;
+    import session-manager;
 }
 
-/// Server middleware world.
+/// Data-layer handler middleware world.
 ///
 /// Import and export handler interface to enable chained composition.
 world middleware {
     import handler;
     export handler;
-}
-
-/// Server SSE world.
-world sse {
-    import io;
-    import notifications;
 }

@@ -3,6 +3,24 @@
 version = 1
 
 [[packages]]
+name = "wasi:cli"
+registry = "wasi.dev"
+
+[[packages.versions]]
+requirement = "=0.2.8"
+version = "0.2.8"
+digest = "sha256:674e97f0a5bd2e697ddcbd18ce8f33a9ab1497e37ac95f3805b22764269c82f3"
+
+[[packages]]
+name = "wasi:http"
+registry = "wasi.dev"
+
+[[packages.versions]]
+requirement = "=0.2.8"
+version = "0.2.8"
+digest = "sha256:efac1616dceaa5a7d0423a3732b0addf74013974ae90feeb1081555479dc5500"
+
+[[packages]]
 name = "wasi:io"
 registry = "wasi.dev"
 
