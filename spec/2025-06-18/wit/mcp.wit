@@ -1,7 +1,7 @@
 /// A WebAssembly component development kit for the Model Context Protocol (MCP) version 2025-06-18.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18>
-package wasmcp:mcp-v20250618@0.1.6;
+package wasmcp:mcp-v20250618@0.1.7;
 
 /// Model Context Protocol (MCP) types and messages.
 ///
@@ -11,6 +11,7 @@ interface mcp {
     use wasi:io/streams@0.2.8.{
         input-stream,
     };
+    use wasmcp:auth/types@0.1.0.{jwt, jwt-claims};
 
     /// Opaque pagination cursor.
     @since(version = 0.1.0)
@@ -30,21 +31,16 @@ interface mcp {
     @since(version = 0.1.0)
     type uri = string;
 
-    /// JSON Web Token (JWT).
-    @since(version = 0.1.4)
-    type jwt = list<u8>;
-
-    /// Identity claims from the JWT payload.
-    @since(version = 0.1.4)
-    type claims = list<tuple<string, string>>;
-
     /// Identity information from authentication.
+    ///
+    /// Per MCP spec, HTTP transports use OAuth 2.1 for authentication.
+    /// The jwt and jwt-claims types are provided by wasmcp:oauth/types.
     @since(version = 0.1.4)
     record identity {
         /// Raw bearer token as received.
         jwt: jwt,
-        /// Validated claims from the JWT payload.
-        claims: claims,
+        /// Validated claims from the JWT payload (structured).
+        claims: jwt-claims,
     }
 
     /// Session information from the transport.
