@@ -3,4 +3,3 @@
 pub mod bearer;
 pub mod errors;
 pub mod introspection;
-pub mod resource_metadata;

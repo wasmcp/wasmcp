@@ -179,27 +179,6 @@ impl bindings::exports::wasmcp::auth::introspection::Guest for Component {
     }
 }
 
-// Resource Metadata interface
-impl bindings::exports::wasmcp::auth::resource_metadata::Guest for Component {
-    fn fetch_metadata(
-        resource_url: String,
-    ) -> Result<bindings::exports::wasmcp::auth::resource_metadata::ProtectedResourceMetadata, String>
-    {
-        oauth::resource_metadata::fetch_metadata(&resource_url)
-    }
-
-    fn validate_metadata(
-        metadata: bindings::exports::wasmcp::auth::resource_metadata::ProtectedResourceMetadata,
-        expected_resource: String,
-    ) -> Result<(), String> {
-        oauth::resource_metadata::validate_metadata(&metadata, &expected_resource)
-    }
-
-    fn parse_www_authenticate_metadata(www_authenticate_header: String) -> Option<String> {
-        oauth::resource_metadata::parse_www_authenticate_metadata(&www_authenticate_header)
-    }
-}
-
 // JWT Claim Helpers interface
 impl bindings::exports::wasmcp::auth::helpers::Guest for Component {
     fn flatten_claims(claims: JwtClaims) -> Vec<(String, String)> {

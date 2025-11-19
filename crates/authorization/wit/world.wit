@@ -12,7 +12,6 @@ world authorization {
     export wasmcp:auth/errors@0.1.0;
     export wasmcp:auth/bearer@0.1.0;
     export wasmcp:auth/introspection@0.1.0;
-    export wasmcp:auth/resource-metadata@0.1.0;
 
     // JWT claim helper functions
     export wasmcp:auth/helpers@0.1.0;
