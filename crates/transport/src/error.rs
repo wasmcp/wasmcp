@@ -20,6 +20,11 @@ pub enum TransportError {
     },
 
     /// OAuth authorization error (valid token, insufficient permissions)
+    /// TODO: Implement authorization check in transport layer
+    /// MCP spec requires 403 Forbidden for authorization failures (mpc-auth.md:286)
+    /// Currently only doing authentication (decode), not authorization (authorize)
+    /// See: .agent/oauth/mpc-auth.md for spec requirements
+    #[allow(dead_code)]
     Forbidden(String),
 
     /// I/O error from server-io operations
@@ -42,6 +47,9 @@ impl TransportError {
     }
 
     /// Create an unauthorized error (401) with optional WWW-Authenticate header
+    /// TODO: Currently unused - use unauthorized_with_challenge instead
+    /// Kept for completeness when authorization is implemented
+    #[allow(dead_code)]
     pub fn unauthorized(msg: impl Into<String>) -> Self {
         Self::Unauthorized {
             message: msg.into(),
@@ -58,6 +66,11 @@ impl TransportError {
     }
 
     /// Create a forbidden error (403)
+    /// TODO: Will be used when server_auth::authorize() is called in transport
+    /// Need to decide on authorization architecture first:
+    /// - Per-middleware policies vs single global policy
+    /// - Environment variable naming (POLICY vs POLICY_TOOLS, etc.)
+    #[allow(dead_code)]
     pub fn forbidden(msg: impl Into<String>) -> Self {
         Self::Forbidden(msg.into())
     }
