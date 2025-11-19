@@ -18,7 +18,7 @@ sha256 = "9f1ad5da70f621bbd4c69e3bd90250a0c12ecfde266aa8f99684fc44bc1e7c15"
 sha512 = "6d0a9db6848f24762933d1c168a5b5b1065ba838c253ee20454afeb8dd1a049b918d25deff556083d68095dd3126ae131ac3e738774320eee5d918f5a4b5354e"
 
 [keyvalue]
-path = "../../../wit/keyvalue/wit"
+url = "https://github.com/wasmcp/wasmcp/releases/download/keyvalue-v0.1.0/wasmcp-keyvalue-0.1.0-source.tar.gz"
 sha256 = "6aca6ad2b990896e38dbbab7059a08ce922a8814957c69d31300d52b142a6f1a"
 sha512 = "b681313c99748c01d4eab63c342930e2f1321978863a2af587f46ffdc9d83d517e75713d821445317baa9567a690b5de136fda07e09370c112880b7ff52ef634"
 
