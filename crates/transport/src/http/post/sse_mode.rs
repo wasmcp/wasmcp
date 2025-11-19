@@ -33,6 +33,7 @@ pub async fn handle_sse_streaming_mode(
     body_stream: crate::bindings::wasi::http::types::IncomingBody,
     response_out: ResponseOutparam,
     config: &SessionConfig,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
 ) {
     let response = match response::ResponseBuilder::new()
         .status(200)
@@ -73,6 +74,7 @@ pub async fn handle_sse_streaming_mode(
         &output_stream,
         &common::http_sse_frame(),
         config,
+        http_context,
     ) {
         eprintln!("[TRANSPORT] ERROR during request processing: {:?}", e);
         // Write error response to SSE stream

@@ -109,10 +109,8 @@ pub fn fetch_jwks(jwks_uri: &str) -> Result<Jwks> {
         expires_at,
     };
 
-    if let Ok(cached_json) = serde_json::to_string(&cached)
-        && let Err(e) = bucket.set(cache_key, &kv::TypedValue::AsJson(cached_json))
-    {
-        eprintln!("[oauth-auth:jwks] Failed to cache JWKS: {}", e);
+    if let Ok(cached_json) = serde_json::to_string(&cached) {
+        let _ = bucket.set(cache_key, &kv::TypedValue::AsJson(cached_json));
     }
 
     Ok(jwks)

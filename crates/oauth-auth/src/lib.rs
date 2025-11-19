@@ -19,8 +19,8 @@ mod oauth;
 mod policy;
 
 use bindings::exports::wasmcp::mcp_v20250618::server_auth::{Guest, HttpContext};
+use bindings::wasmcp::auth::types::{Jwt, JwtClaims};
 use bindings::wasmcp::mcp_v20250618::mcp::{ClientMessage, Session};
-use bindings::wasmcp::oauth::types::{Jwt, JwtClaims};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -49,8 +49,6 @@ fn fetch_userinfo(
 
     // Construct userinfo URL (standard OIDC endpoint)
     let userinfo_url = format!("{}/oauth2/userinfo", issuer.trim_end_matches('/'));
-
-    eprintln!("[oauth-auth] Fetching userinfo from: {}", userinfo_url);
 
     // Parse URL
     let url = userinfo_url
@@ -163,19 +161,9 @@ impl Guest for Component {
         // Verify JWT - returns JwtClaims directly!
         let jwt_claims = jwt::verify(token_str, &config.provider).map_err(|_| ())?;
 
-        // Log entire decoded JWT structure
-        eprintln!("[oauth-auth] Decoded JWT: {:#?}", jwt_claims);
-
         // Try to fetch userinfo to see additional claims
         if !config.provider.issuer.is_empty() {
-            match fetch_userinfo(&config.provider.issuer, token_str) {
-                Ok(userinfo) => {
-                    eprintln!("[oauth-auth] Userinfo response: {:#?}", userinfo);
-                }
-                Err(e) => {
-                    eprintln!("[oauth-auth] Failed to fetch userinfo: {}", e);
-                }
-            }
+            let _ = fetch_userinfo(&config.provider.issuer, token_str);
         }
 
         // Return JwtClaims directly - NO conversion needed!
@@ -229,20 +217,20 @@ impl Guest for Component {
 // === OAuth Interface Implementations ===
 
 // Errors interface
-impl bindings::exports::wasmcp::oauth::errors::Guest for Component {
-    fn error_code_to_string(code: bindings::exports::wasmcp::oauth::errors::ErrorCode) -> String {
+impl bindings::exports::wasmcp::auth::errors::Guest for Component {
+    fn error_code_to_string(code: bindings::exports::wasmcp::auth::errors::ErrorCode) -> String {
         oauth::errors::error_code_to_string(&code)
     }
 
     fn parse_error_code(
         error_string: String,
-    ) -> Option<bindings::exports::wasmcp::oauth::errors::ErrorCode> {
+    ) -> Option<bindings::exports::wasmcp::auth::errors::ErrorCode> {
         oauth::errors::parse_error_code(&error_string)
     }
 
     fn create_bearer_challenge(
         realm: Option<String>,
-        error: Option<bindings::exports::wasmcp::oauth::errors::ErrorCode>,
+        error: Option<bindings::exports::wasmcp::auth::errors::ErrorCode>,
         error_description: Option<String>,
         scope: Vec<String>,
     ) -> String {
@@ -250,14 +238,14 @@ impl bindings::exports::wasmcp::oauth::errors::Guest for Component {
     }
 
     fn create_token_error_response(
-        error: bindings::exports::wasmcp::oauth::errors::OauthError,
+        error: bindings::exports::wasmcp::auth::errors::OauthError,
     ) -> String {
         oauth::errors::create_token_error_response(&error)
     }
 }
 
 // Bearer interface
-impl bindings::exports::wasmcp::oauth::bearer::Guest for Component {
+impl bindings::exports::wasmcp::auth::bearer::Guest for Component {
     fn extract_bearer_token(
         headers: Vec<(String, String)>,
         body_params: Option<Vec<(String, String)>>,
@@ -265,16 +253,16 @@ impl bindings::exports::wasmcp::oauth::bearer::Guest for Component {
     ) -> Result<
         (
             String,
-            bindings::exports::wasmcp::oauth::bearer::BearerMethod,
+            bindings::exports::wasmcp::auth::bearer::BearerMethod,
         ),
-        bindings::exports::wasmcp::oauth::errors::OauthError,
+        bindings::exports::wasmcp::auth::errors::OauthError,
     > {
         oauth::bearer::extract_bearer_token(headers, body_params, query_params)
     }
 
     fn is_method_allowed(
-        method: bindings::exports::wasmcp::oauth::bearer::BearerMethod,
-        allowed_methods: Vec<bindings::exports::wasmcp::oauth::bearer::BearerMethod>,
+        method: bindings::exports::wasmcp::auth::bearer::BearerMethod,
+        allowed_methods: Vec<bindings::exports::wasmcp::auth::bearer::BearerMethod>,
     ) -> bool {
         oauth::bearer::is_method_allowed(&method, &allowed_methods)
     }
@@ -285,20 +273,20 @@ impl bindings::exports::wasmcp::oauth::bearer::Guest for Component {
 }
 
 // Introspection interface
-impl bindings::exports::wasmcp::oauth::introspection::Guest for Component {
+impl bindings::exports::wasmcp::auth::introspection::Guest for Component {
     fn to_jwt_claims(
-        response: bindings::exports::wasmcp::oauth::introspection::IntrospectionResponse,
-    ) -> Option<bindings::wasmcp::oauth::types::JwtClaims> {
+        response: bindings::exports::wasmcp::auth::introspection::IntrospectionResponse,
+    ) -> Option<bindings::wasmcp::auth::types::JwtClaims> {
         oauth::introspection::to_jwt_claims(&response)
     }
 
     fn introspect_token(
         introspection_endpoint: String,
-        request: bindings::exports::wasmcp::oauth::introspection::IntrospectionRequest,
+        request: bindings::exports::wasmcp::auth::introspection::IntrospectionRequest,
         client_credentials: (String, String),
     ) -> Result<
-        bindings::exports::wasmcp::oauth::introspection::IntrospectionResponse,
-        bindings::exports::wasmcp::oauth::errors::OauthError,
+        bindings::exports::wasmcp::auth::introspection::IntrospectionResponse,
+        bindings::exports::wasmcp::auth::errors::OauthError,
     > {
         oauth::introspection::introspect_token(
             &introspection_endpoint,
@@ -309,18 +297,16 @@ impl bindings::exports::wasmcp::oauth::introspection::Guest for Component {
 }
 
 // Resource Metadata interface
-impl bindings::exports::wasmcp::oauth::resource_metadata::Guest for Component {
+impl bindings::exports::wasmcp::auth::resource_metadata::Guest for Component {
     fn fetch_metadata(
         resource_url: String,
-    ) -> Result<
-        bindings::exports::wasmcp::oauth::resource_metadata::ProtectedResourceMetadata,
-        String,
-    > {
+    ) -> Result<bindings::exports::wasmcp::auth::resource_metadata::ProtectedResourceMetadata, String>
+    {
         oauth::resource_metadata::fetch_metadata(&resource_url)
     }
 
     fn validate_metadata(
-        metadata: bindings::exports::wasmcp::oauth::resource_metadata::ProtectedResourceMetadata,
+        metadata: bindings::exports::wasmcp::auth::resource_metadata::ProtectedResourceMetadata,
         expected_resource: String,
     ) -> Result<(), String> {
         oauth::resource_metadata::validate_metadata(&metadata, &expected_resource)
@@ -332,7 +318,7 @@ impl bindings::exports::wasmcp::oauth::resource_metadata::Guest for Component {
 }
 
 // JWT Claim Helpers interface
-impl bindings::exports::wasmcp::oauth::helpers::Guest for Component {
+impl bindings::exports::wasmcp::auth::helpers::Guest for Component {
     fn flatten_claims(claims: JwtClaims) -> Vec<(String, String)> {
         helpers::flatten_claims(&claims)
     }

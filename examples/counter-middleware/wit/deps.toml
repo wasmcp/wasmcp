@@ -1,2 +1,2 @@
 mcp-v20250618 = { path = "../../../spec/2025-06-18/wit" }
-oauth = { path = "../../../spec/oauth/wit" }
+auth = "https://github.com/wasmcp/wasmcp/releases/download/auth-v0.1.0/wasmcp-auth-0.1.0-source.tar.gz"

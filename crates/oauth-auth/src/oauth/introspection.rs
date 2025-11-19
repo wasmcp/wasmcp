@@ -1,14 +1,14 @@
 //! OAuth 2.0 Token Introspection (RFC 7662)
 
-use crate::bindings::exports::wasmcp::oauth::errors::OauthError;
-use crate::bindings::exports::wasmcp::oauth::introspection::{
+use crate::bindings::exports::wasmcp::auth::errors::OauthError;
+use crate::bindings::exports::wasmcp::auth::introspection::{
     IntrospectionRequest, IntrospectionResponse,
 };
 use crate::bindings::wasi::http::outgoing_handler;
 use crate::bindings::wasi::http::types::{Fields, Method, OutgoingBody, OutgoingRequest, Scheme};
 use crate::bindings::wasi::io::poll;
 use crate::bindings::wasi::io::streams::StreamError;
-use crate::bindings::wasmcp::oauth::types::JwtClaims;
+use crate::bindings::wasmcp::auth::types::JwtClaims;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
@@ -50,12 +50,7 @@ pub fn introspect_token(
     request: &IntrospectionRequest,
     client_credentials: &(String, String),
 ) -> Result<IntrospectionResponse, OauthError> {
-    use crate::bindings::exports::wasmcp::oauth::errors::ErrorCode;
-
-    eprintln!(
-        "[oauth-auth:introspection] Introspecting token at: {}",
-        introspection_endpoint
-    );
+    use crate::bindings::exports::wasmcp::auth::errors::ErrorCode;
 
     // Parse URL
     let url = introspection_endpoint
@@ -271,11 +266,6 @@ pub fn introspect_token(
 
     // Check for non-200 status
     if status != 200 {
-        eprintln!(
-            "[oauth-auth:introspection] Request failed with status {}: {}",
-            status, body_str
-        );
-
         return Err(OauthError {
             error: ErrorCode::ServerError,
             error_description: Some(format!(
@@ -293,11 +283,6 @@ pub fn introspect_token(
             error_description: Some(format!("Failed to parse introspection response: {}", e)),
             error_uri: None,
         })?;
-
-    eprintln!(
-        "[oauth-auth:introspection] Token active: {}",
-        json_response.active
-    );
 
     // Convert to WIT response structure
     let scope = json_response.scope.map(|s| {

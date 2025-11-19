@@ -29,20 +29,28 @@ use crate::versioning::VersionResolver;
 /// Each component's `server-handler` import is satisfied by the next component's
 /// `server-handler` export, creating a linear middleware pipeline.
 ///
-/// TODO: Refactor to reduce argument count (9/7). Consider grouping related parameters
-/// into a CompositionConfig struct (paths, interface names, options).
-#[allow(clippy::too_many_arguments)]
+pub struct CompositionPaths<'a> {
+    pub transport: &'a Path,
+    pub server_io: &'a Path,
+    pub oauth_auth: &'a Path,
+    pub kv_store: &'a Path,
+    pub session_store: &'a Path,
+    pub components: &'a [PathBuf],
+    pub method_not_found: &'a Path,
+}
+
 pub async fn build_composition(
-    transport_path: &Path,
-    server_io_path: &Path,
-    oauth_auth_path: &Path,
-    kv_store_path: &Path,
-    session_store_path: &Path,
-    component_paths: &[PathBuf],
-    method_not_found_path: &Path,
+    paths: CompositionPaths<'_>,
     _resolver: &VersionResolver,
     verbose: bool,
 ) -> Result<Vec<u8>> {
+    let transport_path = paths.transport;
+    let server_io_path = paths.server_io;
+    let oauth_auth_path = paths.oauth_auth;
+    let kv_store_path = paths.kv_store;
+    let session_store_path = paths.session_store;
+    let component_paths = paths.components;
+    let method_not_found_path = paths.method_not_found;
     // Discover server-handler interface from method-not-found (this is still needed for the chain)
     let server_handler_prefix = InterfaceType::ServerHandler.interface_prefix(DEFAULT_SPEC_VERSION);
     let server_handler_interface =
@@ -176,12 +184,14 @@ pub async fn build_composition(
     // Wire transport and export interface
     wire_transport(
         &mut graph,
-        packages.transport_id,
-        handler_export,
-        &server_handler_interface,
-        transport_path,
-        &services,
-        _resolver,
+        super::wiring::TransportWireConfig {
+            transport_id: packages.transport_id,
+            handler_export,
+            server_handler_interface: &server_handler_interface,
+            transport_path,
+            registry: &services,
+            resolver: _resolver,
+        },
         verbose,
     )?;
 

@@ -2,7 +2,7 @@
 //!
 //! RFC-compliant error codes and response formatting.
 
-use crate::bindings::exports::wasmcp::oauth::errors::{ErrorCode, OauthError};
+use crate::bindings::exports::wasmcp::auth::errors::{ErrorCode, OauthError};
 
 /// Convert error code to RFC-standard string
 pub fn error_code_to_string(code: &ErrorCode) -> String {

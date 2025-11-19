@@ -1,6 +1,6 @@
 //! JWT token verification
 
-use crate::bindings::wasmcp::oauth::types::JwtClaims;
+use crate::bindings::wasmcp::auth::types::JwtClaims;
 use crate::config::JwtProvider;
 use crate::error::{AuthError, Result};
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
@@ -62,24 +62,15 @@ enum ScopeValue {
 /// Returns structured JwtClaims directly (WIT type)
 pub fn verify(token: &str, provider: &JwtProvider) -> Result<JwtClaims> {
     // Decode header to get algorithm and key ID
-    let header = decode_header(token).map_err(|e| {
-        eprintln!("[oauth-auth:jwt] Failed to decode JWT header: {:?}", e);
-        e
-    })?;
+    let header = decode_header(token)?;
 
     // Get decoding key - JWKS takes precedence over static key
     let decoding_key = if let Some(ref jwks_uri) = provider.jwks_uri {
         // Dynamic key fetching via JWKS
-        let jwks = crate::jwks::fetch_jwks(jwks_uri).map_err(|e| {
-            eprintln!("[oauth-auth:jwt] Failed to fetch JWKS: {:?}", e);
-            e
-        })?;
+        let jwks = crate::jwks::fetch_jwks(jwks_uri)?;
 
         // Find key matching the KID from token header
-        crate::jwks::find_key(&jwks, header.kid.as_deref()).map_err(|e| {
-            eprintln!("[oauth-auth:jwt] Failed to find key in JWKS: {:?}", e);
-            e
-        })?
+        crate::jwks::find_key(&jwks, header.kid.as_deref())?
     } else if let Some(ref public_key) = provider.public_key {
         // Static public key fallback
         DecodingKey::from_rsa_pem(public_key.as_bytes())
@@ -133,9 +124,8 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<JwtClaims> {
     validation.set_required_spec_claims(&["exp", "sub", "iss"]);
 
     // Decode and validate token
-    let token_data = decode::<Claims>(token, &decoding_key, &validation).map_err(|e| {
-        eprintln!("[oauth-auth:jwt] Token validation failed: {:?}", e);
-        match e.kind() {
+    let token_data =
+        decode::<Claims>(token, &decoding_key, &validation).map_err(|e| match e.kind() {
             jsonwebtoken::errors::ErrorKind::InvalidToken => {
                 AuthError::InvalidToken(format!("Invalid token: {}", e))
             }
@@ -167,8 +157,7 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<JwtClaims> {
                 AuthError::InvalidToken("Invalid algorithm".to_string())
             }
             _ => AuthError::InvalidToken(format!("Token validation error: {}", e)),
-        }
-    })?;
+        })?;
     let claims = token_data.claims;
 
     // Extract scopes

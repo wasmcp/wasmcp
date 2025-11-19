@@ -6,7 +6,7 @@
 //! NOTE: Claims arrive as structured jwt-claims in MessageContext.identity.claims
 //! No parsing is needed - use these helpers directly on the structured claims!
 
-use crate::bindings::wasmcp::oauth::types::JwtClaims;
+use crate::bindings::wasmcp::auth::types::JwtClaims;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Convert structured JWT claims to flat format for storage/serialization

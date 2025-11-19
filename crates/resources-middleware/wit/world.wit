@@ -1,6 +1,6 @@
 package wasmcp:resources-middleware@0.1.7;
 
 world resources-middleware {
-    include wasmcp:mcp-v20250618/server-middleware@0.1.6;
-    import wasmcp:mcp-v20250618/resources@0.1.6;
+    include wasmcp:mcp-v20250618/server-middleware@0.1.7;
+    import wasmcp:mcp-v20250618/resources@0.1.7;
 }

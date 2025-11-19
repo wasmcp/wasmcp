@@ -13,6 +13,15 @@ use crate::commands::compose::inspection::interfaces;
 use crate::commands::compose::inspection::{check_component_imports, component_imports_interface};
 use crate::versioning::VersionResolver;
 
+pub struct WireContext<'a> {
+    pub component_inst: NodeId,
+    pub component_path: &'a Path,
+    pub component_name: &'a str,
+    pub service_inst: NodeId,
+    pub interface: &'a str,
+    pub service_name: &'a str,
+}
+
 /// Automatically wire an interface to a component if it imports it
 ///
 /// Checks if the component imports the specified interface, and if so,
@@ -21,14 +30,15 @@ use crate::versioning::VersionResolver;
 /// Returns Ok(true) if wiring occurred, Ok(false) if not needed
 pub fn wire_if_imports(
     graph: &mut CompositionGraph,
-    component_inst: NodeId,
-    component_path: &Path,
-    component_name: &str,
-    service_inst: NodeId,
-    interface: &str,
-    service_name: &str,
+    ctx: WireContext<'_>,
     verbose: bool,
 ) -> Result<bool> {
+    let component_inst = ctx.component_inst;
+    let component_path = ctx.component_path;
+    let component_name = ctx.component_name;
+    let service_inst = ctx.service_inst;
+    let interface = ctx.interface;
+    let service_name = ctx.service_name;
     if component_imports_interface(component_path, interface)? {
         if verbose {
             eprintln!(
@@ -206,19 +216,29 @@ pub fn build_middleware_chain(
     Ok(next_handler_export)
 }
 
+pub struct TransportWireConfig<'a> {
+    pub transport_id: PackageId,
+    pub handler_export: NodeId,
+    pub server_handler_interface: &'a str,
+    pub transport_path: &'a Path,
+    pub registry: &'a ServiceRegistry,
+    pub resolver: &'a VersionResolver,
+}
+
 /// Wire the transport at the front of the chain and export its interface
 ///
 /// Now uses ServiceRegistry for automatic dependency wiring
 pub fn wire_transport(
     graph: &mut CompositionGraph,
-    transport_id: PackageId,
-    handler_export: NodeId,
-    server_handler_interface: &str,
-    transport_path: &Path,
-    registry: &ServiceRegistry,
-    resolver: &VersionResolver,
+    config: TransportWireConfig<'_>,
     verbose: bool,
 ) -> Result<()> {
+    let transport_id = config.transport_id;
+    let handler_export = config.handler_export;
+    let server_handler_interface = config.server_handler_interface;
+    let transport_path = config.transport_path;
+    let registry = config.registry;
+    let resolver = config.resolver;
     if verbose {
         eprintln!("\n[WIRE] ==================== WIRING TRANSPORT ====================");
     }

@@ -1,7 +1,7 @@
 //! OAuth 2.0 Bearer Token Extraction (RFC 6750)
 
-use crate::bindings::exports::wasmcp::oauth::bearer::BearerMethod;
-use crate::bindings::exports::wasmcp::oauth::errors::{ErrorCode, OauthError};
+use crate::bindings::exports::wasmcp::auth::bearer::BearerMethod;
+use crate::bindings::exports::wasmcp::auth::errors::{ErrorCode, OauthError};
 
 /// Extract bearer token from HTTP request
 pub fn extract_bearer_token(
@@ -44,18 +44,19 @@ pub fn extract_bearer_token(
         }
     }
 
-    // Check query parameters (RFC 6750 §2.3)
+    // MCP spec line 251: Access tokens MUST NOT be included in URI query string
+    // Reject requests with tokens in query parameters
     if let Some(params) = query_params {
-        for (key, value) in params {
+        for (key, _) in params {
             if key == "access_token" {
-                if token.is_some() {
-                    return Err(OauthError {
-                        error: ErrorCode::InvalidRequest,
-                        error_description: Some("Multiple bearer tokens presented".to_string()),
-                        error_uri: None,
-                    });
-                }
-                token = Some((value, BearerMethod::Query));
+                return Err(OauthError {
+                    error: ErrorCode::InvalidRequest,
+                    error_description: Some(
+                        "Access tokens in query parameters are forbidden per MCP spec (line 251)"
+                            .to_string(),
+                    ),
+                    error_uri: None,
+                });
             }
         }
     }

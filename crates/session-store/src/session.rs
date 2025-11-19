@@ -93,13 +93,9 @@ impl SessionManager {
 
         // Store metadata at session_id:__meta__ as JSON string
         let kv_key = meta_key(&session_id);
-        bucket.set_json(&kv_key, &metadata_json).map_err(|e| {
-            eprintln!(
-                "[SessionManager] CRITICAL: Failed to write session {} during initialization: {:?}",
-                session_id, e
-            );
-            kv_to_session_error(e)
-        })?;
+        bucket
+            .set_json(&kv_key, &metadata_json)
+            .map_err(kv_to_session_error)?;
 
         Ok(session_id)
     }
@@ -158,13 +154,9 @@ impl SessionManager {
             SessionError::Unexpected(format!("Failed to serialize metadata: {}", e))
         })?;
 
-        bucket.set_json(&kv_key, &updated_json).map_err(|e| {
-            eprintln!(
-                "[SessionManager] CRITICAL: Failed to write termination for session {}: {:?}",
-                session_id, e
-            );
-            kv_to_session_error(e)
-        })?;
+        bucket
+            .set_json(&kv_key, &updated_json)
+            .map_err(kv_to_session_error)?;
 
         Ok(())
     }
@@ -246,13 +238,9 @@ impl SessionManager {
             SessionError::Unexpected(format!("Failed to serialize metadata: {}", e))
         })?;
 
-        bucket.set_json(&kv_key, &updated_json).map_err(|e| {
-            eprintln!(
-                "[SessionManager] CRITICAL: Failed to write expiration for session {}: {:?}",
-                session_id, e
-            );
-            kv_to_session_error(e)
-        })?;
+        bucket
+            .set_json(&kv_key, &updated_json)
+            .map_err(kv_to_session_error)?;
 
         Ok(())
     }
@@ -543,10 +531,6 @@ fn is_session_active(bucket: &Bucket, session_id: &str) -> Result<(), SessionErr
 
     // Check 1: Metadata exists
     if !bucket.exists(&kv_key).map_err(kv_to_session_error)? {
-        eprintln!(
-            "[Session] Validation failed for {}: metadata not found",
-            session_id
-        );
         return Err(SessionError::NoSuchSession);
     }
 
@@ -554,19 +538,9 @@ fn is_session_active(bucket: &Bucket, session_id: &str) -> Result<(), SessionErr
     let json = bucket
         .get_json(&kv_key)
         .map_err(kv_to_session_error)?
-        .ok_or_else(|| {
-            eprintln!(
-                "[Session] Validation failed for {}: metadata disappeared (race condition)",
-                session_id
-            );
-            SessionError::NoSuchSession
-        })?;
+        .ok_or(SessionError::NoSuchSession)?;
 
     let metadata: SessionMetadata = serde_json::from_str(&json).map_err(|e| {
-        eprintln!(
-            "[Session] Validation failed for {}: corrupt metadata - {}",
-            session_id, e
-        );
         SessionError::Unexpected(format!(
             "Failed to parse metadata for session {}: {} - corrupt data: {}",
             session_id,
@@ -577,10 +551,6 @@ fn is_session_active(bucket: &Bucket, session_id: &str) -> Result<(), SessionErr
 
     // Check 2: Not terminated
     if metadata.terminated {
-        eprintln!(
-            "[Session] Validation failed for {}: terminated (reason: {:?})",
-            session_id, metadata.reason
-        );
         return Err(SessionError::NoSuchSession);
     }
 
@@ -588,10 +558,6 @@ fn is_session_active(bucket: &Bucket, session_id: &str) -> Result<(), SessionErr
     if let Some(expires_at) = metadata.expires_at {
         let now = current_timestamp_s();
         if now >= expires_at {
-            eprintln!(
-                "[Session] Validation failed for {}: expired at {} (now: {})",
-                session_id, expires_at, now
-            );
             return Err(SessionError::NoSuchSession);
         }
     }

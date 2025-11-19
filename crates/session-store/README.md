@@ -167,10 +167,6 @@ Session validation has a theoretical time-of-check/time-of-use race:
 
 **Mitigation:** Negligible in practice due to WASM per-request model (microseconds between validation and use). Cannot be fixed without atomic compare-and-swap operations in KV store.
 
-### OAuth Helper Functions
-
-The component also contains OAuth/JWT helper functions (in `oauth_helpers.rs`) that were moved here from their original location. These are exported via the `wasmcp:oauth/helpers` interface and consumed by other components like transport.
-
 ## Building
 
 ```bash

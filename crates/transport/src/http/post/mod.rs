@@ -28,6 +28,11 @@ pub async fn handle_post(
     response_out: ResponseOutparam,
     session_config: &SessionConfig,
 ) {
+    // Validate HTTPS requirements (MCP spec lines 317, 321)
+    if let Err(e) = validate_https_requirements(&request) {
+        send_error!(response_out, TransportError::validation(e));
+    }
+
     // Validate Accept header per spec
     if let Err(e) = validation::validate_accept_header(&request) {
         send_error!(response_out, e);
@@ -39,89 +44,83 @@ pub async fn handle_post(
         Err(e) => send_error!(response_out, e),
     };
 
-    // Check if JWT authentication is configured
-    let jwt_configured = is_jwt_auth_configured();
+    // Check authentication mode
+    let auth_mode = get_auth_mode();
 
-    // Validate JWT - strict validation if configured
-    let identity = match validation::extract_authorization_header(&request) {
-        Ok(Some(jwt)) => {
-            eprintln!("[transport:auth] Found Authorization header, validating JWT...");
+    // Validate JWT based on auth mode
+    let identity = match auth_mode {
+        AuthMode::Public => {
+            // Public mode - no authentication required
+            None
+        }
+        AuthMode::OAuth => {
+            // OAuth mode - JWT required
+            // Validate that JWT is configured properly
+            if !is_jwt_auth_configured() {
+                let error = TransportError::internal(
+                    "MCP_AUTH_MODE=oauth requires JWT_PUBLIC_KEY or JWT_JWKS_URI to be configured",
+                );
+                send_error!(response_out, error);
+            }
 
-            // Import server-auth for JWT validation
-            use crate::bindings::wasmcp::mcp_v20250618::server_auth;
+            match validation::extract_authorization_header(&request) {
+                Ok(Some(jwt)) => {
+                    // Import server-auth for JWT validation
+                    use crate::bindings::wasmcp::mcp_v20250618::server_auth;
 
-            match server_auth::decode(&jwt) {
-                Ok(claims) => {
-                    eprintln!("[transport:auth] ✓ JWT validated successfully");
-                    eprintln!("[transport:auth]   - Subject: {}", &claims.subject);
-                    eprintln!("[transport:auth]   - Scopes: {}", claims.scopes.join(" "));
+                    match server_auth::decode(&jwt) {
+                        Ok(claims) => Some(crate::bindings::wasmcp::mcp_v20250618::mcp::Identity {
+                            jwt,
+                            claims,
+                        }),
+                        Err(e) => {
+                            // Strict validation: return 401 with WWW-Authenticate header
+                            let www_authenticate = create_www_authenticate_challenge(
+                                &request,
+                                "invalid_token",
+                                "The access token provided is invalid, expired, or malformed",
+                            );
 
-                    Some(crate::bindings::wasmcp::mcp_v20250618::mcp::Identity { jwt, claims })
+                            let error = TransportError::unauthorized_with_challenge(
+                                format!("JWT validation failed: {:?}", e),
+                                www_authenticate,
+                            );
+
+                            send_error!(response_out, error);
+                        }
+                    }
                 }
-                Err(e) => {
-                    eprintln!("[transport:auth] ✗ JWT validation failed: {:?}", e);
-
-                    // Strict validation: return 401 with WWW-Authenticate header
+                Ok(None) => {
+                    // OAuth mode requires token
                     let www_authenticate = create_www_authenticate_challenge(
                         &request,
-                        "invalid_token",
-                        "The access token provided is invalid, expired, or malformed",
+                        "invalid_request",
+                        "Authorization header with Bearer token is required",
                     );
 
                     let error = TransportError::unauthorized_with_challenge(
-                        format!("JWT validation failed: {:?}", e),
+                        "Missing required Authorization header",
+                        www_authenticate,
+                    );
+
+                    send_error!(response_out, error);
+                }
+                Err(e) => {
+                    // Malformed header - always error
+                    let www_authenticate = create_www_authenticate_challenge(
+                        &request,
+                        "invalid_request",
+                        "Malformed Authorization header",
+                    );
+
+                    let error = TransportError::unauthorized_with_challenge(
+                        format!("Invalid Authorization header: {}", e),
                         www_authenticate,
                     );
 
                     send_error!(response_out, error);
                 }
             }
-        }
-        Ok(None) => {
-            if jwt_configured {
-                eprintln!(
-                    "[transport:auth] ✗ JWT authentication is configured but no Authorization header provided"
-                );
-
-                // Strict validation: require JWT if configured
-                let www_authenticate = create_www_authenticate_challenge(
-                    &request,
-                    "invalid_request",
-                    "Authorization header with Bearer token is required",
-                );
-
-                let error = TransportError::unauthorized_with_challenge(
-                    "Missing required Authorization header",
-                    www_authenticate,
-                );
-
-                send_error!(response_out, error);
-            } else {
-                eprintln!(
-                    "[transport:auth] No Authorization header present (JWT not configured, continuing without auth)"
-                );
-                None
-            }
-        }
-        Err(e) => {
-            eprintln!(
-                "[transport:auth] ✗ Authorization header extraction failed: {:?}",
-                e
-            );
-
-            // Malformed header - always error
-            let www_authenticate = create_www_authenticate_challenge(
-                &request,
-                "invalid_request",
-                "Malformed Authorization header",
-            );
-
-            let error = TransportError::unauthorized_with_challenge(
-                format!("Invalid Authorization header: {}", e),
-                www_authenticate,
-            );
-
-            send_error!(response_out, error);
         }
     };
 
@@ -195,6 +194,7 @@ pub async fn handle_post(
                     body_stream,
                     response_out,
                     session_config,
+                    Some(http_context.clone()),
                 ),
                 ServerMode::Sse => {
                     sse_mode::handle_sse_streaming_mode(
@@ -207,6 +207,7 @@ pub async fn handle_post(
                         body_stream,
                         response_out,
                         session_config,
+                        Some(http_context.clone()),
                     )
                     .await
                 }
@@ -218,6 +219,7 @@ pub async fn handle_post(
                 protocol_version,
                 session_id.as_deref(),
                 session_config,
+                Some(http_context.clone()),
             );
             drop(input_stream);
             drop(body_stream);
@@ -250,6 +252,42 @@ pub async fn handle_post(
     }
 }
 
+/// Authentication mode for MCP server
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AuthMode {
+    /// Public server - no authentication required
+    Public,
+    /// OAuth protected server - JWT required
+    OAuth,
+}
+
+/// Get authentication mode from environment
+/// Defaults to Public if not specified
+fn get_auth_mode() -> AuthMode {
+    use crate::bindings::wasi::cli::environment::get_environment;
+
+    let env_vars = get_environment();
+
+    let mode = env_vars
+        .iter()
+        .find(|(k, _)| k == "MCP_AUTH_MODE")
+        .map(|(_, v)| v.as_str())
+        .unwrap_or("public");
+
+    match mode {
+        "oauth" => AuthMode::OAuth,
+        "public" => AuthMode::Public,
+        _ => {
+            eprintln!(
+                "[transport] WARNING: Invalid MCP_AUTH_MODE='{}', defaulting to 'public'. \
+                 Valid values: 'public', 'oauth'",
+                mode
+            );
+            AuthMode::Public
+        }
+    }
+}
+
 /// Check if JWT authentication is configured
 /// Returns true if either JWT_PUBLIC_KEY or JWT_JWKS_URI is set
 fn is_jwt_auth_configured() -> bool {
@@ -261,6 +299,66 @@ fn is_jwt_auth_configured() -> bool {
     env_vars
         .iter()
         .any(|(k, v)| (k == "JWT_PUBLIC_KEY" || k == "JWT_JWKS_URI") && !v.is_empty())
+}
+
+/// Validate HTTPS requirements per MCP OAuth spec
+///
+/// Spec requirements (lines 317, 321, 322):
+/// - All communication MUST use HTTPS
+/// - Localhost is explicitly allowed to use HTTP
+/// - Can be bypassed for local development with ALLOW_HTTP_INSECURE=true
+fn validate_https_requirements(request: &IncomingRequest) -> Result<(), String> {
+    use crate::bindings::wasi::cli::environment::get_environment;
+
+    // Get request scheme
+    let scheme = request.scheme();
+
+    // If already HTTPS, we're good
+    if matches!(
+        scheme,
+        Some(crate::bindings::wasi::http::types::Scheme::Https)
+    ) {
+        return Ok(());
+    }
+
+    // Check if this is localhost (explicitly allowed per spec line 322)
+    let headers = request.headers();
+    let host_values = headers.get("host");
+    if !host_values.is_empty()
+        && let Ok(host) = String::from_utf8(host_values[0].clone())
+    {
+        let host_lower = host.to_lowercase();
+        // Allow localhost and 127.0.0.1 per spec
+        if host_lower.starts_with("localhost")
+            || host_lower.starts_with("127.0.0.1")
+            || host_lower.starts_with("[::1]")
+        {
+            return Ok(());
+        }
+    }
+
+    // Check for explicit HTTPS bypass (dev/test only)
+    let env_vars = get_environment();
+    let allow_http = env_vars
+        .iter()
+        .find(|(k, _)| k == "ALLOW_HTTP_INSECURE")
+        .map(|(_, v)| v == "true")
+        .unwrap_or(false);
+
+    if allow_http {
+        eprintln!(
+            "[transport] WARNING: HTTPS enforcement disabled via ALLOW_HTTP_INSECURE=true. \
+             This MUST NOT be used in production (MCP spec lines 317, 321)"
+        );
+        return Ok(());
+    }
+
+    // Reject HTTP for non-localhost
+    Err(
+        "MCP servers MUST use HTTPS for non-localhost connections (spec lines 317, 321). \
+         Set ALLOW_HTTP_INSECURE=true for local development only."
+            .to_string(),
+    )
 }
 
 /// Build HTTP context for authorization
@@ -353,19 +451,11 @@ fn create_www_authenticate_challenge(
                             _ => None,
                         })
                         .unwrap_or("https");
-                    let uri = format!("{}://{}", scheme, host);
-                    eprintln!(
-                        "[transport:www-authenticate] Constructed URI from Host: {} (scheme: {:?})",
-                        uri,
-                        request.scheme()
-                    );
-                    Some(uri)
+                    Some(format!("{}://{}", scheme, host))
                 } else {
-                    eprintln!("[transport:www-authenticate] Failed to parse Host header");
                     None
                 }
             } else {
-                eprintln!("[transport:www-authenticate] No Host header found");
                 None
             }
         });
@@ -374,10 +464,6 @@ fn create_www_authenticate_challenge(
     let mut parts = vec!["Bearer".to_string()];
 
     if let Some(ref uri) = server_uri {
-        eprintln!(
-            "[transport:www-authenticate] Building challenge with URI: {}",
-            uri
-        );
         parts.push(format!("realm=\"{}\"", uri));
 
         // Add resource_metadata URL per RFC 9728
@@ -385,8 +471,6 @@ fn create_www_authenticate_challenge(
             "resource_metadata=\"{}/.well-known/oauth-protected-resource\"",
             uri
         ));
-    } else {
-        eprintln!("[transport:www-authenticate] No server URI available");
     }
 
     parts.push(format!("error=\"{}\"", error));

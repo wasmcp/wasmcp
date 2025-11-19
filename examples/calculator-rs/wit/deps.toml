@@ -1,2 +1,1 @@
 mcp-v20250618 = { path = "../../../spec/2025-06-18/wit" }
-oauth = { path = "../../../spec/oauth/wit" }

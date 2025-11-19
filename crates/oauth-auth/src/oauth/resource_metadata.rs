@@ -1,6 +1,6 @@
 //! OAuth 2.0 Protected Resource Metadata (RFC 9728)
 
-use crate::bindings::exports::wasmcp::oauth::resource_metadata::ProtectedResourceMetadata;
+use crate::bindings::exports::wasmcp::auth::resource_metadata::ProtectedResourceMetadata;
 
 /// Fetch resource metadata from well-known location
 /// TODO: Implement HTTP GET to /.well-known/oauth-protected-resource

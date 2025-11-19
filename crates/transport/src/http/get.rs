@@ -23,24 +23,14 @@ pub fn handle_get(
     let path = match request.path_with_query() {
         Some(p) => p,
         None => {
-            eprintln!("[transport:get] No path in request, returning 405");
             return send_method_not_allowed(response_out, session_config);
         }
     };
-
-    eprintln!("[transport:get] Request path: {}", path);
 
     // MCP Spec: Support both /.well-known/oauth-protected-resource and
     // /.well-known/oauth-protected-resource/mcp (same for all discovery endpoints)
     // Normalize by stripping /mcp suffix if present
     let normalized_path = path.strip_suffix("/mcp").unwrap_or(&path);
-
-    if path != normalized_path {
-        eprintln!(
-            "[transport:get] Normalized path: {} -> {}",
-            path, normalized_path
-        );
-    }
 
     // Route discovery endpoints (both with and without /mcp suffix)
     match normalized_path {
@@ -54,7 +44,6 @@ pub fn handle_get(
             discovery::handle_openid_configuration(&request, response_out);
         }
         _ => {
-            eprintln!("[transport:get] Path does not match discovery endpoints, returning 405");
             send_method_not_allowed(response_out, session_config);
         }
     }

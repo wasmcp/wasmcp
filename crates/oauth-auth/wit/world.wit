@@ -1,4 +1,4 @@
-package wasmcp:oauth-auth@0.1.0;
+package wasmcp:authentication@0.1.0;
 
 world oauth-auth {
     import wasi:cli/environment@0.2.8;
@@ -6,14 +6,14 @@ world oauth-auth {
     import wasmcp:keyvalue/store@0.1.0;
 
     // MCP-required interface (now uses structured jwt-claims)
-    export wasmcp:mcp-v20250618/server-auth@0.1.6;
+    export wasmcp:mcp-v20250618/server-auth@0.1.7;
 
     // OAuth 2.1 Resource Server interfaces
-    export wasmcp:oauth/errors@0.1.0;
-    export wasmcp:oauth/bearer@0.1.0;
-    export wasmcp:oauth/introspection@0.1.0;
-    export wasmcp:oauth/resource-metadata@0.1.0;
+    export wasmcp:auth/errors@0.1.0;
+    export wasmcp:auth/bearer@0.1.0;
+    export wasmcp:auth/introspection@0.1.0;
+    export wasmcp:auth/resource-metadata@0.1.0;
 
     // JWT claim helper functions
-    export wasmcp:oauth/helpers@0.1.0;
+    export wasmcp:auth/helpers@0.1.0;
 }

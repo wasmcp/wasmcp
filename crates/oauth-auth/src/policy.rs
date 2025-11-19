@@ -1,7 +1,7 @@
 //! Policy-based authorization using Regorous (Rego interpreter)
 
+use crate::bindings::wasmcp::auth::types::JwtClaims;
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{ClientMessage, Session};
-use crate::bindings::wasmcp::oauth::types::JwtClaims;
 use crate::error::{AuthError, Result};
 use regorus::{Engine, Value};
 use serde_json::json;

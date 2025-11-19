@@ -24,6 +24,7 @@ pub fn handle_json_mode(
     body_stream: crate::bindings::wasi::http::types::IncomingBody,
     response_out: ResponseOutparam,
     config: &SessionConfig,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
 ) {
     use crate::bindings::wasmcp::mcp_v20250618::server_io;
 
@@ -62,6 +63,7 @@ pub fn handle_json_mode(
         &output_stream,
         &common::plain_json_frame(),
         config,
+        http_context,
     ) {
         eprintln!("[TRANSPORT] ERROR during request processing: {:?}", e);
         // Write error response to stream

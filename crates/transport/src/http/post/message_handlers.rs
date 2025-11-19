@@ -35,6 +35,7 @@ pub fn handle_mcp_request(
     output_stream: &OutputStream,
     frame: &common::MessageFrame,
     config: &SessionConfig,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
 ) -> Result<(), TransportError> {
     // Parse protocol version
     let proto_ver =
@@ -80,7 +81,7 @@ pub fn handle_mcp_request(
                 bucket,
                 output_stream,
                 frame,
-                None, // HTTP context not available in this path
+                http_context,
             )
             .map_err(|e| {
                 TransportError::protocol(format!("Middleware delegation failed: {:?}", e))
@@ -102,6 +103,7 @@ pub fn handle_mcp_notification(
     protocol_version: String,
     session_id: Option<&str>,
     config: &SessionConfig,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
 ) -> Result<(), TransportError> {
     // Parse protocol version
     let proto_ver =
@@ -116,7 +118,7 @@ pub fn handle_mcp_notification(
         session_id,
         bucket,
         &common::plain_json_frame(),
-        None, // HTTP context not available for notifications
+        http_context,
     )
     .map_err(|e| TransportError::protocol(format!("Notification handling failed: {:?}", e)))?;
 

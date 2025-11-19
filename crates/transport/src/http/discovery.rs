@@ -36,13 +36,9 @@ pub fn handle_protected_resource_metadata(
     request: &IncomingRequest,
     response_out: ResponseOutparam,
 ) {
-    eprintln!("[transport:discovery] Serving protected resource metadata");
-
     let metadata = build_protected_resource_metadata(request);
 
     let json_body = serde_json::to_string_pretty(&metadata).unwrap_or_else(|_| "{}".to_string());
-
-    eprintln!("[transport:discovery] Metadata: {}", json_body);
 
     // Build response
     let response = match ResponseBuilder::new()
@@ -53,7 +49,6 @@ pub fn handle_protected_resource_metadata(
     {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[transport:discovery] Failed to build response: {:?}", e);
             let error_response = crate::http::response::transport_error_to_response(&e);
             ResponseOutparam::set(response_out, Ok(error_response));
             return;
@@ -82,13 +77,9 @@ pub fn handle_authorization_server_metadata(
     _request: &IncomingRequest,
     response_out: ResponseOutparam,
 ) {
-    eprintln!("[transport:discovery] Serving authorization server metadata");
-
     let metadata = build_authorization_server_metadata();
 
     let json_body = serde_json::to_string_pretty(&metadata).unwrap_or_else(|_| "{}".to_string());
-
-    eprintln!("[transport:discovery] Metadata: {}", json_body);
 
     // Build response
     let response = match ResponseBuilder::new()
@@ -99,7 +90,6 @@ pub fn handle_authorization_server_metadata(
     {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[transport:discovery] Failed to build response: {:?}", e);
             let error_response = crate::http::response::transport_error_to_response(&e);
             ResponseOutparam::set(response_out, Ok(error_response));
             return;
@@ -125,13 +115,9 @@ pub fn handle_authorization_server_metadata(
 /// - JWKS URI
 /// - Supported grant types, response types
 pub fn handle_openid_configuration(_request: &IncomingRequest, response_out: ResponseOutparam) {
-    eprintln!("[transport:discovery] Serving OpenID Connect configuration");
-
     let config = build_openid_configuration();
 
     let json_body = serde_json::to_string_pretty(&config).unwrap_or_else(|_| "{}".to_string());
-
-    eprintln!("[transport:discovery] Configuration: {}", json_body);
 
     // Build response
     let response = match ResponseBuilder::new()
@@ -142,7 +128,6 @@ pub fn handle_openid_configuration(_request: &IncomingRequest, response_out: Res
     {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[transport:discovery] Failed to build response: {:?}", e);
             let error_response = crate::http::response::transport_error_to_response(&e);
             ResponseOutparam::set(response_out, Ok(error_response));
             return;
@@ -168,7 +153,6 @@ fn build_protected_resource_metadata(request: &IncomingRequest) -> serde_json::V
     // Get resource identifier - ALWAYS use actual server URI
     // MCP clients validate that resource field matches connection URL
     let resource = get_server_uri(&env_vars, request);
-    eprintln!("[transport:discovery] Resource (server URI): {}", resource);
 
     // Get authorization server(s) from config
     let auth_servers: Vec<String> = env_vars
@@ -278,10 +262,6 @@ fn build_openid_configuration() -> serde_json::Value {
 fn get_server_uri(env_vars: &[(String, String)], request: &IncomingRequest) -> String {
     // First try environment variable
     if let Some((_, uri)) = env_vars.iter().find(|(k, _)| k == "MCP_SERVER_URI") {
-        eprintln!(
-            "[transport:discovery] Using MCP_SERVER_URI from env: {}",
-            uri
-        );
         return uri.clone();
     }
 
@@ -301,16 +281,9 @@ fn get_server_uri(env_vars: &[(String, String)], request: &IncomingRequest) -> S
                 _ => None,
             })
             .unwrap_or("https");
-        let uri = format!("{}://{}", scheme, host);
-        eprintln!(
-            "[transport:discovery] Constructed URI from Host header: {} (scheme from request: {:?})",
-            uri,
-            request.scheme()
-        );
-        return uri;
+        return format!("{}://{}", scheme, host);
     }
 
     // Last resort fallback
-    eprintln!("[transport:discovery] Using fallback URI (no env var, no Host header)");
     "https://localhost:3000".to_string()
 }

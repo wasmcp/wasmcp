@@ -43,6 +43,7 @@ pub mod output;
 pub mod resolution;
 
 // Internal imports from submodules
+use self::composition::graph::CompositionPaths;
 use self::composition::{build_composition, build_handler_composition, wrap_capabilities};
 use self::config::{resolve_output_path, validate_output_file, validate_transport};
 use self::output::{
@@ -372,13 +373,15 @@ async fn compose_server(
 
     // Build and encode the composition
     let bytes = build_composition(
-        &transport_path,
-        &server_io_path,
-        &oauth_auth_path,
-        &kv_store_path,
-        &session_store_path,
-        &wrapped_components,
-        &method_not_found_path,
+        CompositionPaths {
+            transport: &transport_path,
+            server_io: &server_io_path,
+            oauth_auth: &oauth_auth_path,
+            kv_store: &kv_store_path,
+            session_store: &session_store_path,
+            components: &wrapped_components,
+            method_not_found: &method_not_found_path,
+        },
         &version_resolver,
         verbose,
     )

@@ -22,7 +22,6 @@ mod bindings {
     });
 }
 
-mod oauth_helpers;
 mod session;
 
 use bindings::exports::wasmcp::mcp_v20250618::session_manager::Guest as SessionManagerGuest;

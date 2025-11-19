@@ -1,3 +1,8 @@
+[auth]
+url = "https://github.com/wasmcp/wasmcp/releases/download/auth-v0.1.0/wasmcp-auth-0.1.0-source.tar.gz"
+sha256 = "f701db0f1a4aee735d95e81a6c97f2b9b14679e504cf7cf95dca78b8b4bf8ae3"
+sha512 = "4c3b1d899d48f6f5714b49e7ace944f3b38853e096d0b95e649bc367f18c11b10c36e009098607790fa4ee897d36f645a768d5e02167603204f0b6a31151d034"
+
 [cli]
 url = "https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.8.tar.gz"
 sha256 = "d223b55ba73b8a265cc36db836487a16dcb1ed859d92a693827ad5ca2d2dfba8"
@@ -24,19 +29,14 @@ sha256 = "9f1ad5da70f621bbd4c69e3bd90250a0c12ecfde266aa8f99684fc44bc1e7c15"
 sha512 = "6d0a9db6848f24762933d1c168a5b5b1065ba838c253ee20454afeb8dd1a049b918d25deff556083d68095dd3126ae131ac3e738774320eee5d918f5a4b5354e"
 
 [keyvalue]
-path = "../../../wit/keyvalue/wit"
-sha256 = "4635d984ca9f96152a8c71607c80e532157ec6339e2d5d183c150f594d701159"
-sha512 = "184dd6b65ac3ccf48fcc2f25ff01c8a3886abc342cf46ba4d8fa905b1ae9ba5aacd9b110039ced78e41075cbec9313648fdcb8e562b9c80fa5b88ebb1a7db628"
+url = "https://github.com/wasmcp/wasmcp/releases/download/keyvalue-v0.1.0/wasmcp-keyvalue-0.1.0-source.tar.gz"
+sha256 = "6aca6ad2b990896e38dbbab7059a08ce922a8814957c69d31300d52b142a6f1a"
+sha512 = "b681313c99748c01d4eab63c342930e2f1321978863a2af587f46ffdc9d83d517e75713d821445317baa9567a690b5de136fda07e09370c112880b7ff52ef634"
 
 [mcp-v20250618]
 path = "../../../spec/2025-06-18/wit"
-sha256 = "e82d9d948a60ff25085b888c572e12ad8801f54cc4ad8cb18ae72fd90bbf98ba"
-sha512 = "d6f45b37747c11ffdf3c40aadea62b75bb5ac6eeaec69b98bc8c6ce7c3110452483a89f724d6f1b13b33faf31824bf142fcf1cca557085a5a84e916ca0160c9f"
-
-[oauth]
-path = "../../../wit/oauth/wit"
-sha256 = "2570b481ea1735dcd96753c98a84f50185a728cad62200a73fdd32974796cc6d"
-sha512 = "7362617c15846742a5a7d41c297082cd44239ca31a2d9f2abd45a1a1aa6583c68d51ad74f33b11de49d1a6b1399d591fb73b86804ad14dd4848a224f78874ed6"
+sha256 = "e007d8f6281f7e9021a702f4d94ebe871a62c6d45fbda6ae250b54b83b386348"
+sha512 = "8e358d2e3d80177d30edf5faa753f31829040ad711e48007b0499eeffc3bb3204afe782512c2229f34ccbd576376c2b683a0cd35cf3da517f89c2678fe6b737c"
 
 [random]
 url = "https://github.com/WebAssembly/wasi-random/archive/refs/tags/v0.2.8.tar.gz"

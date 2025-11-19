@@ -10,6 +10,6 @@ world sessions {
 
     // - sessions: User-facing data API (imported by tools/resources)
     // - session-manager: Transport-facing lifecycle API (imported by transports)
-    export wasmcp:mcp-v20250618/sessions@0.1.6;
-    export wasmcp:mcp-v20250618/session-manager@0.1.6;
+    export wasmcp:mcp-v20250618/sessions@0.1.7;
+    export wasmcp:mcp-v20250618/session-manager@0.1.7;
 }
