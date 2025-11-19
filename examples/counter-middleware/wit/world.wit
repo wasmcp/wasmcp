@@ -5,8 +5,8 @@ package wasmcp:counter-middleware@0.1.0;
 /// This component implements the server-middleware pattern, handling tools/list and tools/call
 /// methods and delegating all other requests to the downstream handler.
 world counter-middleware {
-    include wasmcp:mcp-v20250618/server-middleware@0.1.6;
+    include wasmcp:mcp-v20250618/server-middleware@0.1.7;
 
-    import wasmcp:mcp-v20250618/sessions@0.1.6;
-    import wasmcp:mcp-v20250618/server-io@0.1.6;
+    import wasmcp:mcp-v20250618/sessions@0.1.7;
+    import wasmcp:mcp-v20250618/server-io@0.1.7;
 }

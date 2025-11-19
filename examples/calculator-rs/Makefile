@@ -1,7 +1,12 @@
-.PHONY: all setup build clean
+.PHONY: all setup build clean wit work
 
 # Default target
 all: build
+
+work: setup wit build
+
+wit:
+	@wit-deps update
 
 # Install required tools
 setup:

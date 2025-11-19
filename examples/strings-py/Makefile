@@ -1,9 +1,14 @@
-.PHONY: all setup build clean
+.PHONY: all setup build clean wit work
 
 VENV = venv
 PIP = $(VENV)/bin/pip
 COMPONENTIZE_PY = $(VENV)/bin/componentize-py
 COMPONENT_NAME = strings
+
+work: setup wit build
+
+wit:
+	@wit-deps update
 
 # Default target - build (setup if needed)
 all: $(VENV) build

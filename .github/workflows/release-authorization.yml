@@ -1,0 +1,24 @@
+name: Release Authorization
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Component version (e.g. 0.1.0 or 0.1.0-beta.2)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Release Authorization
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/reusable-release-component.yml
+    with:
+      component-name: authorization
+      component-crate: authorization
+      version: ${{ inputs.version }}
+      wkg-package: wasmcp:authorization
+      tag-prefix: authorization-v
+    secrets: inherit

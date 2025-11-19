@@ -12,6 +12,21 @@ pub enum TransportError {
     /// Validation error (origin, headers, protocol version, etc.)
     Validation(String),
 
+    /// OAuth authentication error (invalid/missing token)
+    /// Includes WWW-Authenticate header value
+    Unauthorized {
+        message: String,
+        www_authenticate: Option<String>,
+    },
+
+    /// OAuth authorization error (valid token, insufficient permissions)
+    /// TODO: Implement authorization check in transport layer
+    /// MCP spec requires 403 Forbidden for authorization failures (mpc-auth.md:286)
+    /// Currently only doing authentication (decode), not authorization (authorize)
+    /// See: .agent/oauth/mpc-auth.md for spec requirements
+    #[allow(dead_code)]
+    Forbidden(String),
+
     /// I/O error from server-io operations
     Io(IoError),
 
@@ -29,6 +44,35 @@ impl TransportError {
     /// Create a validation error
     pub fn validation(msg: impl Into<String>) -> Self {
         Self::Validation(msg.into())
+    }
+
+    /// Create an unauthorized error (401) with optional WWW-Authenticate header
+    /// TODO: Currently unused - use unauthorized_with_challenge instead
+    /// Kept for completeness when authorization is implemented
+    #[allow(dead_code)]
+    pub fn unauthorized(msg: impl Into<String>) -> Self {
+        Self::Unauthorized {
+            message: msg.into(),
+            www_authenticate: None,
+        }
+    }
+
+    /// Create an unauthorized error with WWW-Authenticate header
+    pub fn unauthorized_with_challenge(msg: impl Into<String>, www_authenticate: String) -> Self {
+        Self::Unauthorized {
+            message: msg.into(),
+            www_authenticate: Some(www_authenticate),
+        }
+    }
+
+    /// Create a forbidden error (403)
+    /// TODO: Will be used when server_auth::authorize() is called in transport
+    /// Need to decide on authorization architecture first:
+    /// - Per-middleware policies vs single global policy
+    /// - Environment variable naming (POLICY vs POLICY_TOOLS, etc.)
+    #[allow(dead_code)]
+    pub fn forbidden(msg: impl Into<String>) -> Self {
+        Self::Forbidden(msg.into())
     }
 
     /// Create a protocol error
@@ -50,6 +94,8 @@ impl TransportError {
     pub fn http_status_code(&self) -> u16 {
         match self {
             Self::Validation(_) => 400,
+            Self::Unauthorized { .. } => 401,
+            Self::Forbidden(_) => 403,
             Self::Protocol(_) => 400,
             Self::Session(msg) if msg.contains("not found") => 404,
             Self::Session(msg) if msg.contains("terminated") => 404,
@@ -60,10 +106,23 @@ impl TransportError {
         }
     }
 
+    /// Get WWW-Authenticate header value if present
+    pub fn www_authenticate_header(&self) -> Option<&str> {
+        match self {
+            Self::Unauthorized {
+                www_authenticate: Some(header),
+                ..
+            } => Some(header),
+            _ => None,
+        }
+    }
+
     /// Get error message
     pub fn message(&self) -> String {
         match self {
             Self::Validation(msg) => msg.clone(),
+            Self::Unauthorized { message, .. } => message.clone(),
+            Self::Forbidden(msg) => msg.clone(),
             Self::Protocol(msg) => msg.clone(),
             Self::Session(msg) => msg.clone(),
             Self::Io(e) => format!("I/O error: {:?}", e),
