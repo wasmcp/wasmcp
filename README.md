@@ -58,6 +58,62 @@ See [examples/](examples/) for more.
 - **[CLI Reference](cli/README.md)**
 - **[Development MCP server](docs/daemon-management.md)** - Run a local development server that provides context to your coding agent about developing, composing, and running `wasmcp` projects.
 
+## Authentication Modes
+
+wasmcp supports both public (unauthenticated) and OAuth 2.1 protected MCP servers via the `MCP_AUTH_MODE` environment variable.
+
+### Public Mode (Default)
+
+```bash
+# No environment variables needed (default behavior)
+wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+```
+
+Or explicitly set:
+```bash
+MCP_AUTH_MODE=public wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+```
+
+### OAuth Mode
+
+Requires JWT bearer tokens per MCP OAuth 2.1 spec. Supports two validation patterns:
+
+#### Dynamic Registration Pattern
+
+Per-user client IDs created dynamically. No fixed audience - validation via issuer and signature only.
+
+**Required Environment Variables:**
+- `MCP_AUTH_MODE=oauth` - Enable OAuth authentication
+- `JWT_ISSUER` - Expected token issuer (e.g., `https://your.issuer.com`)
+- `JWT_JWKS_URI` - JWKS endpoint for public key retrieval
+
+**Example:**
+```bash
+MCP_AUTH_MODE=oauth \
+JWT_ISSUER=https://api.workos.com \
+JWT_JWKS_URI=https://api.workos.com/sso/jwks/client_01234567890 \
+wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+```
+
+### HTTPS Enforcement
+
+MCP spec requires HTTPS for non-localhost connections. Localhost (127.0.0.1, ::1) is always allowed over HTTP.
+
+To disable HTTPS enforcement for local development:
+```bash
+ALLOW_HTTP_INSECURE=true wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+```
+
+**Warning:** Never use `ALLOW_HTTP_INSECURE=true` in production.
+
+## Features
+
+- **Stateful Sessions** - Built-in session management with key-value storage for multi-request workflows
+- **Authentication** - JWT/OAuth bearer token validation with scope-based authorization
+- **Auto-Composition** - Automatically wraps components with appropriate middleware
+- **Type-Safe Storage** - TypedValue enum for runtime type safety in sessions
+- **Real-time Notifications** - Progress updates, logs, and resource changes via streaming
+
 ## Why?
 
 WebAssembly components are:
@@ -214,9 +270,11 @@ Generated templates demonstrate the capability pattern with working tool impleme
 
 Published to [ghcr.io/wasmcp](https://github.com/orgs/wasmcp/packages):
 
-- **transport** - Universal transport for HTTP / stdio execution
-- **server-io** - Universal MCP message I/O with configurable transport framing support 
-- **session-store** - Key Value session component
+- **transport** - Universal transport for HTTP / stdio execution with JWT validation
+- **server-io** - Universal MCP message I/O with configurable transport framing support
+- **session-store** - Stateful session management with key-value storage
+- **authorization** - JWT/OAuth bearer token validation and claim extraction
+- **kv-store** - Type-safe key-value storage with TypedValue support
 - **method-not-found** - Terminal handler for unhandled methods
 
 The CLI automatically downloads these when composing.

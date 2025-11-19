@@ -15,16 +15,6 @@
 //! - Internal storage format: { "__meta__": {...}, "data": {...} }
 //! - Generates UUIDs using wasi:random for session IDs
 
-#[cfg(feature = "draft2")]
-mod bindings {
-    wit_bindgen::generate!({
-        path: "wit-draft2",
-        world: "sessions-draft2",
-        generate_all,
-    });
-}
-
-#[cfg(not(feature = "draft2"))]
 mod bindings {
     wit_bindgen::generate!({
         world: "sessions",
@@ -43,6 +33,9 @@ struct Component;
 impl SessionsGuest for Component {
     type Session = session::SessionImpl;
     type FutureElicitResult = session::FutureElicitResultImpl;
+
+    // OAuth claim helpers have been moved to wasmcp:oauth/helpers
+    // Tools should import helpers directly from that package instead of from sessions
 }
 
 // Export transport-facing session-manager interface
@@ -74,6 +67,14 @@ impl SessionManagerGuest for Component {
         store_id: String,
     ) -> Result<(), bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError> {
         session::SessionManager::delete_session(session_id, store_id)
+    }
+
+    fn set_expiration(
+        session_id: String,
+        store_id: String,
+        expires_at: u64,
+    ) -> Result<(), bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError> {
+        session::SessionManager::set_expiration(session_id, store_id, expires_at)
     }
 }
 

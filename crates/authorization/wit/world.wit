@@ -1,0 +1,19 @@
+package wasmcp:authorization@0.1.0;
+
+world authorization {
+    import wasi:cli/environment@0.2.8;
+    import wasi:http/outgoing-handler@0.2.8;
+    import wasmcp:keyvalue/store@0.1.0;
+
+    // MCP-required interface (now uses structured jwt-claims)
+    export wasmcp:mcp-v20250618/server-auth@0.1.7;
+
+    // OAuth 2.1 Resource Server interfaces
+    export wasmcp:auth/errors@0.1.0;
+    export wasmcp:auth/bearer@0.1.0;
+    export wasmcp:auth/introspection@0.1.0;
+    export wasmcp:auth/resource-metadata@0.1.0;
+
+    // JWT claim helper functions
+    export wasmcp:auth/helpers@0.1.0;
+}
