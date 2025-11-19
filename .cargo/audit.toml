@@ -2,9 +2,23 @@
 
 [advisories]
 # Ignore RUSTSEC-2023-0071 (Marvin Attack on RSA decryption)
-# Rationale: This vulnerability affects RSA PKCS#1 v1.5 **decryption** operations.
-# Our usage of jsonwebtoken only performs RSA **signature verification**, not decryption.
-# These are different cryptographic operations - signatures use public key operations,
-# while the Marvin attack targets private key decryption timing sidechannels.
+#
+# Rationale: This vulnerability affects RSA PKCS#1 v1.5 **decryption** operations where an
+# attacker measures timing differences during private key decryption to extract the key.
+#
+# Our usage is NOT vulnerable because:
+# 1. We process JWTs (JSON Web Signatures), not JWEs (JSON Web Encryption)
+# 2. JWTs are Base64-encoded + signed, NOT encrypted
+# 3. We only perform signature VERIFICATION using RSA public keys
+# 4. We never perform decryption operations (we don't have private keys)
+# 5. The jsonwebtoken::decode() function verifies signatures, despite the confusing name
+#
+# RSA operations we use:
+# - Signature verification: public key verifies signature created by private key ✓
+#
+# RSA operations affected by Marvin attack:
+# - Decryption: private key decrypts ciphertext encrypted by public key ✗ (we don't do this)
+#
 # See: https://rustsec.org/advisories/RUSTSEC-2023-0071
+# See: crates/authorization/src/jwt.rs:115 for our verify implementation
 ignore = ["RUSTSEC-2023-0071"]
