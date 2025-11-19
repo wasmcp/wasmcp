@@ -1,9 +1,7 @@
 //! GET request handler
 //!
-//! GET requests are used for OAuth 2.0 discovery endpoints:
+//! GET requests are used for the OAuth 2.0 discovery endpoint:
 //! - /.well-known/oauth-protected-resource (RFC 9728)
-//! - /.well-known/oauth-authorization-server (RFC 8414)
-//! - /.well-known/openid-configuration (OIDC Discovery)
 //!
 //! All other GET requests return 405 Method Not Allowed.
 
@@ -28,20 +26,14 @@ pub fn handle_get(
     };
 
     // MCP Spec: Support both /.well-known/oauth-protected-resource and
-    // /.well-known/oauth-protected-resource/mcp (same for all discovery endpoints)
+    // /.well-known/oauth-protected-resource/mcp
     // Normalize by stripping /mcp suffix if present
     let normalized_path = path.strip_suffix("/mcp").unwrap_or(&path);
 
-    // Route discovery endpoints (both with and without /mcp suffix)
+    // Route discovery endpoint (both with and without /mcp suffix)
     match normalized_path {
         "/.well-known/oauth-protected-resource" => {
             discovery::handle_protected_resource_metadata(&request, response_out);
-        }
-        "/.well-known/oauth-authorization-server" => {
-            discovery::handle_authorization_server_metadata(&request, response_out);
-        }
-        "/.well-known/openid-configuration" => {
-            discovery::handle_openid_configuration(&request, response_out);
         }
         _ => {
             send_method_not_allowed(response_out, session_config);

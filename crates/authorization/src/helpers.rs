@@ -7,7 +7,7 @@
 //! No parsing is needed - use these helpers directly on the structured claims!
 
 use crate::bindings::wasmcp::auth::types::JwtClaims;
-use std::time::{SystemTime, UNIX_EPOCH};
+use jsonwebtoken::get_current_timestamp;
 
 /// Convert structured JWT claims to flat format for storage/serialization
 ///
@@ -118,10 +118,7 @@ pub fn has_audience(claims: &JwtClaims, audience: &str) -> bool {
 /// Compares exp claim against current time with optional clock skew.
 pub fn is_expired(claims: &JwtClaims, clock_skew_seconds: Option<u64>) -> bool {
     if let Some(exp) = claims.expiration {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let now = get_current_timestamp();
         let skew = clock_skew_seconds.unwrap_or(0);
         now >= exp.saturating_sub(skew)
     } else {
@@ -132,10 +129,7 @@ pub fn is_expired(claims: &JwtClaims, clock_skew_seconds: Option<u64>) -> bool {
 
 /// Check if token time is valid (nbf <= now < exp)
 pub fn is_valid_time(claims: &JwtClaims, clock_skew_seconds: Option<u64>) -> bool {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let now = get_current_timestamp();
     let skew = clock_skew_seconds.unwrap_or(0);
 
     // Check not-before

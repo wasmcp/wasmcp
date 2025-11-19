@@ -4,9 +4,8 @@ use crate::bindings::wasi::http::outgoing_handler;
 use crate::bindings::wasi::http::types::{Fields, Method, OutgoingRequest, Scheme};
 use crate::bindings::wasmcp::keyvalue::store as kv;
 use crate::error::{AuthError, Result};
-use jsonwebtoken::DecodingKey;
+use jsonwebtoken::{DecodingKey, get_current_timestamp};
 use serde::{Deserialize, Serialize};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Default JWKS cache TTL in seconds (5 minutes - matches ftl behavior)
 /// Can be overridden via JWT_JWKS_TTL environment variable
@@ -81,10 +80,7 @@ pub fn fetch_jwks(jwks_uri: &str) -> Result<Jwks> {
         };
 
         if let Ok(cached) = serde_json::from_str::<CachedJwks>(&cached_str) {
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
+            let now = get_current_timestamp();
 
             if now < cached.expires_at {
                 return Ok(cached.jwks);
@@ -97,12 +93,7 @@ pub fn fetch_jwks(jwks_uri: &str) -> Result<Jwks> {
 
     // Cache the JWKS with configured TTL
     let ttl = get_jwks_ttl();
-
-    let expires_at = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-        + ttl;
+    let expires_at = get_current_timestamp() + ttl;
 
     let cached = CachedJwks {
         jwks: jwks.clone(),
@@ -269,8 +260,6 @@ pub fn find_key(jwks: &Jwks, kid: Option<&str>) -> Result<DecodingKey> {
                 .first()
                 .copied()
                 .ok_or_else(|| AuthError::InvalidToken("No keys found".to_string()))?
-        } else if matching_keys.is_empty() {
-            return Err(AuthError::InvalidToken("No keys found in JWKS".to_string()));
         } else {
             return Err(AuthError::InvalidToken(
                 "Multiple keys in JWKS but no key ID (kid) in token".to_string(),

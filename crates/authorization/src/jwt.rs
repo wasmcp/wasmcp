@@ -82,24 +82,12 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<JwtClaims> {
     };
 
     // Set up validation using configured algorithm (defaults to RS256)
-    let algorithm = match provider.algorithm.as_deref().unwrap_or("RS256") {
-        "HS256" => Algorithm::HS256,
-        "HS384" => Algorithm::HS384,
-        "HS512" => Algorithm::HS512,
-        "RS256" => Algorithm::RS256,
-        "RS384" => Algorithm::RS384,
-        "RS512" => Algorithm::RS512,
-        "ES256" => Algorithm::ES256,
-        "ES384" => Algorithm::ES384,
-        "PS256" => Algorithm::PS256,
-        "PS384" => Algorithm::PS384,
-        "PS512" => Algorithm::PS512,
-        alg => {
-            return Err(AuthError::Configuration(format!(
-                "Unsupported algorithm: {alg}"
-            )));
-        }
-    };
+    let algorithm = provider
+        .algorithm
+        .as_deref()
+        .unwrap_or("RS256")
+        .parse::<Algorithm>()
+        .map_err(|e| AuthError::Configuration(format!("Invalid algorithm: {}", e)))?;
     let mut validation = Validation::new(algorithm);
 
     // Set issuer validation (only if configured)
@@ -123,41 +111,8 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<JwtClaims> {
     // Set required claims
     validation.set_required_spec_claims(&["exp", "sub", "iss"]);
 
-    // Decode and validate token
-    let token_data =
-        decode::<Claims>(token, &decoding_key, &validation).map_err(|e| match e.kind() {
-            jsonwebtoken::errors::ErrorKind::InvalidToken => {
-                AuthError::InvalidToken(format!("Invalid token: {}", e))
-            }
-            jsonwebtoken::errors::ErrorKind::InvalidSignature => {
-                AuthError::InvalidToken("Invalid signature".to_string())
-            }
-            jsonwebtoken::errors::ErrorKind::InvalidEcdsaKey => {
-                AuthError::InvalidToken("Invalid ECDSA key".to_string())
-            }
-            jsonwebtoken::errors::ErrorKind::InvalidRsaKey(_) => {
-                AuthError::InvalidToken("Invalid RSA key".to_string())
-            }
-            jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
-                AuthError::InvalidToken("Token expired".to_string())
-            }
-            jsonwebtoken::errors::ErrorKind::InvalidIssuer => {
-                AuthError::InvalidToken("Invalid issuer".to_string())
-            }
-            jsonwebtoken::errors::ErrorKind::InvalidAudience => {
-                AuthError::InvalidToken("Invalid audience".to_string())
-            }
-            jsonwebtoken::errors::ErrorKind::InvalidSubject => {
-                AuthError::InvalidToken("Invalid subject".to_string())
-            }
-            jsonwebtoken::errors::ErrorKind::ImmatureSignature => {
-                AuthError::InvalidToken("Token not yet valid (nbf)".to_string())
-            }
-            jsonwebtoken::errors::ErrorKind::InvalidAlgorithm => {
-                AuthError::InvalidToken("Invalid algorithm".to_string())
-            }
-            _ => AuthError::InvalidToken(format!("Token validation error: {}", e)),
-        })?;
+    // Decode and validate token (error conversion via From trait in error.rs)
+    let token_data = decode::<Claims>(token, &decoding_key, &validation)?;
     let claims = token_data.claims;
 
     // Extract scopes
@@ -205,16 +160,7 @@ pub fn verify(token: &str, provider: &JwtProvider) -> Result<JwtClaims> {
         .additional
         .into_iter()
         .filter(|(k, _)| !standard_fields.contains(&k.as_str()))
-        .map(|(k, v)| {
-            let value_str = match v {
-                serde_json::Value::String(s) => s,
-                serde_json::Value::Number(n) => n.to_string(),
-                serde_json::Value::Bool(b) => b.to_string(),
-                serde_json::Value::Null => "null".to_string(),
-                _ => serde_json::to_string(&v).unwrap_or_else(|_| "{}".to_string()),
-            };
-            (k, value_str)
-        })
+        .map(|(k, v)| (k, crate::utils::json_value_to_string(v)))
         .collect();
 
     // Build JwtClaims directly - NO intermediate type!

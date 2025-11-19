@@ -305,16 +305,7 @@ pub fn introspect_token(
     let additional_claims: Vec<(String, String)> = json_response
         .additional
         .into_iter()
-        .map(|(k, v)| {
-            let value_str = match v {
-                serde_json::Value::String(s) => s,
-                serde_json::Value::Number(n) => n.to_string(),
-                serde_json::Value::Bool(b) => b.to_string(),
-                serde_json::Value::Null => "null".to_string(),
-                _ => serde_json::to_string(&v).unwrap_or_else(|_| "{}".to_string()),
-            };
-            (k, value_str)
-        })
+        .map(|(k, v)| (k, crate::utils::json_value_to_string(v)))
         .collect();
 
     Ok(IntrospectionResponse {
