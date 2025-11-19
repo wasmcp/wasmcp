@@ -1,0 +1,10 @@
+# Cargo audit configuration
+
+[advisories]
+# Ignore RUSTSEC-2023-0071 (Marvin Attack on RSA decryption)
+# Rationale: This vulnerability affects RSA PKCS#1 v1.5 **decryption** operations.
+# Our usage of jsonwebtoken only performs RSA **signature verification**, not decryption.
+# These are different cryptographic operations - signatures use public key operations,
+# while the Marvin attack targets private key decryption timing sidechannels.
+# See: https://rustsec.org/advisories/RUSTSEC-2023-0071
+ignore = ["RUSTSEC-2023-0071"]
