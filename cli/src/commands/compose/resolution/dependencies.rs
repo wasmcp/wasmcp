@@ -101,7 +101,8 @@ impl<'a> DownloadConfig<'a> {
 /// Download required framework dependencies based on component imports
 ///
 /// Inspects the provided component paths to discover which framework dependencies
-/// are actually imported, then downloads only those dependencies (excluding overrides).
+/// are actually imported, then downloads those dependencies plus structural components
+/// (transport and method-not-found which are always needed).
 pub async fn download_dependencies(
     component_paths: &[PathBuf],
     config: &DownloadConfig<'_>,
@@ -109,7 +110,23 @@ pub async fn download_dependencies(
     client: &PackageClient,
 ) -> Result<()> {
     // Discover what's actually needed by inspecting component imports
-    let required = discover_required_dependencies(component_paths, config.overrides)?;
+    let mut required = discover_required_dependencies(component_paths, config.overrides)?;
+
+    // ALWAYS include structural components (unless overridden)
+    // Transport is always at the front of the pipeline
+    if !config
+        .overrides
+        .contains_key(ComponentType::HttpTransport.name())
+    {
+        required.insert(ComponentType::HttpTransport.name().to_string());
+    }
+    // Method-not-found is always the terminal handler
+    if !config
+        .overrides
+        .contains_key(ComponentType::MethodNotFound.name())
+    {
+        required.insert(ComponentType::MethodNotFound.name().to_string());
+    }
 
     if required.is_empty() {
         return Ok(());

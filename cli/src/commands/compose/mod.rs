@@ -126,49 +126,10 @@ pub struct ComposeOptions {
 /// - Component composition fails (invalid component, interface mismatch)
 /// - Output file cannot be written
 pub async fn compose(options: ComposeOptions) -> Result<()> {
-    let ComposeOptions {
-        components,
-        transport,
-        output,
-        version_resolver,
-        overrides,
-        deps_dir,
-        skip_download,
-        force,
-        verbose,
-        mode,
-        runtime,
-    } = options;
-
     // Branch based on composition mode
-    match mode {
-        CompositionMode::Server => {
-            compose_server(
-                components,
-                transport,
-                output,
-                version_resolver,
-                overrides,
-                deps_dir,
-                skip_download,
-                force,
-                verbose,
-                runtime,
-            )
-            .await
-        }
-        CompositionMode::Handler => {
-            compose_handler(
-                components,
-                output,
-                version_resolver,
-                overrides,
-                deps_dir,
-                force,
-                verbose,
-            )
-            .await
-        }
+    match options.mode {
+        CompositionMode::Server => compose_server(options).await,
+        CompositionMode::Handler => compose_handler(options).await,
     }
 }
 
@@ -183,18 +144,20 @@ fn has_runtime_variants(service_name: &str) -> bool {
 }
 
 /// Compose a complete MCP server with transport and terminal handler
-async fn compose_server(
-    components: Vec<String>,
-    transport: String,
-    output: PathBuf,
-    version_resolver: VersionResolver,
-    overrides: HashMap<String, String>,
-    deps_dir: PathBuf,
-    skip_download: bool,
-    force: bool,
-    verbose: bool,
-    runtime: String,
-) -> Result<()> {
+async fn compose_server(options: ComposeOptions) -> Result<()> {
+    let ComposeOptions {
+        components,
+        transport,
+        output,
+        version_resolver,
+        overrides,
+        deps_dir,
+        skip_download,
+        force,
+        verbose,
+        runtime,
+        mode: _,
+    } = options;
     // Validate transport type early (before any expensive operations)
     validate_transport(&transport)?;
 
@@ -383,15 +346,20 @@ async fn compose_server(
 }
 
 /// Compose a handler component (without transport/terminal)
-async fn compose_handler(
-    components: Vec<String>,
-    output: PathBuf,
-    version_resolver: VersionResolver,
-    overrides: HashMap<String, String>,
-    deps_dir: PathBuf,
-    force: bool,
-    verbose: bool,
-) -> Result<()> {
+async fn compose_handler(options: ComposeOptions) -> Result<()> {
+    let ComposeOptions {
+        components,
+        output,
+        version_resolver,
+        overrides,
+        deps_dir,
+        force,
+        verbose,
+        transport: _,
+        skip_download: _,
+        mode: _,
+        runtime: _,
+    } = options;
     // Validate and prepare output path
     let output_path = resolve_output_path(&output)?;
     validate_output_file(&output_path, force)?;
