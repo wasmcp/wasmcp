@@ -22,7 +22,7 @@ use std::collections::{HashMap, HashSet};
 pub struct DownloadConfig<'a> {
     pub overrides: &'a HashMap<String, String>,
     pub resolver: &'a VersionResolver,
-    pub required_middleware: Vec<String>,
+    pub required_middleware: &'a [String],
 }
 
 /// Map a WIT interface import to a framework component name
@@ -94,7 +94,7 @@ impl<'a> DownloadConfig<'a> {
     pub fn new(
         overrides: &'a HashMap<String, String>,
         resolver: &'a VersionResolver,
-        required_middleware: Vec<String>,
+        required_middleware: &'a [String],
     ) -> Self {
         Self {
             overrides,
@@ -137,7 +137,7 @@ pub async fn download_dependencies(
 
     // Include only the middleware that was discovered as needed
     // We already inspected component exports to determine which middleware is required
-    for middleware_name in &config.required_middleware {
+    for middleware_name in config.required_middleware {
         if !config.overrides.contains_key(middleware_name.as_str()) {
             required.insert(middleware_name.clone());
         }

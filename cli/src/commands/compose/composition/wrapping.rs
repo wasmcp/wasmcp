@@ -145,12 +145,13 @@ pub async fn wrap_capabilities(
     deps_dir: &Path,
     resolver: &VersionResolver,
     overrides: &HashMap<String, String>,
+    required_middleware: &[String],
     verbose: bool,
 ) -> Result<Vec<PathBuf>> {
     let mut wrapped_paths = Vec::new();
 
-    // Discover middleware components dynamically from versions.toml
-    let middleware_names = resolver.middleware_components();
+    // Use the already-discovered middleware list (don't rediscover from versions.toml)
+    let middleware_names = required_middleware;
 
     if middleware_names.is_empty() {
         // No middleware configured - return components as-is
@@ -160,7 +161,7 @@ pub async fn wrap_capabilities(
     // Create client for resolving overrides (only if needed)
     let has_overrides = middleware_names
         .iter()
-        .any(|name| overrides.contains_key(*name));
+        .any(|name| overrides.contains_key(name.as_str()));
     let client = if has_overrides {
         Some(crate::commands::pkg::create_default_client().await?)
     } else {
@@ -489,6 +490,7 @@ mod tests {
             temp_dir.path(),
             &resolver,
             &overrides,
+            &[],   // no middleware needed for this test
             false, // verbose
         ));
 

@@ -225,7 +225,7 @@ async fn compose_server(options: ComposeOptions) -> Result<()> {
             println!("\nDownloading framework dependencies...");
         }
         let download_config =
-            DownloadConfig::new(&overrides, &version_resolver, required_middleware);
+            DownloadConfig::new(&overrides, &version_resolver, &required_middleware);
         download_dependencies(&component_paths, &download_config, &deps_dir, &client).await?;
     }
 
@@ -308,6 +308,7 @@ async fn compose_server(options: ComposeOptions) -> Result<()> {
         &deps_dir,
         &version_resolver,
         &overrides,
+        &required_middleware,
         verbose,
     )
     .await?;
@@ -407,6 +408,16 @@ async fn compose_handler(options: ComposeOptions) -> Result<()> {
     // Resolve all component specs to local paths
     let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
 
+    // Discover which middleware is needed by inspecting component exports
+    let required_middleware = discover_required_middleware(&component_paths, &version_resolver)?;
+
+    if verbose && !required_middleware.is_empty() {
+        println!("\nDiscovered required middleware:");
+        for mw in &required_middleware {
+            println!("   - {}", mw);
+        }
+    }
+
     // Auto-detect and wrap capability components (tools, resources, etc.)
     if verbose {
         println!("\nDetecting component types...");
@@ -416,6 +427,7 @@ async fn compose_handler(options: ComposeOptions) -> Result<()> {
         &deps_dir,
         &version_resolver,
         &overrides,
+        &required_middleware,
         verbose,
     )
     .await?;
