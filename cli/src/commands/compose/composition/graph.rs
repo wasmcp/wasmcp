@@ -11,7 +11,9 @@ use super::{ServiceRegistry, load_and_register_components, load_package};
 use super::{build_middleware_chain, wire_all_services, wire_transport};
 use crate::commands::compose::inspection::UnsatisfiedImports;
 use crate::commands::compose::inspection::find_component_export;
-use crate::commands::compose::inspection::interfaces::{self, ComponentType, DEFAULT_SPEC_VERSION, InterfaceType};
+use crate::commands::compose::inspection::interfaces::{
+    self, ComponentType, DEFAULT_SPEC_VERSION, InterfaceType,
+};
 use crate::versioning::VersionResolver;
 
 /// Build the component composition using wac-graph
@@ -29,12 +31,11 @@ use crate::versioning::VersionResolver;
 /// Each component's `server-handler` import is satisfied by the next component's
 /// `server-handler` export, creating a linear middleware pipeline.
 ///
+use std::collections::HashMap;
+
 pub struct CompositionPaths<'a> {
     pub transport: &'a Path,
-    pub server_io: &'a Path,
-    pub authorization: &'a Path,
-    pub kv_store: &'a Path,
-    pub session_store: &'a Path,
+    pub service_paths: &'a HashMap<String, PathBuf>,
     pub components: &'a [PathBuf],
     pub method_not_found: &'a Path,
 }
@@ -45,10 +46,7 @@ pub async fn build_composition(
     verbose: bool,
 ) -> Result<Vec<u8>> {
     let transport_path = paths.transport;
-    let server_io_path = paths.server_io;
-    let authorization_path = paths.authorization;
-    let kv_store_path = paths.kv_store;
-    let session_store_path = paths.session_store;
+    let service_paths = paths.service_paths;
     let component_paths = paths.components;
     let method_not_found_path = paths.method_not_found;
     // Discover server-handler interface from method-not-found (this is still needed for the chain)
@@ -71,10 +69,9 @@ pub async fn build_composition(
     if verbose {
         println!("   Loading components...");
         println!("     transport: {}", transport_path.display());
-        println!("     server-io: {}", server_io_path.display());
-        println!("     authorization: {}", authorization_path.display());
-        println!("     kv-store: {}", kv_store_path.display());
-        println!("     session-store: {}", session_store_path.display());
+        for (name, path) in service_paths {
+            println!("     {}: {}", name, path.display());
+        }
         println!("     method-not-found: {}", method_not_found_path.display());
         for (i, path) in component_paths.iter().enumerate() {
             println!("     component-{}: {}", i, path.display());
@@ -83,10 +80,7 @@ pub async fn build_composition(
     let packages = load_and_register_components(
         &mut graph,
         transport_path,
-        server_io_path,
-        authorization_path,
-        kv_store_path,
-        session_store_path,
+        service_paths,
         component_paths,
         method_not_found_path,
         verbose,
@@ -94,8 +88,14 @@ pub async fn build_composition(
 
     // Track imports for validation
     let mut unsatisfied = UnsatisfiedImports::new();
-    unsatisfied.add_component_imports(ComponentType::HttpTransport.name().to_string(), transport_path)?;
-    unsatisfied.add_component_imports(ComponentType::MethodNotFound.name().to_string(), method_not_found_path)?;
+    unsatisfied.add_component_imports(
+        ComponentType::HttpTransport.name().to_string(),
+        transport_path,
+    )?;
+    unsatisfied.add_component_imports(
+        ComponentType::MethodNotFound.name().to_string(),
+        method_not_found_path,
+    )?;
     for (i, path) in component_paths.iter().enumerate() {
         unsatisfied.add_component_imports(format!("component-{}", i), path)?;
     }
@@ -114,52 +114,32 @@ pub async fn build_composition(
 
     let mut services = ServiceRegistry::new();
 
-    // Instantiate and register kv-store
-    let kv_store_inst = graph.instantiate(packages.kv_store_id);
-    services.register_service(ComponentType::KvStore.name(), kv_store_inst, kv_store_path)?;
+    // Instantiate and register all services dynamically
+    for (service_name, package_id) in &packages.service_ids {
+        let service_inst = graph.instantiate(*package_id);
+        let service_path = service_paths
+            .get(service_name)
+            .expect("Service path must exist for registered package");
 
-    if verbose {
-        println!("   ✓ Registered kv-store service");
+        // Wire dependencies for this service
+        wire_all_services(
+            &mut graph,
+            service_inst,
+            service_path,
+            service_name,
+            &services,
+            verbose,
+        )?;
+
+        // Register in service registry
+        services.register_service(service_name, service_inst, service_path)?;
+
+        if verbose {
+            println!("   ✓ Registered {} service", service_name);
+        }
     }
 
-    // Instantiate and register server-io
-    let server_io_inst = graph.instantiate(packages.server_io_id);
-    services.register_service(ComponentType::ServerIo.name(), server_io_inst, server_io_path)?;
-
     if verbose {
-        println!("   ✓ Registered server-io service");
-    }
-
-    // Instantiate session-store and auto-wire its dependencies
-    let session_store_inst = graph.instantiate(packages.session_store_id);
-    wire_all_services(
-        &mut graph,
-        session_store_inst,
-        session_store_path,
-        ComponentType::SessionStore.name(),
-        &services,
-        verbose,
-    )?;
-    services.register_service(ComponentType::SessionStore.name(), session_store_inst, session_store_path)?;
-
-    if verbose {
-        println!("   ✓ Registered session-store service");
-    }
-
-    // Instantiate authorization and auto-wire its dependencies
-    let authorization_inst = graph.instantiate(packages.authorization_id);
-    wire_all_services(
-        &mut graph,
-        authorization_inst,
-        authorization_path,
-        ComponentType::Authorization.name(),
-        &services,
-        verbose,
-    )?;
-    services.register_service(ComponentType::Authorization.name(), authorization_inst, authorization_path)?;
-
-    if verbose {
-        println!("   ✓ Registered authorization service");
         println!("\n   Service Registry Summary:");
         for (name, base, full) in services.all_exports() {
             println!("     {} exports: {} ({})", name, base, full);

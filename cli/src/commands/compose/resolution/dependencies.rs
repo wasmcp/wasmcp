@@ -72,7 +72,8 @@ pub fn discover_required_dependencies(
     let mut required = HashSet::new();
 
     for component_path in component_paths {
-        let imports = crate::commands::compose::inspection::check_component_imports(component_path)?;
+        let imports =
+            crate::commands::compose::inspection::check_component_imports(component_path)?;
 
         for import in imports {
             if let Some(component) = map_interface_to_component(&import) {

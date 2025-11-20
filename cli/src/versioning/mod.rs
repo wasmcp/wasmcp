@@ -143,6 +143,52 @@ impl VersionResolver {
         names.sort();
         names.join(", ")
     }
+
+    /// Get all framework component names (excludes spec versions)
+    ///
+    /// Returns all components from versions.toml that are actual framework components,
+    /// not WIT package specs like mcp-v20250618.
+    pub fn framework_components(&self) -> Vec<&str> {
+        self.versions
+            .keys()
+            .filter(|name| !name.contains("v202") && name.as_str() != "mcp-v20250618")
+            .map(|s| s.as_str())
+            .collect()
+    }
+
+    /// Get service component names (dynamic, non-structural components)
+    ///
+    /// Returns components that should be registered in the ServiceRegistry:
+    /// - Excludes structural components (transport, method-not-found)
+    /// - Excludes middleware components (*-middleware)
+    ///
+    /// These components are instantiated and auto-wired based on imports.
+    pub fn service_components(&self) -> Vec<&str> {
+        self.framework_components()
+            .into_iter()
+            .filter(|name| !self.is_structural(name) && !name.ends_with("-middleware"))
+            .collect()
+    }
+
+    /// Get middleware component names (capability wrappers)
+    ///
+    /// Returns components whose names end with "-middleware".
+    /// These are used for wrapping capability components.
+    pub fn middleware_components(&self) -> Vec<&str> {
+        self.framework_components()
+            .into_iter()
+            .filter(|name| name.ends_with("-middleware"))
+            .collect()
+    }
+
+    /// Check if a component is structural (fixed pipeline position)
+    ///
+    /// Structural components:
+    /// - transport: Always at front of pipeline, exports WASI interface
+    /// - method-not-found: Always at end of pipeline, terminal handler
+    pub fn is_structural(&self, name: &str) -> bool {
+        name == "transport" || name == "method-not-found"
+    }
 }
 
 #[cfg(test)]
@@ -222,5 +268,70 @@ mod tests {
         // Second call should override first
         assert_eq!(resolver.get_version("transport").unwrap(), "0.4.0");
         assert_eq!(resolver.get_version("server-io").unwrap(), "0.3.0");
+    }
+
+    #[test]
+    fn test_framework_components() {
+        let resolver = VersionResolver::new().unwrap();
+        let components = resolver.framework_components();
+
+        // Should include actual components
+        assert!(components.contains(&"transport"));
+        assert!(components.contains(&"server-io"));
+        assert!(components.contains(&"method-not-found"));
+
+        // Should exclude spec versions
+        assert!(!components.contains(&"mcp-v20250618"));
+        assert!(!components.iter().any(|c| c.contains("v202")));
+    }
+
+    #[test]
+    fn test_service_components() {
+        let resolver = VersionResolver::new().unwrap();
+        let services = resolver.service_components();
+
+        // Should include service components
+        assert!(services.contains(&"server-io"));
+        assert!(services.contains(&"authorization"));
+        assert!(services.contains(&"kv-store"));
+        assert!(services.contains(&"session-store"));
+
+        // Should exclude structural components
+        assert!(!services.contains(&"transport"));
+        assert!(!services.contains(&"method-not-found"));
+
+        // Should exclude middleware
+        assert!(!services.contains(&"tools-middleware"));
+        assert!(!services.contains(&"resources-middleware"));
+        assert!(!services.contains(&"prompts-middleware"));
+    }
+
+    #[test]
+    fn test_middleware_components() {
+        let resolver = VersionResolver::new().unwrap();
+        let middleware = resolver.middleware_components();
+
+        // Should include middleware components
+        assert!(middleware.contains(&"tools-middleware"));
+        assert!(middleware.contains(&"resources-middleware"));
+        assert!(middleware.contains(&"prompts-middleware"));
+
+        // Should not include non-middleware
+        assert!(!middleware.contains(&"transport"));
+        assert!(!middleware.contains(&"server-io"));
+    }
+
+    #[test]
+    fn test_is_structural() {
+        let resolver = VersionResolver::new().unwrap();
+
+        // Structural components
+        assert!(resolver.is_structural("transport"));
+        assert!(resolver.is_structural("method-not-found"));
+
+        // Non-structural components
+        assert!(!resolver.is_structural("server-io"));
+        assert!(!resolver.is_structural("authorization"));
+        assert!(!resolver.is_structural("tools-middleware"));
     }
 }

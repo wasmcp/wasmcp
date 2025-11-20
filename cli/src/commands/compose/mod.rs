@@ -31,8 +31,6 @@ use crate::commands::pkg;
 use crate::config as wasmcp_config;
 use crate::versioning::VersionResolver;
 
-use self::inspection::interfaces::ComponentType;
-
 // Public re-exports
 pub use self::config::ComposeOptionsBuilder;
 pub use self::config::expand_profile_specs;
@@ -54,8 +52,8 @@ use self::output::{
     print_success_message,
 };
 use self::resolution::{
-    DownloadConfig, download_dependencies, resolve_framework_component,
-    resolve_kv_store_component,
+    DownloadConfig, discover_required_dependencies, download_dependencies,
+    resolve_framework_component, resolve_service_with_runtime,
 };
 
 /// Composition mode: Server (complete) or Handler (intermediate)
@@ -174,6 +172,16 @@ pub async fn compose(options: ComposeOptions) -> Result<()> {
     }
 }
 
+/// Check if a service has runtime-specific variants
+///
+/// Some services have different component variants based on the target runtime.
+/// For example, kv-store has both kv-store (stable WASI) and kv-store-d2 (draft2 WASI).
+fn has_runtime_variants(service_name: &str) -> bool {
+    // Currently only kv-store has runtime variants
+    // Future: could read from versions.toml metadata or convention
+    service_name == "kv-store"
+}
+
 /// Compose a complete MCP server with transport and terminal handler
 async fn compose_server(
     components: Vec<String>,
@@ -225,8 +233,18 @@ async fn compose_server(
     // Resolve all component specs to local paths
     let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
 
+    // Discover which framework dependencies are actually needed
+    // This inspects component imports to determine what's required
+    let required_deps = discover_required_dependencies(&component_paths, &overrides)?;
+
+    if verbose && !required_deps.is_empty() {
+        println!("\nDiscovered required dependencies:");
+        for dep in &required_deps {
+            println!("   - {}", dep);
+        }
+    }
+
     // Download framework dependencies once upfront (unless skip_download is set)
-    // Inspects component imports to determine what's actually needed
     if !skip_download {
         if verbose {
             println!("\nDownloading framework dependencies...");
@@ -236,7 +254,7 @@ async fn compose_server(
     }
 
     // Resolve transport component
-    let transport_name = ComponentType::HttpTransport.name();
+    let transport_name = "transport";
     let transport_path = resolve_framework_component(
         transport_name,
         overrides.get(transport_name).map(|s| s.as_str()),
@@ -247,56 +265,54 @@ async fn compose_server(
     )
     .await?;
 
-    // Resolve server-io component
-    let server_io_name = ComponentType::ServerIo.name();
-    let server_io_path = resolve_framework_component(
-        server_io_name,
-        overrides.get(server_io_name).map(|s| s.as_str()),
-        &version_resolver,
-        &deps_dir,
-        &client,
-        verbose,
-    )
-    .await?;
+    // Resolve service components that are actually needed
+    // Only process services that were discovered as dependencies
+    // This prevents errors when trying to load services that weren't downloaded
+    let service_names: Vec<&str> = version_resolver
+        .service_components()
+        .into_iter()
+        .filter(|name| required_deps.contains(*name))
+        .collect();
 
-    // Resolve kv-store component
-    let kv_store_name = ComponentType::KvStore.name();
-    let kv_store_path = resolve_kv_store_component(
-        overrides.get(kv_store_name).map(|s| s.as_str()),
-        &version_resolver,
-        &deps_dir,
-        &client,
-        verbose,
-        &runtime,
-    )
-    .await?;
+    if verbose && !service_names.is_empty() {
+        println!("\nResolving required services:");
+        for name in &service_names {
+            println!("   - {}", name);
+        }
+    }
 
-    // Resolve session-store component (unified, no longer runtime-specific)
-    let session_store_name = ComponentType::SessionStore.name();
-    let session_store_path = resolve_framework_component(
-        session_store_name,
-        overrides.get(session_store_name).map(|s| s.as_str()),
-        &version_resolver,
-        &deps_dir,
-        &client,
-        verbose,
-    )
-    .await?;
+    let mut service_paths = HashMap::new();
 
-    // Resolve authorization component
-    let authorization_name = ComponentType::Authorization.name();
-    let authorization_path = resolve_framework_component(
-        authorization_name,
-        overrides.get(authorization_name).map(|s| s.as_str()),
-        &version_resolver,
-        &deps_dir,
-        &client,
-        verbose,
-    )
-    .await?;
+    for service_name in service_names {
+        // Generic check: does this service have runtime-specific variants?
+        let path = if has_runtime_variants(service_name) {
+            resolve_service_with_runtime(
+                service_name,
+                overrides.get(service_name).map(|s| s.as_str()),
+                &version_resolver,
+                &deps_dir,
+                &client,
+                verbose,
+                &runtime,
+            )
+            .await?
+        } else {
+            resolve_framework_component(
+                service_name,
+                overrides.get(service_name).map(|s| s.as_str()),
+                &version_resolver,
+                &deps_dir,
+                &client,
+                verbose,
+            )
+            .await?
+        };
+
+        service_paths.insert(service_name.to_string(), path);
+    }
 
     // Resolve method-not-found component
-    let method_not_found_name = ComponentType::MethodNotFound.name();
+    let method_not_found_name = "method-not-found";
     let method_not_found_path = resolve_framework_component(
         method_not_found_name,
         overrides.get(method_not_found_name).map(|s| s.as_str()),
@@ -315,9 +331,7 @@ async fn compose_server(
         component_paths,
         &deps_dir,
         &version_resolver,
-        overrides.get(ComponentType::ToolsMiddleware.name()).map(|s| s.as_str()),
-        overrides.get(ComponentType::ResourcesMiddleware.name()).map(|s| s.as_str()),
-        overrides.get(ComponentType::PromptsMiddleware.name()).map(|s| s.as_str()),
+        &overrides,
         verbose,
     )
     .await?;
@@ -332,10 +346,7 @@ async fn compose_server(
     let bytes = build_composition(
         CompositionPaths {
             transport: &transport_path,
-            server_io: &server_io_path,
-            authorization: &authorization_path,
-            kv_store: &kv_store_path,
-            session_store: &session_store_path,
+            service_paths: &service_paths,
             components: &wrapped_components,
             method_not_found: &method_not_found_path,
         },
@@ -423,9 +434,7 @@ async fn compose_handler(
         component_paths,
         &deps_dir,
         &version_resolver,
-        overrides.get(ComponentType::ToolsMiddleware.name()).map(|s| s.as_str()),
-        overrides.get(ComponentType::ResourcesMiddleware.name()).map(|s| s.as_str()),
-        overrides.get(ComponentType::PromptsMiddleware.name()).map(|s| s.as_str()),
+        &overrides,
         verbose,
     )
     .await?;

@@ -20,8 +20,8 @@ fn parse_overrides(
     overrides: Vec<String>,
 ) -> Result<(HashMap<String, String>, HashMap<String, String>)> {
     // Load resolver to get valid component names from versions.toml
-    let resolver = wasmcp::versioning::VersionResolver::new()
-        .context("Failed to load versions.toml")?;
+    let resolver =
+        wasmcp::versioning::VersionResolver::new().context("Failed to load versions.toml")?;
 
     let mut component_overrides = HashMap::new();
     let mut version_overrides = HashMap::new();
@@ -981,7 +981,7 @@ mod tests {
 
         // Remote URL
         let result = parse_overrides(vec![
-            "server-io=https://example.com/server-io.wasm".to_string()
+            "server-io=https://example.com/server-io.wasm".to_string(),
         ]);
         assert!(result.is_ok());
         let (component_overrides, version_overrides) = result.unwrap();
@@ -1056,18 +1056,22 @@ mod tests {
         // Missing equals sign
         let result = parse_overrides(vec!["transport".to_string()]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid override format"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid override format")
+        );
 
         // Empty version
         let result = parse_overrides(vec!["transport=".to_string()]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Version cannot be empty"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Version cannot be empty")
+        );
 
         // Invalid component name
         let result = parse_overrides(vec!["invalid-component=0.2.0".to_string()]);
