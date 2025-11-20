@@ -17,4 +17,4 @@ pub use graph::{build_composition, build_handler_composition};
 pub use packaging::{CompositionPackages, load_and_register_components, load_package};
 pub use service_registry::{ServiceInfo, ServiceRegistry};
 pub use wiring::{build_middleware_chain, wire_all_services, wire_if_imports, wire_transport};
-pub use wrapping::wrap_capabilities;
+pub use wrapping::{discover_required_middleware, wrap_capabilities};

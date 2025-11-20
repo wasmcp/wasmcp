@@ -45,7 +45,9 @@ pub mod resolution;
 
 // Internal imports from submodules
 use self::composition::graph::CompositionPaths;
-use self::composition::{build_composition, build_handler_composition, wrap_capabilities};
+use self::composition::{
+    build_composition, build_handler_composition, discover_required_middleware, wrap_capabilities,
+};
 use self::config::{resolve_output_path, validate_output_file, validate_transport};
 use self::output::{
     print_handler_pipeline_diagram, print_handler_success_message, print_pipeline_diagram,
@@ -197,13 +199,23 @@ async fn compose_server(options: ComposeOptions) -> Result<()> {
     let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
 
     // Discover which framework dependencies are actually needed
-    // This inspects component imports to determine what's required
+    // 1. Inspect component imports to find required services (server-io, authorization, etc.)
     let required_deps = discover_required_dependencies(&component_paths, &overrides)?;
 
+    // 2. Inspect component exports to find required middleware (tools/resources/prompts-middleware)
+    let required_middleware = discover_required_middleware(&component_paths, &version_resolver)?;
+
     if verbose && !required_deps.is_empty() {
-        println!("\nDiscovered required dependencies:");
+        println!("\nDiscovered required service dependencies:");
         for dep in &required_deps {
             println!("   - {}", dep);
+        }
+    }
+
+    if verbose && !required_middleware.is_empty() {
+        println!("\nDiscovered required middleware:");
+        for mw in &required_middleware {
+            println!("   - {}", mw);
         }
     }
 
@@ -212,7 +224,8 @@ async fn compose_server(options: ComposeOptions) -> Result<()> {
         if verbose {
             println!("\nDownloading framework dependencies...");
         }
-        let download_config = DownloadConfig::new(&overrides, &version_resolver);
+        let download_config =
+            DownloadConfig::new(&overrides, &version_resolver, required_middleware);
         download_dependencies(&component_paths, &download_config, &deps_dir, &client).await?;
     }
 

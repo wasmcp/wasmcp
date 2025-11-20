@@ -300,6 +300,71 @@ pub async fn wrap_capabilities(
     Ok(wrapped_paths)
 }
 
+/// Discover which middleware components are needed for wrapping
+///
+/// Inspects user components to see what capabilities they export (tools, resources, prompts)
+/// and returns the list of middleware component names that will be needed.
+pub fn discover_required_middleware(
+    component_paths: &[PathBuf],
+    resolver: &VersionResolver,
+) -> Result<Vec<String>> {
+    let mut required_middleware = Vec::new();
+
+    // Get all available middleware
+    let all_middleware = resolver.middleware_components();
+
+    if all_middleware.is_empty() {
+        return Ok(required_middleware);
+    }
+
+    // For each middleware, check if any component needs it
+    for middleware_name in all_middleware {
+        // Derive capability name (tools-middleware → tools)
+        let capability_name = middleware_name.strip_suffix("-middleware").ok_or_else(|| {
+            anyhow::anyhow!(
+                "Middleware component '{}' must end with '-middleware'",
+                middleware_name
+            )
+        })?;
+
+        // Check if any component exports this capability
+        let interface_prefix = format!("wasmcp:mcp-v20250618/{}@", capability_name);
+
+        for path in component_paths {
+            // Check all exports of this component
+            if component_has_export_matching(path, &interface_prefix)? {
+                required_middleware.push(middleware_name.to_string());
+                break; // Found one, move to next middleware
+            }
+        }
+    }
+
+    Ok(required_middleware)
+}
+
+/// Check if a component has any export matching a prefix
+fn component_has_export_matching(path: &Path, prefix: &str) -> Result<bool> {
+    use wasmparser::{Parser, Payload};
+
+    let bytes = std::fs::read(path)
+        .with_context(|| format!("Failed to read component: {}", path.display()))?;
+
+    for payload in Parser::new(0).parse_all(&bytes) {
+        let payload = payload.context("Failed to parse component")?;
+
+        if let Payload::ComponentExportSection(exports) = payload {
+            for export in exports {
+                let export = export.context("Failed to parse export")?;
+                if export.name.0.starts_with(prefix) {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+
+    Ok(false)
+}
+
 /// Check if a component exports a specific interface
 ///
 /// This loads the component and inspects its exports to determine its type.

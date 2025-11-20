@@ -18,10 +18,11 @@ pub type PackageClient =
 
 use std::collections::{HashMap, HashSet};
 
-/// Configuration for which dependencies to skip downloading
+/// Configuration for which dependencies to download
 pub struct DownloadConfig<'a> {
     pub overrides: &'a HashMap<String, String>,
     pub resolver: &'a VersionResolver,
+    pub required_middleware: Vec<String>,
 }
 
 /// Map a WIT interface import to a framework component name
@@ -89,20 +90,26 @@ pub fn discover_required_dependencies(
 }
 
 impl<'a> DownloadConfig<'a> {
-    /// Create config from overrides HashMap
-    pub fn new(overrides: &'a HashMap<String, String>, resolver: &'a VersionResolver) -> Self {
+    /// Create config with required middleware list
+    pub fn new(
+        overrides: &'a HashMap<String, String>,
+        resolver: &'a VersionResolver,
+        required_middleware: Vec<String>,
+    ) -> Self {
         Self {
             overrides,
             resolver,
+            required_middleware,
         }
     }
 }
 
-/// Download required framework dependencies based on component imports
+/// Download required framework dependencies
 ///
-/// Inspects the provided component paths to discover which framework dependencies
-/// are actually imported, then downloads those dependencies plus structural components
-/// (transport and method-not-found which are always needed).
+/// Downloads only what's needed:
+/// 1. Structural components (transport, method-not-found) - always needed
+/// 2. Middleware components from the required list - discovered by inspecting exports
+/// 3. Service components from discovered dependencies - discovered by inspecting imports
 pub async fn download_dependencies(
     component_paths: &[PathBuf],
     config: &DownloadConfig<'_>,
@@ -126,6 +133,14 @@ pub async fn download_dependencies(
         .contains_key(ComponentType::MethodNotFound.name())
     {
         required.insert(ComponentType::MethodNotFound.name().to_string());
+    }
+
+    // Include only the middleware that was discovered as needed
+    // We already inspected component exports to determine which middleware is required
+    for middleware_name in &config.required_middleware {
+        if !config.overrides.contains_key(middleware_name.as_str()) {
+            required.insert(middleware_name.clone());
+        }
     }
 
     if required.is_empty() {
