@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
 use super::load_package;
+use crate::commands::compose::inspection::interfaces::ComponentType;
 use crate::commands::compose::resolution::dependencies;
 use crate::versioning::VersionResolver;
 
@@ -170,7 +171,7 @@ pub async fn wrap_capabilities(
             )
             .await?
         }
-        None => dependencies::get_dependency_path("tools-middleware", resolver, deps_dir)?,
+        None => dependencies::get_dependency_path(ComponentType::ToolsMiddleware.name(), resolver, deps_dir)?,
     };
 
     let resources_middleware_path = match override_resources_middleware {
@@ -186,7 +187,7 @@ pub async fn wrap_capabilities(
             )
             .await?
         }
-        None => dependencies::get_dependency_path("resources-middleware", resolver, deps_dir)?,
+        None => dependencies::get_dependency_path(ComponentType::ResourcesMiddleware.name(), resolver, deps_dir)?,
     };
 
     let prompts_middleware_path = match override_prompts_middleware {
@@ -202,7 +203,7 @@ pub async fn wrap_capabilities(
             )
             .await?
         }
-        None => dependencies::get_dependency_path("prompts-middleware", resolver, deps_dir)?,
+        None => dependencies::get_dependency_path(ComponentType::PromptsMiddleware.name(), resolver, deps_dir)?,
     };
 
     // Discover server-handler interface (all middleware export it, use tools as source)
@@ -255,7 +256,7 @@ pub async fn wrap_capabilities(
                 &tools_middleware_path,
                 &path,
                 &tools_interface,
-                "tools-middleware",
+                ComponentType::ToolsMiddleware.name(),
                 "tools-capability",
             )?;
 
@@ -279,7 +280,7 @@ pub async fn wrap_capabilities(
                 &resources_middleware_path,
                 &path,
                 &resources_interface,
-                "resources-middleware",
+                ComponentType::ResourcesMiddleware.name(),
                 "resources-capability",
             )?;
 
@@ -303,7 +304,7 @@ pub async fn wrap_capabilities(
                 &prompts_middleware_path,
                 &path,
                 &prompts_interface,
-                "prompts-middleware",
+                ComponentType::PromptsMiddleware.name(),
                 "prompts-capability",
             )?;
 

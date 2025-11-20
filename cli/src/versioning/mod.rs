@@ -60,7 +60,7 @@ impl VersionResolver {
         })
     }
 
-    /// Apply version overrides from CLI arguments
+    /// Apply version overrides from CLI arguments (legacy Vec<String> format)
     pub fn apply_overrides(&mut self, overrides: Vec<String>) -> Result<()> {
         for override_str in overrides {
             let parts: Vec<&str> = override_str.split('=').collect();
@@ -76,6 +76,12 @@ impl VersionResolver {
 
             self.overrides.insert(component, version);
         }
+        Ok(())
+    }
+
+    /// Apply version overrides from pre-parsed HashMap
+    pub fn apply_override_map(&mut self, overrides: &HashMap<String, String>) -> Result<()> {
+        self.overrides.extend(overrides.clone());
         Ok(())
     }
 
@@ -114,6 +120,29 @@ impl VersionResolver {
         result.extend(self.overrides.clone());
         result
     }
+
+    /// Get all valid component names (from versions.toml)
+    ///
+    /// Returns component names only, excluding WIT packages like mcp-v20250618
+    pub fn get_component_names(&self) -> Vec<String> {
+        self.versions
+            .keys()
+            .filter(|name| !name.contains("v202") && *name != "mcp-v20250618")
+            .cloned()
+            .collect()
+    }
+
+    /// Check if a component name is valid
+    pub fn is_valid_component(&self, name: &str) -> bool {
+        self.versions.contains_key(name) && !name.contains("v202") && name != "mcp-v20250618"
+    }
+
+    /// Get comma-separated list of valid component names
+    pub fn valid_components_list(&self) -> String {
+        let mut names = self.get_component_names();
+        names.sort();
+        names.join(", ")
+    }
 }
 
 #[cfg(test)]
@@ -149,5 +178,49 @@ mod tests {
                 .apply_overrides(vec!["invalid".to_string()])
                 .is_err()
         );
+    }
+
+    #[test]
+    fn test_apply_override_map() {
+        let mut resolver = VersionResolver::new().unwrap();
+
+        let mut overrides = HashMap::new();
+        overrides.insert("transport".to_string(), "0.2.0".to_string());
+        overrides.insert("server-io".to_string(), "0.3.0".to_string());
+
+        resolver.apply_override_map(&overrides).unwrap();
+
+        assert_eq!(resolver.get_version("transport").unwrap(), "0.2.0");
+        assert_eq!(resolver.get_version("server-io").unwrap(), "0.3.0");
+    }
+
+    #[test]
+    fn test_apply_override_map_empty() {
+        let mut resolver = VersionResolver::new().unwrap();
+
+        let overrides = HashMap::new();
+        resolver.apply_override_map(&overrides).unwrap();
+
+        // Should still get default versions
+        assert!(resolver.get_version("transport").is_ok());
+    }
+
+    #[test]
+    fn test_apply_override_map_multiple_calls() {
+        let mut resolver = VersionResolver::new().unwrap();
+
+        let mut overrides1 = HashMap::new();
+        overrides1.insert("transport".to_string(), "0.2.0".to_string());
+
+        let mut overrides2 = HashMap::new();
+        overrides2.insert("server-io".to_string(), "0.3.0".to_string());
+        overrides2.insert("transport".to_string(), "0.4.0".to_string());
+
+        resolver.apply_override_map(&overrides1).unwrap();
+        resolver.apply_override_map(&overrides2).unwrap();
+
+        // Second call should override first
+        assert_eq!(resolver.get_version("transport").unwrap(), "0.4.0");
+        assert_eq!(resolver.get_version("server-io").unwrap(), "0.3.0");
     }
 }

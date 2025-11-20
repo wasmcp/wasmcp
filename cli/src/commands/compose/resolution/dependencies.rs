@@ -10,38 +10,121 @@ use crate::commands::pkg;
 use crate::versioning::VersionResolver;
 
 use crate::commands::compose::inspection::interfaces;
+use crate::commands::compose::inspection::interfaces::ComponentType;
 
 /// Type alias for the package client used throughout composition
 pub type PackageClient =
     wasm_pkg_client::caching::CachingClient<wasm_pkg_client::caching::FileCache>;
 
-/// Download required framework dependencies (transport, server-io, session-store variants, method-not-found, and all middleware)
+use std::collections::{HashMap, HashSet};
+
+/// Configuration for which dependencies to skip downloading
+pub struct DownloadConfig<'a> {
+    pub overrides: &'a HashMap<String, String>,
+    pub resolver: &'a VersionResolver,
+}
+
+/// Map a WIT interface import to a framework component name
+///
+/// Returns None if the import is not a wasmcp framework component
+fn map_interface_to_component(interface: &str) -> Option<&'static str> {
+    // Interface format: "namespace:package/interface@version"
+    // Examples:
+    // - "wasmcp:mcp-v20250618/server-io@0.1.7" -> "server-io"
+    // - "wasmcp:keyvalue/store@0.1.0" -> "kv-store"
+    // - "wasmcp:mcp-v20250618/tools@0.1.7" -> "tools-middleware"
+
+    if !interface.starts_with("wasmcp:") {
+        return None;
+    }
+
+    // Extract the interface name (between / and @)
+    let parts: Vec<&str> = interface.split('/').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+
+    let interface_name = parts[1].split('@').next()?;
+
+    // Map interface names to component names
+    match interface_name {
+        "server-transport" => Some(ComponentType::HttpTransport.name()),
+        "server-io" => Some(ComponentType::ServerIo.name()),
+        "server-handler" => Some(ComponentType::MethodNotFound.name()),
+        "server-auth" => Some(ComponentType::Authorization.name()),
+        "tools" => Some(ComponentType::ToolsMiddleware.name()),
+        "resources" => Some(ComponentType::ResourcesMiddleware.name()),
+        "prompts" => Some(ComponentType::PromptsMiddleware.name()),
+        "store" if interface.contains("keyvalue") => Some(ComponentType::KvStore.name()),
+        "sessions" | "session-manager" => Some(ComponentType::SessionStore.name()),
+        _ => None,
+    }
+}
+
+/// Discover required dependencies by inspecting component imports
+///
+/// Analyzes the WIT imports of all user-provided components to determine
+/// which framework dependencies are actually needed.
+pub fn discover_required_dependencies(
+    component_paths: &[PathBuf],
+    overrides: &HashMap<String, String>,
+) -> Result<HashSet<String>> {
+    let mut required = HashSet::new();
+
+    for component_path in component_paths {
+        let imports = crate::commands::compose::inspection::check_component_imports(component_path)?;
+
+        for import in imports {
+            if let Some(component) = map_interface_to_component(&import) {
+                // Only add if not overridden
+                if !overrides.contains_key(component) {
+                    required.insert(component.to_string());
+                }
+            }
+        }
+    }
+
+    Ok(required)
+}
+
+impl<'a> DownloadConfig<'a> {
+    /// Create config from overrides HashMap
+    pub fn new(overrides: &'a HashMap<String, String>, resolver: &'a VersionResolver) -> Self {
+        Self {
+            overrides,
+            resolver,
+        }
+    }
+}
+
+/// Download required framework dependencies based on component imports
+///
+/// Inspects the provided component paths to discover which framework dependencies
+/// are actually imported, then downloads only those dependencies (excluding overrides).
 pub async fn download_dependencies(
-    resolver: &VersionResolver,
+    component_paths: &[PathBuf],
+    config: &DownloadConfig<'_>,
     deps_dir: &Path,
     client: &PackageClient,
 ) -> Result<()> {
-    // Get component-specific versions from the resolver
-    let transport_version = resolver.get_version("transport")?;
-    let server_io_version = resolver.get_version("server-io")?;
-    let session_store_version = resolver.get_version("session-store")?;
-    let method_not_found_version = resolver.get_version("method-not-found")?;
-    let tools_middleware_version = resolver.get_version("tools-middleware")?;
-    let resources_middleware_version = resolver.get_version("resources-middleware")?;
-    let prompts_middleware_version = resolver.get_version("prompts-middleware")?;
+    // Discover what's actually needed by inspecting component imports
+    let required = discover_required_dependencies(component_paths, config.overrides)?;
 
-    // Build package specs with component-specific versions
-    // Download both session-store variants (d2 for Spin, standard for wasmcloud/wasmtime)
-    let specs = vec![
-        interfaces::package("transport", &transport_version),
-        interfaces::package("server-io", &server_io_version),
-        interfaces::package("session-store", &session_store_version),
-        interfaces::package("session-store-d2", &session_store_version),
-        interfaces::package("method-not-found", &method_not_found_version),
-        interfaces::package("tools-middleware", &tools_middleware_version),
-        interfaces::package("resources-middleware", &resources_middleware_version),
-        interfaces::package("prompts-middleware", &prompts_middleware_version),
-    ];
+    if required.is_empty() {
+        return Ok(());
+    }
+
+    let mut specs = Vec::new();
+
+    for component in required {
+        let version = config.resolver.get_version(&component)?;
+        specs.push(interfaces::package(&component, &version));
+
+        // Special case: kv-store has a draft2 variant
+        if component == ComponentType::KvStore.name() {
+            specs.push(interfaces::package("kv-store-d2", &version));
+        }
+    }
 
     pkg::download_packages(client, &specs, deps_dir).await
 }
@@ -49,15 +132,17 @@ pub async fn download_dependencies(
 /// Get the file path for a framework dependency
 ///
 /// Framework dependencies are always stored as `wasmcp_{name}@{version}.wasm`
-/// Special case: session-store-d2 uses the version from session-store entry
+/// Special cases: *-d2 variants use the version from the base component entry
 pub fn get_dependency_path(
     name: &str,
     resolver: &VersionResolver,
     deps_dir: &Path,
 ) -> Result<PathBuf> {
-    // session-store-d2 uses the same version as session-store
+    // *-d2 variants use the same version as their base component
     let version_key = if name == "session-store-d2" {
-        "session-store"
+        ComponentType::SessionStore.name()
+    } else if name == "kv-store-d2" {
+        ComponentType::KvStore.name()
     } else {
         name
     };
@@ -211,5 +296,66 @@ mod tests {
         let result = get_dependency_path("transport", &resolver, temp_dir.path());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), file_path);
+    }
+
+    #[test]
+    fn test_map_interface_to_component() {
+        // Test mcp-v20250618 interfaces
+        assert_eq!(
+            map_interface_to_component("wasmcp:mcp-v20250618/server-transport@0.1.7"),
+            Some("transport")
+        );
+        assert_eq!(
+            map_interface_to_component("wasmcp:mcp-v20250618/server-io@0.1.7"),
+            Some("server-io")
+        );
+        assert_eq!(
+            map_interface_to_component("wasmcp:mcp-v20250618/server-handler@0.1.7"),
+            Some("method-not-found")
+        );
+        assert_eq!(
+            map_interface_to_component("wasmcp:mcp-v20250618/server-auth@0.1.7"),
+            Some("authorization")
+        );
+        assert_eq!(
+            map_interface_to_component("wasmcp:mcp-v20250618/tools@0.1.7"),
+            Some("tools-middleware")
+        );
+        assert_eq!(
+            map_interface_to_component("wasmcp:mcp-v20250618/resources@0.1.7"),
+            Some("resources-middleware")
+        );
+        assert_eq!(
+            map_interface_to_component("wasmcp:mcp-v20250618/prompts@0.1.7"),
+            Some("prompts-middleware")
+        );
+
+        // Test keyvalue interface
+        assert_eq!(
+            map_interface_to_component("wasmcp:keyvalue/store@0.1.0"),
+            Some("kv-store")
+        );
+
+        // Test session interfaces
+        assert_eq!(
+            map_interface_to_component("wasmcp:mcp-v20250618/sessions@0.1.7"),
+            Some("session-store")
+        );
+        assert_eq!(
+            map_interface_to_component("wasmcp:mcp-v20250618/session-manager@0.1.7"),
+            Some("session-store")
+        );
+
+        // Test non-wasmcp interfaces
+        assert_eq!(
+            map_interface_to_component("wasi:http/outgoing-handler@0.2.8"),
+            None
+        );
+
+        // Test unknown wasmcp interface
+        assert_eq!(
+            map_interface_to_component("wasmcp:unknown/interface@1.0.0"),
+            None
+        );
     }
 }
