@@ -10,10 +10,10 @@ use wac_graph::{CompositionGraph, EncodeOptions};
 use super::{ServiceRegistry, load_and_register_components, load_package};
 use super::{build_middleware_chain, wire_all_services, wire_transport};
 use crate::commands::compose::inspection::UnsatisfiedImports;
-use crate::commands::compose::inspection::{check_component_imports, find_component_export};
 use crate::commands::compose::inspection::interfaces::{
     self, ComponentType, DEFAULT_SPEC_VERSION, InterfaceType,
 };
+use crate::commands::compose::inspection::{check_component_imports, find_component_export};
 use crate::versioning::VersionResolver;
 
 /// Build the component composition using wac-graph
