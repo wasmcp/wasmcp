@@ -200,7 +200,7 @@ async fn compose_server(options: ComposeOptions) -> Result<()> {
 
     // Discover which framework dependencies are actually needed
     // 1. Inspect component imports to find required services (server-io, authorization, etc.)
-    let required_deps = discover_required_dependencies(&component_paths, &overrides)?;
+    let required_deps = discover_required_dependencies(&component_paths)?;
 
     // 2. Inspect component exports to find required middleware (tools/resources/prompts-middleware)
     let required_middleware = discover_required_middleware(&component_paths, &version_resolver)?;

@@ -68,7 +68,6 @@ fn map_interface_to_component(interface: &str) -> Option<&'static str> {
 /// which framework dependencies are actually needed.
 pub fn discover_required_dependencies(
     component_paths: &[PathBuf],
-    overrides: &HashMap<String, String>,
 ) -> Result<HashSet<String>> {
     let mut required = HashSet::new();
 
@@ -175,7 +174,7 @@ pub async fn download_dependencies(
     client: &PackageClient,
 ) -> Result<HashSet<String>> {
     // Discover what's actually needed by inspecting component imports
-    let mut required = discover_required_dependencies(component_paths, config.overrides)?;
+    let mut required = discover_required_dependencies(component_paths)?;
 
     // ALWAYS include structural components
     // Transport is always at the front of the pipeline
