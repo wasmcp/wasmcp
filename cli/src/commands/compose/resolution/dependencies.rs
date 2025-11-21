@@ -64,7 +64,7 @@ fn map_interface_to_component(interface: &str) -> Option<&'static str> {
 
 /// Discover required dependencies by inspecting component imports
 ///
-/// Analyzes the WIT imports of all user-provided components to determine
+/// Analyzes the WIT imports of user-provided components to determine
 /// which framework dependencies are actually needed.
 pub fn discover_required_dependencies(
     component_paths: &[PathBuf],
@@ -78,15 +78,70 @@ pub fn discover_required_dependencies(
 
         for import in imports {
             if let Some(component) = map_interface_to_component(&import) {
-                // Only add if not overridden
-                if !overrides.contains_key(component) {
-                    required.insert(component.to_string());
-                }
+                // Always add to required set - overrides just change where we get the file
+                required.insert(component.to_string());
             }
         }
     }
 
     Ok(required)
+}
+
+/// Discover transitive dependencies from already-resolved framework components
+///
+/// Inspects framework component files to find their dependencies (e.g., authorization imports kv-store).
+/// Downloads new dependencies as they're discovered so they can be inspected.
+async fn discover_transitive_dependencies(
+    initial_deps: &HashSet<String>,
+    resolver: &VersionResolver,
+    deps_dir: &Path,
+    overrides: &HashMap<String, String>,
+    client: &PackageClient,
+) -> Result<HashSet<String>> {
+    let mut all_deps = initial_deps.clone();
+    let mut to_inspect: Vec<String> = initial_deps.iter().cloned().collect();
+    let mut inspected = HashSet::new();
+
+    while let Some(dep_name) = to_inspect.pop() {
+        // Skip if already inspected
+        if !inspected.insert(dep_name.clone()) {
+            continue;
+        }
+
+        // Get the path to this dependency
+        let dep_path = get_dependency_path(&dep_name, resolver, deps_dir)?;
+
+        // Inspect its imports
+        let imports = crate::commands::compose::inspection::check_component_imports(&dep_path)?;
+
+        for import in imports {
+            if let Some(component_name) = map_interface_to_component(&import) {
+                // Always add to all_deps (overrides just change where we get the file)
+                if all_deps.insert(component_name.to_string()) {
+                    // New dependency found
+                    if !overrides.contains_key(component_name) {
+                        // Not overridden - download it so we can inspect it
+                        let version = resolver.get_version(component_name)?;
+                        let mut specs = vec![interfaces::package(component_name, &version)];
+
+                        // Special case: kv-store has a draft2 variant
+                        if component_name == ComponentType::KvStore.name() {
+                            specs.push(interfaces::package("kv-store-d2", &version));
+                        }
+
+                        pkg::download_packages(client, &specs, deps_dir).await?;
+
+                        // Add to inspection queue (we need to inspect it for further deps)
+                        to_inspect.push(component_name.to_string());
+                    }
+                    // If overridden, we don't download but still add to all_deps
+                    // We don't inspect overridden components for transitive deps since we can't reliably get their path yet
+                }
+            }
+        }
+    }
+
+    Ok(all_deps)
 }
 
 impl<'a> DownloadConfig<'a> {
@@ -104,36 +159,31 @@ impl<'a> DownloadConfig<'a> {
     }
 }
 
-/// Download required framework dependencies
+/// Download required framework dependencies (with transitive dependency resolution)
 ///
 /// Downloads only what's needed:
 /// 1. Structural components (transport, method-not-found) - always needed
 /// 2. Middleware components from the required list - discovered by inspecting exports
 /// 3. Service components from discovered dependencies - discovered by inspecting imports
+/// 4. Transitive dependencies - inspects downloaded services to find their dependencies
+///
+/// Returns the complete set of all downloaded dependencies (including transitive ones)
 pub async fn download_dependencies(
     component_paths: &[PathBuf],
     config: &DownloadConfig<'_>,
     deps_dir: &Path,
     client: &PackageClient,
-) -> Result<()> {
+) -> Result<HashSet<String>> {
     // Discover what's actually needed by inspecting component imports
     let mut required = discover_required_dependencies(component_paths, config.overrides)?;
 
-    // ALWAYS include structural components (unless overridden)
+    // ALWAYS include structural components
     // Transport is always at the front of the pipeline
-    if !config
-        .overrides
-        .contains_key(ComponentType::HttpTransport.name())
-    {
-        required.insert(ComponentType::HttpTransport.name().to_string());
-    }
+    required.insert(ComponentType::HttpTransport.name().to_string());
     // Method-not-found is always the terminal handler
-    if !config
-        .overrides
-        .contains_key(ComponentType::MethodNotFound.name())
-    {
-        required.insert(ComponentType::MethodNotFound.name().to_string());
-    }
+    required.insert(ComponentType::MethodNotFound.name().to_string());
+    // Session-store is always needed (transport depends on it)
+    required.insert(ComponentType::SessionStore.name().to_string());
 
     // Include only the middleware that was discovered as needed
     // We already inspected component exports to determine which middleware is required
@@ -144,22 +194,34 @@ pub async fn download_dependencies(
     }
 
     if required.is_empty() {
-        return Ok(());
+        return Ok(HashSet::new());
     }
 
+    // Download initial set
     let mut specs = Vec::new();
-
-    for component in required {
-        let version = config.resolver.get_version(&component)?;
-        specs.push(interfaces::package(&component, &version));
+    for component in &required {
+        let version = config.resolver.get_version(component)?;
+        specs.push(interfaces::package(component, &version));
 
         // Special case: kv-store has a draft2 variant
         if component == ComponentType::KvStore.name() {
             specs.push(interfaces::package("kv-store-d2", &version));
         }
     }
+    pkg::download_packages(client, &specs, deps_dir).await?;
 
-    pkg::download_packages(client, &specs, deps_dir).await
+    // Now discover transitive dependencies by inspecting what we just downloaded
+    // This function will download new dependencies as it discovers them
+    let all_deps = discover_transitive_dependencies(
+        &required,
+        config.resolver,
+        deps_dir,
+        config.overrides,
+        client,
+    )
+    .await?;
+
+    Ok(all_deps)
 }
 
 /// Get the file path for a framework dependency

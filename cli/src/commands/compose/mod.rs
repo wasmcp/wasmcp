@@ -220,14 +220,17 @@ async fn compose_server(options: ComposeOptions) -> Result<()> {
     }
 
     // Download framework dependencies once upfront (unless skip_download is set)
-    if !skip_download {
+    // This returns ALL discovered dependencies including transitive ones
+    let all_discovered_deps = if !skip_download {
         if verbose {
             println!("\nDownloading framework dependencies...");
         }
         let download_config =
             DownloadConfig::new(&overrides, &version_resolver, &required_middleware);
-        download_dependencies(&component_paths, &download_config, &deps_dir, &client).await?;
-    }
+        download_dependencies(&component_paths, &download_config, &deps_dir, &client).await?
+    } else {
+        required_deps.clone()
+    };
 
     // Resolve transport component
     let transport_name = "transport";
@@ -242,12 +245,12 @@ async fn compose_server(options: ComposeOptions) -> Result<()> {
     .await?;
 
     // Resolve service components that are actually needed
-    // Only process services that were discovered as dependencies
+    // Only process services that were discovered as dependencies (including transitive ones)
     // This prevents errors when trying to load services that weren't downloaded
     let service_names: Vec<&str> = version_resolver
         .service_components()
         .into_iter()
-        .filter(|name| required_deps.contains(*name))
+        .filter(|name| all_discovered_deps.contains(*name))
         .collect();
 
     if verbose && !service_names.is_empty() {

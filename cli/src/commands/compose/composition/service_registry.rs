@@ -88,17 +88,26 @@ impl ServiceRegistry {
     ///
     /// Returns (service_name, service_info, full_interface_name) if found
     pub fn find_export(&self, interface_pattern: &str) -> Option<(&String, &ServiceInfo, &String)> {
+        // Extract base name from pattern if it has a version
+        let pattern_base = interface_pattern
+            .rsplit_once('@')
+            .map(|(base, _version)| base)
+            .unwrap_or(interface_pattern);
+
         for (service_name, service_info) in &self.services {
-            // Check for exact match first
+            // Check for exact base name match (handles versioned imports)
+            if let Some(full_name) = service_info.exports.get(pattern_base) {
+                return Some((service_name, service_info, full_name));
+            }
+
+            // Check for exact full name match (handles unversioned imports)
             if let Some(full_name) = service_info.exports.get(interface_pattern) {
                 return Some((service_name, service_info, full_name));
             }
 
             // Check for prefix match (allows partial interface names)
             for (base_name, full_name) in &service_info.exports {
-                if base_name.starts_with(interface_pattern)
-                    || full_name.starts_with(interface_pattern)
-                {
+                if base_name.starts_with(pattern_base) || full_name.starts_with(interface_pattern) {
                     return Some((service_name, service_info, full_name));
                 }
             }

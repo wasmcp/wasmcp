@@ -10,7 +10,7 @@ use wac_graph::{CompositionGraph, EncodeOptions};
 use super::{ServiceRegistry, load_and_register_components, load_package};
 use super::{build_middleware_chain, wire_all_services, wire_transport};
 use crate::commands::compose::inspection::UnsatisfiedImports;
-use crate::commands::compose::inspection::find_component_export;
+use crate::commands::compose::inspection::{check_component_imports, find_component_export};
 use crate::commands::compose::inspection::interfaces::{
     self, ComponentType, DEFAULT_SPEC_VERSION, InterfaceType,
 };
@@ -114,25 +114,48 @@ pub async fn build_composition(
 
     let mut services = ServiceRegistry::new();
 
-    // Instantiate and register all services dynamically
+    // Process services in dependency order: services WITHOUT wasmcp dependencies first
+    // Pass 1: Instantiate and register services without wasmcp dependencies
+    let mut services_with_deps = Vec::new();
     for (service_name, package_id) in &packages.service_ids {
-        let service_inst = graph.instantiate(*package_id);
         let service_path = service_paths
             .get(service_name)
             .expect("Service path must exist for registered package");
 
-        // Wire dependencies for this service
+        // Check if this service has wasmcp dependencies
+        let imports = check_component_imports(service_path)?;
+        let has_wasmcp_imports = imports.iter().any(|i| i.starts_with("wasmcp:"));
+
+        if !has_wasmcp_imports {
+            // No wasmcp dependencies - instantiate and register immediately
+            let service_inst = graph.instantiate(*package_id);
+            services.register_service(service_name, service_inst, service_path)?;
+
+            if verbose {
+                println!("   ✓ Registered {} service", service_name);
+            }
+        } else {
+            // Has dependencies - defer to pass 2
+            services_with_deps.push((service_name.clone(), *package_id, service_path.clone()));
+        }
+    }
+
+    // Pass 2: Instantiate, wire, and register services WITH wasmcp dependencies
+    for (service_name, package_id, service_path) in services_with_deps {
+        let service_inst = graph.instantiate(package_id);
+
+        // Wire dependencies (services from pass 1 are now in registry)
         wire_all_services(
             &mut graph,
             service_inst,
-            service_path,
-            service_name,
+            &service_path,
+            &service_name,
             &services,
             verbose,
         )?;
 
         // Register in service registry
-        services.register_service(service_name, service_inst, service_path)?;
+        services.register_service(&service_name, service_inst, &service_path)?;
 
         if verbose {
             println!("   ✓ Registered {} service", service_name);

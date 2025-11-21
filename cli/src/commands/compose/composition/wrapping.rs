@@ -485,17 +485,33 @@ mod tests {
         // Create a runtime for the async function
         let rt = tokio::runtime::Runtime::new().unwrap();
         let overrides = HashMap::new();
+
+        // Test with middleware to trigger component inspection
+        let middleware = vec!["tools-middleware".to_string()];
         let result = rt.block_on(wrap_capabilities(
+            component_paths.clone(),
+            temp_dir.path(),
+            &resolver,
+            &overrides,
+            &middleware,
+            false, // verbose
+        ));
+
+        // Should fail because component doesn't exist and we're trying to inspect it
+        assert!(result.is_err());
+
+        // Test with no middleware - should succeed (returns paths as-is without processing)
+        let result_no_middleware = rt.block_on(wrap_capabilities(
             component_paths,
             temp_dir.path(),
             &resolver,
             &overrides,
-            &[],   // no middleware needed for this test
-            false, // verbose
+            &[],
+            false,
         ));
 
-        // Should fail because component doesn't exist
-        assert!(result.is_err());
+        // Should succeed because with no middleware, we don't try to inspect components
+        assert!(result_no_middleware.is_ok());
     }
 
     /// Test WRAPPED_COMPONENT_PREFIX constant
