@@ -3,12 +3,67 @@ use wasmcp::{commands, config, types};
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use types::{Language, TemplateType, Transport};
 
 /// Get the default deps directory from config, or fall back to a relative path
 fn default_deps_dir() -> PathBuf {
     config::get_deps_dir().unwrap_or_else(|_| PathBuf::from("deps"))
+}
+
+/// Parse override strings into component overrides and version overrides
+///
+/// - If spec ends with .wasm: component override (local path or URL)
+/// - Otherwise: version override (semver string)
+fn parse_overrides(
+    overrides: Vec<String>,
+) -> Result<(HashMap<String, String>, HashMap<String, String>)> {
+    // Load resolver to get valid component names from versions.toml
+    let resolver =
+        wasmcp::versioning::VersionResolver::new().context("Failed to load versions.toml")?;
+
+    let mut component_overrides = HashMap::new();
+    let mut version_overrides = HashMap::new();
+
+    for override_str in overrides {
+        let parts: Vec<&str> = override_str.splitn(2, '=').collect();
+        if parts.len() != 2 {
+            anyhow::bail!(
+                "Invalid override format '{}'. Expected: component=value\n\
+                 Examples:\n\
+                   --override transport=./custom.wasm (local path)\n\
+                   --override transport=0.2.0 (version)",
+                override_str
+            );
+        }
+
+        let component = parts[0].to_string();
+        let value = parts[1].to_string();
+
+        // Validate component name against versions.toml
+        if !resolver.is_valid_component(&component) {
+            anyhow::bail!(
+                "Unknown component '{}'. Valid components: {}",
+                component,
+                resolver.valid_components_list()
+            );
+        }
+
+        // Determine if this is a component override or version override
+        if value.ends_with(".wasm") {
+            // Component override (local path or URL)
+            component_overrides.insert(component, value);
+        } else {
+            // Version override
+            if value.is_empty() {
+                anyhow::bail!("Version cannot be empty in override for '{}'", component);
+            }
+            version_overrides.insert(component, value);
+        }
+    }
+
+    Ok((component_overrides, version_overrides))
 }
 
 #[derive(Parser)]
@@ -153,37 +208,23 @@ enum ComposeCommand {
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
 
-        /// Version overrides for specific components (e.g., --version-override transport=0.2.0)
-        #[arg(long = "version-override", value_name = "COMPONENT=VERSION")]
-        version_overrides: Vec<String>,
-
-        /// Override transport component (path or package spec)
-        #[arg(long)]
-        override_transport: Option<String>,
-
-        /// Override server-io component (path or package spec)
-        #[arg(long)]
-        override_server_io: Option<String>,
-
-        /// Override session-store component (path or package spec)
-        #[arg(long)]
-        override_session_store: Option<String>,
-
-        /// Override method-not-found component (path or package spec)
-        #[arg(long)]
-        override_method_not_found: Option<String>,
-
-        /// Override tools-middleware component (path or package spec)
-        #[arg(long)]
-        override_tools_middleware: Option<String>,
-
-        /// Override resources-middleware component (path or package spec)
-        #[arg(long)]
-        override_resources_middleware: Option<String>,
-
-        /// Override prompts-middleware component (path or package spec)
-        #[arg(long)]
-        override_prompts_middleware: Option<String>,
+        /// Override framework component or version (repeatable)
+        ///
+        /// Format: --override <component>=<value>
+        /// Valid components: transport, server-io, authorization, kv-store, session-store,
+        /// method-not-found, tools-middleware, resources-middleware, prompts-middleware
+        ///
+        /// Value types:
+        ///   - Path ending in .wasm: Use custom component (local or URL)
+        ///   - Version string: Download official component at specified version
+        ///
+        /// Examples:
+        ///   --override transport=./custom-transport.wasm      (local path)
+        ///   --override transport=https://example.com/t.wasm   (remote URL)
+        ///   --override transport=0.2.0                        (version)
+        ///   --override server-io=0.3.0                        (version)
+        #[arg(long, value_name = "COMPONENT=VALUE")]
+        r#override: Vec<String>,
 
         /// Directory for dependency components
         #[arg(long, default_value_os_t = default_deps_dir())]
@@ -518,14 +559,7 @@ async fn main() -> Result<()> {
                 components,
                 transport,
                 output,
-                version_overrides,
-                override_transport,
-                override_server_io,
-                override_session_store,
-                override_method_not_found,
-                override_tools_middleware,
-                override_resources_middleware,
-                override_prompts_middleware,
+                r#override,
                 deps_dir,
                 skip_download,
                 force,
@@ -560,19 +594,15 @@ async fn main() -> Result<()> {
                     }
                 };
 
-                // Use other settings as-is
-                let final_transport = transport.to_string();
-                let final_override_transport = override_transport;
-                let final_override_server_io = override_server_io;
-                let final_override_session_store = override_session_store;
-                let final_override_method_not_found = override_method_not_found;
-                let final_force = force;
+                // Parse overrides into component and version overrides
+                let (component_overrides, version_override_map) =
+                    parse_overrides(r#override).context("Failed to parse overrides")?;
 
-                // Create version resolver with overrides
+                // Create version resolver with version overrides
                 let mut version_resolver = wasmcp::versioning::VersionResolver::new()
                     .context("Failed to create version resolver")?;
                 version_resolver
-                    .apply_overrides(version_overrides)
+                    .apply_override_map(&version_override_map)
                     .context("Failed to apply version overrides")?;
 
                 // Validate runtime value
@@ -586,19 +616,13 @@ async fn main() -> Result<()> {
                 // Create compose options
                 let options = commands::compose::ComposeOptions {
                     components: resolved_components,
-                    transport: final_transport,
+                    transport: transport.to_string(),
                     output: final_output,
                     version_resolver,
-                    override_transport: final_override_transport,
-                    override_server_io: final_override_server_io,
-                    override_session_store: final_override_session_store,
-                    override_method_not_found: final_override_method_not_found,
-                    override_tools_middleware,
-                    override_resources_middleware,
-                    override_prompts_middleware,
+                    overrides: component_overrides,
                     deps_dir,
                     skip_download,
-                    force: final_force,
+                    force,
                     verbose,
                     mode: commands::compose::CompositionMode::Server,
                     runtime,
@@ -637,13 +661,7 @@ async fn main() -> Result<()> {
                     transport: String::new(), // Not used in handler mode
                     output: final_output,
                     version_resolver,
-                    override_transport: None,
-                    override_server_io: None,
-                    override_session_store: None,
-                    override_method_not_found: None,
-                    override_tools_middleware: None,
-                    override_resources_middleware: None,
-                    override_prompts_middleware: None,
+                    overrides: HashMap::new(), // No overrides in handler mode
                     deps_dir,
                     skip_download: false, // Not applicable to handler mode
                     force,
@@ -946,5 +964,126 @@ mod tests {
         assert!(validate_project_name("my server").is_err());
         assert!(validate_project_name("my@server").is_err());
         assert!(validate_project_name("my.server").is_err());
+    }
+
+    #[test]
+    fn test_parse_overrides_component_paths() {
+        // Local path
+        let result = parse_overrides(vec!["transport=./custom.wasm".to_string()]);
+        assert!(result.is_ok());
+        let (component_overrides, version_overrides) = result.unwrap();
+        assert_eq!(component_overrides.len(), 1);
+        assert_eq!(version_overrides.len(), 0);
+        assert_eq!(
+            component_overrides.get("transport"),
+            Some(&"./custom.wasm".to_string())
+        );
+
+        // Remote URL
+        let result = parse_overrides(vec![
+            "server-io=https://example.com/server-io.wasm".to_string(),
+        ]);
+        assert!(result.is_ok());
+        let (component_overrides, version_overrides) = result.unwrap();
+        assert_eq!(component_overrides.len(), 1);
+        assert_eq!(version_overrides.len(), 0);
+        assert_eq!(
+            component_overrides.get("server-io"),
+            Some(&"https://example.com/server-io.wasm".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_overrides_versions() {
+        // Single version override
+        let result = parse_overrides(vec!["transport=0.2.0".to_string()]);
+        assert!(result.is_ok());
+        let (component_overrides, version_overrides) = result.unwrap();
+        assert_eq!(component_overrides.len(), 0);
+        assert_eq!(version_overrides.len(), 1);
+        assert_eq!(
+            version_overrides.get("transport"),
+            Some(&"0.2.0".to_string())
+        );
+
+        // Multiple version overrides
+        let result = parse_overrides(vec![
+            "transport=0.2.0".to_string(),
+            "server-io=0.3.0".to_string(),
+        ]);
+        assert!(result.is_ok());
+        let (component_overrides, version_overrides) = result.unwrap();
+        assert_eq!(component_overrides.len(), 0);
+        assert_eq!(version_overrides.len(), 2);
+        assert_eq!(
+            version_overrides.get("transport"),
+            Some(&"0.2.0".to_string())
+        );
+        assert_eq!(
+            version_overrides.get("server-io"),
+            Some(&"0.3.0".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_overrides_mixed() {
+        // Mix of component and version overrides
+        let result = parse_overrides(vec![
+            "transport=./custom.wasm".to_string(),
+            "server-io=0.3.0".to_string(),
+            "authorization=https://example.com/auth.wasm".to_string(),
+        ]);
+        assert!(result.is_ok());
+        let (component_overrides, version_overrides) = result.unwrap();
+        assert_eq!(component_overrides.len(), 2);
+        assert_eq!(version_overrides.len(), 1);
+        assert_eq!(
+            component_overrides.get("transport"),
+            Some(&"./custom.wasm".to_string())
+        );
+        assert_eq!(
+            component_overrides.get("authorization"),
+            Some(&"https://example.com/auth.wasm".to_string())
+        );
+        assert_eq!(
+            version_overrides.get("server-io"),
+            Some(&"0.3.0".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_overrides_invalid() {
+        // Missing equals sign
+        let result = parse_overrides(vec!["transport".to_string()]);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid override format")
+        );
+
+        // Empty version
+        let result = parse_overrides(vec!["transport=".to_string()]);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Version cannot be empty")
+        );
+
+        // Invalid component name
+        let result = parse_overrides(vec!["invalid-component=0.2.0".to_string()]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_overrides_empty() {
+        let result = parse_overrides(vec![]);
+        assert!(result.is_ok());
+        let (component_overrides, version_overrides) = result.unwrap();
+        assert!(component_overrides.is_empty());
+        assert!(version_overrides.is_empty());
     }
 }

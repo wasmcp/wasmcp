@@ -133,9 +133,10 @@ wasmcp compose server calc strings -o server.wasm --verbose
 # Custom dependency directory
 wasmcp compose server calc --deps-dir ./my-deps --skip-download
 
-# Override framework components
-wasmcp compose server calc --override-transport custom-transport.wasm
-wasmcp compose server calc --override-method-not-found custom-handler.wasm
+# Override framework components (paths or versions)
+wasmcp compose server calc --override transport=./custom-transport.wasm
+wasmcp compose server calc --override method-not-found=0.2.0
+wasmcp compose server calc --override server-io=https://example.com/server-io.wasm
 ```
 
 **Resolution order:** profile → alias → path → registry package
@@ -352,19 +353,39 @@ wasmcp registry info -p
 
 ## Version Compatibility
 
-Component versions are managed through `versions.toml` in your project root. This file specifies the exact version of each framework component (server, protocol, transports, middleware).
+Component versions are managed through `versions.toml` in the CLI. This file specifies the exact version of each framework component (transport, server-io, authorization, middleware components, etc.).
 
-Override specific component versions during composition:
+### Override Framework Components
+
+Use the `--override` flag to customize framework components or versions during composition. The flag accepts both local paths (ending in `.wasm`) and version strings:
 
 ```bash
-# Override protocol version for testing
-wasmcp compose server component.wasm --override-protocol=0.2.0
+# Override with a custom component (local path)
+wasmcp compose server component.wasm --override transport=./custom-transport.wasm
 
-# Override multiple components
+# Override with a specific version
+wasmcp compose server component.wasm --override transport=0.2.0
+
+# Override with a remote URL
+wasmcp compose server component.wasm --override server-io=https://example.com/server-io.wasm
+
+# Override multiple components (mix paths and versions)
 wasmcp compose server component.wasm \
-  --override-http-transport=0.3.0-beta.1 \
-  --override-tools-middleware=0.2.0
+  --override transport=./custom-transport.wasm \
+  --override tools-middleware=0.2.0 \
+  --override authorization=0.1.1
 ```
+
+**Valid component names:**
+- `transport` - HTTP or stdio transport layer
+- `server-io` - Server I/O interface implementation
+- `authorization` - Authorization/authentication handler
+- `kv-store` - Key-value storage interface
+- `session-store` - Session management
+- `method-not-found` - Terminal handler for unknown methods
+- `tools-middleware` - Tools capability middleware
+- `resources-middleware` - Resources capability middleware
+- `prompts-middleware` - Prompts capability middleware
 
 ## See Also
 

@@ -24,6 +24,7 @@
 //! in sequence.
 
 use anyhow::{Context, Result};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::commands::pkg;
@@ -43,15 +44,18 @@ pub mod output;
 pub mod resolution;
 
 // Internal imports from submodules
-use self::composition::{build_composition, build_handler_composition, wrap_capabilities};
+use self::composition::graph::CompositionPaths;
+use self::composition::{
+    build_composition, build_handler_composition, discover_required_middleware, wrap_capabilities,
+};
 use self::config::{resolve_output_path, validate_output_file, validate_transport};
 use self::output::{
     print_handler_pipeline_diagram, print_handler_success_message, print_pipeline_diagram,
     print_success_message,
 };
 use self::resolution::{
-    download_dependencies, resolve_method_not_found_component, resolve_server_io_component,
-    resolve_session_store_component, resolve_transport_component,
+    DownloadConfig, discover_required_dependencies, download_dependencies,
+    resolve_framework_component, resolve_service_with_runtime,
 };
 
 /// Composition mode: Server (complete) or Handler (intermediate)
@@ -78,26 +82,13 @@ pub struct ComposeOptions {
     /// Version resolver for component versions
     pub version_resolver: VersionResolver,
 
-    /// Override transport component (path or package spec)
-    pub override_transport: Option<String>,
-
-    /// Override server-io component (path or package spec)
-    pub override_server_io: Option<String>,
-
-    /// Override session-store component (path or package spec)
-    pub override_session_store: Option<String>,
-
-    /// Override method-not-found component (path or package spec)
-    pub override_method_not_found: Option<String>,
-
-    /// Override tools-middleware component (path or package spec)
-    pub override_tools_middleware: Option<String>,
-
-    /// Override resources-middleware component (path or package spec)
-    pub override_resources_middleware: Option<String>,
-
-    /// Override prompts-middleware component (path or package spec)
-    pub override_prompts_middleware: Option<String>,
+    /// Component overrides (component-name -> spec)
+    ///
+    /// Map of framework component names to override specs (paths or package names).
+    /// Valid component names: transport, server-io, authorization, kv-store,
+    /// session-store, method-not-found, tools-middleware, resources-middleware,
+    /// prompts-middleware.
+    pub overrides: HashMap<String, String>,
 
     /// Directory for downloaded dependencies
     pub deps_dir: PathBuf,
@@ -137,86 +128,38 @@ pub struct ComposeOptions {
 /// - Component composition fails (invalid component, interface mismatch)
 /// - Output file cannot be written
 pub async fn compose(options: ComposeOptions) -> Result<()> {
+    // Branch based on composition mode
+    match options.mode {
+        CompositionMode::Server => compose_server(options).await,
+        CompositionMode::Handler => compose_handler(options).await,
+    }
+}
+
+/// Check if a service has runtime-specific variants
+///
+/// Some services have different component variants based on the target runtime.
+/// For example, kv-store has both kv-store (stable WASI) and kv-store-d2 (draft2 WASI).
+fn has_runtime_variants(service_name: &str) -> bool {
+    // Currently only kv-store has runtime variants
+    // Future: could read from versions.toml metadata or convention
+    service_name == "kv-store"
+}
+
+/// Compose a complete MCP server with transport and terminal handler
+async fn compose_server(options: ComposeOptions) -> Result<()> {
     let ComposeOptions {
         components,
         transport,
         output,
         version_resolver,
-        override_transport,
-        override_server_io,
-        override_session_store,
-        override_method_not_found,
-        override_tools_middleware,
-        override_resources_middleware,
-        override_prompts_middleware,
+        overrides,
         deps_dir,
         skip_download,
         force,
         verbose,
-        mode,
         runtime,
+        mode: _,
     } = options;
-
-    // Branch based on composition mode
-    match mode {
-        CompositionMode::Server => {
-            compose_server(
-                components,
-                transport,
-                output,
-                version_resolver,
-                override_transport,
-                override_server_io,
-                override_session_store,
-                override_method_not_found,
-                override_tools_middleware,
-                override_resources_middleware,
-                override_prompts_middleware,
-                deps_dir,
-                skip_download,
-                force,
-                verbose,
-                runtime,
-            )
-            .await
-        }
-        CompositionMode::Handler => {
-            compose_handler(
-                components,
-                output,
-                version_resolver,
-                override_tools_middleware,
-                override_resources_middleware,
-                override_prompts_middleware,
-                deps_dir,
-                force,
-                verbose,
-            )
-            .await
-        }
-    }
-}
-
-/// Compose a complete MCP server with transport and terminal handler
-#[allow(clippy::too_many_arguments)]
-async fn compose_server(
-    components: Vec<String>,
-    transport: String,
-    output: PathBuf,
-    version_resolver: VersionResolver,
-    override_transport: Option<String>,
-    override_server_io: Option<String>,
-    override_session_store: Option<String>,
-    override_method_not_found: Option<String>,
-    override_tools_middleware: Option<String>,
-    override_resources_middleware: Option<String>,
-    override_prompts_middleware: Option<String>,
-    deps_dir: PathBuf,
-    skip_download: bool,
-    force: bool,
-    verbose: bool,
-    runtime: String,
-) -> Result<()> {
     // Validate transport type early (before any expensive operations)
     validate_transport(&transport)?;
 
@@ -255,17 +198,45 @@ async fn compose_server(
     // Resolve all component specs to local paths
     let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
 
+    // Discover which framework dependencies are actually needed
+    // 1. Inspect component imports to find required services (server-io, authorization, etc.)
+    let required_deps = discover_required_dependencies(&component_paths)?;
+
+    // 2. Inspect component exports to find required middleware (tools/resources/prompts-middleware)
+    let required_middleware = discover_required_middleware(&component_paths, &version_resolver)?;
+
+    if verbose && !required_deps.is_empty() {
+        println!("\nDiscovered required service dependencies:");
+        for dep in &required_deps {
+            println!("   - {}", dep);
+        }
+    }
+
+    if verbose && !required_middleware.is_empty() {
+        println!("\nDiscovered required middleware:");
+        for mw in &required_middleware {
+            println!("   - {}", mw);
+        }
+    }
+
     // Download framework dependencies once upfront (unless skip_download is set)
-    if !skip_download {
+    // This returns ALL discovered dependencies including transitive ones
+    let all_discovered_deps = if !skip_download {
         if verbose {
             println!("\nDownloading framework dependencies...");
         }
-        download_dependencies(&version_resolver, &deps_dir, &client).await?;
-    }
+        let download_config =
+            DownloadConfig::new(&overrides, &version_resolver, &required_middleware);
+        download_dependencies(&component_paths, &download_config, &deps_dir, &client).await?
+    } else {
+        required_deps.clone()
+    };
 
     // Resolve transport component
-    let transport_path = resolve_transport_component(
-        override_transport.as_deref(),
+    let transport_name = "transport";
+    let transport_path = resolve_framework_component(
+        transport_name,
+        overrides.get(transport_name).map(|s| s.as_str()),
         &version_resolver,
         &deps_dir,
         &client,
@@ -273,30 +244,57 @@ async fn compose_server(
     )
     .await?;
 
-    // Resolve server-io component
-    let server_io_path = resolve_server_io_component(
-        override_server_io.as_deref(),
-        &version_resolver,
-        &deps_dir,
-        &client,
-        verbose,
-    )
-    .await?;
+    // Resolve service components that are actually needed
+    // Only process services that were discovered as dependencies (including transitive ones)
+    // This prevents errors when trying to load services that weren't downloaded
+    let service_names: Vec<&str> = version_resolver
+        .service_components()
+        .into_iter()
+        .filter(|name| all_discovered_deps.contains(*name))
+        .collect();
 
-    // Resolve session-store component
-    let session_store_path = resolve_session_store_component(
-        override_session_store.as_deref(),
-        &version_resolver,
-        &deps_dir,
-        &client,
-        verbose,
-        &runtime,
-    )
-    .await?;
+    if verbose && !service_names.is_empty() {
+        println!("\nResolving required services:");
+        for name in &service_names {
+            println!("   - {}", name);
+        }
+    }
+
+    let mut service_paths = HashMap::new();
+
+    for service_name in service_names {
+        // Generic check: does this service have runtime-specific variants?
+        let path = if has_runtime_variants(service_name) {
+            resolve_service_with_runtime(
+                service_name,
+                overrides.get(service_name).map(|s| s.as_str()),
+                &version_resolver,
+                &deps_dir,
+                &client,
+                verbose,
+                &runtime,
+            )
+            .await?
+        } else {
+            resolve_framework_component(
+                service_name,
+                overrides.get(service_name).map(|s| s.as_str()),
+                &version_resolver,
+                &deps_dir,
+                &client,
+                verbose,
+            )
+            .await?
+        };
+
+        service_paths.insert(service_name.to_string(), path);
+    }
 
     // Resolve method-not-found component
-    let method_not_found_path = resolve_method_not_found_component(
-        override_method_not_found.as_deref(),
+    let method_not_found_name = "method-not-found";
+    let method_not_found_path = resolve_framework_component(
+        method_not_found_name,
+        overrides.get(method_not_found_name).map(|s| s.as_str()),
         &version_resolver,
         &deps_dir,
         &client,
@@ -312,9 +310,8 @@ async fn compose_server(
         component_paths,
         &deps_dir,
         &version_resolver,
-        override_tools_middleware.as_deref(),
-        override_resources_middleware.as_deref(),
-        override_prompts_middleware.as_deref(),
+        &overrides,
+        &required_middleware,
         verbose,
     )
     .await?;
@@ -327,11 +324,12 @@ async fn compose_server(
 
     // Build and encode the composition
     let bytes = build_composition(
-        &transport_path,
-        &server_io_path,
-        &session_store_path,
-        &wrapped_components,
-        &method_not_found_path,
+        CompositionPaths {
+            transport: &transport_path,
+            service_paths: &service_paths,
+            components: &wrapped_components,
+            method_not_found: &method_not_found_path,
+        },
         &version_resolver,
         verbose,
     )
@@ -365,21 +363,20 @@ async fn compose_server(
 }
 
 /// Compose a handler component (without transport/terminal)
-///
-/// TODO: Refactor to reduce argument count (9/7). Consider grouping into a
-/// HandlerCompositionOptions struct (components, overrides, paths, flags).
-#[allow(clippy::too_many_arguments)]
-async fn compose_handler(
-    components: Vec<String>,
-    output: PathBuf,
-    version_resolver: VersionResolver,
-    override_tools_middleware: Option<String>,
-    override_resources_middleware: Option<String>,
-    override_prompts_middleware: Option<String>,
-    deps_dir: PathBuf,
-    force: bool,
-    verbose: bool,
-) -> Result<()> {
+async fn compose_handler(options: ComposeOptions) -> Result<()> {
+    let ComposeOptions {
+        components,
+        output,
+        version_resolver,
+        overrides,
+        deps_dir,
+        force,
+        verbose,
+        transport: _,
+        skip_download: _,
+        mode: _,
+        runtime: _,
+    } = options;
     // Validate and prepare output path
     let output_path = resolve_output_path(&output)?;
     validate_output_file(&output_path, force)?;
@@ -414,6 +411,16 @@ async fn compose_handler(
     // Resolve all component specs to local paths
     let component_paths = resolve_user_components(&components, &deps_dir, &client, verbose).await?;
 
+    // Discover which middleware is needed by inspecting component exports
+    let required_middleware = discover_required_middleware(&component_paths, &version_resolver)?;
+
+    if verbose && !required_middleware.is_empty() {
+        println!("\nDiscovered required middleware:");
+        for mw in &required_middleware {
+            println!("   - {}", mw);
+        }
+    }
+
     // Auto-detect and wrap capability components (tools, resources, etc.)
     if verbose {
         println!("\nDetecting component types...");
@@ -422,9 +429,8 @@ async fn compose_handler(
         component_paths,
         &deps_dir,
         &version_resolver,
-        override_tools_middleware.as_deref(),
-        override_resources_middleware.as_deref(),
-        override_prompts_middleware.as_deref(),
+        &overrides,
+        &required_middleware,
         verbose,
     )
     .await?;
@@ -664,8 +670,8 @@ mod tests {
         let options = ComposeOptionsBuilder::new(vec!["a.wasm".to_string()])
             .transport("http")
             .output(PathBuf::from("out.wasm"))
-            .override_transport("custom-transport.wasm")
-            .override_method_not_found("custom-mnf.wasm")
+            .override_component("transport", "custom-transport.wasm")
+            .override_component("method-not-found", "custom-mnf.wasm")
             .build()
             .unwrap();
 
@@ -677,12 +683,12 @@ mod tests {
                 .is_ok()
         );
         assert_eq!(
-            options.override_transport,
-            Some("custom-transport.wasm".to_string())
+            options.overrides.get("transport"),
+            Some(&"custom-transport.wasm".to_string())
         );
         assert_eq!(
-            options.override_method_not_found,
-            Some("custom-mnf.wasm".to_string())
+            options.overrides.get("method-not-found"),
+            Some(&"custom-mnf.wasm".to_string())
         );
     }
 
