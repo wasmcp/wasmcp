@@ -154,7 +154,7 @@ jobs:
         run: |
           cd ci-test-${{ matrix.language }}
           echo "Starting server..."
-          wasmtime serve -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=json --env ALLOW_HTTP_INSECURE=true mcp-server.wasm &
+          wasmtime serve -Shttp -Skeyvalue -Scli --env WASMCP_DISABLE_SSE=true mcp-server.wasm &
           SERVER_PID=$!
           echo $SERVER_PID > /tmp/server.pid
           echo "Server PID: $SERVER_PID"
@@ -231,7 +231,7 @@ jobs:
           cd ci-test-${{ matrix.language }}
 
           # Test tools/list
-          tools_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio --env ALLOW_HTTP_INSECURE=true mcp-server-stdio.wasm \
+          tools_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server-stdio.wasm \
             --cli --transport stdio --method tools/list)
 
           # Verify tools are present (different per language)
@@ -247,15 +247,15 @@ jobs:
 
           # Test tools/call
           if [ "${{ matrix.language }}" = "rust" ]; then
-            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio --env ALLOW_HTTP_INSECURE=true mcp-server-stdio.wasm \
+            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server-stdio.wasm \
               --cli --transport stdio --method tools/call --tool-name add --tool-arg a=10 --tool-arg b=32)
             echo "$response" | grep -q "42"
           elif [ "${{ matrix.language }}" = "typescript" ]; then
-            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio --env ALLOW_HTTP_INSECURE=true mcp-server-stdio.wasm \
+            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server-stdio.wasm \
               --cli --transport stdio --method tools/call --tool-name example-tool --tool-arg input="test")
             echo "$response" | grep -q "Received: test"
           else
-            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio --env ALLOW_HTTP_INSECURE=true mcp-server-stdio.wasm \
+            response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server-stdio.wasm \
               --cli --transport stdio --method tools/call --tool-name reverse --tool-arg text="hello")
             echo "$response" | grep -q "olleh"
           fi
@@ -370,7 +370,7 @@ jobs:
         run: |
           cd ci-test-${{ matrix.language }}-resources
           echo "Starting server..."
-          wasmtime serve -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=json --env ALLOW_HTTP_INSECURE=true mcp-server.wasm &
+          wasmtime serve -Shttp -Skeyvalue -Scli --env WASMCP_DISABLE_SSE=true mcp-server.wasm &
           SERVER_PID=$!
           echo $SERVER_PID > /tmp/server.pid
           echo "Server PID: $SERVER_PID"
@@ -419,7 +419,7 @@ jobs:
           cd ci-test-${{ matrix.language }}-resources
 
           # Test resources/list
-          resources_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio --env ALLOW_HTTP_INSECURE=true mcp-server-stdio.wasm \
+          resources_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server-stdio.wasm \
             --cli --transport stdio --method resources/list)
 
           # Verify resources are present (same for all languages)
@@ -427,11 +427,11 @@ jobs:
           echo "$resources_list" | grep -q "text://info"
 
           # Test resources/read for greeting
-          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio --env ALLOW_HTTP_INSECURE=true mcp-server-stdio.wasm \
+          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server-stdio.wasm \
             --cli --transport stdio --method resources/read --uri "text://greeting")
           echo "$response" | grep -q "Hello from wasmcp resources"
 
           # Test resources/read for info
-          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli --env MCP_SERVER_MODE=stdio --env ALLOW_HTTP_INSECURE=true mcp-server-stdio.wasm \
+          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server-stdio.wasm \
             --cli --transport stdio --method resources/read --uri "text://info")
           echo "$response" | grep -q "simple resources capability"
