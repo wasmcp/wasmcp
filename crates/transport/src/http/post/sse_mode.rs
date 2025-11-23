@@ -12,7 +12,7 @@
 use crate::bindings::wasi::http::types::{OutgoingBody, ResponseOutparam};
 use crate::bindings::wasmcp::mcp_v20250618::mcp::{Error, ErrorCode, RequestId, ServerMessage};
 use crate::common;
-use crate::config::SessionConfig;
+use crate::config::TransportConfig;
 use crate::http::{post::message_handlers, response};
 use crate::send_error;
 
@@ -32,7 +32,7 @@ pub async fn handle_sse_streaming_mode(
     input_stream: crate::bindings::wasi::io::streams::InputStream,
     body_stream: crate::bindings::wasi::http::types::IncomingBody,
     response_out: ResponseOutparam,
-    config: &SessionConfig,
+    config: &TransportConfig,
     http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
 ) {
     let response = match response::ResponseBuilder::new()

@@ -13,7 +13,7 @@ use crate::bindings::wasmcp::mcp_v20250618::mcp::{
 };
 use crate::bindings::wasmcp::mcp_v20250618::server_handler::handle;
 use crate::common;
-use crate::config::SessionConfig;
+use crate::config::TransportConfig;
 use crate::error::TransportError;
 use crate::http::response;
 use crate::send_error;
@@ -34,7 +34,7 @@ pub fn handle_mcp_request(
     identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
     output_stream: &OutputStream,
     frame: &common::MessageFrame,
-    config: &SessionConfig,
+    config: &TransportConfig,
     http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
 ) -> Result<(), TransportError> {
     // Parse protocol version
@@ -69,7 +69,7 @@ pub fn handle_mcp_request(
             Ok(())
         }
         _ => {
-            let bucket = config.get_bucket().to_string();
+            let bucket = config.get_session_bucket().to_string();
 
             // Delegate all other methods to middleware
             let result = common::delegate_to_middleware(
@@ -102,14 +102,14 @@ pub fn handle_mcp_notification(
     client_notification: ClientNotification,
     protocol_version: String,
     session_id: Option<&str>,
-    config: &SessionConfig,
+    config: &TransportConfig,
     http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
 ) -> Result<(), TransportError> {
     // Parse protocol version
     let proto_ver =
         common::parse_protocol_version(&protocol_version).map_err(TransportError::protocol)?;
 
-    let bucket = config.get_bucket().to_string();
+    let bucket = config.get_session_bucket().to_string();
 
     // Delegate to middleware via notification context
     common::delegate_notification(
@@ -133,7 +133,7 @@ pub fn handle_mcp_result(
     client_result: ClientResult,
     protocol_version: String,
     session_id: Option<&str>,
-    session_config: &SessionConfig,
+    session_config: &TransportConfig,
 ) -> Result<(), TransportError> {
     // Parse protocol version
     let proto_ver =
@@ -145,7 +145,7 @@ pub fn handle_mcp_result(
         proto_ver,
         session_id,
         None,
-        session_config.get_bucket(),
+        session_config.get_session_bucket(),
         &common::plain_json_frame(),
         None, // HTTP context not available for results
     );
@@ -169,7 +169,7 @@ pub fn handle_mcp_error(
     error_code: ErrorCode,
     protocol_version: String,
     session_id: Option<&str>,
-    session_config: &SessionConfig,
+    session_config: &TransportConfig,
 ) -> Result<(), TransportError> {
     // Parse protocol version
     let proto_ver =
@@ -181,7 +181,7 @@ pub fn handle_mcp_error(
         proto_ver,
         session_id,
         None,
-        session_config.get_bucket(),
+        session_config.get_session_bucket(),
         &common::plain_json_frame(),
         None, // HTTP context not available for errors
     );

@@ -10,17 +10,34 @@
 //!
 //! # Environment Variables
 //!
+//! ## HTTP Transport Mode
+//!
+//! - **`WASMCP_DISABLE_SSE`** - Disable Server-Sent Events for HTTP transport
+//!   - Default: `false` (SSE enabled - supports streaming and notifications)
+//!   - Set to `true` to use plain JSON mode (single response, notifications suppressed)
+//!   - Only affects HTTP transport; stdio transport is unaffected
+//!
+//! ## Session Management
+//!
+//! - **`WASMCP_SESSION_ENABLED`** - Enable HTTP session support
+//!   - Default: `false` (stateless HTTP)
+//!   - Set to `true` to enable session tracking via Mcp-Session-Id header
+//!
+//! - **`WASMCP_SESSION_BUCKET`** - Key-value bucket name for session storage
+//!   - Default: `""` (default bucket)
+//!   - Used when `WASMCP_SESSION_ENABLED=true`
+//!
 //! ## Authentication & Authorization
 //!
-//! - **`MCP_AUTH_MODE`** - Authentication mode: `public` (default) or `oauth`
+//! - **`WASMCP_AUTH_MODE`** - Authentication mode: `public` (default) or `oauth`
 //!   - `public`: No authentication required
 //!   - `oauth`: Requires JWT bearer tokens, validates via JWT_* configuration
 //!
 //! - **`JWT_ISSUER`** - Expected JWT issuer (e.g., `https://auth.example.com`)
-//!   - Required when `MCP_AUTH_MODE=oauth`
+//!   - Required when `WASMCP_AUTH_MODE=oauth`
 //!
 //! - **`JWT_JWKS_URI`** - JWKS endpoint URL for JWT public key retrieval
-//!   - Required when `MCP_AUTH_MODE=oauth`
+//!   - Required when `WASMCP_AUTH_MODE=oauth`
 //!
 //! - **`JWT_AUDIENCE`** - Expected JWT audience claim (server URI)
 //!   - Optional: Only required for traditional OAuth pattern
@@ -35,18 +52,13 @@
 //!
 //! ## Security & CORS
 //!
-//! - **`ALLOW_HTTP_INSECURE`** - Disable HTTPS enforcement (local development only)
-//!   - Default: `false` (HTTPS required per MCP spec)
-//!   - Set to `true` to allow HTTP for non-localhost connections
-//!   - WARNING: Never use in production
-//!
-//! - **`MCP_ALLOWED_ORIGINS`** - Comma-separated list of allowed Origin header values
+//! - **`WASMCP_ALLOWED_ORIGINS`** - Comma-separated list of allowed Origin header values
 //!   - Default: localhost-only (127.0.0.1, ::1)
 //!   - Supports `*` wildcard to allow all origins
 //!   - Example: `https://app.example.com,https://admin.example.com`
 //!   - Prevents DNS rebinding attacks when Origin header is present
 //!
-//! - **`MCP_REQUIRE_ORIGIN`** - Require Origin header on all requests
+//! - **`WASMCP_REQUIRE_ORIGIN`** - Require Origin header on all requests
 //!   - Default: `false` (Origin header optional but validated if present)
 //!   - Set to `true` to reject requests without Origin header
 //!   - NOTE: Most MCP clients (desktop apps) don't send Origin headers
@@ -54,16 +66,16 @@
 //!
 //! ## Discovery & Metadata
 //!
-//! - **`MCP_SERVER_URI`** - Server's canonical URI (resource identifier)
+//! - **`WASMCP_SERVER_URI`** - Server's canonical URI (resource identifier)
 //!   - Optional: Falls back to Host header if not set
 //!   - Used in OAuth discovery metadata and WWW-Authenticate headers
 //!   - Example: `https://mcp.example.com`
 //!
-//! - **`MCP_AUTH_SERVER_URL`** - Authorization server URL
+//! - **`WASMCP_AUTH_SERVER_URL`** - Authorization server URL
 //!   - Optional: Falls back to JWT_ISSUER if not set
 //!   - Used in OAuth protected resource metadata (RFC 9728)
 //!
-//! - **`MCP_DISCOVERY_CACHE_TTL`** - Cache TTL for discovery endpoints in seconds
+//! - **`WASMCP_DISCOVERY_CACHE_TTL`** - Cache TTL for discovery endpoints in seconds
 //!   - Default: `3600` (1 hour)
 //!   - Controls Cache-Control headers on /.well-known/* endpoints
 

@@ -11,7 +11,7 @@ use crate::bindings::wasmcp::mcp_v20250618::mcp::{
     ClientRequest, Implementation, InitializeResult, RequestId, ServerMessage, ServerResult,
 };
 use crate::common;
-use crate::config::SessionConfig;
+use crate::config::TransportConfig;
 use crate::error::TransportError;
 use crate::http::{response, session};
 use crate::send_error;
@@ -22,7 +22,7 @@ pub fn handle_initialize_request(
     protocol_version: String,
     identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
     response_out: ResponseOutparam,
-    session_config: &SessionConfig,
+    session_config: &TransportConfig,
 ) {
     // Parse protocol version
     let proto_ver = match common::parse_protocol_version(&protocol_version) {
@@ -42,7 +42,13 @@ pub fn handle_initialize_request(
 
     // Bind JWT claims to session if both exist
     if let (Some(session_id), Some(identity)) = (&new_session_id, identity) {
-        session::bind_identity_to_session(session_id, identity, session_config);
+        if let Err(e) = session::bind_identity_to_session(session_id, identity, session_config) {
+            eprintln!(
+                "[transport:initialize] WARNING: Failed to bind JWT identity to session {}: {}. \
+                 Session created but authorization may not work correctly.",
+                session_id, e
+            );
+        }
     }
 
     // Create plain JSON response with optional session header

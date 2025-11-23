@@ -5,7 +5,7 @@
 //! Returns 405 Method Not Allowed when sessions are disabled.
 
 use crate::bindings::wasi::http::types::{IncomingRequest, ResponseOutparam};
-use crate::config::SessionConfig;
+use crate::config::TransportConfig;
 use crate::error::TransportError;
 use crate::http::{response, session, validation};
 use crate::send_error;
@@ -13,10 +13,10 @@ use crate::send_error;
 pub fn handle_delete(
     request: IncomingRequest,
     response_out: ResponseOutparam,
-    session_config: &SessionConfig,
+    session_config: &TransportConfig,
 ) {
     // If sessions not enabled, return 405 Method Not Allowed
-    if !session_config.enabled {
+    if !session_config.session_enabled {
         match response::create_method_not_allowed_response(session_config) {
             Ok(response) => {
                 crate::bindings::wasi::http::types::ResponseOutparam::set(
@@ -33,7 +33,7 @@ pub fn handle_delete(
     let session_id = match validation::extract_session_id_header(&request) {
         Ok(Some(id)) => id,
         Ok(None) => {
-            let error = TransportError::session("No session to delete");
+            let error = TransportError::session(crate::error::SessionError::Required);
             send_error!(response_out, error);
         }
         Err(e) => send_error!(response_out, e),

@@ -60,7 +60,7 @@ See [examples/](examples/) for more.
 
 ## Authentication Modes
 
-wasmcp supports both public (unauthenticated) and OAuth 2.1 protected MCP servers via the `MCP_AUTH_MODE` environment variable.
+wasmcp supports both public (unauthenticated) and OAuth 2.1 protected MCP servers via the `WASMCP_AUTH_MODE` environment variable.
 
 ### Public Mode (Default)
 
@@ -71,7 +71,7 @@ wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
 
 Or explicitly set:
 ```bash
-MCP_AUTH_MODE=public wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+WASMCP_AUTH_MODE=public wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
 ```
 
 ### OAuth Mode
@@ -83,28 +83,17 @@ Requires JWT bearer tokens per MCP OAuth 2.1 spec. Supports two validation patte
 Per-user client IDs created dynamically. No fixed audience - validation via issuer and signature only.
 
 **Required Environment Variables:**
-- `MCP_AUTH_MODE=oauth` - Enable OAuth authentication
+- `WASMCP_AUTH_MODE=oauth` - Enable OAuth authentication
 - `JWT_ISSUER` - Expected token issuer (e.g., `https://your.issuer.com`)
 - `JWT_JWKS_URI` - JWKS endpoint for public key retrieval
 
 **Example:**
 ```bash
-MCP_AUTH_MODE=oauth \
+WASMCP_AUTH_MODE=oauth \
 JWT_ISSUER=https://api.workos.com \
 JWT_JWKS_URI=https://api.workos.com/sso/jwks/client_01234567890 \
 wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
 ```
-
-### HTTPS Enforcement
-
-MCP spec requires HTTPS for non-localhost connections. Localhost (127.0.0.1, ::1) is always allowed over HTTP.
-
-To disable HTTPS enforcement for local development:
-```bash
-ALLOW_HTTP_INSECURE=true wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
-```
-
-**Warning:** Never use `ALLOW_HTTP_INSECURE=true` in production.
 
 ## Features
 

@@ -87,9 +87,9 @@ impl Guest for ServerIo {
         message: ServerMessage,
         frame: MessageFrame,
     ) -> Result<(), IoError> {
-        // In JSON mode, suppress notifications (only final response is sent)
-        // Per MCP spec 2025-06-18: SSE allows multiple messages, JSON mode only sends final response
-        if writing::is_json_mode() {
+        // In plain JSON mode, suppress notifications (only final response is sent)
+        // Per MCP spec 2025-06-18: SSE allows multiple messages, plain JSON only sends final response
+        if writing::should_suppress_notifications(&frame) {
             if let ServerMessage::Notification(_) = message {
                 return Ok(());
             }
@@ -99,16 +99,20 @@ impl Guest for ServerIo {
         let framed = framing::serialize_message_to_bytes(message, &frame)?;
 
         // Write to stream
-        writing::write_bytes(output, &framed)?;
+        writing::write_bytes(output, &framed, &frame)?;
         Ok(())
     }
 
     /// Flush buffered data to stream (for buffered mode)
     ///
-    /// In buffered mode (MCP_SERVER_MODE=json), all writes accumulate in memory.
+    /// In buffered mode (plain JSON framing), all writes accumulate in memory.
     /// This function writes the entire buffer to the stream in one blocking operation.
+    /// For SSE/stdio (streaming modes), this is a no-op.
     fn flush_buffer(output: &OutputStream) -> Result<(), IoError> {
-        if !writing::is_buffer_mode() {
+        // Check if there's anything buffered
+        let has_data = writing::BUFFER.with(|buf| !buf.borrow().is_empty());
+
+        if !has_data {
             return Ok(());
         }
 
@@ -123,9 +127,7 @@ impl Guest for ServerIo {
         })?;
 
         // Clear buffer after successful write
-        writing::BUFFER.with(|buf| {
-            buf.borrow_mut().clear();
-        });
+        writing::BUFFER.with(|buf| buf.borrow_mut().clear());
 
         Ok(())
     }

@@ -17,7 +17,7 @@ pub mod sse_mode;
 use crate::bindings::wasi::http::types::{IncomingRequest, ResponseOutparam};
 use crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest;
 use crate::common;
-use crate::config::{ServerMode, SessionConfig};
+use crate::config::{AuthMode, TransportConfig};
 use crate::error::TransportError;
 use crate::http::{session, validation};
 use crate::send_error;
@@ -26,13 +26,8 @@ pub async fn handle_post(
     request: IncomingRequest,
     protocol_version: String,
     response_out: ResponseOutparam,
-    session_config: &SessionConfig,
+    session_config: &TransportConfig,
 ) {
-    // Validate HTTPS requirements (MCP spec lines 317, 321)
-    if let Err(e) = validate_https_requirements(&request) {
-        send_error!(response_out, TransportError::validation(e));
-    }
-
     // Validate Accept header per spec
     if let Err(e) = validation::validate_accept_header(&request) {
         send_error!(response_out, e);
@@ -44,11 +39,8 @@ pub async fn handle_post(
         Err(e) => send_error!(response_out, e),
     };
 
-    // Check authentication mode
-    let auth_mode = get_auth_mode();
-
-    // Validate JWT based on auth mode
-    let identity = match auth_mode {
+    // Validate JWT based on auth mode from config
+    let identity = match session_config.auth_mode {
         AuthMode::Public => {
             // Public mode - no authentication required
             None
@@ -56,9 +48,9 @@ pub async fn handle_post(
         AuthMode::OAuth => {
             // OAuth mode - JWT required
             // Validate that JWT is configured properly
-            if !is_jwt_auth_configured() {
+            if !session_config.jwt_configured {
                 let error = TransportError::internal(
-                    "MCP_AUTH_MODE=oauth requires JWT_PUBLIC_KEY or JWT_JWKS_URI to be configured",
+                    "WASMCP_AUTH_MODE=oauth requires JWT_PUBLIC_KEY or JWT_JWKS_URI to be configured",
                 );
                 send_error!(response_out, error);
             }
@@ -177,14 +169,13 @@ pub async fn handle_post(
             if !session::check_session_required(session_config, session_id.as_deref()) {
                 drop(input_stream);
                 drop(body_stream);
-                let error =
-                    TransportError::session("Session ID required for non-initialize requests");
+                let error = TransportError::session_required();
                 send_error!(response_out, error);
             }
 
             // Not initialize - delegate to mode-specific handler
-            match session_config.mode {
-                ServerMode::Json => json_mode::handle_json_mode(
+            if session_config.disable_sse {
+                json_mode::handle_json_mode(
                     request_id,
                     client_request,
                     protocol_version,
@@ -195,22 +186,21 @@ pub async fn handle_post(
                     response_out,
                     session_config,
                     Some(http_context.clone()),
-                ),
-                ServerMode::Sse => {
-                    sse_mode::handle_sse_streaming_mode(
-                        request_id,
-                        client_request,
-                        protocol_version,
-                        session_id.as_deref(),
-                        identity.as_ref(),
-                        input_stream,
-                        body_stream,
-                        response_out,
-                        session_config,
-                        Some(http_context.clone()),
-                    )
-                    .await
-                }
+                )
+            } else {
+                sse_mode::handle_sse_streaming_mode(
+                    request_id,
+                    client_request,
+                    protocol_version,
+                    session_id.as_deref(),
+                    identity.as_ref(),
+                    input_stream,
+                    body_stream,
+                    response_out,
+                    session_config,
+                    Some(http_context.clone()),
+                )
+                .await
             }
         }
         common::McpMessage::Notification(client_notification) => {
@@ -250,115 +240,6 @@ pub async fn handle_post(
             message_handlers::respond_with_result(result, response_out);
         }
     }
-}
-
-/// Authentication mode for MCP server
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum AuthMode {
-    /// Public server - no authentication required
-    Public,
-    /// OAuth protected server - JWT required
-    OAuth,
-}
-
-/// Get authentication mode from environment
-/// Defaults to Public if not specified
-fn get_auth_mode() -> AuthMode {
-    use crate::bindings::wasi::cli::environment::get_environment;
-
-    let env_vars = get_environment();
-
-    let mode = env_vars
-        .iter()
-        .find(|(k, _)| k == "MCP_AUTH_MODE")
-        .map(|(_, v)| v.as_str())
-        .unwrap_or("public");
-
-    match mode {
-        "oauth" => AuthMode::OAuth,
-        "public" => AuthMode::Public,
-        _ => {
-            eprintln!(
-                "[transport] WARNING: Invalid MCP_AUTH_MODE='{}', defaulting to 'public'. \
-                 Valid values: 'public', 'oauth'",
-                mode
-            );
-            AuthMode::Public
-        }
-    }
-}
-
-/// Check if JWT authentication is configured
-/// Returns true if either JWT_PUBLIC_KEY or JWT_JWKS_URI is set
-fn is_jwt_auth_configured() -> bool {
-    use crate::bindings::wasi::cli::environment::get_environment;
-
-    let env_vars = get_environment();
-
-    // Check for JWT_PUBLIC_KEY or JWT_JWKS_URI
-    env_vars
-        .iter()
-        .any(|(k, v)| (k == "JWT_PUBLIC_KEY" || k == "JWT_JWKS_URI") && !v.is_empty())
-}
-
-/// Validate HTTPS requirements per MCP OAuth spec
-///
-/// Spec requirements (lines 317, 321, 322):
-/// - All communication MUST use HTTPS
-/// - Localhost is explicitly allowed to use HTTP
-/// - Can be bypassed for local development with ALLOW_HTTP_INSECURE=true
-fn validate_https_requirements(request: &IncomingRequest) -> Result<(), String> {
-    use crate::bindings::wasi::cli::environment::get_environment;
-
-    // Get request scheme
-    let scheme = request.scheme();
-
-    // If already HTTPS, we're good
-    if matches!(
-        scheme,
-        Some(crate::bindings::wasi::http::types::Scheme::Https)
-    ) {
-        return Ok(());
-    }
-
-    // Check if this is localhost (explicitly allowed per spec line 322)
-    let headers = request.headers();
-    let host_values = headers.get("host");
-    if !host_values.is_empty()
-        && let Ok(host) = String::from_utf8(host_values[0].clone())
-    {
-        let host_lower = host.to_lowercase();
-        // Allow localhost and 127.0.0.1 per spec
-        if host_lower.starts_with("localhost")
-            || host_lower.starts_with("127.0.0.1")
-            || host_lower.starts_with("[::1]")
-        {
-            return Ok(());
-        }
-    }
-
-    // Check for explicit HTTPS bypass (dev/test only)
-    let env_vars = get_environment();
-    let allow_http = env_vars
-        .iter()
-        .find(|(k, _)| k == "ALLOW_HTTP_INSECURE")
-        .map(|(_, v)| v == "true")
-        .unwrap_or(false);
-
-    if allow_http {
-        eprintln!(
-            "[transport] WARNING: HTTPS enforcement disabled via ALLOW_HTTP_INSECURE=true. \
-             This MUST NOT be used in production (MCP spec lines 317, 321)"
-        );
-        return Ok(());
-    }
-
-    // Reject HTTP for non-localhost
-    Err(
-        "MCP servers MUST use HTTPS for non-localhost connections (spec lines 317, 321). \
-         Set ALLOW_HTTP_INSECURE=true for local development only."
-            .to_string(),
-    )
 }
 
 /// Build HTTP context for authorization
@@ -428,10 +309,10 @@ fn create_www_authenticate_challenge(
     // First check env var
     let server_uri: Option<String> = env_vars
         .iter()
-        .find(|(k, _)| k == "MCP_SERVER_URI")
+        .find(|(k, _)| k == "WASMCP_SERVER_URI")
         .map(|(_, v)| {
             eprintln!(
-                "[transport:www-authenticate] Using MCP_SERVER_URI from env: {}",
+                "[transport:www-authenticate] Using WASMCP_SERVER_URI from env: {}",
                 v
             );
             v.clone()

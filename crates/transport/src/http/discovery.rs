@@ -10,14 +10,14 @@ use crate::http::response::ResponseBuilder;
 use serde_json::json;
 
 /// Default cache TTL for discovery endpoints in seconds (1 hour)
-/// Can be overridden via MCP_DISCOVERY_CACHE_TTL environment variable
+/// Can be overridden via WASMCP_DISCOVERY_CACHE_TTL environment variable
 const DEFAULT_DISCOVERY_CACHE_TTL: u32 = 3600;
 
 /// Get cache TTL from environment or use default
 fn get_discovery_cache_ttl() -> String {
     let ttl = get_environment()
         .iter()
-        .find(|(k, _)| k == "MCP_DISCOVERY_CACHE_TTL")
+        .find(|(k, _)| k == "WASMCP_DISCOVERY_CACHE_TTL")
         .and_then(|(_, v)| v.parse::<u32>().ok())
         .unwrap_or(DEFAULT_DISCOVERY_CACHE_TTL);
 
@@ -88,7 +88,7 @@ fn build_protected_resource_metadata(request: &IncomingRequest) -> serde_json::V
     let resource = get_server_uri(&env_vars, request);
 
     // Get authorization server(s) from config
-    let auth_servers: Vec<String> = get_env(&env_vars, "MCP_AUTH_SERVER_URL")
+    let auth_servers: Vec<String> = get_env(&env_vars, "WASMCP_AUTH_SERVER_URL")
         .or_else(|| get_env(&env_vars, "JWT_ISSUER"))
         .map(|v| vec![v])
         .unwrap_or_default();
@@ -114,7 +114,7 @@ fn build_protected_resource_metadata(request: &IncomingRequest) -> serde_json::V
 /// Extract server URI from environment or request
 fn get_server_uri(env_vars: &[(String, String)], request: &IncomingRequest) -> String {
     // First try environment variable
-    if let Some(uri) = get_env(env_vars, "MCP_SERVER_URI") {
+    if let Some(uri) = get_env(env_vars, "WASMCP_SERVER_URI") {
         return uri;
     }
 

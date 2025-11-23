@@ -6,6 +6,45 @@
 use crate::bindings::wasmcp::mcp_v20250618::mcp::ErrorCode;
 use crate::bindings::wasmcp::mcp_v20250618::server_io::IoError;
 
+/// Session-specific error types
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SessionError {
+    /// Session not found in storage
+    NotFound,
+    /// Session has been terminated
+    Terminated,
+    /// Session ID required but not provided
+    Required,
+    /// Session validation failed
+    ValidationFailed(String),
+    /// Session storage operation failed
+    StorageFailed(String),
+}
+
+impl SessionError {
+    /// Get HTTP status code for this session error
+    pub fn http_status_code(&self) -> u16 {
+        match self {
+            Self::NotFound => 404,
+            Self::Terminated => 404,
+            Self::Required => 400,
+            Self::ValidationFailed(_) => 400,
+            Self::StorageFailed(_) => 500,
+        }
+    }
+
+    /// Get error message
+    pub fn message(&self) -> String {
+        match self {
+            Self::NotFound => "Session not found".to_string(),
+            Self::Terminated => "Session terminated".to_string(),
+            Self::Required => "Session ID required for non-initialize requests".to_string(),
+            Self::ValidationFailed(msg) => format!("Session validation error: {}", msg),
+            Self::StorageFailed(msg) => format!("Session storage error: {}", msg),
+        }
+    }
+}
+
 /// Unified transport error type
 #[derive(Debug)]
 pub enum TransportError {
@@ -34,7 +73,7 @@ pub enum TransportError {
     Protocol(String),
 
     /// Session management error
-    Session(String),
+    Session(SessionError),
 
     /// Internal error (should not happen in normal operation)
     Internal(String),
@@ -81,8 +120,23 @@ impl TransportError {
     }
 
     /// Create a session error
-    pub fn session(msg: impl Into<String>) -> Self {
-        Self::Session(msg.into())
+    pub fn session(error: SessionError) -> Self {
+        Self::Session(error)
+    }
+
+    /// Convenience constructor for session not found error
+    pub fn session_not_found() -> Self {
+        Self::Session(SessionError::NotFound)
+    }
+
+    /// Convenience constructor for session terminated error
+    pub fn session_terminated() -> Self {
+        Self::Session(SessionError::Terminated)
+    }
+
+    /// Convenience constructor for session required error
+    pub fn session_required() -> Self {
+        Self::Session(SessionError::Required)
     }
 
     /// Create an internal error
@@ -97,10 +151,7 @@ impl TransportError {
             Self::Unauthorized { .. } => 401,
             Self::Forbidden(_) => 403,
             Self::Protocol(_) => 400,
-            Self::Session(msg) if msg.contains("not found") => 404,
-            Self::Session(msg) if msg.contains("terminated") => 404,
-            Self::Session(msg) if msg.contains("required") => 400,
-            Self::Session(_) => 500,
+            Self::Session(session_error) => session_error.http_status_code(),
             Self::Io(_) => 500,
             Self::Internal(_) => 500,
         }
@@ -124,7 +175,7 @@ impl TransportError {
             Self::Unauthorized { message, .. } => message.clone(),
             Self::Forbidden(msg) => msg.clone(),
             Self::Protocol(msg) => msg.clone(),
-            Self::Session(msg) => msg.clone(),
+            Self::Session(session_error) => session_error.message(),
             Self::Io(e) => format!("I/O error: {:?}", e),
             Self::Internal(msg) => msg.clone(),
         }

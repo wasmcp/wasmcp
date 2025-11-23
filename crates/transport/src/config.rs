@@ -1,75 +1,118 @@
 //! Configuration for transport layer
 //!
 //! Environment variables:
-//! - `MCP_SESSION_ENABLED`: "true"/"false" (default: "false") - Enable session support
-//! - `MCP_SESSION_BUCKET`: Bucket name (default: "") - KV bucket for sessions
-//! - `MCP_SERVER_MODE`: "sse"/"json" (default: "sse") - Server response mode
+//! - `WASMCP_SESSION_ENABLED`: "true"/"false" (default: "false") - Enable session support
+//! - `WASMCP_SESSION_BUCKET`: Bucket name (default: "") - KV bucket for sessions
+//! - `WASMCP_DISABLE_SSE`: "true"/"false" (default: "false") - Use plain JSON instead of SSE for HTTP
+//! - `WASMCP_AUTH_MODE`: "public"/"oauth" (default: "public") - Authentication mode
+//! - `JWT_PUBLIC_KEY`: PEM-encoded public key (optional, alternative to JWT_JWKS_URI)
+//! - `JWT_JWKS_URI`: JWKS endpoint URL (optional, alternative to JWT_PUBLIC_KEY)
 
 use crate::bindings::wasi::cli::environment::get_environment;
 use std::collections::HashMap;
 
-/// Server mode for handling responses
+/// Authentication mode for MCP server
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum ServerMode {
-    /// True streaming SSE - immediate writes (default)
+pub enum AuthMode {
+    /// Public server - no authentication required (default)
     #[default]
-    Sse,
-    /// Plain JSON-RPC - single response, no SSE
-    Json,
+    Public,
+    /// OAuth protected server - JWT required
+    OAuth,
 }
 
-/// Session configuration from environment variables
+/// Transport configuration from environment variables
 #[derive(Debug, Clone)]
-pub struct SessionConfig {
-    pub enabled: bool,
-    pub bucket_name: String,
-    pub mode: ServerMode,
+pub struct TransportConfig {
+    // Session configuration
+    pub session_enabled: bool,
+    pub session_bucket_name: String,
+
+    // HTTP mode (SSE vs plain JSON)
+    pub disable_sse: bool,
+
+    // Authentication configuration
+    pub auth_mode: AuthMode,
+    pub jwt_configured: bool,
 }
 
-impl SessionConfig {
-    /// Load session configuration from environment variables
+impl TransportConfig {
+    /// Load transport configuration from environment variables
     ///
-    /// - `MCP_SESSION_ENABLED`: "true"/"false" (case-insensitive, default: false)
-    /// - `MCP_SESSION_BUCKET`: Bucket name (default: empty string)
-    /// - `MCP_SERVER_MODE`: "sse"/"json" (case-insensitive, default: sse)
+    /// Reads all configuration in a single pass:
+    /// - `WASMCP_SESSION_ENABLED`: "true"/"false" (case-insensitive, default: false)
+    /// - `WASMCP_SESSION_BUCKET`: Bucket name (default: empty string)
+    /// - `WASMCP_DISABLE_SSE`: "true"/"false" (case-insensitive, default: false)
+    /// - `WASMCP_AUTH_MODE`: "public"/"oauth" (case-insensitive, default: public)
+    /// - `JWT_PUBLIC_KEY`: PEM public key (optional)
+    /// - `JWT_JWKS_URI`: JWKS endpoint URL (optional)
     pub fn from_env() -> Self {
         let env_vars = get_environment();
         let env_map: HashMap<String, String> = env_vars.into_iter().collect();
 
-        let enabled = env_map
-            .get("MCP_SESSION_ENABLED")
+        // Session configuration
+        let session_enabled = env_map
+            .get("WASMCP_SESSION_ENABLED")
             .map(|v| v.to_lowercase() == "true")
             .unwrap_or(false);
 
-        let bucket_name = env_map
-            .get("MCP_SESSION_BUCKET")
+        let session_bucket_name = env_map
+            .get("WASMCP_SESSION_BUCKET")
             .cloned()
             .unwrap_or_default();
 
-        let mode = env_map
-            .get("MCP_SERVER_MODE")
-            .and_then(|v| match v.to_lowercase().as_str() {
-                "sse" => Some(ServerMode::Sse),
-                "json" => Some(ServerMode::Json),
-                _ => None,
-            })
-            .unwrap_or(ServerMode::Sse); // Default to SSE mode
+        // HTTP mode (SSE vs plain JSON)
+        let disable_sse = env_map
+            .get("WASMCP_DISABLE_SSE")
+            .map(|v| v.to_lowercase() == "true")
+            .unwrap_or(false);
 
-        SessionConfig {
-            enabled,
-            bucket_name,
-            mode,
+        // Authentication mode
+        let auth_mode_str = env_map
+            .get("WASMCP_AUTH_MODE")
+            .map(|v| v.to_lowercase())
+            .unwrap_or_else(|| "public".to_string());
+
+        let auth_mode = match auth_mode_str.as_str() {
+            "oauth" => AuthMode::OAuth,
+            "public" => AuthMode::Public,
+            _ => {
+                eprintln!(
+                    "[transport] WARNING: Invalid WASMCP_AUTH_MODE='{}', defaulting to 'public'. \
+                     Valid values: 'public', 'oauth'",
+                    auth_mode_str
+                );
+                AuthMode::Public
+            }
+        };
+
+        // Check if JWT is configured
+        let jwt_configured = env_map
+            .get("JWT_PUBLIC_KEY")
+            .filter(|v| !v.is_empty())
+            .is_some()
+            || env_map
+                .get("JWT_JWKS_URI")
+                .filter(|v| !v.is_empty())
+                .is_some();
+
+        TransportConfig {
+            session_enabled,
+            session_bucket_name,
+            disable_sse,
+            auth_mode,
+            jwt_configured,
         }
     }
 
-    /// Get bucket name, returning default if empty
+    /// Get session bucket name, returning default if empty
     ///
     /// Returns the configured bucket name, or the default bucket ("") if not configured.
-    pub fn get_bucket(&self) -> &str {
-        if self.bucket_name.is_empty() {
+    pub fn get_session_bucket(&self) -> &str {
+        if self.session_bucket_name.is_empty() {
             crate::http::DEFAULT_SESSION_BUCKET
         } else {
-            &self.bucket_name
+            &self.session_bucket_name
         }
     }
 }
