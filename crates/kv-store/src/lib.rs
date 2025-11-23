@@ -196,13 +196,13 @@ impl Guest for Component {
     type Bucket = BucketImpl;
 
     fn open(identifier: String) -> Result<Bucket, Error> {
-        // Use MCP_SESSION_BUCKET if identifier is empty
+        // Use WASMCP_SESSION_BUCKET if identifier is empty
         let bucket_name = if identifier.is_empty() {
             use bindings::wasi::cli::environment::get_environment;
             let env_vars = get_environment();
             env_vars
                 .iter()
-                .find(|(k, _)| k == "MCP_SESSION_BUCKET")
+                .find(|(k, _)| k == "WASMCP_SESSION_BUCKET")
                 .map(|(_, v)| v.clone())
                 .unwrap_or_else(|| "default".to_string())
         } else {

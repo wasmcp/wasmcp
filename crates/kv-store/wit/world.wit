@@ -1,4 +1,4 @@
-package wasmcp:kv-store@0.1.0;
+package wasmcp:kv-store@0.1.1;
 
 world kv-store {
     import wasi:io/streams@0.2.8;

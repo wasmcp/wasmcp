@@ -18,7 +18,7 @@ mod validation;
 
 use crate::bindings::exports::wasi::http::incoming_handler::Guest;
 use crate::bindings::wasi::http::types::{IncomingRequest, Method, ResponseOutparam};
-use crate::config::SessionConfig;
+use crate::config::TransportConfig;
 use crate::error::TransportError;
 use crate::send_error;
 
@@ -36,7 +36,7 @@ impl Guest for HttpTransportGuest {
 
 async fn handle_http_request_async(request: IncomingRequest, response_out: ResponseOutparam) {
     // 1. Load session configuration once for the entire request
-    let session_config = SessionConfig::from_env();
+    let session_config = TransportConfig::from_env();
 
     // 2. Validate Origin header (DNS rebinding protection)
     if let Err(e) = validation::validate_origin(&request) {

@@ -8,7 +8,7 @@
 use crate::bindings::wasi::http::types::{
     Fields, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
-use crate::config::SessionConfig;
+use crate::config::TransportConfig;
 use crate::error::TransportError;
 
 /// Macro to send an error response and return early
@@ -143,10 +143,10 @@ pub fn transport_error_to_response(error: &TransportError) -> OutgoingResponse {
 
 /// Create 405 Method Not Allowed response with appropriate Allow header
 pub fn create_method_not_allowed_response(
-    session_config: &SessionConfig,
+    session_config: &TransportConfig,
 ) -> Result<OutgoingResponse, String> {
     // Set Allow header based on session support
-    let allow_methods = if session_config.enabled {
+    let allow_methods = if session_config.session_enabled {
         b"POST, DELETE".to_vec()
     } else {
         b"POST".to_vec()

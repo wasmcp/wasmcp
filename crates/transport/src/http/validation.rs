@@ -105,13 +105,13 @@ pub fn validate_origin(request: &IncomingRequest) -> Result<(), TransportError> 
     let env_vars = get_environment();
     let require_origin = env_vars
         .iter()
-        .find(|(k, _)| k == "MCP_REQUIRE_ORIGIN")
+        .find(|(k, _)| k == "WASMCP_REQUIRE_ORIGIN")
         .map(|(_, v)| v.as_str())
         .unwrap_or("false");
 
     let allowed_origins = env_vars
         .iter()
-        .find(|(k, _)| k == "MCP_ALLOWED_ORIGINS")
+        .find(|(k, _)| k == "WASMCP_ALLOWED_ORIGINS")
         .map(|(_, v)| v.as_str());
 
     let origin = if origin_values.is_empty() {
@@ -138,7 +138,7 @@ pub fn validate_origin(request: &IncomingRequest) -> Result<(), TransportError> 
                 Ok(())
             } else {
                 Err(TransportError::validation(format!(
-                    "Origin '{}' not in allowed list. Set MCP_ALLOWED_ORIGINS environment variable.",
+                    "Origin '{}' not in allowed list. Set WASMCP_ALLOWED_ORIGINS environment variable.",
                     origin
                 )))
             }

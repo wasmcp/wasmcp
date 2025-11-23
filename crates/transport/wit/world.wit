@@ -1,4 +1,4 @@
-package wasmcp:transport@0.1.3;
+package wasmcp:transport@0.1.4;
 
 world transport {
     // Export both HTTP and CLI interfaces

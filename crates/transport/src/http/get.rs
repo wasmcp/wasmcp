@@ -6,7 +6,7 @@
 //! All other GET requests return 405 Method Not Allowed.
 
 use crate::bindings::wasi::http::types::{IncomingRequest, ResponseOutparam};
-use crate::config::SessionConfig;
+use crate::config::TransportConfig;
 use crate::error::TransportError;
 use crate::http::{discovery, response};
 use crate::send_error;
@@ -15,7 +15,7 @@ pub fn handle_get(
     request: IncomingRequest,
     _protocol_version: String,
     response_out: ResponseOutparam,
-    session_config: &SessionConfig,
+    session_config: &TransportConfig,
 ) {
     // Get request path
     let path = match request.path_with_query() {
@@ -42,7 +42,7 @@ pub fn handle_get(
 }
 
 /// Send 405 Method Not Allowed response
-fn send_method_not_allowed(response_out: ResponseOutparam, session_config: &SessionConfig) {
+fn send_method_not_allowed(response_out: ResponseOutparam, session_config: &TransportConfig) {
     match response::create_method_not_allowed_response(session_config) {
         Ok(response) => {
             crate::bindings::wasi::http::types::ResponseOutparam::set(response_out, Ok(response));

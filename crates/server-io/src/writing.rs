@@ -1,50 +1,31 @@
 //! Stream writing functions with buffering support
 //!
 //! Provides buffered and streaming write modes:
-//! - Buffered mode (JSON): Accumulate all writes in memory, flush at end
+//! - Buffered mode (plain JSON): Accumulate all writes in memory, flush at end
 //! - Streaming mode (SSE/stdio): Write immediately with async yielding
 
-use crate::bindings::exports::wasmcp::mcp_v20250618::server_io::IoError;
+use crate::bindings::exports::wasmcp::mcp_v20250618::server_io::{IoError, MessageFrame};
 use crate::bindings::wasi::io::streams::OutputStream;
 use std::cell::RefCell;
 
-/// Thread-local buffer for accumulating writes in buffered mode (JSON)
+/// Thread-local buffer for accumulating writes in buffered mode (plain JSON)
 thread_local! {
     pub(crate) static BUFFER: RefCell<Vec<u8>> = RefCell::new(Vec::new());
 }
 
-/// Server mode - mirrors transport crate's ServerMode enum
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ServerMode {
-    Sse,
-    Json,
-    Stdio,
+/// Determine if frame indicates buffering mode
+///
+/// Plain JSON (empty prefix/suffix) requires buffering for atomic HTTP response.
+/// SSE and stdio (with framing) use immediate writes.
+fn should_buffer(frame: &MessageFrame) -> bool {
+    frame.prefix.is_empty() && frame.suffix.is_empty()
 }
 
-/// Get the current server mode from MCP_SERVER_MODE env var
-/// Parsing logic matches transport/src/config.rs
-fn get_server_mode() -> ServerMode {
-    std::env::var("MCP_SERVER_MODE")
-        .ok()
-        .and_then(|v| match v.to_lowercase().as_str() {
-            "sse" => Some(ServerMode::Sse),
-            "json" => Some(ServerMode::Json),
-            "stdio" => Some(ServerMode::Stdio),
-            _ => None,
-        })
-        .unwrap_or(ServerMode::Sse) // Default to SSE mode (immediate writes, allows notifications)
-}
-
-/// Check if we're in buffer mode
-pub fn is_buffer_mode() -> bool {
-    // Buffer for: json mode
-    // Don't buffer for: sse and stdio modes (immediate writes)
-    matches!(get_server_mode(), ServerMode::Json)
-}
-
-/// Check if we're in JSON mode (suppresses notifications)
-pub fn is_json_mode() -> bool {
-    matches!(get_server_mode(), ServerMode::Json)
+/// Determine if frame indicates notification suppression
+///
+/// Per MCP spec: plain JSON mode only sends final response, SSE/stdio allow notifications.
+pub fn should_suppress_notifications(frame: &MessageFrame) -> bool {
+    frame.prefix.is_empty() && frame.suffix.is_empty()
 }
 
 /// Write bytes to output stream with async yielding pattern
@@ -53,9 +34,11 @@ pub fn is_json_mode() -> bool {
 /// 1. Write data incrementally based on check_write() capacity
 /// 2. Flush after writing complete chunk
 /// 3. Subscribe to pollable to yield to async executor
-pub fn write_bytes(stream: &OutputStream, data: &[u8]) -> Result<(), IoError> {
-    // Check if we're in buffer mode
-    if is_buffer_mode() {
+///
+/// Frame determines buffering: plain JSON buffers, SSE/stdio stream immediately.
+pub fn write_bytes(stream: &OutputStream, data: &[u8], frame: &MessageFrame) -> Result<(), IoError> {
+    // Check if frame indicates buffering (plain JSON)
+    if should_buffer(frame) {
         BUFFER.with(|buf| {
             buf.borrow_mut().extend_from_slice(data);
         });
