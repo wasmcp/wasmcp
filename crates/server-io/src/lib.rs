@@ -127,9 +127,7 @@ impl Guest for ServerIo {
         })?;
 
         // Clear buffer after successful write
-        writing::BUFFER.with(|buf| {
-            buf.borrow_mut().clear()
-        });
+        writing::BUFFER.with(|buf| buf.borrow_mut().clear());
 
         Ok(())
     }

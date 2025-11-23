@@ -331,7 +331,7 @@ jobs:
             wasmcp compose server target/wasm32-wasip2/release/my_tools.wasm -o server.wasm
 
             # Run
-            wasmtime serve -Scli -Shttp -Skeyvalue server.wasm
+            wasmtime serve -Scli -Shttp -Skeyvalue --env ALLOW_HTTP_INSECURE=true server.wasm
             ```
 
             **Full Changelog**: https://github.com/${{ github.repository }}/compare/cli-v${{ inputs.version }}

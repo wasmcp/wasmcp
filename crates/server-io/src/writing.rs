@@ -36,7 +36,11 @@ pub fn should_suppress_notifications(frame: &MessageFrame) -> bool {
 /// 3. Subscribe to pollable to yield to async executor
 ///
 /// Frame determines buffering: plain JSON buffers, SSE/stdio stream immediately.
-pub fn write_bytes(stream: &OutputStream, data: &[u8], frame: &MessageFrame) -> Result<(), IoError> {
+pub fn write_bytes(
+    stream: &OutputStream,
+    data: &[u8],
+    frame: &MessageFrame,
+) -> Result<(), IoError> {
     // Check if frame indicates buffering (plain JSON)
     if should_buffer(frame) {
         BUFFER.with(|buf| {
