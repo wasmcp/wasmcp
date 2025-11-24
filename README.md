@@ -95,6 +95,123 @@ JWT_JWKS_URI=https://api.workos.com/sso/jwks/client_01234567890 \
 wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
 ```
 
+## Environment Variables
+
+All wasmcp servers support runtime configuration via environment variables. These control transport behavior, authentication, sessions, and security policies.
+
+> **See also**: [CLI Reference](cli/README.md) for detailed runtime configuration and differences between Spin and Wasmtime.
+
+### HTTP Transport Mode
+
+Control whether HTTP transport uses Server-Sent Events (SSE) for streaming or plain JSON mode.
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `WASMCP_DISABLE_SSE` | Disable SSE streaming, use plain JSON responses | `false` | No |
+
+**When to use**: Set to `true` for clients that don't support Server-Sent Events. In plain JSON mode, notifications are suppressed and only a single response is sent per request.
+
+**Example**:
+```bash
+# Plain JSON mode (no streaming)
+WASMCP_DISABLE_SSE=true wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+```
+
+### Session Management
+
+> ⚠️ **Warning**: Sessions require the **Spin runtime**. Wasmtime spawns new component instances per request and doesn't persist the key-value store across requests. Sessions created in one request won't be available in subsequent requests when using Wasmtime.
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `WASMCP_SESSION_ENABLED` | Enable HTTP session tracking via `Mcp-Session-Id` header | `false` | No |
+| `WASMCP_SESSION_BUCKET` | Key-value bucket name for session storage | `default` | No |
+
+**Example** (Spin runtime required):
+```bash
+# Compose for Spin runtime
+wasmcp compose server calculator.wasm --runtime spin -o server.wasm
+
+# Configure in spin.toml:
+# [component.mcp.environment]
+# WASMCP_SESSION_ENABLED = "true"
+# WASMCP_SESSION_BUCKET = "default"
+#
+# [component.mcp]
+# key_value_stores = ["default"]
+
+spin up
+```
+
+### Authentication & Authorization
+
+Configure OAuth 2.1 / JWT bearer token validation per the [MCP OAuth spec](https://spec.modelcontextprotocol.io/2025-06-18/architecture#oauth).
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `WASMCP_AUTH_MODE` | Authentication mode: `public` or `oauth` | `public` | No |
+| `JWT_ISSUER` | Expected JWT issuer URL | - | Yes (when `oauth`) |
+| `JWT_JWKS_URI` | JWKS endpoint for JWT public key retrieval | - | Yes (when `oauth`)* |
+| `JWT_PUBLIC_KEY` | PEM-encoded public key (alternative to JWKS) | - | No |
+| `JWT_AUDIENCE` | Expected JWT audience claim (server URI) | - | No** |
+| `JWT_REQUIRED_SCOPES` | Comma-separated required OAuth scopes | - | No |
+| `JWT_JWKS_TTL` | JWKS cache TTL in seconds | `300` | No |
+
+\* Either `JWT_JWKS_URI` or `JWT_PUBLIC_KEY` required when `WASMCP_AUTH_MODE=oauth`
+
+\*\* Only required for traditional OAuth pattern. Do NOT set for dynamic registration flows (e.g., WorkOS) where audience is the per-user client ID.
+
+**Example** (OAuth with dynamic registration):
+```bash
+WASMCP_AUTH_MODE=oauth \
+JWT_ISSUER=https://divine-lion-50.authkit.app \
+JWT_JWKS_URI=https://divine-lion-50.authkit.app/oauth2/jwks \
+JWT_JWKS_TTL=300 \
+wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+```
+
+### CORS & Security
+
+Control Origin header validation to prevent DNS rebinding attacks.
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `WASMCP_ALLOWED_ORIGINS` | Comma-separated allowed Origin values, or `*` for all | localhost only | No |
+| `WASMCP_REQUIRE_ORIGIN` | Require Origin header on all requests | `false` | No |
+
+**Default allowed origins**: `http://127.0.0.1`, `http://localhost`, `http://[::1]`
+
+**Example**:
+```bash
+# Allow specific origins
+WASMCP_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com \
+wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+
+# Allow all origins (use with caution)
+WASMCP_ALLOWED_ORIGINS=* wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+```
+
+> **Note**: Most MCP desktop clients don't send Origin headers. Only enable `WASMCP_REQUIRE_ORIGIN` if all your clients are browser-based.
+
+### Discovery & Metadata
+
+Configure OAuth Protected Resource metadata per [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728).
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `WASMCP_SERVER_URI` | Server's canonical URI (resource identifier) | Host header | No |
+| `WASMCP_AUTH_SERVER_URL` | Authorization server URL for discovery metadata | `JWT_ISSUER` | No |
+| `WASMCP_DISCOVERY_CACHE_TTL` | Cache TTL for `/.well-known/*` endpoints (seconds) | `3600` | No |
+
+These variables control the OAuth discovery endpoint (`/.well-known/oauth-protected-resource`) and `WWW-Authenticate` challenge headers.
+
+**Example**:
+```bash
+WASMCP_SERVER_URI=https://mcp.example.com \
+WASMCP_AUTH_SERVER_URL=https://auth.example.com \
+WASMCP_DISCOVERY_CACHE_TTL=300 \
+wasmtime serve -Scli -Skeyvalue -Shttp server.wasm
+```
+
 ## Features
 
 - **Stateful Sessions** - Built-in session management with key-value storage for multi-request workflows

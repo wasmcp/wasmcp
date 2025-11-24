@@ -40,6 +40,11 @@ wit-deps = "0.5"
 futures-util = "0.3"
 serde_json = "1.0"
 toml = "0.9"
+jsonwebtoken = "9"
+rsa = "0.9"
+rand = "0.8"
+chrono = "0.4"
+base64 = "0.22"
 
 # MCP server support (always enabled)
 rmcp = { version = "0.8.3", features = ["server", "client", "transport-io", "transport-streamable-http-server", "transport-streamable-http-client", "transport-streamable-http-client-reqwest", "macros"] }

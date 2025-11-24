@@ -41,14 +41,14 @@ pub fn handle_initialize_request(
     let new_session_id = session::initialize_session(session_config);
 
     // Bind JWT claims to session if both exist
-    if let (Some(session_id), Some(identity)) = (&new_session_id, identity) {
-        if let Err(e) = session::bind_identity_to_session(session_id, identity, session_config) {
-            eprintln!(
-                "[transport:initialize] WARNING: Failed to bind JWT identity to session {}: {}. \
+    if let (Some(session_id), Some(identity)) = (&new_session_id, identity)
+        && let Err(e) = session::bind_identity_to_session(session_id, identity, session_config)
+    {
+        eprintln!(
+            "[transport:initialize] WARNING: Failed to bind JWT identity to session {}: {}. \
                  Session created but authorization may not work correctly.",
-                session_id, e
-            );
-        }
+            session_id, e
+        );
     }
 
     // Create plain JSON response with optional session header

@@ -165,6 +165,16 @@ pub async fn handle_post(
                 return;
             }
 
+            // Not initialize - validate session identity binding if both session and identity present
+            // This prevents session hijacking where User B's JWT could access User A's session
+            if let (Some(sess_id), Some(ident)) = (&session_id, &identity)
+                && let Err(e) = session::validate_session_identity(sess_id, ident, session_config)
+            {
+                drop(input_stream);
+                drop(body_stream);
+                send_error!(response_out, e);
+            }
+
             // Not initialize - check if session is required
             if !session::check_session_required(session_config, session_id.as_deref()) {
                 drop(input_stream);

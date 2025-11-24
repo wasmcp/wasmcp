@@ -19,6 +19,8 @@ pub enum SessionError {
     ValidationFailed(String),
     /// Session storage operation failed
     StorageFailed(String),
+    /// JWT identity does not match session's bound identity (session hijacking attempt)
+    IdentityMismatch(String),
 }
 
 impl SessionError {
@@ -30,6 +32,7 @@ impl SessionError {
             Self::Required => 400,
             Self::ValidationFailed(_) => 400,
             Self::StorageFailed(_) => 500,
+            Self::IdentityMismatch(_) => 403, // Forbidden - valid JWT but wrong session
         }
     }
 
@@ -41,6 +44,7 @@ impl SessionError {
             Self::Required => "Session ID required for non-initialize requests".to_string(),
             Self::ValidationFailed(msg) => format!("Session validation error: {}", msg),
             Self::StorageFailed(msg) => format!("Session storage error: {}", msg),
+            Self::IdentityMismatch(msg) => format!("Session identity mismatch: {}", msg),
         }
     }
 }

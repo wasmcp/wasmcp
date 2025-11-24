@@ -1,0 +1,66 @@
+spin_manifest_version = 2
+
+[application]
+name = "todo-list-auth"
+version = "0.1.0"
+description = "Todo List MCP server with JWT authorization patterns"
+authors = ["wasmcp contributors"]
+
+# Trigger configuration for MCP over HTTP
+[[trigger.http]]
+route = "/..."
+component = "todo-list-auth"
+
+# The todo list component with authorization
+[component.todo-list-auth]
+source = "mcp-server.wasm"
+description = "Todo list with scope-based, role-based, and attribute-based authorization"
+allowed_outbound_hosts = []
+key_value_stores = ["default"]
+
+[component.todo-list-auth.environment]
+WASMCP_AUTH_MODE = "oauth"
+WASMCP_SESSION_ENABLED = "true"
+WASMCP_SESSION_BUCKET = "default"  # KV bucket for session storage
+JWT_ISSUER = "wasmcp-local-test"
+JWT_AUDIENCE = "http://localhost:3000"
+JWT_PUBLIC_KEY = "{{ jwt_public_key }}"
+
+# Define variables that can be set via -e flags
+[variables]
+jwt_public_key = { default = "" }
+
+# ============================================================================
+# Development Configuration
+# ============================================================================
+# For local testing:
+#
+#   export JWT_PUBLIC_KEY="$(cat ~/.wasmcp/jwt-test/public.pem)"
+#   spin up -e JWT_PUBLIC_KEY="$JWT_PUBLIC_KEY"
+#
+# All other settings (JWT_ISSUER, WASMCP_SESSION_ENABLED, etc.) are
+# pre-configured in the component.todo-list-auth.environment section above.
+#
+# ============================================================================
+# Production Configuration
+# ============================================================================
+# For production, override with your OAuth/OIDC provider settings:
+#
+#   export JWT_PUBLIC_KEY=$(curl https://your-auth-provider.com/.well-known/jwks.json | jq -r '.keys[0]')
+#   spin up -e JWT_PUBLIC_KEY="$JWT_PUBLIC_KEY" \
+#           -e JWT_ISSUER="https://your-auth-provider.com" \
+#           -e JWT_AUDIENCE="https://your-api.com"
+#
+# ============================================================================
+# Authorization Patterns Demonstrated
+# ============================================================================
+# 1. Scope-Based (OAuth scopes):
+#    - mcp:read: list_items (view todos)
+#    - mcp:write: add_item (create todos)
+#
+# 2. Role-Based (custom claims):
+#    - role=admin: remove_item, clear_all (delete operations)
+#
+# 3. Attribute-Based (fine-grained):
+#    - allowed_tools="add_item,list_items": analyst can only use these tools
+#
