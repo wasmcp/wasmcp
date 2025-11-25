@@ -36,7 +36,7 @@ impl Guest for Calculator {
                     }"#
                     .to_string(),
                     options: Some(ToolOptions {
-                        meta: None,
+                        meta: Some(r#"{"component_id":"calculator-rs","tags":{"category":"math","tool-level":"foundational"}}"#.to_string()),
                         annotations: None,
                         description: Some("Add two numbers together".to_string()),
                         output_schema: None,
@@ -54,7 +54,13 @@ impl Guest for Calculator {
                         "required": ["a", "b"]
                     }"#
                     .to_string(),
-                    options: None,
+                    options: Some(ToolOptions {
+                        meta: Some(r#"{"component_id":"calculator-rs","tags":{"category":"math","tool-level":"foundational"}}"#.to_string()),
+                        annotations: None,
+                        description: Some("Subtract two numbers".to_string()),
+                        output_schema: None,
+                        title: Some("Subtract".to_string()),
+                    }),
                 },
                 Tool {
                     name: "factorial".to_string(),
@@ -72,7 +78,7 @@ impl Guest for Calculator {
                     }"#
                     .to_string(),
                     options: Some(ToolOptions {
-                        meta: None,
+                        meta: Some(r#"{"component_id":"calculator-rs","tags":{"category":"math","tool-level":"foundational"}}"#.to_string()),
                         annotations: None,
                         description: Some("Calculate factorial with progress updates".to_string()),
                         output_schema: None,

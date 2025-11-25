@@ -61,7 +61,7 @@ impl Guest for TodoListAuth {
                     options: Some(ToolOptions {
                         description: Some("Add a new todo item (requires mcp:write scope)".to_string()),
                         title: Some("Add Item".to_string()),
-                        meta: None,
+                        meta: Some(r#"{"component_id":"todo-list-auth","tags":{"category":"productivity","tool-level":"foundational"}}"#.to_string()),
                         annotations: None,
                         output_schema: None,
                     }),
@@ -76,7 +76,7 @@ impl Guest for TodoListAuth {
                     options: Some(ToolOptions {
                         description: Some("List all todo items (requires mcp:read scope)".to_string()),
                         title: Some("List Items".to_string()),
-                        meta: None,
+                        meta: Some(r#"{"component_id":"todo-list-auth","tags":{"category":"productivity","tool-level":"foundational"}}"#.to_string()),
                         annotations: None,
                         output_schema: None,
                     }),
@@ -96,7 +96,7 @@ impl Guest for TodoListAuth {
                             "Remove a todo item (requires role=admin claim)".to_string()
                         ),
                         title: Some("Remove Item".to_string()),
-                        meta: None,
+                        meta: Some(r#"{"component_id":"todo-list-auth","tags":{"category":"productivity","tool-level":"foundational"}}"#.to_string()),
                         annotations: None,
                         output_schema: None,
                     }),
@@ -113,7 +113,7 @@ impl Guest for TodoListAuth {
                             "Clear all todo items (requires role=admin claim)".to_string()
                         ),
                         title: Some("Clear All".to_string()),
-                        meta: None,
+                        meta: Some(r#"{"component_id":"todo-list-auth","tags":{"category":"productivity","tool-level":"foundational"}}"#.to_string()),
                         annotations: None,
                         output_schema: None,
                     }),
