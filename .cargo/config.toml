@@ -16,7 +16,7 @@ runner = [
     "config",
 ]
 
-# Cargo alias to run tests on native target instead of wasm
+# Cargo aliases
 # Usage: cargo test-native (from anywhere in workspace)
 [alias]
-test-native = "test --lib --target aarch64-apple-darwin"
+test-native = "test --lib"

@@ -11,6 +11,7 @@ exclude = [
     "examples/*",
     "tmp/*",
     "crates/wit",
+    "tools/dev",  # Development tool - builds natively outside workspace
     # Outdated crates pending removal
     "crates/http-server-io",
     "crates/http-transport",
