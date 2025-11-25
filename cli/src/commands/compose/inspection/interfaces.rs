@@ -50,6 +50,8 @@ pub enum InterfaceType {
     Prompts,
     /// server-io interface
     ServerIo,
+    /// server-auth interface (JWT validation)
+    ServerAuth,
     /// sessions interface
     Sessions,
     /// session-manager interface
@@ -65,6 +67,7 @@ impl InterfaceType {
             Self::Resources => "resources",
             Self::Prompts => "prompts",
             Self::ServerIo => "server-io",
+            Self::ServerAuth => "server-auth",
             Self::Sessions => "sessions",
             Self::SessionManager => "session-manager",
         }
@@ -136,6 +139,10 @@ pub enum ComponentType {
     ServerIo,
     /// Session store component
     SessionStore,
+    /// Authorization component (JWT/OAuth)
+    Authorization,
+    /// Key-value store component
+    KvStore,
 }
 
 impl ComponentType {
@@ -151,6 +158,8 @@ impl ComponentType {
             Self::PromptsMiddleware => "prompts-middleware",
             Self::ServerIo => "server-io",
             Self::SessionStore => "session-store",
+            Self::Authorization => "authorization",
+            Self::KvStore => "kv-store",
         }
     }
 
@@ -298,6 +307,8 @@ mod tests {
         );
         assert_eq!(ComponentType::ServerIo.name(), "server-io");
         assert_eq!(ComponentType::SessionStore.name(), "session-store");
+        assert_eq!(ComponentType::Authorization.name(), "authorization");
+        assert_eq!(ComponentType::KvStore.name(), "kv-store");
     }
 
     #[test]

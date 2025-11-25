@@ -72,7 +72,7 @@ impl Guest for StdioTransportGuest {
 
                     // Handle logging/setLevel directly
                     if let ClientRequest::LoggingSetLevel(level) = &client_request {
-                        let level_str = common::log_level_to_string(*level);
+                        let level_str = common::protocol::log_level_to_string(*level);
                         if let Err(e) = common::handle_set_log_level(level_str) {
                             write_error(&stdout, Some(request_id.clone()), e);
                             continue;
@@ -94,9 +94,11 @@ impl Guest for StdioTransportGuest {
                         client_request,
                         protocol_version,
                         Some("0"),     // Session ID "0" indicates stdio mode
+                        None,          // No identity in stdio mode
                         String::new(), // No session bucket in stdio
                         &stdout,
                         &common::stdio_frame(),
+                        None, // No HTTP context in stdio mode
                     ) {
                         Ok(result) => {
                             if let Err(e) = common::write_mcp_result(
@@ -121,6 +123,7 @@ impl Guest for StdioTransportGuest {
                         Some("0"),     // Session ID "0" indicates stdio mode
                         String::new(), // No session bucket in stdio
                         &common::stdio_frame(),
+                        None, // No HTTP context in stdio mode
                     ) {
                         eprintln!("[ERROR] Notification handling failed: {:?}", e);
                     }
@@ -135,8 +138,10 @@ impl Guest for StdioTransportGuest {
                         None,
                         protocol_version,
                         Some("0"), // Session ID "0" indicates stdio mode
+                        None,
                         "",
                         &common::stdio_frame(),
+                        None, // No HTTP context in stdio mode
                     );
 
                     let message = ClientMessage::Result((result_id, client_result));
@@ -152,8 +157,10 @@ impl Guest for StdioTransportGuest {
                         None,
                         protocol_version,
                         Some("0"), // Session ID "0" indicates stdio mode
+                        None,
                         "",
                         &common::stdio_frame(),
+                        None, // No HTTP context in stdio mode
                     );
 
                     let message = ClientMessage::Error((error_id, error_code));

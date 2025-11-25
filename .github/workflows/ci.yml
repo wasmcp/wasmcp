@@ -32,6 +32,8 @@ env:
   RUST_VERSION: "1.89"
   # Framework crates that require WIT dependency fetching
   FRAMEWORK_CRATES: |
+    authorization
+    kv-store
     method-not-found
     prompts-middleware
     resources-middleware
@@ -137,6 +139,8 @@ jobs:
           cache-key: components
           # Cache component crates (4 middleware components built in CI)
           workspaces: |
+            crates/authorization
+            crates/kv-store
             crates/method-not-found
             crates/prompts-middleware
             crates/resources-middleware
@@ -166,6 +170,8 @@ jobs:
       - name: Build specific components
         run: |
           cargo build --release \
+            -p authorization \
+            -p kv-store \
             -p method-not-found \
             -p prompts-middleware \
             -p resources-middleware \

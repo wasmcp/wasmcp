@@ -9,9 +9,11 @@ pub mod dependencies;
 pub mod framework;
 pub mod spec;
 
-pub use dependencies::{PackageClient, download_dependencies, get_dependency_path};
+pub use dependencies::{
+    DownloadConfig, PackageClient, discover_required_dependencies, download_dependencies,
+    get_dependency_path,
+};
 pub use framework::{
-    FrameworkComponent, resolve_framework_component, resolve_method_not_found_component,
-    resolve_server_io_component, resolve_session_store_component, resolve_transport_component,
+    resolve_framework_component, resolve_kv_store_component, resolve_service_with_runtime,
 };
 pub use spec::resolve_component_spec;

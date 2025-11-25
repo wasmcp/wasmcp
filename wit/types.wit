@@ -6,6 +6,7 @@ interface mcp {
         input-stream,
         output-stream,
     };
+    use wasmcp:auth/types@0.1.0.{jwt, jwt-claims};
 
     /// Opaque pagination cursor.
     type cursor = string;
@@ -21,18 +22,16 @@ interface mcp {
     /// Uniform Resource Identifier.
     type uri = string;
 
-    /// JSON Web Token (JWT).
-    type jwt = list<u8>;
-
-    /// Identity claims from the JWT payload.
-    type claims = list<tuple<string, string>>;
-
     /// Identity information from authentication.
+    /// Identity information from authentication.
+    ///
+    /// Per MCP spec, HTTP transports use OAuth 2.1 for authentication.
+    /// The jwt and jwt-claims types are provided by wasmcp:oauth/types.
     record identity {
         /// Raw bearer token as received.
         jwt: jwt,
-        /// Validated claims from the JWT payload.
-        claims: claims,
+        /// Validated claims from the JWT payload (structured).
+        claims: jwt-claims,
     }
 
     /// Session information from the transport.

@@ -1,0 +1,12 @@
+package wasmcp:kv-store@0.1.1;
+
+world kv-store {
+    import wasi:io/streams@0.2.8;
+    import wasi:cli/environment@0.2.8;
+
+    import wasi:keyvalue/store@0.2.0-draft;
+    import wasi:keyvalue/batch@0.2.0-draft;
+    import wasi:keyvalue/atomics@0.2.0-draft;
+
+    export wasmcp:keyvalue/store@0.1.0;
+}

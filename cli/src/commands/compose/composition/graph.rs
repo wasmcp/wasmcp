@@ -7,13 +7,13 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use wac_graph::{CompositionGraph, EncodeOptions};
 
-use super::{build_middleware_chain, wire_transport};
-use super::{load_and_register_components, load_package};
+use super::{ServiceRegistry, load_and_register_components, load_package};
+use super::{build_middleware_chain, wire_all_services, wire_transport};
 use crate::commands::compose::inspection::UnsatisfiedImports;
-use crate::commands::compose::inspection::interfaces::{self, DEFAULT_SPEC_VERSION, InterfaceType};
-use crate::commands::compose::inspection::{
-    check_component_exports, check_component_imports, find_component_export,
+use crate::commands::compose::inspection::interfaces::{
+    self, ComponentType, DEFAULT_SPEC_VERSION, InterfaceType,
 };
+use crate::commands::compose::inspection::{check_component_imports, find_component_export};
 use crate::versioning::VersionResolver;
 
 /// Build the component composition using wac-graph
@@ -31,48 +31,36 @@ use crate::versioning::VersionResolver;
 /// Each component's `server-handler` import is satisfied by the next component's
 /// `server-handler` export, creating a linear middleware pipeline.
 ///
-/// TODO: Refactor to reduce argument count (8/7). Consider grouping related parameters
-/// into a CompositionConfig struct (paths, interface names, options).
-#[allow(clippy::too_many_arguments)]
+use std::collections::HashMap;
+
+pub struct CompositionPaths<'a> {
+    pub transport: &'a Path,
+    pub service_paths: &'a HashMap<String, PathBuf>,
+    pub components: &'a [PathBuf],
+    pub method_not_found: &'a Path,
+}
+
 pub async fn build_composition(
-    transport_path: &Path,
-    server_io_path: &Path,
-    session_store_path: &Path,
-    component_paths: &[PathBuf],
-    method_not_found_path: &Path,
+    paths: CompositionPaths<'_>,
     _resolver: &VersionResolver,
     verbose: bool,
 ) -> Result<Vec<u8>> {
-    // Discover interface versions from actual components before building graph
-    // This decouples composition from our version manifest
+    let transport_path = paths.transport;
+    let service_paths = paths.service_paths;
+    let component_paths = paths.components;
+    let method_not_found_path = paths.method_not_found;
+    // Discover server-handler interface from method-not-found (this is still needed for the chain)
     let server_handler_prefix = InterfaceType::ServerHandler.interface_prefix(DEFAULT_SPEC_VERSION);
     let server_handler_interface =
         find_component_export(method_not_found_path, &server_handler_prefix).context(
             "Failed to discover server-handler interface from method-not-found component",
         )?;
 
-    // Discover interface names from the components that EXPORT them
-    // This ensures alias_instance_export gets the exact names the components use
-    let server_io_prefix = InterfaceType::ServerIo.interface_prefix(DEFAULT_SPEC_VERSION);
-    let server_io_interface = find_component_export(server_io_path, &server_io_prefix)
-        .context("Failed to discover server-io interface from server-io component")?;
-
-    let sessions_prefix = InterfaceType::Sessions.interface_prefix(DEFAULT_SPEC_VERSION);
-    let sessions_interface = find_component_export(session_store_path, &sessions_prefix)
-        .context("Failed to discover sessions interface from session-store component")?;
-
-    let session_manager_prefix =
-        InterfaceType::SessionManager.interface_prefix(DEFAULT_SPEC_VERSION);
-    let session_manager_interface =
-        find_component_export(session_store_path, &session_manager_prefix)
-            .context("Failed to discover session-manager interface from session-store component")?;
-
     if verbose {
-        println!("   Discovered interfaces:");
-        println!("     server-handler: {}", server_handler_interface);
-        println!("     server-io: {}", server_io_interface);
-        println!("     sessions: {}", sessions_interface);
-        println!("     session-manager: {}", session_manager_interface);
+        println!(
+            "   Discovered server-handler interface: {}",
+            server_handler_interface
+        );
     }
 
     let mut graph = CompositionGraph::new();
@@ -81,8 +69,9 @@ pub async fn build_composition(
     if verbose {
         println!("   Loading components...");
         println!("     transport: {}", transport_path.display());
-        println!("     server-io: {}", server_io_path.display());
-        println!("     session-store: {}", session_store_path.display());
+        for (name, path) in service_paths {
+            println!("     {}: {}", name, path.display());
+        }
         println!("     method-not-found: {}", method_not_found_path.display());
         for (i, path) in component_paths.iter().enumerate() {
             println!("     component-{}: {}", i, path.display());
@@ -91,8 +80,7 @@ pub async fn build_composition(
     let packages = load_and_register_components(
         &mut graph,
         transport_path,
-        server_io_path,
-        session_store_path,
+        service_paths,
         component_paths,
         method_not_found_path,
         verbose,
@@ -100,8 +88,14 @@ pub async fn build_composition(
 
     // Track imports for validation
     let mut unsatisfied = UnsatisfiedImports::new();
-    unsatisfied.add_component_imports("transport".to_string(), transport_path)?;
-    unsatisfied.add_component_imports("method-not-found".to_string(), method_not_found_path)?;
+    unsatisfied.add_component_imports(
+        ComponentType::HttpTransport.name().to_string(),
+        transport_path,
+    )?;
+    unsatisfied.add_component_imports(
+        ComponentType::MethodNotFound.name().to_string(),
+        method_not_found_path,
+    )?;
     for (i, path) in component_paths.iter().enumerate() {
         unsatisfied.add_component_imports(format!("component-{}", i), path)?;
     }
@@ -113,37 +107,68 @@ pub async fn build_composition(
         );
     }
 
-    // Instantiate service components first (needed for middleware wiring)
+    // Build service registry and instantiate all services
     if verbose {
-        println!("   Instantiating service components...");
-
-        // Check what transport actually imports BEFORE instantiation
-        eprintln!("\n[DEBUG] ==================== COMPONENT ANALYSIS ====================");
-        eprintln!("[DEBUG] Transport imports:");
-        if let Ok(imports) = check_component_imports(transport_path) {
-            for import in imports {
-                eprintln!("[DEBUG]   - {}", import);
-            }
-        }
-
-        eprintln!("\n[DEBUG] Server-io exports:");
-        if let Ok(exports) = check_component_exports(server_io_path) {
-            for export in exports {
-                eprintln!("[DEBUG]   - {}", export);
-            }
-        }
-
-        eprintln!("\n[DEBUG] Session-store exports:");
-        if let Ok(exports) = check_component_exports(session_store_path) {
-            for export in exports {
-                eprintln!("[DEBUG]   - {}", export);
-            }
-        }
-        eprintln!("[DEBUG] ==================== END COMPONENT ANALYSIS ====================\n");
+        println!("   Building service registry...");
     }
 
-    let server_io_inst = graph.instantiate(packages.server_io_id);
-    let session_store_inst = graph.instantiate(packages.session_store_id);
+    let mut services = ServiceRegistry::new();
+
+    // Process services in dependency order: services WITHOUT wasmcp dependencies first
+    // Pass 1: Instantiate and register services without wasmcp dependencies
+    let mut services_with_deps = Vec::new();
+    for (service_name, package_id) in &packages.service_ids {
+        let service_path = service_paths
+            .get(service_name)
+            .expect("Service path must exist for registered package");
+
+        // Check if this service has wasmcp dependencies
+        let imports = check_component_imports(service_path)?;
+        let has_wasmcp_imports = imports.iter().any(|i| i.starts_with("wasmcp:"));
+
+        if !has_wasmcp_imports {
+            // No wasmcp dependencies - instantiate and register immediately
+            let service_inst = graph.instantiate(*package_id);
+            services.register_service(service_name, service_inst, service_path)?;
+
+            if verbose {
+                println!("   ✓ Registered {} service", service_name);
+            }
+        } else {
+            // Has dependencies - defer to pass 2
+            services_with_deps.push((service_name.clone(), *package_id, service_path.clone()));
+        }
+    }
+
+    // Pass 2: Instantiate, wire, and register services WITH wasmcp dependencies
+    for (service_name, package_id, service_path) in services_with_deps {
+        let service_inst = graph.instantiate(package_id);
+
+        // Wire dependencies (services from pass 1 are now in registry)
+        wire_all_services(
+            &mut graph,
+            service_inst,
+            &service_path,
+            &service_name,
+            &services,
+            verbose,
+        )?;
+
+        // Register in service registry
+        services.register_service(&service_name, service_inst, &service_path)?;
+
+        if verbose {
+            println!("   ✓ Registered {} service", service_name);
+        }
+    }
+
+    if verbose {
+        println!("\n   Service Registry Summary:");
+        for (name, base, full) in services.all_exports() {
+            println!("     {} exports: {} ({})", name, base, full);
+        }
+        println!();
+    }
 
     // Build the middleware chain
     if verbose {
@@ -152,12 +177,9 @@ pub async fn build_composition(
     let handler_export = build_middleware_chain(
         &mut graph,
         &packages,
-        server_io_inst,
-        session_store_inst,
         component_paths,
         &server_handler_interface,
-        &server_io_interface,
-        &sessions_interface,
+        &services,
         &mut unsatisfied,
         verbose,
     )?;
@@ -165,18 +187,14 @@ pub async fn build_composition(
     // Wire transport and export interface
     wire_transport(
         &mut graph,
-        packages.transport_id,
-        server_io_inst,
-        session_store_inst,
-        handler_export,
-        &server_handler_interface,
-        &server_io_interface,
-        &sessions_interface,
-        &session_manager_interface,
-        transport_path,
-        server_io_path,
-        session_store_path,
-        _resolver,
+        super::wiring::TransportWireConfig {
+            transport_id: packages.transport_id,
+            handler_export,
+            server_handler_interface: &server_handler_interface,
+            transport_path,
+            registry: &services,
+            resolver: _resolver,
+        },
         verbose,
     )?;
 

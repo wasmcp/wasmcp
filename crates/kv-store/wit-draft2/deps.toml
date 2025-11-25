@@ -1,0 +1,4 @@
+io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.8.tar.gz"
+cli = "https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.8.tar.gz"
+wasi-keyvalue = { path = "../../../wit/vendor/wasi-keyvalue-draft2" }
+keyvalue = "https://github.com/wasmcp/wasmcp/releases/download/keyvalue-v0.1.0/wasmcp-keyvalue-0.1.0-source.tar.gz"

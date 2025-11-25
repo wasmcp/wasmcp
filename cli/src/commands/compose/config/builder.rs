@@ -21,6 +21,7 @@
 //! ```
 
 use anyhow::{Context, Result};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::commands::compose::{ComposeOptions, CompositionMode};
@@ -47,13 +48,7 @@ pub struct ComposeOptionsBuilder {
     components: Vec<String>,
     transport: String,
     output: PathBuf,
-    override_transport: Option<String>,
-    override_server_io: Option<String>,
-    override_session_store: Option<String>,
-    override_method_not_found: Option<String>,
-    override_tools_middleware: Option<String>,
-    override_resources_middleware: Option<String>,
-    override_prompts_middleware: Option<String>,
+    overrides: HashMap<String, String>,
     deps_dir: Option<PathBuf>,
     skip_download: bool,
     force: bool,
@@ -89,13 +84,7 @@ impl ComposeOptionsBuilder {
             components,
             transport: "http".to_string(),
             output: PathBuf::from("server.wasm"),
-            override_transport: None,
-            override_server_io: None,
-            override_session_store: None,
-            override_method_not_found: None,
-            override_tools_middleware: None,
-            override_resources_middleware: None,
-            override_prompts_middleware: None,
+            overrides: HashMap::new(),
             deps_dir: None,
             skip_download: false,
             force: false,
@@ -121,39 +110,33 @@ impl ComposeOptionsBuilder {
         self
     }
 
-    /// Override the transport component with a custom spec
+    /// Override a framework component with a custom spec
     ///
-    /// By default, the transport is downloaded from the wasmcp registry.
-    /// This allows using a custom transport implementation.
-    pub fn override_transport(mut self, spec: impl Into<String>) -> Self {
-        self.override_transport = Some(spec.into());
-        self
-    }
-
-    /// Override the server-io component with a custom spec
+    /// By default, framework components are downloaded from the wasmcp registry.
+    /// This allows using a custom component implementation.
     ///
-    /// By default, the server-io component is downloaded from the wasmcp registry.
-    /// This allows using a custom server-io implementation.
-    pub fn override_server_io(mut self, spec: impl Into<String>) -> Self {
-        self.override_server_io = Some(spec.into());
-        self
-    }
-
-    /// Override the session-store component with a custom spec
+    /// Valid component names: transport, server-io, authorization, kv-store,
+    /// session-store, method-not-found, tools-middleware, resources-middleware,
+    /// prompts-middleware.
     ///
-    /// By default, the session-store component is downloaded from the wasmcp registry.
-    /// This allows using a custom session-store implementation.
-    pub fn override_session_store(mut self, spec: impl Into<String>) -> Self {
-        self.override_session_store = Some(spec.into());
-        self
-    }
-
-    /// Override the method-not-found component with a custom spec
+    /// # Examples
     ///
-    /// By default, the terminal handler is downloaded from the wasmcp registry.
-    /// This allows using a custom terminal handler implementation.
-    pub fn override_method_not_found(mut self, spec: impl Into<String>) -> Self {
-        self.override_method_not_found = Some(spec.into());
+    /// ```rust
+    /// # use wasmcp::commands::compose::ComposeOptionsBuilder;
+    /// # fn example() -> anyhow::Result<()> {
+    /// let options = ComposeOptionsBuilder::new(vec!["handler.wasm".to_string()])
+    ///     .override_component("transport", "./custom-transport.wasm")
+    ///     .override_component("authorization", "wasmcp:custom-auth@0.2.0")
+    ///     .build()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn override_component(
+        mut self,
+        component: impl Into<String>,
+        spec: impl Into<String>,
+    ) -> Self {
+        self.overrides.insert(component.into(), spec.into());
         self
     }
 
@@ -232,13 +215,7 @@ impl ComposeOptionsBuilder {
             transport: self.transport,
             output: self.output,
             version_resolver,
-            override_transport: self.override_transport,
-            override_server_io: self.override_server_io,
-            override_session_store: self.override_session_store,
-            override_method_not_found: self.override_method_not_found,
-            override_tools_middleware: self.override_tools_middleware,
-            override_resources_middleware: self.override_resources_middleware,
-            override_prompts_middleware: self.override_prompts_middleware,
+            overrides: self.overrides,
             deps_dir,
             skip_download: self.skip_download,
             force: self.force,
@@ -292,8 +269,8 @@ mod tests {
         let options = ComposeOptionsBuilder::new(vec!["a.wasm".to_string()])
             .transport("http")
             .output(PathBuf::from("out.wasm"))
-            .override_transport("custom-transport.wasm")
-            .override_method_not_found("custom-mnf.wasm")
+            .override_component("transport", "custom-transport.wasm")
+            .override_component("method-not-found", "custom-mnf.wasm")
             .build()
             .unwrap();
 
@@ -305,12 +282,12 @@ mod tests {
                 .is_ok()
         );
         assert_eq!(
-            options.override_transport,
-            Some("custom-transport.wasm".to_string())
+            options.overrides.get("transport"),
+            Some(&"custom-transport.wasm".to_string())
         );
         assert_eq!(
-            options.override_method_not_found,
-            Some("custom-mnf.wasm".to_string())
+            options.overrides.get("method-not-found"),
+            Some(&"custom-mnf.wasm".to_string())
         );
     }
 }

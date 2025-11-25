@@ -1,0 +1,47 @@
+[auth]
+url = "https://github.com/wasmcp/wasmcp/releases/download/auth-v0.1.0/wasmcp-auth-0.1.0-source.tar.gz"
+sha256 = "f701db0f1a4aee735d95e81a6c97f2b9b14679e504cf7cf95dca78b8b4bf8ae3"
+sha512 = "4c3b1d899d48f6f5714b49e7ace944f3b38853e096d0b95e649bc367f18c11b10c36e009098607790fa4ee897d36f645a768d5e02167603204f0b6a31151d034"
+
+[cli]
+url = "https://github.com/WebAssembly/wasi-cli/archive/v0.2.8.tar.gz"
+sha256 = "d223b55ba73b8a265cc36db836487a16dcb1ed859d92a693827ad5ca2d2dfba8"
+sha512 = "db0dd1a7225f08b27092f75aa32ca3e9fc6cda666cdf0a46521ca32702a1985f4e7b7c5b78e61f6eef348c2807d09fb8c11ccfc95d572465aa86f4024d44afa0"
+deps = ["clocks", "filesystem", "io", "random", "sockets"]
+
+[clocks]
+sha256 = "be1d8c61e2544e2b48d902c60df73577e293349063344ce752cda4d323f8b913"
+sha512 = "0fd7962c62b135da0e584c2b58a55147bf09873848b0bb5bd3913019bc3f8d4b5969fbd6f7f96fd99a015efaf562a3eeafe3bc13049f8572a6e13ef9ef0e7e75"
+
+[filesystem]
+sha256 = "57c2e5e40c57d54a2eacb55d8855d2963a6c0b33971a3620c1468b732233d593"
+sha512 = "11d1dee738bea1fdd15f5cc07ea10bfb9953a4e84361bbdc2c1051f9520463329ec839caffe0e5cf22870584846f9bfe627c1b77ee4b555fcc990b8106791c68"
+
+[http]
+url = "https://github.com/WebAssembly/wasi-http/archive/v0.2.8.tar.gz"
+sha256 = "3a9b62bf4221a2f8bbe9b937b49b1abbcd28be0b8398a81c815bf161070cc316"
+sha512 = "c5339188c19eecc6eff5498f0e248965a0c7cd9d01ef696735005fa8ca48d5e987c81196ef28ebbf2e98c8efd67dcdc3706d7856f5afcb10f691293621bf8b96"
+deps = ["clocks", "filesystem", "io", "random", "sockets"]
+
+[io]
+sha256 = "9f1ad5da70f621bbd4c69e3bd90250a0c12ecfde266aa8f99684fc44bc1e7c15"
+sha512 = "6d0a9db6848f24762933d1c168a5b5b1065ba838c253ee20454afeb8dd1a049b918d25deff556083d68095dd3126ae131ac3e738774320eee5d918f5a4b5354e"
+
+[keyvalue]
+url = "https://github.com/wasmcp/wasmcp/releases/download/keyvalue-v0.1.0/wasmcp-keyvalue-0.1.0-source.tar.gz"
+sha256 = "6aca6ad2b990896e38dbbab7059a08ce922a8814957c69d31300d52b142a6f1a"
+sha512 = "b681313c99748c01d4eab63c342930e2f1321978863a2af587f46ffdc9d83d517e75713d821445317baa9567a690b5de136fda07e09370c112880b7ff52ef634"
+
+[mcp-v20250618]
+url = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.7/wasmcp-mcp-v2025-06-18-0.1.7-source.tar.gz"
+sha256 = "e007d8f6281f7e9021a702f4d94ebe871a62c6d45fbda6ae250b54b83b386348"
+sha512 = "8e358d2e3d80177d30edf5faa753f31829040ad711e48007b0499eeffc3bb3204afe782512c2229f34ccbd576376c2b683a0cd35cf3da517f89c2678fe6b737c"
+deps = ["io"]
+
+[random]
+sha256 = "febd6f75dec1fa733b8e25c1cdee4de9acd922ddf755a192d85f479b1f96b445"
+sha512 = "1689d2eee3c64b9fc91faaf43741ff95f343b05acc758342dbf3aa86830de1ec66b4bcd0fe22bf1f77abc4a1feeaae90cdc2c06eedc30952a6667f70edca7d8f"
+
+[sockets]
+sha256 = "e82bb0502324f44ef22f6fdadec51f4963faf8ccd21187c37397ea872c0548c0"
+sha512 = "b8139db2b26a95d6948e345cf036497883943134ea832abfabd7267682d9f84b4c86ff38fc771125f1a8e2bcd237ea0a731d83bf22df9d78f19e452061227d77"

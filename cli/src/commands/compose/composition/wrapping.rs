@@ -130,37 +130,59 @@ fn discover_capability_interface(middleware_path: &Path, prefix: &str) -> Result
     )
 }
 
+use std::collections::HashMap;
+
 /// Auto-detect and wrap capability components with appropriate middleware
 ///
 /// This function inspects each component to determine if it exports capability
 /// interfaces (tools, resources, etc.). If so, it wraps the component with the
 /// appropriate middleware to convert it into a server-handler component.
+///
+/// Middleware is discovered dynamically from versions.toml using the naming
+/// convention: components ending with "-middleware" are capability wrappers.
 pub async fn wrap_capabilities(
     component_paths: Vec<PathBuf>,
     deps_dir: &Path,
     resolver: &VersionResolver,
-    override_tools_middleware: Option<&str>,
-    override_resources_middleware: Option<&str>,
-    override_prompts_middleware: Option<&str>,
+    overrides: &HashMap<String, String>,
+    required_middleware: &[String],
     verbose: bool,
 ) -> Result<Vec<PathBuf>> {
     let mut wrapped_paths = Vec::new();
 
+    // Use the already-discovered middleware list (don't rediscover from versions.toml)
+    let middleware_names = required_middleware;
+
+    if middleware_names.is_empty() {
+        // No middleware configured - return components as-is
+        return Ok(component_paths);
+    }
+
     // Create client for resolving overrides (only if needed)
-    let client = if override_tools_middleware.is_some()
-        || override_resources_middleware.is_some()
-        || override_prompts_middleware.is_some()
-    {
+    let has_overrides = middleware_names
+        .iter()
+        .any(|name| overrides.contains_key(name.as_str()));
+    let client = if has_overrides {
         Some(crate::commands::pkg::create_default_client().await?)
     } else {
         None
     };
 
-    // Resolve middleware paths - use overrides if provided, otherwise download
-    let tools_middleware_path = match override_tools_middleware {
-        Some(override_spec) => {
+    // Resolve all middleware paths and discover their capability interfaces
+    struct MiddlewareConfig {
+        name: String,
+        path: PathBuf,
+        capability_name: String,
+        capability_interface: String,
+    }
+
+    let mut middleware_configs = Vec::new();
+
+    for middleware_name in middleware_names {
+        // Resolve middleware path (check overrides first)
+        let path = if let Some(override_spec) = overrides.get(middleware_name) {
             if verbose {
-                println!("\nUsing override tools-middleware: {}", override_spec);
+                println!("\nUsing override {}: {}", middleware_name, override_spec);
             }
             crate::commands::compose::resolution::resolve_component_spec(
                 override_spec,
@@ -169,66 +191,57 @@ pub async fn wrap_capabilities(
                 verbose,
             )
             .await?
-        }
-        None => dependencies::get_dependency_path("tools-middleware", resolver, deps_dir)?,
+        } else {
+            dependencies::get_dependency_path(middleware_name, resolver, deps_dir)?
+        };
+
+        // Derive capability name (tools-middleware → tools)
+        let capability_name = middleware_name
+            .strip_suffix("-middleware")
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Middleware component '{}' must end with '-middleware'",
+                    middleware_name
+                )
+            })?
+            .to_string();
+
+        // Discover the capability interface this middleware wraps
+        let interface_prefix = format!("wasmcp:mcp-v20250618/{}@", capability_name);
+        let capability_interface = discover_capability_interface(&path, &interface_prefix)
+            .with_context(|| {
+                format!(
+                    "Failed to discover {} interface from {}",
+                    capability_name, middleware_name
+                )
+            })?;
+
+        middleware_configs.push(MiddlewareConfig {
+            name: middleware_name.to_string(),
+            path,
+            capability_name,
+            capability_interface,
+        });
+    }
+
+    // Discover server-handler interface (all middleware export it, use first as source)
+    let server_handler_interface = if let Some(first_config) = middleware_configs.first() {
+        discover_server_handler_interface(&first_config.path)
+            .context("Failed to discover server-handler interface from middleware")?
+    } else {
+        // No middleware found - return components as-is
+        return Ok(component_paths);
     };
-
-    let resources_middleware_path = match override_resources_middleware {
-        Some(override_spec) => {
-            if verbose {
-                println!("\nUsing override resources-middleware: {}", override_spec);
-            }
-            crate::commands::compose::resolution::resolve_component_spec(
-                override_spec,
-                deps_dir,
-                client.as_ref().unwrap(),
-                verbose,
-            )
-            .await?
-        }
-        None => dependencies::get_dependency_path("resources-middleware", resolver, deps_dir)?,
-    };
-
-    let prompts_middleware_path = match override_prompts_middleware {
-        Some(override_spec) => {
-            if verbose {
-                println!("\nUsing override prompts-middleware: {}", override_spec);
-            }
-            crate::commands::compose::resolution::resolve_component_spec(
-                override_spec,
-                deps_dir,
-                client.as_ref().unwrap(),
-                verbose,
-            )
-            .await?
-        }
-        None => dependencies::get_dependency_path("prompts-middleware", resolver, deps_dir)?,
-    };
-
-    // Discover server-handler interface (all middleware export it, use tools as source)
-    let server_handler_interface = discover_server_handler_interface(&tools_middleware_path)
-        .context("Failed to discover server-handler interface from middleware")?;
-
-    let tools_interface =
-        discover_capability_interface(&tools_middleware_path, "wasmcp:mcp-v20250618/tools@")
-            .context("Failed to discover tools interface from tools-middleware")?;
-    let resources_interface = discover_capability_interface(
-        &resources_middleware_path,
-        "wasmcp:mcp-v20250618/resources@",
-    )
-    .context("Failed to discover resources interface from resources-middleware")?;
-    let prompts_interface =
-        discover_capability_interface(&prompts_middleware_path, "wasmcp:mcp-v20250618/prompts@")
-            .context("Failed to discover prompts interface from prompts-middleware")?;
 
     if verbose {
         println!("   Discovered capability interfaces:");
         println!("     - {}", server_handler_interface);
-        println!("     - {}", tools_interface);
-        println!("     - {}", resources_interface);
-        println!("     - {}", prompts_interface);
+        for config in &middleware_configs {
+            println!("     - {}", config.capability_interface);
+        }
     }
 
+    // Check each user component against all middleware
     for (i, path) in component_paths.into_iter().enumerate() {
         let component_name = path
             .file_stem()
@@ -241,81 +254,43 @@ pub async fn wrap_capabilities(
                 println!("   {} is a server-handler → using as-is", component_name);
             }
             wrapped_paths.push(path);
+            continue;
         }
-        // Check for tools capability
-        else if component_exports_interface(&path, &tools_interface)? {
-            if verbose {
-                println!(
-                    "   {} is a tools-capability → wrapping with tools-middleware",
-                    component_name
-                );
+
+        // Check against all discovered middleware
+        let mut wrapped = false;
+        for config in &middleware_configs {
+            if component_exports_interface(&path, &config.capability_interface)? {
+                if verbose {
+                    println!(
+                        "   {} is a {}-capability → wrapping with {}",
+                        component_name, config.capability_name, config.name
+                    );
+                }
+
+                let wrapped_bytes = wrap_with_middleware(
+                    &config.path,
+                    &path,
+                    &config.capability_interface,
+                    &config.name,
+                    &format!("{}-capability", config.capability_name),
+                )?;
+
+                let wrapped_path = deps_dir.join(format!(
+                    "{}{}-{}.wasm",
+                    WRAPPED_COMPONENT_PREFIX, config.capability_name, i
+                ));
+                std::fs::write(&wrapped_path, wrapped_bytes)
+                    .context("Failed to write wrapped component")?;
+
+                wrapped_paths.push(wrapped_path);
+                wrapped = true;
+                break;
             }
-
-            let wrapped_bytes = wrap_with_middleware(
-                &tools_middleware_path,
-                &path,
-                &tools_interface,
-                "tools-middleware",
-                "tools-capability",
-            )?;
-
-            let wrapped_path =
-                deps_dir.join(format!("{}tools-{}.wasm", WRAPPED_COMPONENT_PREFIX, i));
-            std::fs::write(&wrapped_path, wrapped_bytes)
-                .context("Failed to write wrapped component")?;
-
-            wrapped_paths.push(wrapped_path);
         }
-        // Check for resources capability
-        else if component_exports_interface(&path, &resources_interface)? {
-            if verbose {
-                println!(
-                    "   {} is a resources-capability → wrapping with resources-middleware",
-                    component_name
-                );
-            }
 
-            let wrapped_bytes = wrap_with_middleware(
-                &resources_middleware_path,
-                &path,
-                &resources_interface,
-                "resources-middleware",
-                "resources-capability",
-            )?;
-
-            let wrapped_path =
-                deps_dir.join(format!("{}resources-{}.wasm", WRAPPED_COMPONENT_PREFIX, i));
-            std::fs::write(&wrapped_path, wrapped_bytes)
-                .context("Failed to write wrapped component")?;
-
-            wrapped_paths.push(wrapped_path);
-        }
-        // Check for prompts capability
-        else if component_exports_interface(&path, &prompts_interface)? {
-            if verbose {
-                println!(
-                    "   {} is a prompts-capability → wrapping with prompts-middleware",
-                    component_name
-                );
-            }
-
-            let wrapped_bytes = wrap_with_middleware(
-                &prompts_middleware_path,
-                &path,
-                &prompts_interface,
-                "prompts-middleware",
-                "prompts-capability",
-            )?;
-
-            let wrapped_path =
-                deps_dir.join(format!("{}prompts-{}.wasm", WRAPPED_COMPONENT_PREFIX, i));
-            std::fs::write(&wrapped_path, wrapped_bytes)
-                .context("Failed to write wrapped component")?;
-
-            wrapped_paths.push(wrapped_path);
-        }
-        // Not a capability component - use as-is
-        else {
+        // Not a capability component - assume server-handler, use as-is
+        if !wrapped {
             if verbose {
                 println!("   {} is a server-handler → using as-is", component_name);
             }
@@ -324,6 +299,71 @@ pub async fn wrap_capabilities(
     }
 
     Ok(wrapped_paths)
+}
+
+/// Discover which middleware components are needed for wrapping
+///
+/// Inspects user components to see what capabilities they export (tools, resources, prompts)
+/// and returns the list of middleware component names that will be needed.
+pub fn discover_required_middleware(
+    component_paths: &[PathBuf],
+    resolver: &VersionResolver,
+) -> Result<Vec<String>> {
+    let mut required_middleware = Vec::new();
+
+    // Get all available middleware
+    let all_middleware = resolver.middleware_components();
+
+    if all_middleware.is_empty() {
+        return Ok(required_middleware);
+    }
+
+    // For each middleware, check if any component needs it
+    for middleware_name in all_middleware {
+        // Derive capability name (tools-middleware → tools)
+        let capability_name = middleware_name.strip_suffix("-middleware").ok_or_else(|| {
+            anyhow::anyhow!(
+                "Middleware component '{}' must end with '-middleware'",
+                middleware_name
+            )
+        })?;
+
+        // Check if any component exports this capability
+        let interface_prefix = format!("wasmcp:mcp-v20250618/{}@", capability_name);
+
+        for path in component_paths {
+            // Check all exports of this component
+            if component_has_export_matching(path, &interface_prefix)? {
+                required_middleware.push(middleware_name.to_string());
+                break; // Found one, move to next middleware
+            }
+        }
+    }
+
+    Ok(required_middleware)
+}
+
+/// Check if a component has any export matching a prefix
+fn component_has_export_matching(path: &Path, prefix: &str) -> Result<bool> {
+    use wasmparser::{Parser, Payload};
+
+    let bytes = std::fs::read(path)
+        .with_context(|| format!("Failed to read component: {}", path.display()))?;
+
+    for payload in Parser::new(0).parse_all(&bytes) {
+        let payload = payload.context("Failed to parse component")?;
+
+        if let Payload::ComponentExportSection(exports) = payload {
+            for export in exports {
+                let export = export.context("Failed to parse export")?;
+                if export.name.0.starts_with(prefix) {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+
+    Ok(false)
 }
 
 /// Check if a component exports a specific interface
@@ -444,18 +484,34 @@ mod tests {
 
         // Create a runtime for the async function
         let rt = tokio::runtime::Runtime::new().unwrap();
+        let overrides = HashMap::new();
+
+        // Test with middleware to trigger component inspection
+        let middleware = vec!["tools-middleware".to_string()];
         let result = rt.block_on(wrap_capabilities(
-            component_paths,
+            component_paths.clone(),
             temp_dir.path(),
             &resolver,
-            None,  // override_tools_middleware
-            None,  // override_resources_middleware
-            None,  // override_prompts_middleware
+            &overrides,
+            &middleware,
             false, // verbose
         ));
 
-        // Should fail because component doesn't exist
+        // Should fail because component doesn't exist and we're trying to inspect it
         assert!(result.is_err());
+
+        // Test with no middleware - should succeed (returns paths as-is without processing)
+        let result_no_middleware = rt.block_on(wrap_capabilities(
+            component_paths,
+            temp_dir.path(),
+            &resolver,
+            &overrides,
+            &[],
+            false,
+        ));
+
+        // Should succeed because with no middleware, we don't try to inspect components
+        assert!(result_no_middleware.is_ok());
     }
 
     /// Test WRAPPED_COMPONENT_PREFIX constant

@@ -1,0 +1,13 @@
+package wasmcp:keyvalue@0.1.0;
+
+/// Key-value storage client with type-safe value handling.
+///
+/// Use this world for components that need persistent storage
+/// with structured value types beyond basic bytes.
+///
+/// Includes:
+/// - store: Typed abstraction over wasi:keyvalue with support for
+///   strings, integers, booleans, floats, timestamps, and JSON
+world kv-client {
+    export store;
+}

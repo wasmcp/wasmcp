@@ -11,6 +11,7 @@ mod bindings {
 }
 
 use bindings::exports::wasmcp::mcp_v20250618::server_handler::{Guest, MessageContext};
+use bindings::wasmcp::keyvalue::store::TypedValue;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
 use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
 use bindings::wasmcp::mcp_v20250618::server_io;
@@ -32,6 +33,7 @@ impl Guest for Counter {
                 session: ctx.session,
                 identity: ctx.identity,
                 frame: ctx.frame,
+                http_context: ctx.http_context,
             };
             return downstream::handle(&downstream_ctx, message);
         };
@@ -51,6 +53,7 @@ impl Guest for Counter {
                     session: ctx.session,
                     identity: ctx.identity,
                     frame: ctx.frame,
+                    http_context: ctx.http_context,
                 };
                 downstream::handle(&downstream_ctx, message)
             }
@@ -88,6 +91,7 @@ fn handle_list_tools(
         session: ctx.session.clone(),
         identity: ctx.identity.clone(),
         frame: ctx.frame.clone(),
+        http_context: ctx.http_context.clone(),
     };
 
     let downstream_msg = ClientMessage::Request((
@@ -134,6 +138,7 @@ fn handle_call_tool(
         session: ctx.session.clone(),
         identity: ctx.identity.clone(),
         frame: ctx.frame.clone(),
+        http_context: ctx.http_context.clone(),
     };
 
     let downstream_msg = ClientMessage::Request((
@@ -175,16 +180,20 @@ fn increment_counter(ctx: &MessageContext) {
     if let Some(session_info) = &ctx.session {
         if let Ok(session) = Session::open(&session_info.session_id, &session_info.store_id) {
             let current_count = match session.get(counter_key) {
-                Ok(Some(bytes)) => {
+                Ok(Some(TypedValue::AsBytes(bytes))) => {
                     let count_str = String::from_utf8(bytes).unwrap_or_default();
                     count_str.parse::<u64>().unwrap_or(0)
                 }
+                Ok(Some(TypedValue::AsString(s))) => s.parse::<u64>().unwrap_or(0),
+                Ok(Some(TypedValue::AsU64(n))) => n,
                 _ => 0,
             };
 
             let new_count = current_count + 1;
-            let count_bytes = new_count.to_string().into_bytes();
-            let _ = session.set(counter_key, &count_bytes);
+            let _ = session.set(
+                counter_key,
+                &TypedValue::AsU64(new_count),
+            );
 
             // Send notification about the counter increment
             log_notification(
@@ -202,10 +211,17 @@ fn get_current_count(ctx: &MessageContext) -> (u64, bool) {
     if let Some(session_info) = &ctx.session {
         if let Ok(session) = Session::open(&session_info.session_id, &session_info.store_id) {
             match session.get(counter_key) {
-                Ok(Some(bytes)) => {
+                Ok(Some(TypedValue::AsBytes(bytes))) => {
                     let count_str = String::from_utf8(bytes).unwrap_or_default();
                     let count = count_str.parse::<u64>().unwrap_or(0);
                     return (count, true);
+                }
+                Ok(Some(TypedValue::AsString(s))) => {
+                    let count = s.parse::<u64>().unwrap_or(0);
+                    return (count, true);
+                }
+                Ok(Some(TypedValue::AsU64(n))) => {
+                    return (n, true);
                 }
                 _ => return (0, true),
             }

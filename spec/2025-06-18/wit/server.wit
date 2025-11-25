@@ -1,0 +1,330 @@
+use wasi:io/streams@0.2.8;
+
+/// Server-side MCP message handler.
+///
+/// Processes incoming messages from clients.
+@since(version = 0.1.0)
+interface server-handler {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        client-message,
+        server-result,
+        identity,
+        session,
+    };
+    use server-io.{
+        message-frame,
+    };
+    use server-auth.{
+        http-context,
+    };
+
+    /// Incoming message from the client
+    @since(version = 0.1.4)
+    record message-context {
+        /// Output stream for sending messages to the client
+        client-stream: option<borrow<output-stream>>,
+        /// MCP protocol version
+        protocol-version: string,
+        /// Client session details, if available
+        session: option<session>,
+        /// User identity details, if available
+        identity: option<identity>,
+        /// Message framing for this transport
+        frame: message-frame,
+        /// HTTP request context (for HTTP transports only)
+        /// Allows tools/middleware to make authorization decisions based on HTTP layer
+        http-context: option<http-context>,
+    }
+
+    /// Handle an incoming message from the client
+    @since(version = 0.1.4)
+    handle: func(
+        ctx: message-context,
+        message: client-message,
+    ) -> option<result<server-result, error-code>>;
+}
+
+/// Streaming I/O for MCP servers
+///
+/// This interface enables servers to parse and send MCP messages over streams.
+@since(version = 0.1.4)
+interface server-io {
+    use wasi:io/streams@0.2.8.{
+        input-stream,
+        output-stream,
+        stream-error,
+    };
+    use mcp.{
+        client-message,
+        server-message,
+    };
+
+    /// Errors that can occur when sending messages to the client
+    @since(version = 0.1.4)
+    variant io-error {
+        /// An I/O error occurred writing to the output stream
+        %stream(stream-error),
+        /// Failed to serialize the notification to JSON-RPC format
+        serialization(string),
+        /// An unexpected error occurred
+        unexpected(string),
+        /// Invalid JSON-RPC message
+        invalid-jsonrpc(string),
+        /// Invalid MCP message
+        invalid-mcp(string),
+    }
+
+    /// When to stop reading an input stream
+    @since(version = 0.1.4)
+    variant read-limit {
+        /// Delimiter chars
+        delimiter(list<u8>),
+        /// Maximum number of bytes to read
+        max-bytes(u64),
+    }
+
+    /// The prefix and suffix bytes to frame outgoing messages with
+    @since(version = 0.1.4)
+    record message-frame {
+        /// The prefix bytes to frame outgoing messages with
+        prefix: list<u8>,
+        /// The suffix bytes to frame outgoing messages with
+        suffix: list<u8>,
+    }
+
+    /// Read and deserialize an incoming message from the client
+    @since(version = 0.1.4)
+    parse-message: func(
+        /// Input stream to read the bytes from
+        input: borrow<input-stream>,
+        /// When to stop reading from the stream
+        limit: read-limit,
+        /// The message frame to use for parsing
+        frame: message-frame,
+    ) -> result<client-message, io-error>;
+
+    /// Serialize and write an outgoing message to the client
+    @since(version = 0.1.4)
+    send-message: func(
+        /// Output stream to send the request over
+        output: borrow<output-stream>,
+        /// The message to send to the client
+        message: server-message,
+        /// The message frame to use for sending
+        frame: message-frame,
+    ) -> result<_, io-error>;
+
+    /// Flush buffered messages to the stream (buffered mode only)
+    @since(version = 0.1.4)
+    flush-buffer: func(
+        /// Output stream to flush to
+        output: borrow<output-stream>,
+    ) -> result<_, io-error>;
+}
+
+/// Decode and validate a JWT
+@since(version = 0.1.4)
+interface server-auth {
+    use wasmcp:auth/types@0.1.0.{jwt, jwt-claims};
+    use mcp.{
+        client-message,
+        session,
+    };
+
+    /// HTTP request context for policy evaluation
+    ///
+    /// Provides HTTP-layer information to policy engines for fine-grained
+    /// authorization decisions based on HTTP method, path, or headers.
+    record http-context {
+        /// HTTP method (GET, POST, etc.)
+        method: string,
+        /// Request path (e.g., "/mcp")
+        path: string,
+        /// HTTP headers as key-value pairs
+        /// Common headers: host, user-agent, origin, referer
+        headers: list<tuple<string, string>>,
+    }
+
+    /// Decode and validate a JWT.
+    /// Returns the decoded structured claims if successful.
+    ///
+    /// If the token or its signature is invalid or the claims fail validation, it will return an error.
+    @since(version = 0.1.4)
+    decode: func(
+        /// JWT from the Authorization header
+        jwt: jwt,
+    ) -> result<jwt-claims>;
+
+    /// Authorize a request based on the provided claims.
+    /// Returns true if the request is authorized.
+    @since(version = 0.1.4)
+    authorize: func(
+        /// The incoming message
+        request: client-message,
+        /// Identity claims to authorize against (structured)
+        claims: jwt-claims,
+        /// The session if enabled
+        session: option<session>,
+        /// HTTP request context (optional, for HTTP transports)
+        http-context: option<http-context>,
+    ) -> bool;
+}
+
+/// MCP tools feature
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
+@since(version = 0.1.0)
+interface tools {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        cursor,
+        error-code,
+        list-tools-request,
+        list-tools-result,
+        call-tool-request,
+        call-tool-result,
+    };
+    use server-handler.{
+        message-context,
+    };
+
+    /// List tools provided by this component.
+    @since(version = 0.1.0)
+    list-tools: func(
+        ctx: message-context,
+        request: list-tools-request,
+    ) -> result<list-tools-result, error-code>;
+
+    /// Execute a tool call. Return none for unrecognized tools.
+    @since(version = 0.1.0)
+    call-tool: func(
+        ctx: message-context,
+        request: call-tool-request,
+    ) -> result<option<call-tool-result>, error-code>;
+}
+
+/// MCP resources feature
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
+@since(version = 0.1.0)
+interface resources {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        list-resources-request,
+        list-resources-result,
+        read-resource-request,
+        read-resource-result,
+        list-resource-templates-request,
+        list-resource-templates-result,
+    };
+    use server-handler.{
+        message-context,
+    };
+
+    /// List resources provided by this component.
+    @since(version = 0.1.0)
+    list-resources: func(
+        ctx: message-context,
+        request: list-resources-request,
+    ) -> result<list-resources-result, error-code>;
+
+    /// Read a resource by URI. Return none for unrecognized URIs.
+    @since(version = 0.1.0)
+    read-resource: func(
+        ctx: message-context,
+        request: read-resource-request,
+    ) -> result<option<read-resource-result>, error-code>;
+
+    /// List resource templates (RFC 6570 URI templates).
+    @since(version = 0.1.0)
+    list-resource-templates: func(
+        ctx: message-context,
+        request: list-resource-templates-request,
+    ) -> result<list-resource-templates-result, error-code>;
+}
+
+/// MCP prompts feature
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
+@since(version = 0.1.0)
+interface prompts {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        list-prompts-request,
+        list-prompts-result,
+        get-prompt-request,
+        get-prompt-result,
+    };
+    use server-handler.{
+        message-context,
+    };
+
+    /// List prompts provided by this component.
+    @since(version = 0.1.0)
+    list-prompts: func(
+        ctx: message-context,
+        request: list-prompts-request,
+    ) -> result<list-prompts-result, error-code>;
+
+    /// Get a prompt by name. Return none for unrecognized prompts.
+    @since(version = 0.1.0)
+    get-prompt: func(
+        ctx: message-context,
+        request: get-prompt-request,
+    ) -> result<option<get-prompt-result>, error-code>;
+}
+
+/// MCP completions feature
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
+@since(version = 0.1.0)
+interface completions {
+    use streams.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        complete-request,
+        complete-result,
+    };
+    use server-handler.{
+        message-context,
+    };
+
+    /// Provide completion suggestions for prompt or resource arguments.
+    /// Return none for unsupported references.
+    @since(version = 0.1.0)
+    complete: func(
+        ctx: message-context,
+        request: complete-request,
+    ) -> result<option<complete-result>, error-code>;
+}
+
+/// Server transport world.
+///
+/// Import server-handler interface to delegate MCP message processing.
+@since(version = 0.1.0)
+world server-transport {
+    import server-handler;
+}
+
+/// Server middleware world.
+///
+/// Import and export handler interface to enable composition.
+@since(version = 0.1.0)
+world server-middleware {
+    import server-handler;
+    export server-handler;
+}

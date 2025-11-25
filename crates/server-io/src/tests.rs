@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::reading::READ_BUFFER;
     use crate::serializer;
 
     #[test]
@@ -53,16 +54,16 @@ mod tests {
         // Simulates what happens when multiple newline-delimited messages arrive in one chunk
 
         // Clear any existing buffer state
-        crate::READ_BUFFER.with(|rb| rb.borrow_mut().clear());
+        READ_BUFFER.with(|rb| rb.borrow_mut().clear());
 
         // Simulate having buffered bytes (as if from a previous read)
         let remaining_bytes = b"remaining message\n".to_vec();
-        crate::READ_BUFFER.with(|rb| {
+        READ_BUFFER.with(|rb| {
             *rb.borrow_mut() = remaining_bytes.clone();
         });
 
         // Verify we can read it back
-        let retrieved = crate::READ_BUFFER.with(|rb| {
+        let retrieved = READ_BUFFER.with(|rb| {
             let buf = rb.borrow();
             buf.clone()
         });
@@ -74,17 +75,17 @@ mod tests {
     #[test]
     fn test_read_buffer_isolation() {
         // Verify thread-local isolation - each test gets its own buffer
-        crate::READ_BUFFER.with(|rb| {
+        READ_BUFFER.with(|rb| {
             rb.borrow_mut().clear();
             rb.borrow_mut().extend_from_slice(b"test data");
         });
 
-        let data = crate::READ_BUFFER.with(|rb| rb.borrow().clone());
+        let data = READ_BUFFER.with(|rb| rb.borrow().clone());
         assert_eq!(data, b"test data");
 
         // Clear and verify
-        crate::READ_BUFFER.with(|rb| rb.borrow_mut().clear());
-        let empty = crate::READ_BUFFER.with(|rb| rb.borrow().clone());
+        READ_BUFFER.with(|rb| rb.borrow_mut().clear());
+        let empty = READ_BUFFER.with(|rb| rb.borrow().clone());
         assert!(empty.is_empty());
     }
 

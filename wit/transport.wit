@@ -122,6 +122,10 @@ interface sessions {
         elicit-params,
         elicit-result,
     };
+    use wasmcp:keyvalue/store@0.1.0.{
+        typed-value,
+    };
+    use wasmcp:auth/types@0.1.0.{jwt-claims};
 
     /// Errors that can occur during session operations
     variant session-error {
@@ -183,22 +187,28 @@ interface sessions {
 
         /// Get a persistent session value by key
         ///
+        /// Returns the typed value with its type information. Supports string,
+        /// JSON, u64, s64, bool, and raw bytes.
+        ///
         /// Returns None if the key doesn't exist. Session data persists across
         /// HTTP requests as long as the session exists.
         get: func(
             /// The key to retrieve
             key: string,
-        ) -> result<option<list<u8>>, session-error>;
+        ) -> result<option<typed-value>, session-error>;
 
         /// Set a persistent session value by key
         ///
-        /// The value is immediately persisted to the underlying key-value store.
+        /// Accepts a typed value (string, JSON, u64, s64, bool, or bytes).
+        /// The value is immediately persisted to the underlying key-value store
+        /// with a type tag for runtime type safety.
+        ///
         /// Overwriting an existing key replaces the previous value.
         set: func(
             /// The key to store under
             key: string,
-            /// The value to store (arbitrary binary data)
-            value: list<u8>,
+            /// The typed value to store
+            value: typed-value,
         ) -> result<_, session-error>;
 
         /// Elicit information from the client
@@ -299,4 +309,23 @@ interface session-manager {
     /// Typically called by transport layer during cleanup, not by user tools.
     ///
     delete-session: func(session-id: string, store-id: string) -> result<_, session-error>;
+
+    /// Set session expiration timestamp
+    ///
+    /// Updates session metadata to expire at the specified Unix timestamp (seconds).
+    /// Sessions are automatically invalidated when current time >= expires-at.
+    ///
+    /// Typically called by transport layer after JWT validation to align session
+    /// lifetime with JWT expiration claim.
+    ///
+    /// # Arguments
+    /// * `session-id` - Session to set expiration for
+    /// * `store-id` - WASI KV bucket name
+    /// * `expires-at` - Unix timestamp in seconds when session should expire
+    ///
+    set-expiration: func(
+        session-id: string,
+        store-id: string,
+        expires-at: u64
+    ) -> result<_, session-error>;
 }
