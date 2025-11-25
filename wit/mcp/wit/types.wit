@@ -323,7 +323,7 @@ interface mcp {
         /// Client session details, if available
         session: option<session>,
         /// User identity details, if available
-        user: option<identity>,
+        user-identity: option<identity>,
         /// Output stream
         output: option<borrow<output-stream>>,
     }
@@ -338,47 +338,36 @@ interface tools {
         progress-token,
     };
 
+    flags hints {
+        read-only,
+        destructive,
+        idempotent,
+        open-world,
+    }
+
     /// Tool-specific annotations
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations>
-    record tool-annotations {
+    resource tool-annotations {
+        constructor();
+
         /// Human-readable tool title
-        title: option<string>,
-        /// Hint that tool doesn't modify state
-        read-only-hint: option<bool>,
-        /// Hint that tool modifies or deletes data
-        destructive-hint: option<bool>,
-        /// Hint that tool can be called multiple times safely
-        idempotent-hint: option<bool>,
-        /// Hint that tool may produce non-deterministic results
-        open-world-hint: option<bool>,
-    }
+        set-title: func(title: string);
 
-    /// Optional tool properties
-    record tool-options {
-        meta: option<meta>,
-        annotations: option<tool-annotations>,
-        description: option<string>,
-        /// JSON Schema for tool output
-        output-schema: option<json>,
-        title: option<string>,
-    }
-
-    /// Pagination options for list results
-    record next-cursor-options {
-        meta: option<meta>,
-        next-cursor: option<cursor>,
+        set-hints: func(hints: hints);
     }
 
     /// Tool definition
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#tool>
-    record tool {
-        /// Unique tool identifier
-        name: string,
-        /// JSON Schema describing tool parameters
-        input-schema: json,
-        options: option<tool-options>,
+    resource tool {
+        constructor(name: string, input-schema: json);
+
+        set-meta: func(meta: meta);
+        set-annotations: func(annotations: tool-annotations);
+        set-description: func(description: string);
+        set-output-schema: func(json: json);
+        set-title: func(title: string);
     }
 
     /// List tools request
@@ -394,12 +383,11 @@ interface tools {
     /// List tools result
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listtoolsresult>
-    record list-tools-result {
-        meta: option<meta>,
+    resource list-tools-result {
+        constructor(tools: list<tool>);
+        set-meta: func(meta: meta);
         /// Cursor for next page (if more results available)
-        next-cursor: option<cursor>,
-        /// Available tools
-        tools: list<tool>,
+        set-next-cursor: func(next-cursor: cursor);
     }
 
     /// Call tool request
@@ -438,49 +426,32 @@ interface resources {
         uri,
     };
 
-    /// Resource optional properties
-    record resource-options {
-        /// Resource size in bytes
-        size: option<u64>,
-        /// Human-readable title
-        title: option<string>,
-        /// Resource description
-        description: option<string>,
-        /// MIME type
-        mime-type: option<string>,
-        annotations: option<annotations>,
-        meta: option<meta>,
-    }
-
     /// Resource definition
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resource>
-    record mcp-resource {
-        /// Resource URI
-        uri: uri,
-        /// Resource name for display/identification
-        name: string,
-        options: option<resource-options>,
-    }
+    resource mcp-resource {
+        constructor(uri: uri, name: string);
 
-    /// Resource template optional properties
-    record resource-template-options {
-        description: option<string>,
-        title: option<string>,
-        mime-type: option<string>,
-        annotations: option<annotations>,
-        meta: option<meta>,
+        set-size: func(size: u64);
+        set-title: func(title: string);
+        set-description: func(description: string);
+        set-mime-type: func(mime-type: string);
+        set-annotations: func(annotations: annotations);
+        set-meta: func(meta: meta);
     }
 
     /// Resource template with URI template pattern
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#resourcetemplate>
-    record resource-template {
-        /// URI template (RFC 6570)
-        uri-template: string,
-        /// Template name
-        name: string,
-        options: option<resource-template-options>,
+    resource resource-template {
+        /// uri-template: URI template (RFC 6570)
+        constructor(uri-template: string, name: string);
+
+        set-description: func(description: string);
+        set-title: func(title: string);
+        set-mime-type: func(mime-type: string);
+        set-annotations: func(annotations: annotations);
+        set-meta: func(meta: meta);
     }
 
     /// List resources request
@@ -496,12 +467,11 @@ interface resources {
     /// List resources result
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcesresult>
-    record list-resources-result {
-        meta: option<meta>,
+    resource list-resources-result {
+        constructor(resources: list<mcp-resource>);
+        set-meta: func(meta: meta);
         /// Cursor for next page (if more results available)
-        next-cursor: option<cursor>,
-        /// Available resources
-        resources: list<mcp-resource>,
+        set-next-cursor: func(next-cursor: cursor);
     }
 
     /// Read resource request
@@ -517,10 +487,9 @@ interface resources {
     /// Read resource result
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#readresourceresult>
-    record read-resource-result {
-        meta: option<meta>,
-        /// Resource contents (text or binary)
-        contents: list<resource-contents>,
+    resource read-resource-result {
+        constructor(contents: list<resource-contents>);
+        set-meta: func(meta: meta);
     }
 
     /// List resource templates request
@@ -536,12 +505,11 @@ interface resources {
     /// List resource templates result
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listresourcetemplatesresult>
-    record list-resource-templates-result {
-        meta: option<meta>,
+    resource list-resource-templates-result {
+        constructor(resource-templates: list<resource-template>);
+        set-meta: func(meta: meta);
         /// Cursor for next page (if more results available)
-        next-cursor: option<cursor>,
-        /// Available resource templates
-        resource-templates: list<resource-template>,
+        set-next-cursor: func(next-cursor: cursor);
     }
 }
 
@@ -564,35 +532,24 @@ interface prompts {
     }
 
     /// Prompt argument
-    record prompt-argument {
-        /// Argument name
-        name: string,
-        /// Argument description
-        description: option<string>,
-        /// Whether argument is required
-        required: option<bool>,
-        /// Human-readable argument title
-        title: option<string>,
-    }
+    resource prompt-argument {
+        constructor(name: string);
 
-    /// Prompt optional properties
-    record prompt-options {
-        meta: option<meta>,
-        /// Arguments this prompt accepts
-        arguments: option<list<prompt-argument>>,
-        /// Prompt description
-        description: option<string>,
-        /// Human-readable title
-        title: option<string>,
+        set-description: func(description: string);
+        set-required: func(required: bool);
+        set-title: func(title: string);
     }
 
     /// Prompt definition
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#prompt>
-    record prompt {
-        /// Unique prompt identifier
-        name: string,
-        options: option<prompt-options>,
+    resource prompt {
+        constructor(name: string);
+
+        set-meta: func(meta: meta);
+        set-arguments: func(arguments: list<prompt-argument>);
+        set-description: func(description: string);
+        set-title: func(title: string);
     }
 
     /// List prompts request
@@ -608,12 +565,11 @@ interface prompts {
     /// List prompts result
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listpromptsresult>
-    record list-prompts-result {
-        meta: option<meta>,
+    resource list-prompts-result {
+        constructor(prompts: list<prompt>);
+        set-meta: func(meta: meta);
         /// Cursor for next page (if more results available)
-        next-cursor: option<cursor>,
-        /// Available prompts
-        prompts: list<prompt>,
+        set-next-cursor: func(next-cursor: cursor);
     }
 
     /// Get prompt request
@@ -631,12 +587,10 @@ interface prompts {
     /// Get prompt result
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#getpromptresult>
-    record get-prompt-result {
-        meta: option<meta>,
-        /// Prompt description
-        description: option<string>,
-        /// Prompt messages
-        messages: list<prompt-message>,
+    resource get-prompt-result {
+        constructor(messages: list<prompt-message>);
+        set-meta: func(meta: meta);
+        set-description: func(description: string);
     }
 }
 
@@ -700,14 +654,11 @@ interface completions {
     /// Complete result
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#completeresult>
-    record complete-result {
-        meta: option<meta>,
-        /// Whether more results are available
-        has-more: option<bool>,
-        /// Total number of completions available
-        total: option<u64>,
-        /// Completion values
-        values: list<string>,
+    resource complete-result {
+        constructor(values: list<string>);
+        set-meta: func(meta: meta);
+        set-has-more: func(has-more: bool);
+        set-total: func(total: u64);
     }
 }
 
@@ -820,12 +771,10 @@ interface elicitations {
     /// Elicit result
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#elicitresult>
-    record elicit-result {
-        meta: option<meta>,
-        /// User action (accept, decline, cancel)
-        action: elicit-result-action,
-        /// User-provided values
-        content: option<list<tuple<string, elicit-result-content>>>,
+    resource elicit-result {
+        constructor(action: elicit-result-action);
+        set-meta: func(meta: meta);
+        set-content: func(content: list<tuple<string, elicit-result-content>>);
     }
 }
 
@@ -840,21 +789,18 @@ interface roots {
     /// Root directory or file
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#root>
-    record root {
-        meta: option<meta>,
-        /// Root name
-        name: option<string>,
-        /// Root URI
-        uri: uri,
+    resource root {
+        constructor(uri: uri);
+        set-meta: func(meta: meta);
+        set-name: func(name: string);
     }
 
     /// List roots result
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#listrootsresult>
-    record list-roots-result {
-        meta: option<meta>,
-        /// Client root directories/files
-        roots: list<root>,
+    resource list-roots-result {
+        constructor(roots: list<root>);
+        set-meta: func(meta: meta);
     }
 }
 
@@ -932,27 +878,20 @@ interface sampling {
     /// Sampling create message result
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#createmessageresult>
-    record sampling-create-message-result {
-        meta: option<meta>,
-        /// Generated content (text, image, or audio)
-        ///
-        /// Runtime constraints (enforced by transport parsers):
-        /// - MUST be text, image, or audio content
-        /// - MUST be inline data (not text-stream or blob-stream)
-        /// - MUST NOT be resource-link or embedded-resource
-        ///
-        /// Rationale: LLMs generate complete content, not resource references.
-        /// Streaming is handled by the sampling protocol itself via progressive
-        /// message updates, not via the text-stream/blob-stream variants.
-        content: content-block,
-        /// Model used
-        model: string,
-        /// Response role
-        role: role,
-        /// Stop reason (e.g., "stop_sequence", "max_tokens")
-        stop-reason: option<string>,
-        /// Additional data
-        extra: option<json>,
+    ///
+    /// Runtime constraints (enforced by transport parsers):
+    /// - content MUST be text, image, or audio content
+    /// - content MUST be inline data (not text-stream or blob-stream)
+    /// - content MUST NOT be resource-link or embedded-resource
+    ///
+    /// Rationale: LLMs generate complete content, not resource references.
+    /// Streaming is handled by the sampling protocol itself via progressive
+    /// message updates, not via the text-stream/blob-stream variants.
+    resource sampling-create-message-result {
+        constructor(content: content-block, model: string, role: role);
+        set-meta: func(meta: meta);
+        set-stop-reason: func(stop-reason: string);
+        set-extra: func(extra: json);
     }
 }
 
@@ -970,17 +909,14 @@ interface initialization {
     /// Server capabilities advertised during initialization
     ///
     /// Indicates which optional features the server supports.
-    record server-capabilities {
-        /// Supports completion/complete requests
-        completions: option<json>,
-        /// Experimental capabilities (implementation-specific)
-        experimental: option<list<tuple<string, json>>>,
-        /// Supports logging/setLevel and notifications/message
-        logging: option<json>,
-        /// Supports list change notifications
-        list-changed: option<server-features>,
-        /// Supports resource subscriptions
-        subscriptions: option<server-subscriptions>,
+    resource server-capabilities {
+        constructor();
+
+        set-completions: func(completions: json);
+        set-experimental: func(experimental: list<tuple<string, json>>);
+        set-logging: func(logging: json);
+        set-list-changed: func(list-changed: server-features);
+        set-subscriptions: func(subscriptions: server-subscriptions);
     }
 
     /// Client capabilities advertised during initialization
@@ -1002,14 +938,11 @@ interface initialization {
     /// Identifies the server or client implementation.
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#implementation>
-    record implementation {
-        /// Implementation name (e.g., "wasmcp", "claude-desktop")
-        name: string,
-        /// Human-readable title
-        title: option<string>,
-        /// Semantic version string
-        version: string,
+    resource implementation {
+        constructor(name: string, version: string);
+        set-title: func(title: string);
     }
+
     /// Initialize request parameters
     ///
     /// Sent by client to begin an MCP session.
@@ -1031,16 +964,14 @@ interface initialization {
     /// Returned by server in response to initialize request.
     ///
     /// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/schema#initializeresult>
-    record initialize-result {
-        meta: option<meta>,
-        /// Server implementation info
-        server-info: implementation,
-        /// Server capabilities
-        capabilities: server-capabilities,
-        /// Protocol version server will use
-        protocol-version: protocol-version,
-        /// Instructions for using the server
-        instructions: option<string>,
+    resource initialize-result {
+        constructor(
+            server-info: implementation,
+            capabilities: server-capabilities,
+            protocol-version: protocol-version
+        );
+        set-meta: func(meta: meta);
+        set-instructions: func(instructions: string);
     }
 }
 

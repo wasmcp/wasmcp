@@ -1,7 +1,7 @@
 /// A WebAssembly component development kit for the Model Context Protocol (MCP) version 2025-06-18.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18>
-package wasmcp:mcp@0.1.4;
+package wasmcp:mcp@0.1.5;
 
 /// Server transport world.
 ///
@@ -9,9 +9,25 @@ package wasmcp:mcp@0.1.4;
 world transport {
     include wasi:cli/command@0.2.8;
     include wasi:http/proxy@0.2.8;
+    // Import OAuth helpers for JWT claim extraction
+    import wasmcp:auth/helpers@0.1.0;
     import handler;
-    import io;
-    import session-manager;
+    // Import type-defining interfaces (resources defined here are shared with downstream components)
+    import tools;
+    import resources;
+    import prompts;
+    import completions;
+    import mcp;
+    import methods;
+    import notifications;
+    import initialization;
+    import roots;
+    import sampling;
+    import elicitations;
+    // Export transport-specific interfaces
+    export io;
+    export session-manager;
+    export sessions;
 }
 
 /// Data-layer handler middleware world.
