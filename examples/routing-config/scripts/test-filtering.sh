@@ -526,172 +526,169 @@ fi
 echo ""
 
 # ===================================================================
-# Check if running multi-config tests
+# Multi-Config Scenarios
+# Note: routing-config component exposes BOTH configs simultaneously
 # ===================================================================
-MULTI_CONFIG_MODE="${MULTI_CONFIG_MODE:-false}"
+echo "==================================================================="
+echo "MULTI-CONFIG SCENARIOS (routing://config + config://routing-team-override)"
+echo "==================================================================="
+echo ""
 
-if [ "$MULTI_CONFIG_MODE" = "true" ]; then
-    echo "==================================================================="
-    echo "MULTI-CONFIG SCENARIOS (routing://config + config://routing-team-override)"
-    echo "==================================================================="
-    echo ""
+# ===================================================================
+# SCENARIO 10: Deny Trumps Allow - Blacklist Wins
+# ===================================================================
+echo "==================================================================="
+echo "SCENARIO 10: Deny Trumps Allow - /mcp/math (add blacklisted by override)"
+echo "==================================================================="
+echo "Path: /mcp/math"
+echo "Base config: whitelist=[calculator-rs] (includes add)"
+echo "Override config: blacklist=[add]"
+echo "Expected: add DENIED, subtract allowed (Deny Trumps Allow)"
+echo ""
 
-    # ===================================================================
-    # SCENARIO 10: Deny Trumps Allow - Blacklist Wins
-    # ===================================================================
-    echo "==================================================================="
-    echo "SCENARIO 10: Deny Trumps Allow - /mcp/math (add blacklisted by override)"
-    echo "==================================================================="
-    echo "Path: /mcp/math"
-    echo "Base config: whitelist=[calculator-rs] (includes add)"
-    echo "Override config: blacklist=[add]"
-    echo "Expected: add DENIED, subtract allowed (Deny Trumps Allow)"
-    echo ""
+initialize_session "/mcp/math" || exit 1
+TOOLS_DENY=$(list_tools "/mcp/math")
 
-    initialize_session "/mcp/math" || exit 1
-    TOOLS_DENY=$(list_tools "/mcp/math")
-
-    # Verify add is DENIED
-    if ! echo "$TOOLS_DENY" | grep -q "^add$"; then
-        echo -e "${GREEN}✓ 'add' correctly DENIED (blacklist wins)${NC}"
-    else
-        echo -e "${RED}✗ 'add' should be DENIED by override blacklist${NC}"
-    fi
-
-    # Verify subtract still allowed
-    if echo "$TOOLS_DENY" | grep -q "subtract"; then
-        echo -e "${GREEN}✓ 'subtract' still allowed${NC}"
-    else
-        echo -e "${RED}✗ 'subtract' should still be allowed${NC}"
-    fi
-    echo ""
-
-    # ===================================================================
-    # SCENARIO 11: Whitelist Union - Merging Whitelists
-    # ===================================================================
-    echo "==================================================================="
-    echo "SCENARIO 11: Whitelist Union - /mcp/calc (merged whitelists)"
-    echo "==================================================================="
-    echo "Path: /mcp/calc"
-    echo "Base config: whitelist=[add, subtract, factorial]"
-    echo "Override config: whitelist=[add_item, list_items]"
-    echo "Expected: All 5 tools available (union)"
-    echo ""
-
-    initialize_session "/mcp/calc" || exit 1
-    TOOLS_UNION=$(list_tools "/mcp/calc")
-
-    # Verify calculator tools present
-    if echo "$TOOLS_UNION" | grep -q "add" && echo "$TOOLS_UNION" | grep -q "factorial"; then
-        echo -e "${GREEN}✓ Calculator tools present from base config${NC}"
-    else
-        echo -e "${RED}✗ Missing calculator tools${NC}"
-    fi
-
-    # Verify todo tools present from override
-    if echo "$TOOLS_UNION" | grep -q "add_item" && echo "$TOOLS_UNION" | grep -q "list_items"; then
-        echo -e "${GREEN}✓ Todo tools present from override config${NC}"
-    else
-        echo -e "${RED}✗ Missing todo tools from override${NC}"
-    fi
-    echo ""
-
-    # ===================================================================
-    # SCENARIO 12: Global Tag Filters from Override
-    # ===================================================================
-    echo "==================================================================="
-    echo "SCENARIO 12: Global Tag Filters - Override affects all paths"
-    echo "==================================================================="
-    echo "Path: /mcp (no path rule, global filters apply)"
-    echo "Override config: [tag-filters] tool-level = \"foundational\""
-    echo "Expected: Only foundational-level tools (all current tools are foundational)"
-    echo ""
-
-    initialize_session "/mcp" || exit 1
-    TOOLS_GLOBAL=$(list_tools "/mcp")
-
-    # All our test tools are foundational, so should still see them
-    if echo "$TOOLS_GLOBAL" | grep -q "add" && echo "$TOOLS_GLOBAL" | grep -q "add_item"; then
-        echo -e "${GREEN}✓ Foundational tools available${NC}"
-    else
-        echo -e "${RED}✗ Foundational tools should be available${NC}"
-    fi
-    echo ""
-
-    # ===================================================================
-    # SCENARIO 13: New Path from Override Config
-    # ===================================================================
-    echo "==================================================================="
-    echo "SCENARIO 13: New Path - /mcp/override-only"
-    echo "==================================================================="
-    echo "Path: /mcp/override-only"
-    echo "Override config: whitelist=[factorial]"
-    echo "Expected: Only factorial tool"
-    echo ""
-
-    initialize_session "/mcp/override-only" || exit 1
-    TOOLS_NEW_PATH=$(list_tools "/mcp/override-only")
-
-    # Verify only factorial present
-    if echo "$TOOLS_NEW_PATH" | grep -q "factorial" && ! echo "$TOOLS_NEW_PATH" | grep -q "add_item"; then
-        echo -e "${GREEN}✓ New path rule from override working${NC}"
-    else
-        echo -e "${RED}✗ New path rule not working correctly${NC}"
-        echo "Tools found: $TOOLS_NEW_PATH"
-    fi
-    echo ""
-
-    # ===================================================================
-    # SCENARIO 14: Conflict Detection in Diagnostics
-    # ===================================================================
-    echo "==================================================================="
-    echo "SCENARIO 14: Conflict Detection - inspect_routing reports conflicts"
-    echo "==================================================================="
-    echo "Expected: Diagnostic shows BOTH configs and conflict at /mcp/math"
-    echo ""
-
-    initialize_session "/mcp" || exit 1
-    list_tools "/mcp" > /dev/null
-
-    # Call inspect_routing
-    TOKEN=$($WASMCP_CLI jwt load-token admin 2>/dev/null)
-    HEADERS="-H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/json\""
-    if [ -n "$SESSION_ID" ]; then
-        HEADERS="$HEADERS -H \"Mcp-Session-Id: $SESSION_ID\""
-    fi
-
-    INSPECT_MULTI=$(eval curl -s -X POST \
-        $HEADERS \
-        -d "'{\"jsonrpc\":\"2.0\",\"id\":$REQUEST_ID,\"method\":\"tools/call\",\"params\":{\"name\":\"inspect_routing\",\"arguments\":{}}}'" \
-        http://localhost:3000/mcp)
-
-    REQUEST_ID=$((REQUEST_ID + 1))
-
-    # Strip SSE prefix
-    CLEAN_MULTI=$(echo "$INSPECT_MULTI" | sed 's/^data: //')
-    DIAGNOSTIC_MULTI=$(echo "$CLEAN_MULTI" | jq -r '.result.content[0].text' 2>/dev/null)
-
-    echo -e "${YELLOW}Config sources detected:${NC}"
-    echo "$DIAGNOSTIC_MULTI" | jq -r '.config_sources[] | "  • \(.uri) (version: \(.version))"'
-
-    # Verify both configs present
-    if echo "$DIAGNOSTIC_MULTI" | grep -q "routing://config" && echo "$DIAGNOSTIC_MULTI" | grep -q "config://routing-team-override"; then
-        echo -e "${GREEN}✓ Both config sources detected${NC}"
-    else
-        echo -e "${RED}✗ Both config sources should be present${NC}"
-    fi
-
-    # Check for conflicts
-    CONFLICT_CNT=$(echo "$DIAGNOSTIC_MULTI" | jq '.conflict_reports | length')
-    if [ "$CONFLICT_CNT" -gt 0 ]; then
-        echo -e "${GREEN}✓ Conflicts detected: $CONFLICT_CNT${NC}"
-        echo -e "${YELLOW}Conflicts:${NC}"
-        echo "$DIAGNOSTIC_MULTI" | jq -r '.conflict_reports[] | "  • \(.path): \(.tool_or_component) - \(.resolution)"'
-    else
-        echo -e "${YELLOW}⚠ No conflicts reported (expected 'add' conflict at /mcp/math)${NC}"
-    fi
-    echo ""
+# Verify add is DENIED
+if ! echo "$TOOLS_DENY" | grep -q "^add$"; then
+    echo -e "${GREEN}✓ 'add' correctly DENIED (blacklist wins)${NC}"
+else
+    echo -e "${RED}✗ 'add' should be DENIED by override blacklist${NC}"
 fi
+
+# Verify subtract still allowed
+if echo "$TOOLS_DENY" | grep -q "subtract"; then
+    echo -e "${GREEN}✓ 'subtract' still allowed${NC}"
+else
+    echo -e "${RED}✗ 'subtract' should still be allowed${NC}"
+fi
+echo ""
+
+# ===================================================================
+# SCENARIO 11: Whitelist Union - Merging Whitelists
+# ===================================================================
+echo "==================================================================="
+echo "SCENARIO 11: Whitelist Union - /mcp/calc (merged whitelists)"
+echo "==================================================================="
+echo "Path: /mcp/calc"
+echo "Base config: whitelist=[add, subtract, factorial]"
+echo "Override config: whitelist=[add_item, list_items]"
+echo "Expected: All 5 tools available (union)"
+echo ""
+
+initialize_session "/mcp/calc" || exit 1
+TOOLS_UNION=$(list_tools "/mcp/calc")
+
+# Verify calculator tools present
+if echo "$TOOLS_UNION" | grep -q "add" && echo "$TOOLS_UNION" | grep -q "factorial"; then
+    echo -e "${GREEN}✓ Calculator tools present from base config${NC}"
+else
+    echo -e "${RED}✗ Missing calculator tools${NC}"
+fi
+
+# Verify todo tools present from override
+if echo "$TOOLS_UNION" | grep -q "add_item" && echo "$TOOLS_UNION" | grep -q "list_items"; then
+    echo -e "${GREEN}✓ Todo tools present from override config${NC}"
+else
+    echo -e "${RED}✗ Missing todo tools from override${NC}"
+fi
+echo ""
+
+# ===================================================================
+# SCENARIO 12: Global Tag Filters from Override
+# ===================================================================
+echo "==================================================================="
+echo "SCENARIO 12: Global Tag Filters - Override affects all paths"
+echo "==================================================================="
+echo "Path: /mcp (no path rule, global filters apply)"
+echo "Override config: [tag-filters] tool-level = \"foundational\""
+echo "Expected: Only foundational-level tools (all current tools are foundational)"
+echo ""
+
+initialize_session "/mcp" || exit 1
+TOOLS_GLOBAL=$(list_tools "/mcp")
+
+# All our test tools are foundational, so should still see them
+if echo "$TOOLS_GLOBAL" | grep -q "add" && echo "$TOOLS_GLOBAL" | grep -q "add_item"; then
+    echo -e "${GREEN}✓ Foundational tools available${NC}"
+else
+    echo -e "${RED}✗ Foundational tools should be available${NC}"
+fi
+echo ""
+
+# ===================================================================
+# SCENARIO 13: New Path from Override Config
+# ===================================================================
+echo "==================================================================="
+echo "SCENARIO 13: New Path - /mcp/override-only"
+echo "==================================================================="
+echo "Path: /mcp/override-only"
+echo "Override config: whitelist=[factorial]"
+echo "Expected: Only factorial tool"
+echo ""
+
+initialize_session "/mcp/override-only" || exit 1
+TOOLS_NEW_PATH=$(list_tools "/mcp/override-only")
+
+# Verify only factorial present
+if echo "$TOOLS_NEW_PATH" | grep -q "factorial" && ! echo "$TOOLS_NEW_PATH" | grep -q "add_item"; then
+    echo -e "${GREEN}✓ New path rule from override working${NC}"
+else
+    echo -e "${RED}✗ New path rule not working correctly${NC}"
+    echo "Tools found: $TOOLS_NEW_PATH"
+fi
+echo ""
+
+# ===================================================================
+# SCENARIO 14: Conflict Detection in Diagnostics
+# ===================================================================
+echo "==================================================================="
+echo "SCENARIO 14: Conflict Detection - inspect_routing reports conflicts"
+echo "==================================================================="
+echo "Expected: Diagnostic shows BOTH configs and conflict at /mcp/math"
+echo ""
+
+initialize_session "/mcp" || exit 1
+list_tools "/mcp" > /dev/null
+
+# Call inspect_routing
+TOKEN=$($WASMCP_CLI jwt load-token admin 2>/dev/null)
+HEADERS="-H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/json\""
+if [ -n "$SESSION_ID" ]; then
+    HEADERS="$HEADERS -H \"Mcp-Session-Id: $SESSION_ID\""
+fi
+
+INSPECT_MULTI=$(eval curl -s -X POST \
+    $HEADERS \
+    -d "'{\"jsonrpc\":\"2.0\",\"id\":$REQUEST_ID,\"method\":\"tools/call\",\"params\":{\"name\":\"inspect_routing\",\"arguments\":{}}}'" \
+    http://localhost:3000/mcp)
+
+REQUEST_ID=$((REQUEST_ID + 1))
+
+# Strip SSE prefix
+CLEAN_MULTI=$(echo "$INSPECT_MULTI" | sed 's/^data: //')
+DIAGNOSTIC_MULTI=$(echo "$CLEAN_MULTI" | jq -r '.result.content[0].text' 2>/dev/null)
+
+echo -e "${YELLOW}Config sources detected:${NC}"
+echo "$DIAGNOSTIC_MULTI" | jq -r '.config_sources[] | "  • \(.uri) (version: \(.version))"'
+
+# Verify both configs present
+if echo "$DIAGNOSTIC_MULTI" | grep -q "routing://config" && echo "$DIAGNOSTIC_MULTI" | grep -q "config://routing-team-override"; then
+    echo -e "${GREEN}✓ Both config sources detected${NC}"
+else
+    echo -e "${RED}✗ Both config sources should be present${NC}"
+fi
+
+# Check for conflicts
+CONFLICT_CNT=$(echo "$DIAGNOSTIC_MULTI" | jq '.conflict_reports | length')
+if [ "$CONFLICT_CNT" -gt 0 ]; then
+    echo -e "${GREEN}✓ Conflicts detected: $CONFLICT_CNT${NC}"
+    echo -e "${YELLOW}Conflicts:${NC}"
+    echo "$DIAGNOSTIC_MULTI" | jq -r '.conflict_reports[] | "  • \(.path): \(.tool_or_component) - \(.resolution)"'
+else
+    echo -e "${YELLOW}⚠ No conflicts reported (expected 'add' conflict at /mcp/math)${NC}"
+fi
+echo ""
 
 # ===================================================================
 # Summary

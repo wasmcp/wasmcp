@@ -1234,3 +1234,118 @@
 [session-store] Storing metadata at key: 'cfaf88ff-26cc-45f9-8d34-59c9cd344d23:__meta__'
 [session-store] Session metadata stored successfully
 [session-store] Session initialized successfully: cfaf88ff-26cc-45f9-8d34-59c9cd344d23
+[transport:response] Adding WWW-Authenticate header: Bearer, error="invalid_token", error_description="The access token provided is invalid, expired, or malformed"
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: c7ebce3d-cef8-46b7-91f7-54dddb303747
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000050, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: 'c7ebce3d-cef8-46b7-91f7-54dddb303747:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: c7ebce3d-cef8-46b7-91f7-54dddb303747
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: 16b9cde9-9a8e-4261-b919-36eebbf6dfec
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000104, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: '16b9cde9-9a8e-4261-b919-36eebbf6dfec:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: 16b9cde9-9a8e-4261-b919-36eebbf6dfec
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: 3fe28b17-57f5-434f-ab04-388e4479e2f3
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000161, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: '3fe28b17-57f5-434f-ab04-388e4479e2f3:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: 3fe28b17-57f5-434f-ab04-388e4479e2f3
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: a494188e-bc05-4a83-86b7-7feece4981aa
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000209, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: 'a494188e-bc05-4a83-86b7-7feece4981aa:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: a494188e-bc05-4a83-86b7-7feece4981aa
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: 95dc19e2-4ef3-4dbd-98a3-8ce845f9717f
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000264, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: '95dc19e2-4ef3-4dbd-98a3-8ce845f9717f:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: 95dc19e2-4ef3-4dbd-98a3-8ce845f9717f
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: 8d014d72-12e0-407d-b1b4-debfb2643799
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000317, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: '8d014d72-12e0-407d-b1b4-debfb2643799:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: 8d014d72-12e0-407d-b1b4-debfb2643799
+[TRANSPORT] ERROR during request processing: Protocol("Middleware delegation failed: ErrorCode::InvalidParams(Error { code: -32602, message: \"Tool 'add_item' not available at this path\", data: None })")
+[TRANSPORT] ERROR during request processing: Protocol("Middleware delegation failed: ErrorCode::InvalidParams(Error { code: -32602, message: \"Tool 'add' not available at this path\", data: None })")
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: eb62e391-7900-4833-b59b-b61a1992d7ca
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000397, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: 'eb62e391-7900-4833-b59b-b61a1992d7ca:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: eb62e391-7900-4833-b59b-b61a1992d7ca
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: 9224ae0c-5e04-498d-b273-3d5922f4b2ad
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000448, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: '9224ae0c-5e04-498d-b273-3d5922f4b2ad:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: 9224ae0c-5e04-498d-b273-3d5922f4b2ad
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: 2f3518e0-dd0b-4ec7-aa49-f4123d0d2298
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000500, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: '2f3518e0-dd0b-4ec7-aa49-f4123d0d2298:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: 2f3518e0-dd0b-4ec7-aa49-f4123d0d2298
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: 688a5ea6-d8f4-42d6-ac75-3837f12c460f
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000587, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: '688a5ea6-d8f4-42d6-ac75-3837f12c460f:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: 688a5ea6-d8f4-42d6-ac75-3837f12c460f
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: e176d211-84ec-45cf-ba26-34ca30a59e82
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000636, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: 'e176d211-84ec-45cf-ba26-34ca30a59e82:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: e176d211-84ec-45cf-ba26-34ca30a59e82
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: b6e4d541-f290-4e9b-bd87-25c58c3cc35b
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000688, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: 'b6e4d541-f290-4e9b-bd87-25c58c3cc35b:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: b6e4d541-f290-4e9b-bd87-25c58c3cc35b
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: 1696ef34-155b-4e2a-b66e-c541944fe96f
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000735, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: '1696ef34-155b-4e2a-b66e-c541944fe96f:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: 1696ef34-155b-4e2a-b66e-c541944fe96f
+[session-store] initialize() called with store_id: 'default'
+[session-store] Generated session ID: 8811db4f-a9d3-4412-ab36-44ca12aade09
+[session-store] Opening KV bucket: 'default'
+[session-store] KV bucket opened successfully
+[session-store] Created metadata: created_at=1764057000778, expires_at=Some(1764143400)
+[session-store] Storing metadata at key: '8811db4f-a9d3-4412-ab36-44ca12aade09:__meta__'
+[session-store] Session metadata stored successfully
+[session-store] Session initialized successfully: 8811db4f-a9d3-4412-ab36-44ca12aade09

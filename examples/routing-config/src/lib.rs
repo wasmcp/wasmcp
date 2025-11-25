@@ -17,18 +17,35 @@ impl Guest for RoutingConfig {
         _req: ListResourcesRequest,
     ) -> Result<ListResourcesResult, ErrorCode> {
         Ok(ListResourcesResult {
-            resources: vec![McpResource {
-                uri: "routing://config".to_string(),
-                name: "Routing Configuration".to_string(),
-                options: Some(ResourceOptions {
-                    size: None,
-                    title: Some("Routing Configuration".to_string()),
-                    description: Some("Path and tag-based routing rules".to_string()),
-                    mime_type: Some("application/toml".to_string()),
-                    annotations: None,
-                    meta: None,
-                }),
-            }],
+            resources: vec![
+                McpResource {
+                    uri: "routing://config".to_string(),
+                    name: "Routing Configuration".to_string(),
+                    options: Some(ResourceOptions {
+                        size: None,
+                        title: Some("Routing Configuration".to_string()),
+                        description: Some("Path and tag-based routing rules".to_string()),
+                        mime_type: Some("application/toml".to_string()),
+                        annotations: None,
+                        meta: None,
+                    }),
+                },
+                McpResource {
+                    uri: "config://routing-team-override".to_string(),
+                    name: "Routing Configuration Override".to_string(),
+                    options: Some(ResourceOptions {
+                        size: None,
+                        title: Some("Routing Configuration Override".to_string()),
+                        description: Some(
+                            "Override routing rules that demonstrate multi-config aggregation"
+                                .to_string(),
+                        ),
+                        mime_type: Some("application/toml".to_string()),
+                        annotations: None,
+                        meta: None,
+                    }),
+                },
+            ],
             next_cursor: None,
             meta: None,
         })
@@ -38,23 +55,40 @@ impl Guest for RoutingConfig {
         _ctx: MessageContext,
         request: ReadResourceRequest,
     ) -> Result<Option<ReadResourceResult>, ErrorCode> {
-        if request.uri == "routing://config" {
-            // Embed routing.toml at compile time
-            let config_toml = include_str!("../routing.toml");
+        match request.uri.as_str() {
+            "routing://config" => {
+                // Embed routing.toml at compile time
+                let config_toml = include_str!("../routing.toml");
 
-            Ok(Some(ReadResourceResult {
-                meta: None,
-                contents: vec![ResourceContents::Text(TextResourceContents {
-                    uri: request.uri,
-                    text: TextData::Text(config_toml.to_string()),
-                    options: Some(EmbeddedResourceOptions {
-                        mime_type: Some("application/toml".to_string()),
-                        meta: None,
-                    }),
-                })],
-            }))
-        } else {
-            Ok(None)
+                Ok(Some(ReadResourceResult {
+                    meta: None,
+                    contents: vec![ResourceContents::Text(TextResourceContents {
+                        uri: request.uri,
+                        text: TextData::Text(config_toml.to_string()),
+                        options: Some(EmbeddedResourceOptions {
+                            mime_type: Some("application/toml".to_string()),
+                            meta: None,
+                        }),
+                    })],
+                }))
+            }
+            "config://routing-team-override" => {
+                // Embed routing-override.toml at compile time
+                let override_toml = include_str!("../routing-override.toml");
+
+                Ok(Some(ReadResourceResult {
+                    meta: None,
+                    contents: vec![ResourceContents::Text(TextResourceContents {
+                        uri: request.uri,
+                        text: TextData::Text(override_toml.to_string()),
+                        options: Some(EmbeddedResourceOptions {
+                            mime_type: Some("application/toml".to_string()),
+                            meta: None,
+                        }),
+                    })],
+                }))
+            }
+            _ => Ok(None),
         }
     }
 

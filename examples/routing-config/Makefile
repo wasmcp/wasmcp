@@ -26,9 +26,10 @@ build-deps:
 	@echo "Building todo-list-auth..."
 	@cd ../todo-list-auth && cargo build --target wasm32-wasip2 --release
 
-# Compose all components into final MCP server (single config)
+# Compose all components into final MCP server
+# Note: routing_config.wasm exposes BOTH configs (routing://config + config://routing-team-override)
 compose: build build-deps
-	@echo "Composing filtered MCP server..."
+	@echo "Composing filtered MCP server with multi-config..."
 	@../../cli/target/aarch64-apple-darwin/release/wasmcp compose server \
 		../../target/wasm32-wasip2/release/filter_middleware.wasm \
 		target/wasm32-wasip2/release/routing_config.wasm \
@@ -37,23 +38,7 @@ compose: build build-deps
 		-o mcp-server.wasm \
 		--runtime spin \
 		--force
-	@echo "✓ Composed server: mcp-server.wasm"
-
-# Compose with BOTH configs for multi-config testing
-compose-multi: build build-deps
-	@echo "Building routing-config-override..."
-	@cd ../routing-config-override && cargo build --target wasm32-wasip2 --release
-	@echo "Composing filtered MCP server with MULTIPLE configs..."
-	@../../cli/target/aarch64-apple-darwin/release/wasmcp compose server \
-		../../target/wasm32-wasip2/release/filter_middleware.wasm \
-		target/wasm32-wasip2/release/routing_config.wasm \
-		../routing-config-override/target/wasm32-wasip2/release/routing_config_override.wasm \
-		../calculator-rs/target/wasm32-wasip2/release/calculator.wasm \
-		../todo-list-auth/target/wasm32-wasip2/release/todo_list_auth.wasm \
-		-o mcp-server.wasm \
-		--runtime spin \
-		--force
-	@echo "✓ Composed server with MULTI-CONFIG: mcp-server.wasm"
+	@echo "✓ Composed server with multi-config: mcp-server.wasm"
 
 # Alias for compose
 server: compose

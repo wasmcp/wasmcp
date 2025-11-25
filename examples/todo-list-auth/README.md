@@ -377,6 +377,254 @@ wasmcp jwt load-token my-token
 wasmcp jwt decode-token my-token
 ```
 
+## Using These Authorization Patterns in Your Components
+
+### Pattern 1: Scope-Based Access Control (SBAC)
+
+Implement scope-based access control in your tools:
+
+```rust
+use bindings::wasmcp::auth::helpers;
+use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
+
+fn call_tool(
+    ctx: MessageContext,
+    request: CallToolRequest,
+) -> Result<Option<CallToolResult>, ErrorCode> {
+    // Extract JWT claims from context
+    let claims = ctx.identity.as_ref().map(|id| &id.claims);
+
+    match request.name.as_str() {
+        "read_operation" => {
+            // Check for mcp:read scope
+            if !check_scope(claims, "mcp:read") {
+                return Ok(Some(error_result(
+                    "Authorization failed: mcp:read scope required".to_string()
+                )));
+            }
+            // Execute read operation...
+        }
+        "write_operation" => {
+            // Check for mcp:write scope
+            if !check_scope(claims, "mcp:write") {
+                return Ok(Some(error_result(
+                    "Authorization failed: mcp:write scope required".to_string()
+                )));
+            }
+            // Execute write operation...
+        }
+        _ => Ok(None),
+    }
+}
+
+fn check_scope(claims: Option<&JwtClaims>, required: &str) -> bool {
+    match claims {
+        Some(c) => helpers::has_scope(c, required),
+        None => false,
+    }
+}
+```
+
+**JWT Claims** (standard OAuth 2.0 scope claim):
+```json
+{
+  "scope": "mcp:read mcp:write"
+}
+```
+
+### Pattern 2: Role-Based Access Control (RBAC)
+
+Use custom claims for role-based authorization:
+
+```rust
+fn check_role(claims: Option<&JwtClaims>, required_role: &str) -> bool {
+    match claims {
+        Some(c) => {
+            match helpers::get_claim(c, "role") {
+                Some(role) => role == required_role,
+                None => false,
+            }
+        }
+        None => false,
+    }
+}
+
+// In your tool handler
+fn call_tool(ctx: MessageContext, request: CallToolRequest) -> Result<...> {
+    let claims = ctx.identity.as_ref().map(|id| &id.claims);
+
+    match request.name.as_str() {
+        "admin_operation" => {
+            if !check_role(claims, "admin") {
+                return Ok(Some(error_result(
+                    "Authorization failed: role=admin required".to_string()
+                )));
+            }
+            // Execute admin operation...
+        }
+        "analyst_operation" => {
+            if !check_role(claims, "analyst") {
+                return Ok(Some(error_result(
+                    "Authorization failed: role=analyst required".to_string()
+                )));
+            }
+            // Execute analyst operation...
+        }
+        _ => Ok(None),
+    }
+}
+```
+
+**JWT Claims** (custom role claim):
+```json
+{
+  "role": "admin",
+  "scope": "mcp:read mcp:write"
+}
+```
+
+### Pattern 3: Attribute-Based Access Control (ABAC)
+
+Implement fine-grained tool-level permissions:
+
+```rust
+fn check_tool_allowed(claims: Option<&JwtClaims>, tool_name: &str) -> bool {
+    match claims {
+        Some(c) => {
+            match helpers::get_claim(c, "allowed_tools") {
+                Some(allowed) => {
+                    // Parse comma-separated list
+                    allowed.split(',')
+                        .map(|s| s.trim())
+                        .any(|t| t == tool_name)
+                }
+                None => true, // No allowed_tools claim = allow all
+            }
+        }
+        None => false,
+    }
+}
+
+// Check in tool handler
+fn call_tool(ctx: MessageContext, request: CallToolRequest) -> Result<...> {
+    let claims = ctx.identity.as_ref().map(|id| &id.claims);
+
+    // Check if tool is allowed via ABAC
+    if !check_tool_allowed(claims, &request.name) {
+        return Ok(Some(error_result(
+            format!("Authorization failed: Tool '{}' not in allowed_tools list", request.name)
+        )));
+    }
+
+    // Also check required scopes/roles for specific tools
+    match request.name.as_str() {
+        "sensitive_operation" => {
+            if !check_scope(claims, "mcp:write") {
+                return Ok(Some(error_result(
+                    "Authorization failed: mcp:write scope required".to_string()
+                )));
+            }
+            // Execute operation...
+        }
+        _ => Ok(None),
+    }
+}
+```
+
+**JWT Claims** (custom allowed_tools claim):
+```json
+{
+  "scope": "mcp:read mcp:write",
+  "role": "analyst",
+  "allowed_tools": "add_item,list_items,generate_report"
+}
+```
+
+### Pattern 4: Layered Authorization
+
+Combine all three patterns for defense in depth:
+
+```rust
+fn call_tool(ctx: MessageContext, request: CallToolRequest) -> Result<...> {
+    let claims = ctx.identity.as_ref().map(|id| &id.claims);
+
+    // Layer 1: ABAC - Check allowed_tools list
+    if !check_tool_allowed(claims, &request.name) {
+        return Ok(Some(error_result(
+            format!("Tool '{}' not in allowed_tools list", request.name)
+        )));
+    }
+
+    // Layer 2: SBAC - Check required scope
+    match request.name.as_str() {
+        "read_data" | "list_items" => {
+            if !check_scope(claims, "mcp:read") {
+                return Ok(Some(error_result("mcp:read scope required".to_string())));
+            }
+        }
+        "write_data" | "add_item" => {
+            if !check_scope(claims, "mcp:write") {
+                return Ok(Some(error_result("mcp:write scope required".to_string())));
+            }
+        }
+        _ => {}
+    }
+
+    // Layer 3: RBAC - Check role for admin operations
+    match request.name.as_str() {
+        "delete_data" | "clear_all" => {
+            if !check_role(claims, "admin") {
+                return Ok(Some(error_result("role=admin required".to_string())));
+            }
+        }
+        _ => {}
+    }
+
+    // All checks passed - execute tool
+    execute_tool(&ctx, &request)
+}
+```
+
+### Using Session-Based State in Your Components
+
+Session storage provides persistent key-value storage scoped to a client session:
+
+```rust
+use bindings::wasmcp::mcp_v20250618::sessions::Session;
+use bindings::wasmcp::keyvalue::store::TypedValue;
+
+fn save_data(ctx: &MessageContext, key: &str, value: &str) -> Result<(), ErrorCode> {
+    let session_info = ctx.session.as_ref()
+        .ok_or(ErrorCode::InvalidRequest)?;
+
+    let session = Session::open(&session_info.session_id, &session_info.store_id)?;
+    session.set(key, &TypedValue::AsString(value.to_string()))?;
+    Ok(())
+}
+
+fn load_data(ctx: &MessageContext, key: &str) -> Result<Option<String>, ErrorCode> {
+    let session_info = ctx.session.as_ref()
+        .ok_or(ErrorCode::InvalidRequest)?;
+
+    let session = Session::open(&session_info.session_id, &session_info.store_id)?;
+    match session.get(key)? {
+        Some(TypedValue::AsString(s)) => Ok(Some(s)),
+        Some(TypedValue::AsBytes(b)) => Ok(Some(String::from_utf8_lossy(&b).to_string())),
+        None => Ok(None),
+    }
+}
+```
+
+### Session Hijacking Protection
+
+The transport layer automatically validates that JWT identity matches the session-bound identity:
+
+1. On session initialization, `jwt:sub` and `jwt:iss` claims are stored
+2. On subsequent requests with session ID, these stored values are compared with current JWT
+3. Mismatches result in HTTP 403 rejection
+
+**No additional code required** - this protection is built into the transport layer.
+
 ## Implementation Details
 
 ### MessageContext and Session
