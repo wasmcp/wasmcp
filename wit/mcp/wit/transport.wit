@@ -72,9 +72,9 @@ interface io {
 
 /// Decode and validate a JWT
 interface auth {
-    use mcp.{
-        claims,
+    use wasmcp:auth/types@0.1.0.{
         jwt,
+        jwt-claims,
     };
     use io.{
         incoming-client-message,
@@ -87,14 +87,14 @@ interface auth {
     decode: func(
         /// JWT from the Authorization header
         jwt: jwt,
-    ) -> result<claims>;
+    ) -> result<jwt-claims>;
 
     /// Authorize an incoming message against decoded claims.
     authorize: func(
         /// The incoming message
         message: incoming-client-message,
         /// Decoded JWT claims
-        claims: claims,
+        claims: jwt-claims,
     ) -> bool;
 }
 
