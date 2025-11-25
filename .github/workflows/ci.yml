@@ -33,6 +33,7 @@ env:
   # Framework crates that require WIT dependency fetching
   FRAMEWORK_CRATES: |
     authorization
+    filter-middleware
     kv-store
     method-not-found
     prompts-middleware
@@ -137,9 +138,10 @@ jobs:
         with:
           targets: wasm32-wasip2
           cache-key: components
-          # Cache component crates (4 middleware components built in CI)
+          # Cache component crates (middleware and service components built in CI)
           workspaces: |
             crates/authorization
+            crates/filter-middleware
             crates/kv-store
             crates/method-not-found
             crates/prompts-middleware
@@ -171,6 +173,7 @@ jobs:
         run: |
           cargo build --release \
             -p authorization \
+            -p filter-middleware \
             -p kv-store \
             -p method-not-found \
             -p prompts-middleware \

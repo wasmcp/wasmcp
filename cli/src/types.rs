@@ -24,6 +24,7 @@ pub enum TemplateType {
     Tools,
     Resources,
     Prompts,
+    RoutingConfig,
 }
 
 impl std::fmt::Display for TemplateType {
@@ -32,6 +33,7 @@ impl std::fmt::Display for TemplateType {
             TemplateType::Tools => write!(f, "tools"),
             TemplateType::Resources => write!(f, "resources"),
             TemplateType::Prompts => write!(f, "prompts"),
+            TemplateType::RoutingConfig => write!(f, "routing-config"),
         }
     }
 }

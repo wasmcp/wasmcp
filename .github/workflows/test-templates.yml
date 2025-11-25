@@ -435,3 +435,116 @@ jobs:
           response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server-stdio.wasm \
             --cli --transport stdio --method resources/read --uri "text://info")
           echo "$response" | grep -q "simple resources capability"
+
+  test-routingconfig-template:
+    name: Test routing-config template (rust)
+    runs-on: ubuntu-latest
+    needs: build-cli
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download CLI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wasmcp-cli-linux
+          path: /tmp/wasmcp-bin
+
+      - name: Install wasmcp CLI
+        run: |
+          chmod +x /tmp/wasmcp-bin/wasmcp
+          sudo mv /tmp/wasmcp-bin/wasmcp /usr/local/bin/
+
+      - name: Install wasmtime
+        uses: ./.github/actions/setup-wasmtime
+
+      - name: Install Rust tooling
+        uses: ./.github/actions/setup-rust
+        with:
+          targets: wasm32-wasip2
+          cache-key: templates-routingconfig
+
+      - name: Create test project from routing-config template
+        run: |
+          wasmcp new ci-test-routing-config --language rust --template-type routingconfig
+
+      - name: Verify routing.toml exists
+        run: |
+          if [ ! -f "ci-test-routing-config/routing.toml" ]; then
+            echo "ERROR: routing.toml not found"
+            exit 1
+          fi
+          echo "✓ routing.toml exists"
+
+      - name: Build routing-config component
+        run: cd ci-test-routing-config && make
+
+      - name: Verify component exports resources interface
+        run: |
+          cd ci-test-routing-config
+          COMPONENT="target/wasm32-wasip2/release/ci_test_routing_config.wasm"
+
+          if [ ! -f "$COMPONENT" ]; then
+            echo "ERROR: Component not found: $COMPONENT"
+            exit 1
+          fi
+
+          # Check that component exports resources interface
+          wasm-tools component wit "$COMPONENT" | grep -q "export wasmcp:mcp-v20250618/resources"
+          echo "✓ Component exports resources interface"
+
+      - name: Compose with resources-middleware
+        run: |
+          cd ci-test-routing-config
+          COMPONENT="target/wasm32-wasip2/release/ci_test_routing_config.wasm"
+
+          # Compose with resources-middleware (CLI auto-detects and wraps)
+          wasmcp compose server $COMPONENT --runtime wasmtime -o mcp-server.wasm
+
+          if [ ! -f "mcp-server.wasm" ]; then
+            echo "ERROR: mcp-server.wasm was not created"
+            exit 1
+          fi
+
+          echo "✓ Composed server with resources-middleware"
+
+      - name: Start HTTP server and test resources/list
+        run: |
+          cd ci-test-routing-config
+
+          # Start server in background
+          wasmtime serve -Shttp -Skeyvalue -Scli --env WASMCP_DISABLE_SSE=true mcp-server.wasm &
+          SERVER_PID=$!
+          echo $SERVER_PID > /tmp/server.pid
+
+          # Wait for server to start
+          sleep 3
+
+          # Check if process is still running
+          if ! kill -0 $SERVER_PID 2>/dev/null; then
+            echo "ERROR: Server process died"
+            exit 1
+          fi
+
+          # Test resources/list - should expose config://routing-ci-test-routing-config
+          resources_list=$(npx @modelcontextprotocol/inspector@0.16.8 --cli http://localhost:8080/mcp \
+            --method resources/list)
+
+          echo "$resources_list" | grep -q "config://routing-ci-test-routing-config"
+          echo "✓ Routing config resource discovered"
+
+          # Test resources/read - should return routing.toml content
+          response=$(npx @modelcontextprotocol/inspector@0.16.8 --cli http://localhost:8080/mcp \
+            --method resources/read \
+            --uri "config://routing-ci-test-routing-config")
+
+          echo "$response" | grep -q "version"
+          echo "$response" | grep -q "path-rules"
+          echo "✓ Routing config content retrieved"
+
+          # Stop server
+          kill $SERVER_PID || true

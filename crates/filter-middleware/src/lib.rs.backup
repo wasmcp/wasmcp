@@ -1,0 +1,835 @@
+mod bindings {
+    wit_bindgen::generate!({
+        world: "filter-middleware",
+        generate_all,
+    });
+}
+
+use bindings::exports::wasmcp::mcp_v20250618::server_handler::{Guest, MessageContext};
+use bindings::wasmcp::keyvalue::store::TypedValue;
+use bindings::wasmcp::mcp_v20250618::mcp::*;
+use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
+use bindings::wasmcp::mcp_v20250618::sessions;
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
+
+// Convert exported MessageContext to imported MessageContext
+fn to_downstream_ctx<'a>(ctx: &'a MessageContext<'a>) -> downstream::MessageContext<'a> {
+    downstream::MessageContext {
+        client_stream: ctx.client_stream,
+        protocol_version: ctx.protocol_version.clone(),
+        session: ctx.session.as_ref().map(|s| downstream::Session {
+            session_id: s.session_id.clone(),
+            store_id: s.store_id.clone(),
+        }),
+        identity: ctx.identity.as_ref().map(|i| downstream::Identity {
+            jwt: i.jwt.clone(),
+            claims: i.claims.clone(),
+        }),
+        frame: ctx.frame.clone(),
+        http_context: ctx.http_context.clone(),
+    }
+}
+
+/// Routing configuration loaded from routing://config resource
+#[derive(Debug, Deserialize)]
+struct RoutingConfig {
+    version: String,
+    #[serde(rename = "path-rules")]
+    path_rules: HashMap<String, PathRule>,
+    #[serde(rename = "tag-filters", default)]
+    global_tag_filters: HashMap<String, TagFilterValue>,
+}
+
+/// Path-based filtering rule
+#[derive(Debug, Deserialize)]
+struct PathRule {
+    whitelist: Option<Vec<String>>,
+    blacklist: Option<Vec<String>>,
+    #[serde(rename = "tag-filters", default)]
+    tag_filters: HashMap<String, TagFilterValue>,
+}
+
+/// Tag filter value - can be single string or array of strings
+#[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+enum TagFilterValue {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+/// Tool metadata extracted from tool.options.meta
+#[derive(Debug)]
+struct ToolMetadata {
+    component_id: Option<String>,
+    tags: HashMap<String, String>,
+}
+
+/// Aggregated config from multiple sources
+#[derive(Debug)]
+struct AggregatedConfig {
+    path_rules: HashMap<String, AggregatedPathRule>,
+    global_tag_filters: HashMap<String, Vec<String>>,
+    config_sources: Vec<ConfigSource>,
+}
+
+/// Aggregated path rule with tracking of sources
+#[derive(Debug)]
+struct AggregatedPathRule {
+    whitelist: Vec<String>,
+    blacklist: Vec<String>,
+    tag_filters: HashMap<String, Vec<String>>,
+    sources: RuleSources,
+}
+
+/// Track which config URIs contributed to each rule component
+#[derive(Debug, Clone, Serialize)]
+struct RuleSources {
+    whitelist_from: Vec<String>,
+    blacklist_from: Vec<String>,
+    tag_filters_from: Vec<String>,
+}
+
+/// Config source metadata
+#[derive(Debug, Clone, Serialize)]
+struct ConfigSource {
+    uri: String,
+    version: String,
+}
+
+/// Diagnostic output for inspect_routing tool
+#[derive(Serialize)]
+struct RoutingDiagnostic {
+    config_sources: Vec<ConfigSource>,
+    effective_rules: HashMap<String, EffectivePathRule>,
+    conflict_reports: Vec<ConflictReport>,
+}
+
+/// Effective path rule for diagnostics
+#[derive(Serialize)]
+struct EffectivePathRule {
+    path: String,
+    whitelist: Vec<String>,
+    blacklist: Vec<String>,
+    tag_filters: HashMap<String, Vec<String>>,
+    sources: RuleSources,
+}
+
+/// Conflict report entry
+#[derive(Serialize)]
+struct ConflictReport {
+    path: String,
+    tool_or_component: String,
+    conflict: String,
+    resolution: String,
+}
+
+struct FilterMiddleware;
+
+impl Guest for FilterMiddleware {
+    fn handle(
+        ctx: MessageContext,
+        message: ClientMessage,
+    ) -> Option<Result<ServerResult, ErrorCode>> {
+        match message {
+            ClientMessage::Request((request_id, request)) => {
+                // Handle requests - match on request type
+                let result = match &request {
+                    ClientRequest::ToolsList(list_req) => {
+                        handle_tools_list(request_id.clone(), list_req.clone(), &ctx)
+                    }
+                    ClientRequest::ToolsCall(call_req) => {
+                        handle_tools_call(request_id.clone(), call_req.clone(), &ctx)
+                    }
+                    _ => {
+                        // Delegate all other requests to downstream handler
+                        let downstream_msg = ClientMessage::Request((request_id.clone(), request));
+                        return downstream::handle(&to_downstream_ctx(&ctx), downstream_msg);
+                    }
+                };
+                Some(result)
+            }
+            _ => {
+                // Forward notifications, results, errors to downstream
+                downstream::handle(&to_downstream_ctx(&ctx), message)
+            }
+        }
+    }
+}
+
+/// Handle tools/list - apply path and tag filtering
+fn handle_tools_list(
+    request_id: RequestId,
+    req: ListToolsRequest,
+    ctx: &MessageContext,
+) -> Result<ServerResult, ErrorCode> {
+    // Call downstream to get all tools
+    let downstream_req = ClientRequest::ToolsList(req.clone());
+    let downstream_msg = ClientMessage::Request((request_id.clone(), downstream_req));
+
+    let all_tools = match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
+        Some(Ok(ServerResult::ToolsList(result))) => result.tools,
+        Some(Ok(_)) => {
+            return Err(ErrorCode::InternalError(Error {
+                code: -32603,
+                message: "Unexpected result type from downstream".to_string(),
+                data: None,
+            }))
+        }
+        Some(Err(e)) => return Err(e),
+        None => {
+            return Err(ErrorCode::MethodNotFound(Error {
+                code: -32601,
+                message: "Method not found: tools/list".to_string(),
+                data: None,
+            }))
+        }
+    };
+
+    // Load and aggregate routing configs
+    let config = match load_and_aggregate_configs(ctx) {
+        Ok(c) => c,
+        Err(e) => {
+            return Err(ErrorCode::InternalError(Error {
+                code: -32603,
+                message: format!("Failed to load routing configs: {}", e),
+                data: None,
+            }));
+        }
+    };
+
+    let current_path = extract_path(ctx);
+
+    // Stage 1: Apply path-based whitelist/blacklist filtering
+    let path_filtered = apply_path_filter(&all_tools, &current_path, &config);
+
+    // Stage 2: Apply tag-based filtering (global + path-specific)
+    let tag_filtered = apply_tag_filters(&path_filtered, &current_path, &config);
+
+    // Inject inspect_routing diagnostic tool
+    let mut final_tools = tag_filtered;
+    final_tools.push(create_inspect_routing_tool());
+
+    // Store filtered tool names in session for validation in tools/call
+    // (includes inspect_routing so it can be called)
+    if let Err(e) = store_tool_registry(ctx, &final_tools) {
+        return Err(ErrorCode::InternalError(Error {
+            code: -32603,
+            message: format!("Failed to store tool registry: {}", e),
+            data: None,
+        }));
+    }
+
+    // Return filtered list with diagnostic tool
+    Ok(ServerResult::ToolsList(ListToolsResult {
+        tools: final_tools,
+        next_cursor: None,
+        meta: None,
+    }))
+}
+
+/// Handle tools/call - validate tool is in allowed list
+fn handle_tools_call(
+    request_id: RequestId,
+    req: CallToolRequest,
+    ctx: &MessageContext,
+) -> Result<ServerResult, ErrorCode> {
+    // Check if calling inspect_routing diagnostic tool
+    if req.name == "inspect_routing" {
+        return handle_inspect_routing(ctx);
+    }
+
+    // Load allowed tools from session
+    let allowed_tools = match load_tool_registry(ctx) {
+        Ok(tools) => tools,
+        Err(_) => {
+            // If no registry in session, allow call (tools/list may not have been called)
+            let downstream_req = ClientRequest::ToolsCall(req);
+            let downstream_msg = ClientMessage::Request((request_id, downstream_req));
+            return match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
+                Some(result) => result,
+                None => Err(ErrorCode::MethodNotFound(Error {
+                    code: -32601,
+                    message: "Method not found".to_string(),
+                    data: None,
+                })),
+            };
+        }
+    };
+
+    // Validate tool is allowed
+    if !allowed_tools.contains(&req.name) {
+        return Err(ErrorCode::InvalidParams(Error {
+            code: -32602,
+            message: format!("Tool '{}' not available at this path", req.name),
+            data: None,
+        }));
+    }
+
+    // Tool is allowed, delegate to downstream
+    let downstream_req = ClientRequest::ToolsCall(req);
+    let downstream_msg = ClientMessage::Request((request_id, downstream_req));
+    match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
+        Some(result) => result,
+        None => Err(ErrorCode::MethodNotFound(Error {
+            code: -32601,
+            message: "Method not found".to_string(),
+            data: None,
+        })),
+    }
+}
+
+/// Discover all routing configs and aggregate them
+fn load_and_aggregate_configs(ctx: &MessageContext) -> Result<AggregatedConfig, String> {
+    // Discover all routing config URIs
+    let config_uris = discover_routing_configs(ctx)?;
+
+    // Read and parse each config
+    let mut configs = Vec::new();
+    for uri in config_uris {
+        match read_config_from_uri(ctx, &uri) {
+            Ok(config) => configs.push((uri, config)),
+            Err(e) => {
+                // Log error but continue with other configs
+                eprintln!("Warning: Failed to load config {}: {}", uri, e);
+            }
+        }
+    }
+
+    if configs.is_empty() {
+        return Err("No valid routing configs found".to_string());
+    }
+
+    // Aggregate configs with "Deny Trumps Allow" logic
+    Ok(aggregate_configs(configs))
+}
+
+/// Discover all config://routing-* resources with application/toml mime-type
+fn discover_routing_configs(ctx: &MessageContext) -> Result<Vec<String>, String> {
+    // Send resources/list request through downstream handler
+    let list_req = ClientRequest::ResourcesList(ListResourcesRequest {
+        cursor: None,
+    });
+    let list_msg = ClientMessage::Request((RequestId::Number(0), list_req));
+
+    let all_resources = match downstream::handle(&to_downstream_ctx(ctx), list_msg) {
+        Some(Ok(ServerResult::ResourcesList(result))) => result.resources,
+        Some(Ok(_)) => return Err("Unexpected result type from resources/list".to_string()),
+        Some(Err(e)) => return Err(format!("Resources list failed: {:?}", e)),
+        None => return Err("resources/list not available".to_string()),
+    };
+
+    // Filter for config://routing-* URIs with application/toml mime type
+    let config_uris: Vec<String> = all_resources
+        .iter()
+        .filter(|res| {
+            // Check URI pattern
+            if !res.uri.starts_with("config://routing-") && res.uri != "routing://config" {
+                return false;
+            }
+
+            // Check MIME type if available
+            if let Some(opts) = &res.options {
+                if let Some(mime) = &opts.mime_type {
+                    return mime == "application/toml";
+                }
+            }
+
+            // If no MIME type specified, assume it's valid (for backward compatibility)
+            true
+        })
+        .map(|res| res.uri.clone())
+        .collect();
+
+    if config_uris.is_empty() {
+        return Err("No routing configs found (looking for config://routing-* or routing://config with application/toml)".to_string());
+    }
+
+    Ok(config_uris)
+}
+
+/// Read and parse a single config from URI
+fn read_config_from_uri(ctx: &MessageContext, uri: &str) -> Result<RoutingConfig, String> {
+    let request = ReadResourceRequest {
+        uri: uri.to_string(),
+    };
+
+    let downstream_req = ClientRequest::ResourcesRead(request);
+    let downstream_msg = ClientMessage::Request((RequestId::Number(0), downstream_req));
+
+    let result = match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
+        Some(Ok(ServerResult::ResourcesRead(result))) => result,
+        Some(Ok(_)) => return Err(format!("Unexpected result type from resources/read for {}", uri)),
+        Some(Err(e)) => return Err(format!("Resource read failed for {}: {:?}", uri, e)),
+        None => return Err(format!("Resource not found: {}", uri)),
+    };
+
+    let contents = result
+        .contents
+        .first()
+        .ok_or_else(|| format!("{} has no contents", uri))?;
+
+    // Extract text from resource-contents variant
+    let text_contents = match contents {
+        ResourceContents::Text(t) => t,
+        ResourceContents::Blob(_) => {
+            return Err(format!("{} is binary, expected text", uri))
+        }
+    };
+
+    // Extract string from text-data variant
+    let config_text = match &text_contents.text {
+        TextData::Text(s) => s,
+        TextData::TextStream(_) => {
+            return Err(format!("{} is streamed, expected inline text", uri))
+        }
+    };
+
+    // Parse TOML
+    toml::from_str(config_text).map_err(|e| format!("TOML parse error in {}: {}", uri, e))
+}
+
+/// Aggregate multiple configs with "Deny Trumps Allow" logic
+fn aggregate_configs(configs: Vec<(String, RoutingConfig)>) -> AggregatedConfig {
+    let mut aggregated = AggregatedConfig {
+        path_rules: HashMap::new(),
+        global_tag_filters: HashMap::new(),
+        config_sources: Vec::new(),
+    };
+
+    // Track config sources
+    for (uri, config) in &configs {
+        aggregated.config_sources.push(ConfigSource {
+            uri: uri.clone(),
+            version: config.version.clone(),
+        });
+    }
+
+    // Aggregate global tag filters (union across all configs)
+    for (_uri, config) in &configs {
+        for (tag_name, tag_value) in &config.global_tag_filters {
+            let values = tag_filter_value_to_vec(tag_value);
+            aggregated
+                .global_tag_filters
+                .entry(tag_name.clone())
+                .or_insert_with(Vec::new)
+                .extend(values);
+        }
+    }
+
+    // Deduplicate global tag filter values
+    for values in aggregated.global_tag_filters.values_mut() {
+        values.sort();
+        values.dedup();
+    }
+
+    // Aggregate path rules across all configs
+    // Collect all unique paths
+    let mut all_paths = std::collections::HashSet::new();
+    for (_uri, config) in &configs {
+        for path in config.path_rules.keys() {
+            all_paths.insert(path.clone());
+        }
+    }
+
+    // For each path, aggregate rules with "Deny Trumps Allow"
+    for path in all_paths {
+        let mut agg_rule = AggregatedPathRule {
+            whitelist: Vec::new(),
+            blacklist: Vec::new(),
+            tag_filters: HashMap::new(),
+            sources: RuleSources {
+                whitelist_from: Vec::new(),
+                blacklist_from: Vec::new(),
+                tag_filters_from: Vec::new(),
+            },
+        };
+
+        // Collect whitelist, blacklist, and tag filters from all configs
+        for (uri, config) in &configs {
+            if let Some(rule) = config.path_rules.get(&path) {
+                // Aggregate whitelist (union)
+                if let Some(whitelist) = &rule.whitelist {
+                    agg_rule.whitelist.extend(whitelist.clone());
+                    agg_rule.sources.whitelist_from.push(uri.clone());
+                }
+
+                // Aggregate blacklist (union - any config can deny)
+                if let Some(blacklist) = &rule.blacklist {
+                    agg_rule.blacklist.extend(blacklist.clone());
+                    agg_rule.sources.blacklist_from.push(uri.clone());
+                }
+
+                // Aggregate tag filters (union per path)
+                for (tag_name, tag_value) in &rule.tag_filters {
+                    let values = tag_filter_value_to_vec(tag_value);
+                    agg_rule
+                        .tag_filters
+                        .entry(tag_name.clone())
+                        .or_insert_with(Vec::new)
+                        .extend(values);
+
+                    if !agg_rule.sources.tag_filters_from.contains(uri) {
+                        agg_rule.sources.tag_filters_from.push(uri.clone());
+                    }
+                }
+            }
+        }
+
+        // Deduplicate whitelist and blacklist
+        agg_rule.whitelist.sort();
+        agg_rule.whitelist.dedup();
+        agg_rule.blacklist.sort();
+        agg_rule.blacklist.dedup();
+
+        // Deduplicate tag filter values
+        for values in agg_rule.tag_filters.values_mut() {
+            values.sort();
+            values.dedup();
+        }
+
+        aggregated.path_rules.insert(path, agg_rule);
+    }
+
+    aggregated
+}
+
+/// Extract HTTP path from message context
+fn extract_path(ctx: &MessageContext) -> String {
+    ctx.http_context
+        .as_ref()
+        .map(|h| h.path.clone())
+        .unwrap_or_else(|| "/mcp".to_string())
+}
+
+/// Apply path-based filtering with hierarchical matching
+fn apply_path_filter(tools: &[Tool], path: &str, config: &AggregatedConfig) -> Vec<Tool> {
+    // Find most specific (longest) matching path rule
+    let rule = find_most_specific_path_rule(path, config);
+
+    // If no matching rule, allow all tools (tag filtering only)
+    let rule = match rule {
+        Some(r) => r,
+        None => return tools.to_vec(),
+    };
+
+    // If rule exists but has no whitelist/blacklist, allow all
+    if rule.whitelist.is_empty() && rule.blacklist.is_empty() {
+        return tools.to_vec();
+    }
+
+    let mut filtered = tools.to_vec();
+
+    // Apply whitelist (if present)
+    if !rule.whitelist.is_empty() {
+        filtered.retain(|tool| {
+            let meta = parse_tool_metadata(tool);
+
+            // Check if component_id is whitelisted
+            if let Some(comp_id) = &meta.component_id {
+                if rule.whitelist.contains(comp_id) {
+                    return true;
+                }
+            }
+
+            // Check if tool name is whitelisted
+            rule.whitelist.contains(&tool.name)
+        });
+    }
+
+    // Apply blacklist (if present) - DENY TRUMPS ALLOW
+    if !rule.blacklist.is_empty() {
+        filtered.retain(|tool| !rule.blacklist.contains(&tool.name));
+    }
+
+    filtered
+}
+
+/// Find the most specific (longest matching) path rule
+fn find_most_specific_path_rule<'a>(path: &str, config: &'a AggregatedConfig) -> Option<&'a AggregatedPathRule> {
+    // Find all matching path rules (path starts with rule path)
+    let mut matches: Vec<(&str, &AggregatedPathRule)> = config
+        .path_rules
+        .iter()
+        .filter(|(rule_path, _)| path.starts_with(rule_path.as_str()))
+        .map(|(k, v)| (k.as_str(), v))
+        .collect();
+
+    // Sort by path length (descending) to get most specific first
+    matches.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+
+    // Return most specific match
+    matches.first().map(|(_, rule)| *rule)
+}
+
+/// Apply tag-based filtering (global + path-specific)
+/// Global filters apply to all paths, path-specific filters apply only at matching paths
+/// Both use AND logic - tool must match all active filters
+fn apply_tag_filters(tools: &[Tool], path: &str, config: &AggregatedConfig) -> Vec<Tool> {
+    // Collect all active tag filters (global + path-specific)
+    let mut active_filters: HashMap<String, Vec<String>> = HashMap::new();
+
+    // Add global tag filters
+    for (key, values) in &config.global_tag_filters {
+        active_filters.insert(key.clone(), values.clone());
+    }
+
+    // Add path-specific tag filters (if path rule exists)
+    if let Some(rule) = find_most_specific_path_rule(path, config) {
+        for (key, values) in &rule.tag_filters {
+            active_filters.insert(key.clone(), values.clone());
+        }
+    }
+
+    // If no filters, return all tools
+    if active_filters.is_empty() {
+        return tools.to_vec();
+    }
+
+    // Filter tools - must match ALL active filters (AND behavior)
+    tools
+        .iter()
+        .filter(|tool| {
+            let meta = parse_tool_metadata(tool);
+
+            // Tool must match ALL active tag filters
+            for (tag_name, allowed_values) in &active_filters {
+                let tool_tag_value = meta.tags.get(tag_name);
+
+                match tool_tag_value {
+                    Some(value) if allowed_values.contains(value) => continue,
+                    _ => return false, // Tag missing or doesn't match
+                }
+            }
+
+            true
+        })
+        .cloned()
+        .collect()
+}
+
+/// Convert TagFilterValue enum to Vec<String>
+fn tag_filter_value_to_vec(value: &TagFilterValue) -> Vec<String> {
+    match value {
+        TagFilterValue::Single(s) => vec![s.clone()],
+        TagFilterValue::Multiple(v) => v.clone(),
+    }
+}
+
+/// Parse tool metadata from tool.options.meta JSON
+fn parse_tool_metadata(tool: &Tool) -> ToolMetadata {
+    let meta_json = tool
+        .options
+        .as_ref()
+        .and_then(|opts| opts.meta.as_ref())
+        .and_then(|m| serde_json::from_str::<Value>(m).ok());
+
+    let component_id = meta_json
+        .as_ref()
+        .and_then(|m| m.get("component_id"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let tags = meta_json
+        .as_ref()
+        .and_then(|m| m.get("tags"))
+        .and_then(|t| t.as_object())
+        .map(|obj| {
+            obj.iter()
+                .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    ToolMetadata { component_id, tags }
+}
+
+/// Store filtered tool names in session for validation
+fn store_tool_registry(ctx: &MessageContext, tools: &[Tool]) -> Result<(), String> {
+    let session = match &ctx.session {
+        Some(s) => s,
+        None => return Ok(()), // No session, skip storage
+    };
+
+    let tool_names: Vec<String> = tools.iter().map(|t| t.name.clone()).collect();
+    let registry_json = serde_json::to_string(&tool_names)
+        .map_err(|e| format!("Failed to serialize tool registry: {}", e))?;
+
+    let session_obj = sessions::Session::open(&session.session_id, &session.store_id)
+        .map_err(|e| format!("Failed to open session: {:?}", e))?;
+
+    session_obj
+        .set("filter:tool_registry", &TypedValue::AsString(registry_json))
+        .map_err(|e| format!("Failed to set tool registry: {:?}", e))?;
+
+    Ok(())
+}
+
+/// Load filtered tool names from session
+fn load_tool_registry(ctx: &MessageContext) -> Result<Vec<String>, String> {
+    let session = match &ctx.session {
+        Some(s) => s,
+        None => return Err("No session".to_string()),
+    };
+
+    let session_obj = sessions::Session::open(&session.session_id, &session.store_id)
+        .map_err(|e| format!("Failed to open session: {:?}", e))?;
+
+    let value = session_obj
+        .get("filter:tool_registry")
+        .map_err(|e| format!("Failed to get tool registry: {:?}", e))?;
+
+    match value {
+        Some(TypedValue::AsString(json)) => {
+            serde_json::from_str(&json).map_err(|e| format!("Failed to parse tool registry: {}", e))
+        }
+        _ => Err("Tool registry not found in session".to_string()),
+    }
+}
+
+/// Create the inspect_routing diagnostic tool
+fn create_inspect_routing_tool() -> Tool {
+    Tool {
+        name: "inspect_routing".to_string(),
+        input_schema: r#"{
+            "type": "object",
+            "properties": {}
+        }"#
+        .to_string(),
+        options: Some(ToolOptions {
+            description: Some(
+                "Inspect effective routing configuration and identify conflicts across multiple config sources"
+                    .to_string(),
+            ),
+            title: Some("Inspect Routing Configuration".to_string()),
+            meta: Some(
+                r#"{"component_id":"filter-middleware","tags":{"category":"diagnostics","tool-level":"advanced"}}"#
+                    .to_string(),
+            ),
+            annotations: None,
+            output_schema: None,
+        }),
+    }
+}
+
+/// Handle inspect_routing tool call - return diagnostic information
+fn handle_inspect_routing(ctx: &MessageContext) -> Result<ServerResult, ErrorCode> {
+    // Load and aggregate configs (same as tools/list does)
+    let config = match load_and_aggregate_configs(ctx) {
+        Ok(c) => c,
+        Err(e) => {
+            return Ok(ServerResult::ToolsCall(CallToolResult {
+                content: vec![ContentBlock::Text(TextContent {
+                    text: TextData::Text(format!("Error loading routing configs: {}", e)),
+                    options: None,
+                })],
+                is_error: Some(true),
+                meta: None,
+                structured_content: None,
+            }))
+        }
+    };
+
+    // Get all tools from downstream to check for conflicts
+    let list_req = ClientRequest::ToolsList(ListToolsRequest {
+        cursor: None,
+    });
+    let list_msg = ClientMessage::Request((RequestId::Number(0), list_req));
+
+    let all_tools = match downstream::handle(&to_downstream_ctx(ctx), list_msg) {
+        Some(Ok(ServerResult::ToolsList(result))) => result.tools,
+        _ => Vec::new(), // If we can't get tools, proceed without conflict detection
+    };
+
+    // Build diagnostic output with conflict detection
+    let diagnostic = build_routing_diagnostic(&config, &all_tools);
+
+    // Return as CallToolResult with pretty JSON
+    Ok(ServerResult::ToolsCall(CallToolResult {
+        content: vec![ContentBlock::Text(TextContent {
+            text: TextData::Text(
+                serde_json::to_string_pretty(&diagnostic)
+                    .unwrap_or_else(|_| "Error serializing diagnostic".to_string()),
+            ),
+            options: None,
+        })],
+        is_error: None,
+        meta: None,
+        structured_content: None,
+    }))
+}
+
+/// Build routing diagnostic output
+fn build_routing_diagnostic(config: &AggregatedConfig, all_tools: &[Tool]) -> RoutingDiagnostic {
+    // Build effective rules map
+    let mut effective_rules = HashMap::new();
+    for (path, rule) in &config.path_rules {
+        effective_rules.insert(
+            path.clone(),
+            EffectivePathRule {
+                path: path.clone(),
+                whitelist: rule.whitelist.clone(),
+                blacklist: rule.blacklist.clone(),
+                tag_filters: rule.tag_filters.clone(),
+                sources: rule.sources.clone(),
+            },
+        );
+    }
+
+    // Detect conflicts by checking actual tools against rules
+    let mut conflict_reports = Vec::new();
+    for (path, rule) in &config.path_rules {
+        // Skip if no whitelist or blacklist
+        if rule.whitelist.is_empty() || rule.blacklist.is_empty() {
+            continue;
+        }
+
+        // Check each tool to see if it would be whitelisted by component but blacklisted by name
+        for tool in all_tools {
+            let meta = parse_tool_metadata(tool);
+
+            // Check if tool would pass whitelist check
+            let passes_whitelist = if let Some(comp_id) = &meta.component_id {
+                rule.whitelist.contains(comp_id) || rule.whitelist.contains(&tool.name)
+            } else {
+                rule.whitelist.contains(&tool.name)
+            };
+
+            // Check if tool is blacklisted
+            let is_blacklisted = rule.blacklist.contains(&tool.name);
+
+            // If tool would pass whitelist but is blacklisted -> conflict
+            if passes_whitelist && is_blacklisted {
+                let whitelisted_via = if let Some(comp_id) = &meta.component_id {
+                    if rule.whitelist.contains(comp_id) {
+                        format!("component '{}'", comp_id)
+                    } else {
+                        format!("tool name '{}'", tool.name)
+                    }
+                } else {
+                    format!("tool name '{}'", tool.name)
+                };
+
+                conflict_reports.push(ConflictReport {
+                    path: path.clone(),
+                    tool_or_component: tool.name.clone(),
+                    conflict: format!(
+                        "Tool '{}' is whitelisted via {} (from {:?}) but blacklisted by {:?}",
+                        tool.name, whitelisted_via, rule.sources.whitelist_from, rule.sources.blacklist_from
+                    ),
+                    resolution: "DENIED (blacklist wins per Deny Trumps Allow rule)".to_string(),
+                });
+            }
+        }
+    }
+
+    RoutingDiagnostic {
+        config_sources: config.config_sources.clone(),
+        effective_rules,
+        conflict_reports,
+    }
+}
+
+bindings::export!(FilterMiddleware with_types_in bindings);
