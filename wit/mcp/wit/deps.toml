@@ -1,0 +1,5 @@
+auth = "https://github.com/wasmcp/wasmcp/releases/download/auth-v0.1.0/wasmcp-auth-0.1.0-source.tar.gz"
+cli = "https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.8.tar.gz"
+http = "https://github.com/WebAssembly/wasi-http/archive/refs/tags/v0.2.8.tar.gz"
+io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.8.tar.gz"
+keyvalue = "https://github.com/wasmcp/wasmcp/releases/download/keyvalue-v0.1.0/wasmcp-keyvalue-0.1.0-source.tar.gz"

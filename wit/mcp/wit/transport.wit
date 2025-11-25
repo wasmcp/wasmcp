@@ -1,3 +1,103 @@
+use wasi:io/streams@0.2.8;
+
+/// Streaming I/O for MCP servers
+///
+/// This interface enables servers to parse and send MCP messages over streams.
+interface io {
+    use streams.{
+        input-stream,
+        output-stream,
+        stream-error,
+    };
+    use mcp.{
+        error-code,
+        request-id,
+        transport-protocol,
+    };
+    use notifications.{
+        client-notification,
+        server-notification,
+    };
+    use methods.{
+        client-method,
+        client-result,
+        server-method,
+        server-result,
+    };
+
+    variant incoming-client-message {
+        error(tuple<error-code, option<request-id>>),
+        notification(client-notification),
+        request(tuple<server-method, request-id>),
+        %result(tuple<client-result, request-id>),
+    }
+
+    variant outgoing-client-message {
+        error(tuple<error-code, option<request-id>>),
+        notification(server-notification),
+        request(tuple<client-method, request-id>),
+        %result(tuple<server-result, request-id>),
+    }
+
+    /// Errors that can occur when sending messages to the client
+    variant io-error {
+        /// An I/O error occurred writing to the output stream
+        %stream(stream-error),
+        /// Invalid JSON-RPC message
+        invalid-jsonrpc(string),
+        /// Invalid MCP message
+        invalid-mcp(string),
+        /// An unexpected error occurred
+        unexpected(string),
+    }
+
+    /// Read and deserialize an incoming message from the client
+    parse: func(
+        /// Input stream to read the bytes from
+        input: borrow<input-stream>,
+        /// The transport type
+        transport: transport-protocol,
+    ) -> result<incoming-client-message, io-error>;
+
+    /// Serialize and write an outgoing message to the client
+    send: func(
+        /// Output stream to send the request over
+        output: borrow<output-stream>,
+        /// The transport type
+        transport: transport-protocol,
+        /// Outgoing message to the client
+        message: outgoing-client-message,
+    ) -> result<_, io-error>;
+}
+
+/// Decode and validate a JWT
+interface auth {
+    use wasmcp:auth/types@0.1.0.{
+        jwt,
+        jwt-claims,
+    };
+    use io.{
+        incoming-client-message,
+    };
+
+    /// Decode and validate a JWT.
+    /// Returns the decoded claims if successful.
+    ///
+    /// If the token or its signature is invalid or the claims fail validation, it will return an error.
+    decode: func(
+        /// JWT from the Authorization header
+        jwt: jwt,
+    ) -> result<jwt-claims>;
+
+    /// Authorize an incoming message against decoded claims.
+    authorize: func(
+        /// The incoming message
+        message: incoming-client-message,
+        /// Decoded JWT claims
+        claims: jwt-claims,
+    ) -> bool;
+}
+
 /// MCP session management and related features
 ///
 /// This interface provides stateful session management for MCP servers, enabling:
@@ -10,26 +110,24 @@
 /// allowing servers to maintain state and context across interactions.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management>
-@since(version = 0.1.0)
 interface sessions {
-    use wasi:io/streams@0.2.8.{
+    use streams.{
         output-stream,
         stream-error,
     };
     use wasi:io/poll@0.2.8.{
         pollable,
     };
+    use elicitations.{
+        elicit-params,
+        elicit-result,
+    };
     use wasmcp:keyvalue/store@0.1.0.{
         typed-value,
-    };
-    use mcp.{
-        elicit-request,
-        elicit-result,
     };
     use wasmcp:auth/types@0.1.0.{jwt-claims};
 
     /// Errors that can occur during session operations
-    @since(version = 0.1.0)
     variant session-error {
         /// An I/O error occurred in communication with the client
         io(stream-error),
@@ -46,20 +144,17 @@ interface sessions {
     /// The elicit result is ready when the pollable indicates readiness.
     /// This enables async/await style operations where handlers can request
     /// information from clients and continue processing when the response arrives.
-    @since(version = 0.1.0)
     resource future-elicit-result {
         /// Create a pollable to wait for the elicit result
         ///
         /// The pollable becomes ready when the client responds to the elicitation.
         /// Use WASI poll to wait for readiness before calling elicit-result().
-        @since(version = 0.1.0)
         subscribe: func() -> pollable;
 
         /// Get the elicit result
         ///
         /// Precondition: Only call this after subscribe() indicates readiness.
         /// Calling before the result is ready may trap or return invalid data.
-        @since(version = 0.1.0)
         elicit-result: func() -> elicit-result;
     }
 
@@ -69,7 +164,6 @@ interface sessions {
     /// Each session is identified by a cryptographically unique ID that's passed in the Mcp-Session-Id header.
     ///
     /// <https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#session-management>
-    @since(version = 0.1.0)
     resource session {
         /// Open an existing session by ID in the given bucket
         ///
@@ -78,7 +172,6 @@ interface sessions {
         /// ID doesn't exist in the bucket.
         ///
         /// The bucket is consumed and owned by the session resource.
-        @since(version = 0.1.0)
         open: static func(
             /// The session ID from Mcp-Session-Id header
             session-id: string,
@@ -90,7 +183,6 @@ interface sessions {
         ///
         /// This ID should be returned to clients in the Mcp-Session-Id header
         /// so they can resume the session in future requests.
-        @since(version = 0.1.0)
         id: func() -> string;
 
         /// Get a persistent session value by key
@@ -100,7 +192,6 @@ interface sessions {
         ///
         /// Returns None if the key doesn't exist. Session data persists across
         /// HTTP requests as long as the session exists.
-        @since(version = 0.1.0)
         get: func(
             /// The key to retrieve
             key: string,
@@ -113,7 +204,6 @@ interface sessions {
         /// with a type tag for runtime type safety.
         ///
         /// Overwriting an existing key replaces the previous value.
-        @since(version = 0.1.0)
         set: func(
             /// The key to store under
             key: string,
@@ -131,12 +221,11 @@ interface sessions {
         /// The future should be stored and polled later to retrieve the response.
         ///
         /// <https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation>
-        @since(version = 0.1.0)
         elicit: func(
             /// Output stream to send the elicitation request
             client: borrow<output-stream>,
             /// The elicitation request to send
-            elicitation: elicit-request,
+            elicitation: elicit-params,
         ) -> result<future-elicit-result, session-error>;
 
         /// Terminate the session, optionally providing a reason
@@ -146,7 +235,6 @@ interface sessions {
         /// to remove all session data.
         ///
         /// This operation is idempotent - calling multiple times has no effect.
-        @since(version = 0.1.0)
         terminate: func(
             /// Optional reason for termination (shown to client)
             reason: option<string>,
@@ -162,7 +250,6 @@ interface sessions {
 ///
 /// Storage format is an implementation detail managed internally by the
 /// session-store component and is NOT exposed via this WIT interface.
-@since(version = 0.1.4)
 interface session-manager {
     use sessions.{session-error};
 
@@ -178,7 +265,6 @@ interface session-manager {
     /// * `Ok(session-id)` - UUID v4 formatted session identifier
     /// * `Err(session-error)` - Storage or generation error
     ///
-    /// @since(version = 0.1.4)
     initialize: func(store-id: string) -> result<string, session-error>;
 
     /// Validate session exists and is not terminated
@@ -193,7 +279,6 @@ interface session-manager {
     /// * `Err(no-such-session)` - Session does not exist
     /// * `Err(session-error)` - Storage error
     ///
-    /// @since(version = 0.1.4)
     validate: func(session-id: string, store-id: string) -> result<bool, session-error>;
 
     /// Mark session as terminated (soft delete)
@@ -210,7 +295,6 @@ interface session-manager {
     /// * `store-id` - WASI KV bucket name
     /// * `reason` - Optional human-readable termination reason
     ///
-    /// @since(version = 0.1.4)
     mark-terminated: func(
         session-id: string,
         store-id: string,
@@ -224,7 +308,6 @@ interface session-manager {
     ///
     /// Typically called by transport layer during cleanup, not by user tools.
     ///
-    /// @since(version = 0.1.4)
     delete-session: func(session-id: string, store-id: string) -> result<_, session-error>;
 
     /// Set session expiration timestamp

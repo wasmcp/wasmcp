@@ -1,0 +1,135 @@
+/// Server-side MCP message handler.
+///
+/// Processes incoming messages from clients.
+interface handler {
+    use wasi:io/streams@0.2.8.{
+        output-stream,
+    };
+    use mcp.{
+        error-code,
+        transport-context,
+    };
+    use methods.{
+        server-result,
+        server-method,
+    };
+
+    /// Handle an incoming message from the client
+    handle: func(
+        method: server-method,
+        transport: transport-context,
+    ) -> option<result<server-result, error-code>>;
+}
+
+/// Handles MCP tool calls
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
+interface tools-handler {
+    use mcp.{
+        error-code,
+        transport-context,
+    };
+    use tools.{
+        call-tool-params,
+        call-tool-result,
+        list-tools-params,
+        list-tools-result,
+    };
+
+    /// List tools provided by this component.
+    list-tools: func(
+        params: list-tools-params,
+        transport: transport-context,
+    ) -> result<list-tools-result, error-code>;
+
+    /// Execute a tool call. Return none for unrecognized tools.
+    call-tool: func(
+        params: call-tool-params,
+        transport: transport-context,
+    ) -> result<option<call-tool-result>, error-code>;
+}
+
+/// Handles MCP resources
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
+interface resources-handler {
+    use mcp.{
+        error-code,
+        transport-context,
+    };
+    use resources.{
+        list-resources-params,
+        list-resources-result,
+        read-resource-params,
+        read-resource-result,
+        list-resource-templates-params,
+        list-resource-templates-result,
+    };
+
+    /// list resources provided by this component.
+    list-resources: func(
+        params: list-resources-params,
+        transport: transport-context,
+    ) -> result<list-resources-result, error-code>;
+
+    /// read a resource by uri. return none for unrecognized uris.
+    read-resource: func(
+        params: read-resource-params,
+        transport: transport-context,
+    ) -> result<option<read-resource-result>, error-code>;
+
+    /// list resource templates (rfc 6570 uri templates).
+    list-resource-templates: func(
+        params: list-resource-templates-params,
+        transport: transport-context,
+    ) -> result<list-resource-templates-result, error-code>;
+}
+
+/// Handles MCP prompts
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
+interface prompts-handler {
+    use mcp.{
+        error-code,
+        transport-context,
+    };
+    use prompts.{
+        get-prompt-params,
+        get-prompt-result,
+        list-prompts-params,
+        list-prompts-result,
+    };
+
+    /// List prompts provided by this component.
+    list-prompts: func(
+        params: list-prompts-params,
+        transport: transport-context,
+    ) -> result<list-prompts-result, error-code>;
+
+    /// Get a prompt by name. Return none for unrecognized prompts.
+    get-prompt: func(
+        params: get-prompt-params,
+        transport: transport-context,
+    ) -> result<option<get-prompt-result>, error-code>;
+}
+
+/// Handle MCP completions
+///
+/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
+interface completions-handler {
+    use mcp.{
+        error-code,
+        transport-context,
+    };
+    use completions.{
+        complete-params,
+        complete-result,
+    };
+
+    /// Provide completion suggestions for prompt or resource arguments.
+    /// Return none for unsupported references.
+    complete: func(
+        params: complete-params,
+        transport: transport-context,
+    ) -> result<option<complete-result>, error-code>;
+}
