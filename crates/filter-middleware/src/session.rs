@@ -3,6 +3,9 @@ use crate::bindings::wasmcp::keyvalue::store::TypedValue;
 use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
 use crate::bindings::wasmcp::mcp_v20250618::sessions;
 
+/// Maximum size for tool registry JSON in session storage (1MB)
+const MAX_REGISTRY_SIZE: usize = 1_024 * 1_024;
+
 /// Store filtered tool names in session for validation
 pub fn store_tool_registry(ctx: &MessageContext, tools: &[Tool]) -> Result<(), String> {
     let session = match &ctx.session {
@@ -13,6 +16,15 @@ pub fn store_tool_registry(ctx: &MessageContext, tools: &[Tool]) -> Result<(), S
     let tool_names: Vec<String> = tools.iter().map(|t| t.name.clone()).collect();
     let registry_json = serde_json::to_string(&tool_names)
         .map_err(|e| format!("Failed to serialize tool registry: {}", e))?;
+
+    // Validate size before storing to prevent session exhaustion
+    if registry_json.len() > MAX_REGISTRY_SIZE {
+        return Err(format!(
+            "Tool registry too large ({} bytes exceeds {} byte limit). Consider reducing tool count.",
+            registry_json.len(),
+            MAX_REGISTRY_SIZE
+        ));
+    }
 
     let session_obj = sessions::Session::open(&session.session_id, &session.store_id)
         .map_err(|e| format!("Failed to open session: {:?}", e))?;

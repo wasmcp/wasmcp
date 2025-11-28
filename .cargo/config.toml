@@ -19,4 +19,4 @@ runner = [
 # Cargo aliases
 # Usage: cargo test-native (from anywhere in workspace)
 [alias]
-test-native = "test --lib"
+test-native = "test --lib --target aarch64-apple-darwin"

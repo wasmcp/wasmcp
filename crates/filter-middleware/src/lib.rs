@@ -13,6 +13,14 @@ mod metadata;
 mod session;
 mod types;
 
+// JSON-RPC 2.0 error codes
+const JSONRPC_INTERNAL_ERROR: i64 = -32603;
+const JSONRPC_INVALID_PARAMS: i64 = -32602;
+const JSONRPC_METHOD_NOT_FOUND: i64 = -32601;
+
+// Internal request ID for middleware's own requests
+const INTERNAL_REQUEST_ID_VALUE: i64 = 0;
+
 use bindings::exports::wasmcp::mcp_v20250618::server_handler::{Guest, MessageContext};
 use bindings::wasmcp::mcp_v20250618::mcp::*;
 use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
@@ -22,6 +30,32 @@ use diagnostic::{create_inspect_routing_tool, handle_inspect_routing};
 use filtering::FilteringPipeline;
 use helpers::{delegate_to_downstream, extract_path, fetch_tools_from_downstream};
 use session::{load_tool_registry, store_tool_registry};
+
+/// Create a JSON-RPC error response with the given code and message
+fn create_error(code: i64, message: String) -> ErrorCode {
+    match code {
+        JSONRPC_INTERNAL_ERROR => ErrorCode::InternalError(Error {
+            code,
+            message,
+            data: None,
+        }),
+        JSONRPC_INVALID_PARAMS => ErrorCode::InvalidParams(Error {
+            code,
+            message,
+            data: None,
+        }),
+        JSONRPC_METHOD_NOT_FOUND => ErrorCode::MethodNotFound(Error {
+            code,
+            message,
+            data: None,
+        }),
+        _ => ErrorCode::InternalError(Error {
+            code,
+            message,
+            data: None,
+        }),
+    }
+}
 
 struct FilterMiddleware;
 
@@ -68,31 +102,29 @@ fn handle_tools_list(
     let config = match load_and_aggregate_configs(ctx) {
         Ok(c) => c,
         Err(e) => {
-            return Err(ErrorCode::InternalError(Error {
-                code: -32603,
-                message: format!("Failed to load routing configs: {}", e),
-                data: None,
-            }));
+            return Err(create_error(
+                JSONRPC_INTERNAL_ERROR,
+                format!("Failed to load routing configs: {}", e),
+            ));
         }
     };
 
     // Extract current path
     let current_path = extract_path(ctx);
 
-    // Use optimized filtering pipeline
+    // Use optimized filtering pipeline with copy-on-write optimization
     let pipeline = FilteringPipeline::new(&config, current_path);
-    let mut filtered_tools = pipeline.apply_filters(&all_tools);
+    let mut filtered_tools = pipeline.apply_filters(&all_tools).into_owned();
 
     // Inject inspect_routing diagnostic tool
     filtered_tools.push(create_inspect_routing_tool());
 
     // Store filtered tool names in session for validation in tools/call
     if let Err(e) = store_tool_registry(ctx, &filtered_tools) {
-        return Err(ErrorCode::InternalError(Error {
-            code: -32603,
-            message: format!("Failed to store tool registry: {}", e),
-            data: None,
-        }));
+        return Err(create_error(
+            JSONRPC_INTERNAL_ERROR,
+            format!("Failed to store tool registry: {}", e),
+        ));
     }
 
     // Return filtered list with diagnostic tool
@@ -121,31 +153,28 @@ fn handle_tools_call(
             // If no registry in session, allow call (tools/list may not have been called)
             return delegate_to_downstream(ctx, request_id, ClientRequest::ToolsCall(req))
                 .unwrap_or_else(|| {
-                    Err(ErrorCode::MethodNotFound(Error {
-                        code: -32601,
-                        message: "Method not found".to_string(),
-                        data: None,
-                    }))
+                    Err(create_error(
+                        JSONRPC_METHOD_NOT_FOUND,
+                        "Method not found".to_string(),
+                    ))
                 });
         }
     };
 
     // Validate tool is allowed
     if !allowed_tools.contains(&req.name) {
-        return Err(ErrorCode::InvalidParams(Error {
-            code: -32602,
-            message: format!("Tool '{}' not available at this path", req.name),
-            data: None,
-        }));
+        return Err(create_error(
+            JSONRPC_INVALID_PARAMS,
+            format!("Tool '{}' not available at this path", req.name),
+        ));
     }
 
     // Tool is allowed, delegate to downstream
     delegate_to_downstream(ctx, request_id, ClientRequest::ToolsCall(req)).unwrap_or_else(|| {
-        Err(ErrorCode::MethodNotFound(Error {
-            code: -32601,
-            message: "Method not found".to_string(),
-            data: None,
-        }))
+        Err(create_error(
+            JSONRPC_METHOD_NOT_FOUND,
+            "Method not found".to_string(),
+        ))
     })
 }
 

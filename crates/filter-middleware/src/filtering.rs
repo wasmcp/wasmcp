@@ -1,38 +1,56 @@
 use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
 use crate::config::find_most_specific_path_rule;
 use crate::metadata::{parse_tool_metadata, tool_is_blacklisted, tool_matches_tag_filters, tool_passes_whitelist};
-use crate::types::{AggregatedConfig, AggregatedPathRule, ToolMetadata, ToolWithMetadata};
-use std::collections::HashMap;
+use crate::types::{AggregatedConfig, AggregatedPathRule, ToolWithMetadata};
+use std::borrow::Cow;
 
-/// Optimized filtering pipeline that caches metadata and path rules
+/// Optimized filtering pipeline with metadata caching and path rule pre-computation.
+///
+/// Avoids repeated metadata parsing and path matching by caching results.
+/// Use for filtering tools/list results based on HTTP path and tool metadata.
 pub struct FilteringPipeline<'a> {
+    /// Reference to aggregated routing configuration
     pub config: &'a AggregatedConfig,
-    pub current_path: String,
+    /// Most specific path rule for current request (pre-computed)
     pub path_rule: Option<&'a AggregatedPathRule>,
 }
 
 impl<'a> FilteringPipeline<'a> {
+    /// Create new filtering pipeline for given path.
+    /// Pre-computes most specific matching path rule.
     pub fn new(config: &'a AggregatedConfig, current_path: String) -> Self {
         let path_rule = find_most_specific_path_rule(&current_path, config);
         Self {
             config,
-            current_path,
             path_rule,
         }
     }
 
-    /// Apply all filters with optimized metadata caching
-    pub fn apply_filters(&self, tools: &[Tool]) -> Vec<Tool> {
+    /// Apply all configured filters to tool list.
+    ///
+    /// Filtering order:
+    /// 1. Path-based whitelist (if configured)
+    /// 2. Path-based blacklist (always wins - "Deny Trumps Allow")
+    /// 3. Tag-based filters (AND logic - must match all tags)
+    ///
+    /// Returns filtered tools that pass all criteria.
+    /// Uses copy-on-write to avoid cloning when no filtering is needed.
+    pub fn apply_filters<'b>(&self, tools: &'b [Tool]) -> Cow<'b, [Tool]> {
+        // Fast path: no filters at all - zero-copy!
+        if self.path_rule.is_none() && self.config.global_tag_filters.is_empty() {
+            return Cow::Borrowed(tools);
+        }
+
         // If no path rule, only apply tag filters
         if self.path_rule.is_none() {
-            return self.apply_tag_filters_only(tools);
+            return Cow::Owned(self.apply_tag_filters_only(tools));
         }
 
         let rule = self.path_rule.unwrap();
 
         // If rule has no whitelist/blacklist, only apply tag filters
         if rule.whitelist.is_empty() && rule.blacklist.is_empty() {
-            return self.apply_tag_filters_only(tools);
+            return Cow::Owned(self.apply_tag_filters_only(tools));
         }
 
         // Parse metadata once for all tools
@@ -48,7 +66,7 @@ impl<'a> FilteringPipeline<'a> {
         let path_filtered = self.apply_path_filter_cached(&tools_with_meta, rule);
 
         // Apply tag filters with cached metadata
-        self.apply_tag_filters_cached(path_filtered)
+        Cow::Owned(self.apply_tag_filters_cached(path_filtered))
     }
 
     /// Apply only tag filters when no path rule exists
@@ -100,99 +118,35 @@ impl<'a> FilteringPipeline<'a> {
 
     /// Apply tag filters with cached metadata
     fn apply_tag_filters_cached(&self, tools_with_meta: Vec<&ToolWithMetadata>) -> Vec<Tool> {
-        // Collect all active tag filters (global + path-specific)
-        let mut active_filters = self.config.global_tag_filters.clone();
+        // Fast path: only global filters (no merge needed)
+        if self.path_rule.map(|r| r.tag_filters.is_empty()).unwrap_or(true) {
+            // Use global filters directly without cloning
+            if self.config.global_tag_filters.is_empty() {
+                // No filters at all - extract tools directly
+                return tools_with_meta.iter().map(|twm| twm.tool.clone()).collect();
+            }
 
-        // Add path-specific tag filters if they exist
+            // Only global filters apply
+            return tools_with_meta
+                .into_iter()
+                .filter(|twm| tool_matches_tag_filters(&twm.metadata, &self.config.global_tag_filters))
+                .map(|twm| twm.tool.clone())
+                .collect();
+        }
+
+        // Slow path: need to merge global + path-specific filters
+        let mut active_filters = self.config.global_tag_filters.clone();
         if let Some(rule) = self.path_rule {
             for (key, values) in &rule.tag_filters {
                 active_filters.insert(key.clone(), values.clone());
             }
         }
 
-        // If no filters, just extract tools
-        if active_filters.is_empty() {
-            return tools_with_meta.iter().map(|twm| twm.tool.clone()).collect();
-        }
-
-        // Filter and extract tools in one pass
+        // Apply merged filters
         tools_with_meta
             .into_iter()
             .filter(|twm| tool_matches_tag_filters(&twm.metadata, &active_filters))
             .map(|twm| twm.tool.clone())
             .collect()
     }
-}
-
-/// Legacy function for backward compatibility - uses optimized pipeline internally
-pub fn apply_path_filter(tools: &[Tool], path: &str, config: &AggregatedConfig) -> Vec<Tool> {
-    let rule = find_most_specific_path_rule(path, config);
-
-    // If no matching rule, allow all tools
-    let rule = match rule {
-        Some(r) => r,
-        None => return tools.to_vec(),
-    };
-
-    // If rule exists but has no whitelist/blacklist, allow all
-    if rule.whitelist.is_empty() && rule.blacklist.is_empty() {
-        return tools.to_vec();
-    }
-
-    // Parse metadata once
-    let tools_with_meta: Vec<ToolWithMetadata> = tools
-        .iter()
-        .map(|t| ToolWithMetadata {
-            tool: t,
-            metadata: parse_tool_metadata(t),
-        })
-        .collect();
-
-    let mut filtered = Vec::new();
-
-    // Apply whitelist
-    if !rule.whitelist.is_empty() {
-        for twm in &tools_with_meta {
-            if tool_passes_whitelist(twm.tool, &twm.metadata, &rule.whitelist) {
-                filtered.push(twm.tool.clone());
-            }
-        }
-    } else {
-        filtered = tools.to_vec();
-    }
-
-    // Apply blacklist
-    if !rule.blacklist.is_empty() {
-        filtered.retain(|tool| !tool_is_blacklisted(tool, &rule.blacklist));
-    }
-
-    filtered
-}
-
-/// Legacy function for backward compatibility - uses optimized pipeline internally
-pub fn apply_tag_filters(tools: &[Tool], path: &str, config: &AggregatedConfig) -> Vec<Tool> {
-    // Collect all active tag filters (global + path-specific)
-    let mut active_filters = config.global_tag_filters.clone();
-
-    // Add path-specific tag filters (if path rule exists)
-    if let Some(rule) = find_most_specific_path_rule(path, config) {
-        for (key, values) in &rule.tag_filters {
-            active_filters.insert(key.clone(), values.clone());
-        }
-    }
-
-    // If no filters, return all tools
-    if active_filters.is_empty() {
-        return tools.to_vec();
-    }
-
-    // Parse metadata once and filter
-    tools
-        .iter()
-        .filter(|tool| {
-            let metadata = parse_tool_metadata(tool);
-            tool_matches_tag_filters(&metadata, &active_filters)
-        })
-        .cloned()
-        .collect()
 }

@@ -1,9 +1,10 @@
 use crate::bindings::exports::wasmcp::mcp_v20250618::server_handler::MessageContext;
 use crate::bindings::wasmcp::mcp_v20250618::mcp::*;
 use crate::config::load_and_aggregate_configs;
-use crate::helpers::{fetch_tools_from_downstream, to_downstream_ctx};
+use crate::helpers::fetch_tools_from_downstream;
 use crate::metadata::{parse_tool_metadata, tool_passes_whitelist};
 use crate::types::*;
+use crate::INTERNAL_REQUEST_ID_VALUE;
 use std::collections::HashMap;
 
 /// Create the inspect_routing diagnostic tool
@@ -52,7 +53,7 @@ pub fn handle_inspect_routing(ctx: &MessageContext) -> Result<ServerResult, Erro
     // Get all tools from downstream to check for conflicts
     let all_tools = match fetch_tools_from_downstream(
         ctx,
-        RequestId::Number(0),
+        RequestId::Number(INTERNAL_REQUEST_ID_VALUE),
         ListToolsRequest { cursor: None },
     ) {
         Ok(tools) => tools,
@@ -63,12 +64,19 @@ pub fn handle_inspect_routing(ctx: &MessageContext) -> Result<ServerResult, Erro
     let diagnostic = build_routing_diagnostic(&config, &all_tools);
 
     // Return as CallToolResult with pretty JSON
+    // Use explicit error handling to prevent panics on serialization failure
+    let diagnostic_text = match serde_json::to_string_pretty(&diagnostic) {
+        Ok(json) => json,
+        Err(e) => {
+            eprintln!("Warning: Diagnostic serialization failed: {}", e);
+            // Return minimal valid JSON on failure
+            r#"{"error": "Diagnostic serialization failed", "config_sources": []}"#.to_string()
+        }
+    };
+
     Ok(ServerResult::ToolsCall(CallToolResult {
         content: vec![ContentBlock::Text(TextContent {
-            text: TextData::Text(
-                serde_json::to_string_pretty(&diagnostic)
-                    .unwrap_or_else(|_| "Error serializing diagnostic".to_string()),
-            ),
+            text: TextData::Text(diagnostic_text),
             options: None,
         })],
         is_error: None,
@@ -108,37 +116,26 @@ pub fn build_routing_diagnostic(config: &AggregatedConfig, all_tools: &[Tool]) -
 fn detect_conflicts(config: &AggregatedConfig, all_tools: &[Tool]) -> Vec<ConflictReport> {
     let mut conflict_reports = Vec::new();
 
-    // Parse metadata once for all tools
-    let tools_with_meta: Vec<(Tool, ToolMetadata)> = all_tools
-        .iter()
-        .map(|t| (t.clone(), parse_tool_metadata(t)))
-        .collect();
-
     for (path, rule) in &config.path_rules {
-        // Skip if no whitelist or blacklist
+        // Skip if no potential conflict (need both whitelist and blacklist)
         if rule.whitelist.is_empty() || rule.blacklist.is_empty() {
             continue;
         }
 
-        // Check each tool to see if it would be whitelisted but also blacklisted
-        for (tool, metadata) in &tools_with_meta {
+        // Check each tool directly without collecting
+        for tool in all_tools {
+            // Parse metadata on demand (only for relevant tools)
+            let metadata = parse_tool_metadata(tool);
+
             // Check if tool would pass whitelist check
-            let passes_whitelist = tool_passes_whitelist(tool, metadata, &rule.whitelist);
+            let passes_whitelist = tool_passes_whitelist(tool, &metadata, &rule.whitelist);
 
             // Check if tool is blacklisted
             let is_blacklisted = rule.blacklist.contains(&tool.name);
 
             // If tool would pass whitelist but is blacklisted -> conflict
             if passes_whitelist && is_blacklisted {
-                let whitelisted_via = if let Some(comp_id) = &metadata.component_id {
-                    if rule.whitelist.contains(comp_id) {
-                        format!("component '{}'", comp_id)
-                    } else {
-                        format!("tool name '{}'", tool.name)
-                    }
-                } else {
-                    format!("tool name '{}'", tool.name)
-                };
+                let whitelisted_via = determine_whitelist_source(tool, &metadata, &rule.whitelist);
 
                 conflict_reports.push(ConflictReport {
                     path: path.clone(),
@@ -154,4 +151,14 @@ fn detect_conflicts(config: &AggregatedConfig, all_tools: &[Tool]) -> Vec<Confli
     }
 
     conflict_reports
+}
+
+/// Determine how a tool was whitelisted (by component ID or tool name).
+fn determine_whitelist_source(tool: &Tool, metadata: &ToolMetadata, whitelist: &[String]) -> String {
+    if let Some(comp_id) = &metadata.component_id {
+        if whitelist.contains(comp_id) {
+            return format!("component '{}'", comp_id);
+        }
+    }
+    format!("tool name '{}'", tool.name)
 }

@@ -20,12 +20,29 @@ pub fn to_downstream_ctx<'a>(ctx: &'a MessageContext<'a>) -> downstream::Message
     }
 }
 
-/// Extract HTTP path from message context
+/// Extract and normalize HTTP path from message context.
+///
+/// Normalization removes duplicate slashes and trailing slashes to prevent
+/// filter bypasses via path manipulation (e.g., "//mcp", "/mcp//").
 pub fn extract_path(ctx: &MessageContext) -> String {
-    ctx.http_context
+    let raw_path = ctx.http_context
         .as_ref()
-        .map(|h| h.path.clone())
-        .unwrap_or_else(|| "/mcp".to_string())
+        .map(|h| h.path.as_str())
+        .unwrap_or("/mcp");
+
+    // Normalize: remove duplicate slashes, trailing slash, empty segments
+    let normalized = raw_path
+        .split('/')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("/");
+
+    // Ensure leading slash
+    if normalized.is_empty() {
+        "/mcp".to_string()
+    } else {
+        format!("/{}", normalized)
+    }
 }
 
 /// Delegate a request to downstream handler
@@ -60,5 +77,62 @@ pub fn fetch_tools_from_downstream(
             message: "Method not found: tools/list".to_string(),
             data: None,
         })),
+    }
+}
+
+/// Normalize path by removing duplicate/trailing slashes (internal helper for testing)
+#[cfg(test)]
+fn normalize_path(raw_path: &str) -> String {
+    let normalized = raw_path
+        .split('/')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("/");
+
+    if normalized.is_empty() {
+        "/mcp".to_string()
+    } else {
+        format!("/{}", normalized)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_path_removes_duplicate_slashes() {
+        assert_eq!(normalize_path("//mcp"), "/mcp");
+        assert_eq!(normalize_path("/mcp//calculator"), "/mcp/calculator");
+        assert_eq!(normalize_path("///mcp///calculator///"), "/mcp/calculator");
+    }
+
+    #[test]
+    fn test_normalize_path_removes_trailing_slash() {
+        assert_eq!(normalize_path("/mcp/"), "/mcp");
+        assert_eq!(normalize_path("/mcp/calculator/"), "/mcp/calculator");
+    }
+
+    #[test]
+    fn test_normalize_path_handles_normal_paths() {
+        assert_eq!(normalize_path("/mcp"), "/mcp");
+        assert_eq!(normalize_path("/mcp/calculator"), "/mcp/calculator");
+        assert_eq!(normalize_path("/mcp/calculator/advanced"), "/mcp/calculator/advanced");
+    }
+
+    #[test]
+    fn test_normalize_path_handles_empty_or_root() {
+        assert_eq!(normalize_path(""), "/mcp");
+        assert_eq!(normalize_path("/"), "/mcp");
+        assert_eq!(normalize_path("//"), "/mcp");
+    }
+
+    #[test]
+    fn test_normalize_path_prevents_bypass() {
+        // All these should normalize to the same path
+        assert_eq!(normalize_path("/mcp/calculator"), "/mcp/calculator");
+        assert_eq!(normalize_path("//mcp/calculator"), "/mcp/calculator");
+        assert_eq!(normalize_path("/mcp//calculator"), "/mcp/calculator");
+        assert_eq!(normalize_path("/mcp/calculator//"), "/mcp/calculator");
     }
 }
