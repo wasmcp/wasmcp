@@ -6,6 +6,7 @@
 
 use crate::bindings::wasi::cli::environment::get_environment;
 use crate::bindings::wasi::http::types::{IncomingRequest, ResponseOutparam};
+use crate::http::helpers::{get_env, get_server_uri};
 use crate::http::response::ResponseBuilder;
 use serde_json::json;
 
@@ -22,14 +23,6 @@ fn get_discovery_cache_ttl() -> String {
         .unwrap_or(DEFAULT_DISCOVERY_CACHE_TTL);
 
     format!("public, max-age={}", ttl)
-}
-
-/// Get environment variable value by key
-fn get_env(env_vars: &[(String, String)], key: &str) -> Option<String> {
-    env_vars
-        .iter()
-        .find(|(k, _)| k == key)
-        .map(|(_, v)| v.clone())
 }
 
 /// Parse comma-separated values
@@ -109,34 +102,4 @@ fn build_protected_resource_metadata(request: &IncomingRequest) -> serde_json::V
         "bearer_methods_supported": ["header"],
         "resource_documentation": format!("{}/.well-known/oauth-protected-resource", resource),
     })
-}
-
-/// Extract server URI from environment or request
-fn get_server_uri(env_vars: &[(String, String)], request: &IncomingRequest) -> String {
-    // First try environment variable
-    if let Some(uri) = get_env(env_vars, "WASMCP_SERVER_URI") {
-        return uri;
-    }
-
-    // Fall back to constructing from Host header
-    let headers = request.headers();
-    let host_values = headers.get("host");
-
-    if !host_values.is_empty()
-        && let Ok(host) = String::from_utf8(host_values[0].clone())
-    {
-        // Use scheme from request, default to https if not available
-        let scheme = request
-            .scheme()
-            .and_then(|s| match s {
-                crate::bindings::wasi::http::types::Scheme::Http => Some("http"),
-                crate::bindings::wasi::http::types::Scheme::Https => Some("https"),
-                _ => None,
-            })
-            .unwrap_or("https");
-        return format!("{}://{}", scheme, host);
-    }
-
-    // Last resort fallback
-    "https://localhost:3000".to_string()
 }

@@ -41,14 +41,23 @@ pub fn handle_initialize_request(
     let new_session_id = session::initialize_session(session_config);
 
     // Bind JWT claims to session if both exist
-    if let (Some(session_id), Some(identity)) = (&new_session_id, identity)
-        && let Err(e) = session::bind_identity_to_session(session_id, identity, session_config)
-    {
-        eprintln!(
-            "[transport:initialize] WARNING: Failed to bind JWT identity to session {}: {}. \
-                 Session created but authorization may not work correctly.",
-            session_id, e
-        );
+    // In OAuth mode, binding failure is FATAL - delete session and fail the request
+    if let (Some(session_id), Some(identity)) = (&new_session_id, identity) {
+        if let Err(e) = session::bind_identity_to_session(session_id, identity, session_config) {
+            eprintln!(
+                "[transport:initialize] CRITICAL: Failed to bind JWT identity to session. \
+                 Deleting session and failing request."
+            );
+
+            // Clean up the session we just created
+            let _ = session::delete_session_by_id(session_id, session_config);
+
+            // Return error to client
+            let error = TransportError::internal(format!(
+                "Failed to initialize session with identity: {}", e
+            ));
+            send_error!(response_out, error);
+        }
     }
 
     // Create plain JSON response with optional session header

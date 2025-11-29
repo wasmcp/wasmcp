@@ -312,57 +312,21 @@ fn create_www_authenticate_challenge(
     error_description: &str,
 ) -> String {
     use crate::bindings::wasi::cli::environment::get_environment;
+    use crate::http::helpers::get_server_uri;
 
     // Get server URI for resource metadata
     let env_vars = get_environment();
-
-    // First check env var
-    let server_uri: Option<String> = env_vars
-        .iter()
-        .find(|(k, _)| k == "WASMCP_SERVER_URI")
-        .map(|(_, v)| {
-            eprintln!(
-                "[transport:www-authenticate] Using WASMCP_SERVER_URI from env: {}",
-                v
-            );
-            v.clone()
-        })
-        .or_else(|| {
-            // Try to construct from request Host header
-            let headers = request.headers();
-            let host_values = headers.get("host");
-            if !host_values.is_empty() {
-                if let Ok(host) = String::from_utf8(host_values[0].clone()) {
-                    // Use scheme from request, default to https if not available
-                    let scheme = request
-                        .scheme()
-                        .and_then(|s| match s {
-                            crate::bindings::wasi::http::types::Scheme::Http => Some("http"),
-                            crate::bindings::wasi::http::types::Scheme::Https => Some("https"),
-                            _ => None,
-                        })
-                        .unwrap_or("https");
-                    Some(format!("{}://{}", scheme, host))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        });
+    let server_uri = get_server_uri(&env_vars, request);
 
     // Build WWW-Authenticate header
     let mut parts = vec!["Bearer".to_string()];
+    parts.push(format!("realm=\"{}\"", server_uri));
 
-    if let Some(ref uri) = server_uri {
-        parts.push(format!("realm=\"{}\"", uri));
-
-        // Add resource_metadata URL per RFC 9728
-        parts.push(format!(
-            "resource_metadata=\"{}/.well-known/oauth-protected-resource\"",
-            uri
-        ));
-    }
+    // Add resource_metadata URL per RFC 9728
+    parts.push(format!(
+        "resource_metadata=\"{}/.well-known/oauth-protected-resource\"",
+        server_uri
+    ));
 
     parts.push(format!("error=\"{}\"", error));
     parts.push(format!("error_description=\"{}\"", error_description));

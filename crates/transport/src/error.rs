@@ -39,9 +39,9 @@ impl SessionError {
     /// Get error message
     pub fn message(&self) -> String {
         match self {
-            Self::NotFound => "Session not found".to_string(),
-            Self::Terminated => "Session terminated".to_string(),
-            Self::Required => "Session ID required for non-initialize requests".to_string(),
+            Self::NotFound => "Session error: not found".to_string(),
+            Self::Terminated => "Session error: terminated".to_string(),
+            Self::Required => "Session error: ID required for non-initialize requests".to_string(),
             Self::ValidationFailed(msg) => format!("Session validation error: {}", msg),
             Self::StorageFailed(msg) => format!("Session storage error: {}", msg),
             Self::IdentityMismatch(msg) => format!("Session identity mismatch: {}", msg),
@@ -63,10 +63,13 @@ pub enum TransportError {
     },
 
     /// OAuth authorization error (valid token, insufficient permissions)
-    /// TODO: Implement authorization check in transport layer
-    /// MCP spec requires 403 Forbidden for authorization failures (mpc-auth.md:286)
-    /// Currently only doing authentication (decode), not authorization (authorize)
-    /// See: .agent/oauth/mpc-auth.md for spec requirements
+    ///
+    /// NOTE(architecture): Transport does NOT perform authorization
+    /// - Transport layer: Authentication only (validates JWT is valid)
+    /// - Middleware layer: Authorization (per-tool/resource permission checks)
+    /// - Each middleware component enforces its own authorization requirements
+    /// - This error variant exists for middleware to return 403 responses via transport
+    /// - MCP spec requires 403 Forbidden for authorization failures (mpc-auth.md:286)
     #[allow(dead_code)]
     Forbidden(String),
 
@@ -109,10 +112,9 @@ impl TransportError {
     }
 
     /// Create a forbidden error (403)
-    /// TODO: Will be used when server_auth::authorize() is called in transport
-    /// Need to decide on authorization architecture first:
-    /// - Per-middleware policies vs single global policy
-    /// - Environment variable naming (POLICY vs POLICY_TOOLS, etc.)
+    ///
+    /// Used when middleware authorization checks fail. Transport validates JWT (authentication),
+    /// but middleware enforces permissions (authorization) per-tool/resource.
     #[allow(dead_code)]
     pub fn forbidden(msg: impl Into<String>) -> Self {
         Self::Forbidden(msg.into())

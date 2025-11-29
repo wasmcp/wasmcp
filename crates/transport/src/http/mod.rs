@@ -11,6 +11,7 @@
 mod delete;
 pub mod discovery;
 mod get;
+pub(crate) mod helpers;
 pub mod post;
 pub(crate) mod response;
 mod session;
