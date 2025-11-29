@@ -12,6 +12,15 @@ use crate::bindings::wasi::cli::environment::get_environment;
 use crate::bindings::wasi::http::types::IncomingRequest;
 use crate::error::TransportError;
 
+/// Supported MCP protocol versions
+///
+/// These versions are accepted in the MCP-Protocol-Version header.
+/// Newest versions should be added to the front of the array.
+const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &["2025-06-18", "2025-03-26", "2024-11-05"];
+
+/// Default protocol version for backwards compatibility
+const DEFAULT_PROTOCOL_VERSION: &str = "2025-03-26";
+
 /// Extract session ID from request headers
 pub fn extract_session_id_header(
     request: &IncomingRequest,
@@ -81,19 +90,21 @@ pub fn validate_protocol_version(request: &IncomingRequest) -> Result<String, Tr
     let version_values = headers.get("mcp-protocol-version");
 
     if version_values.is_empty() {
-        // Default to 2025-03-26 for backwards compatibility
-        return Ok("2025-03-26".to_string());
+        // Default for backwards compatibility
+        return Ok(DEFAULT_PROTOCOL_VERSION.to_string());
     }
 
     let version_str = String::from_utf8(version_values[0].clone())
         .map_err(|_| TransportError::validation("Invalid MCP-Protocol-Version header encoding"))?;
 
-    match version_str.as_str() {
-        "2025-06-18" | "2025-03-26" | "2024-11-05" => Ok(version_str),
-        _ => Err(TransportError::protocol(format!(
-            "Unsupported MCP-Protocol-Version: {}",
-            version_str
-        ))),
+    if SUPPORTED_PROTOCOL_VERSIONS.contains(&version_str.as_str()) {
+        Ok(version_str)
+    } else {
+        Err(TransportError::protocol(format!(
+            "Unsupported MCP-Protocol-Version: {}. Supported versions: {}",
+            version_str,
+            SUPPORTED_PROTOCOL_VERSIONS.join(", ")
+        )))
     }
 }
 

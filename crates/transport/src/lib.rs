@@ -90,6 +90,7 @@ mod common;
 mod config;
 mod error;
 mod http;
+mod session_keys;
 mod stdio;
 
 bindings::export!(Component with_types_in bindings);
