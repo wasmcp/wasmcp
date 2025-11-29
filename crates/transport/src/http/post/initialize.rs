@@ -54,10 +54,8 @@ pub fn handle_initialize_request(
         let _ = session::delete_session_by_id(session_id, session_config);
 
         // Return error to client
-        let error = TransportError::internal(format!(
-            "Failed to initialize session with identity: {}",
-            e
-        ));
+        let error =
+            TransportError::internal(format!("Failed to initialize session with identity: {}", e));
         send_error!(response_out, error);
     }
 
