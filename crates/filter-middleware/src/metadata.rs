@@ -69,7 +69,10 @@ pub fn tool_is_blacklisted(tool: &Tool, blacklist: &[String]) -> bool {
 ///
 /// Empty filter set matches all tools.
 #[must_use]
-pub fn tool_matches_tag_filters(metadata: &ToolMetadata, active_filters: &HashMap<String, Vec<String>>) -> bool {
+pub fn tool_matches_tag_filters(
+    metadata: &ToolMetadata,
+    active_filters: &HashMap<String, Vec<String>>,
+) -> bool {
     // Tool must match ALL active tag filters
     for (tag_name, allowed_values) in active_filters {
         let tool_tag_value = metadata.tags.get(tag_name);
@@ -100,7 +103,10 @@ mod tests {
         };
 
         let mut filters = HashMap::new();
-        filters.insert("category".to_string(), vec!["math".to_string(), "science".to_string()]);
+        filters.insert(
+            "category".to_string(),
+            vec!["math".to_string(), "science".to_string()],
+        );
         filters.insert("level".to_string(), vec!["basic".to_string()]);
 
         assert!(tool_matches_tag_filters(&metadata, &filters));
@@ -138,7 +144,10 @@ mod tests {
         };
 
         let mut filters = HashMap::new();
-        filters.insert("category".to_string(), vec!["math".to_string(), "science".to_string()]);
+        filters.insert(
+            "category".to_string(),
+            vec!["math".to_string(), "science".to_string()],
+        );
 
         // Should fail because "history" is not in allowed values
         assert!(!tool_matches_tag_filters(&metadata, &filters));
@@ -278,7 +287,10 @@ mod tests {
             options: Some(ToolOptions {
                 description: None,
                 title: None,
-                meta: Some(r#"{"component_id":"calculator","tags":{"category":"math","level":"basic"}}"#.to_string()),
+                meta: Some(
+                    r#"{"component_id":"calculator","tags":{"category":"math","level":"basic"}}"#
+                        .to_string(),
+                ),
                 annotations: None,
                 output_schema: None,
             }),

@@ -16,11 +16,7 @@ use crate::error::TransportError;
 ///
 /// These versions are accepted in the MCP-Protocol-Version header.
 /// Newest versions should be added to the front of the array.
-const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &[
-    "2025-06-18",
-    "2025-03-26",
-    "2024-11-05",
-];
+const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &["2025-06-18", "2025-03-26", "2024-11-05"];
 
 /// Default protocol version for backwards compatibility
 const DEFAULT_PROTOCOL_VERSION: &str = "2025-03-26";

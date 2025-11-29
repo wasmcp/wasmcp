@@ -54,7 +54,8 @@ pub fn handle_initialize_request(
 
             // Return error to client
             let error = TransportError::internal(format!(
-                "Failed to initialize session with identity: {}", e
+                "Failed to initialize session with identity: {}",
+                e
             ));
             send_error!(response_out, error);
         }

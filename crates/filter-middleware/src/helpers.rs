@@ -25,7 +25,8 @@ pub fn to_downstream_ctx<'a>(ctx: &'a MessageContext<'a>) -> downstream::Message
 /// Normalization removes duplicate slashes and trailing slashes to prevent
 /// filter bypasses via path manipulation (e.g., "//mcp", "/mcp//").
 pub fn extract_path(ctx: &MessageContext) -> String {
-    let raw_path = ctx.http_context
+    let raw_path = ctx
+        .http_context
         .as_ref()
         .map(|h| h.path.as_str())
         .unwrap_or("/mcp");
@@ -117,7 +118,10 @@ mod tests {
     fn test_normalize_path_handles_normal_paths() {
         assert_eq!(normalize_path("/mcp"), "/mcp");
         assert_eq!(normalize_path("/mcp/calculator"), "/mcp/calculator");
-        assert_eq!(normalize_path("/mcp/calculator/advanced"), "/mcp/calculator/advanced");
+        assert_eq!(
+            normalize_path("/mcp/calculator/advanced"),
+            "/mcp/calculator/advanced"
+        );
     }
 
     #[test]

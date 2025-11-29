@@ -38,12 +38,18 @@ pub fn load_and_aggregate_configs(ctx: &MessageContext) -> Result<AggregatedConf
         // Build detailed error message
         let mut error_msg = String::from("No valid routing configs found. ");
         if !load_errors.is_empty() {
-            error_msg.push_str(&format!("Failed to load {} config(s):\n", load_errors.len()));
+            error_msg.push_str(&format!(
+                "Failed to load {} config(s):\n",
+                load_errors.len()
+            ));
             for (uri, error) in load_errors.iter() {
                 error_msg.push_str(&format!("  - {}: {}\n", uri, error));
             }
         }
-        error_msg.push_str(&format!("Discovered {} config URI(s) total.", config_uris.len()));
+        error_msg.push_str(&format!(
+            "Discovered {} config URI(s) total.",
+            config_uris.len()
+        ));
         return Err(error_msg);
     }
 
@@ -109,11 +115,17 @@ pub fn read_config_from_uri(ctx: &MessageContext, uri: &str) -> Result<RoutingCo
     };
 
     let downstream_req = ClientRequest::ResourcesRead(request);
-    let downstream_msg = ClientMessage::Request((RequestId::Number(INTERNAL_REQUEST_ID_VALUE), downstream_req));
+    let downstream_msg =
+        ClientMessage::Request((RequestId::Number(INTERNAL_REQUEST_ID_VALUE), downstream_req));
 
     let result = match downstream::handle(&to_downstream_ctx(ctx), downstream_msg) {
         Some(Ok(ServerResult::ResourcesRead(result))) => result,
-        Some(Ok(_)) => return Err(format!("Unexpected result type from resources/read for {}", uri)),
+        Some(Ok(_)) => {
+            return Err(format!(
+                "Unexpected result type from resources/read for {}",
+                uri
+            ))
+        }
         Some(Err(e)) => return Err(format!("Resource read failed for {}: {:?}", uri, e)),
         None => return Err(format!("Resource not found: {}", uri)),
     };
@@ -126,9 +138,7 @@ pub fn read_config_from_uri(ctx: &MessageContext, uri: &str) -> Result<RoutingCo
     // Extract text from resource-contents variant
     let text_contents = match contents {
         ResourceContents::Text(t) => t,
-        ResourceContents::Blob(_) => {
-            return Err(format!("{} is binary, expected text", uri))
-        }
+        ResourceContents::Blob(_) => return Err(format!("{} is binary, expected text", uri)),
     };
 
     // Extract string from text-data variant
@@ -155,7 +165,9 @@ fn extract_config_sources(configs: &[(String, RoutingConfig)]) -> Vec<ConfigSour
 }
 
 /// Aggregate global tag filters from all configs (union with deduplication)
-fn aggregate_global_tag_filters(configs: &[(String, RoutingConfig)]) -> HashMap<String, Vec<String>> {
+fn aggregate_global_tag_filters(
+    configs: &[(String, RoutingConfig)],
+) -> HashMap<String, Vec<String>> {
     let mut global_filters: HashMap<String, Vec<String>> = HashMap::new();
 
     // Collect all tag filters from all configs
@@ -249,7 +261,9 @@ fn aggregate_path_rule(path: &str, configs: &[(String, RoutingConfig)]) -> Aggre
 }
 
 /// Aggregate path rules from all configs
-fn aggregate_path_rules(configs: &[(String, RoutingConfig)]) -> HashMap<String, AggregatedPathRule> {
+fn aggregate_path_rules(
+    configs: &[(String, RoutingConfig)],
+) -> HashMap<String, AggregatedPathRule> {
     let mut path_rules = HashMap::new();
     let all_paths = collect_unique_paths(configs);
 
@@ -563,7 +577,10 @@ mod tests {
             path_rules: HashMap::new(),
             global_tag_filters: {
                 let mut map = HashMap::new();
-                map.insert("category".to_string(), TagFilterValue::Single("math".to_string()));
+                map.insert(
+                    "category".to_string(),
+                    TagFilterValue::Single("math".to_string()),
+                );
                 map
             },
         };
@@ -573,7 +590,10 @@ mod tests {
             path_rules: HashMap::new(),
             global_tag_filters: {
                 let mut map = HashMap::new();
-                map.insert("category".to_string(), TagFilterValue::Multiple(vec!["science".to_string()]));
+                map.insert(
+                    "category".to_string(),
+                    TagFilterValue::Multiple(vec!["science".to_string()]),
+                );
                 map
             },
         };
@@ -611,9 +631,7 @@ mod tests {
             global_tag_filters: HashMap::new(),
         };
 
-        let configs = vec![
-            ("config://routing-primary".to_string(), config1),
-        ];
+        let configs = vec![("config://routing-primary".to_string(), config1)];
 
         let aggregated = aggregate_configs(configs);
 
@@ -623,6 +641,9 @@ mod tests {
 
         // Check rule sources tracked
         let rule = aggregated.path_rules.get("/mcp").unwrap();
-        assert_eq!(rule.sources.whitelist_from, vec!["config://routing-primary"]);
+        assert_eq!(
+            rule.sources.whitelist_from,
+            vec!["config://routing-primary"]
+        );
     }
 }

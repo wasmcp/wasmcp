@@ -7,7 +7,6 @@
 //! - Session requirement enforcement for non-initialize requests
 
 use crate::bindings::wasi::http::types::IncomingRequest;
-use crate::session_keys;
 use crate::bindings::wasmcp::mcp_v20250618::session_manager::{
     SessionError, initialize as manager_initialize, mark_terminated as manager_mark_terminated,
     validate as manager_validate,
@@ -15,6 +14,7 @@ use crate::bindings::wasmcp::mcp_v20250618::session_manager::{
 use crate::config::TransportConfig;
 use crate::error::TransportError;
 use crate::http::validation;
+use crate::session_keys;
 
 /// Validate and retrieve session ID from request
 ///
@@ -132,7 +132,10 @@ pub fn bind_identity_to_session(
     // Store subject (user ID) from JWT claims
     let subject = helpers::get_subject(&identity.claims);
     session
-        .set(session_keys::JWT_SUBJECT, &TypedValue::AsBytes(subject.as_bytes().to_vec()))
+        .set(
+            session_keys::JWT_SUBJECT,
+            &TypedValue::AsBytes(subject.as_bytes().to_vec()),
+        )
         .map_err(|e| {
             eprintln!("[transport:session] Failed to store JWT subject: {:?}", e);
             TransportError::session(crate::error::SessionError::StorageFailed(
@@ -143,7 +146,10 @@ pub fn bind_identity_to_session(
     // Store issuer
     if let Some(issuer) = helpers::get_issuer(&identity.claims) {
         session
-            .set(session_keys::JWT_ISSUER, &TypedValue::AsBytes(issuer.as_bytes().to_vec()))
+            .set(
+                session_keys::JWT_ISSUER,
+                &TypedValue::AsBytes(issuer.as_bytes().to_vec()),
+            )
             .map_err(|e| {
                 eprintln!("[transport:session] Failed to store JWT issuer: {:?}", e);
                 TransportError::session(crate::error::SessionError::StorageFailed(
@@ -186,9 +192,15 @@ pub fn bind_identity_to_session(
     if let Some(exp) = identity.claims.expiration {
         let exp_str = exp.to_string();
         session
-            .set(session_keys::JWT_EXPIRATION, &TypedValue::AsBytes(exp_str.as_bytes().to_vec()))
+            .set(
+                session_keys::JWT_EXPIRATION,
+                &TypedValue::AsBytes(exp_str.as_bytes().to_vec()),
+            )
             .map_err(|e| {
-                eprintln!("[transport:session] Failed to store JWT expiration: {:?}", e);
+                eprintln!(
+                    "[transport:session] Failed to store JWT expiration: {:?}",
+                    e
+                );
                 TransportError::session(crate::error::SessionError::StorageFailed(
                     "Failed to store JWT expiration".to_string(),
                 ))
@@ -211,7 +223,10 @@ pub fn bind_identity_to_session(
     if let Some(iat) = identity.claims.issued_at {
         let iat_str = iat.to_string();
         session
-            .set(session_keys::JWT_ISSUED_AT, &TypedValue::AsBytes(iat_str.as_bytes().to_vec()))
+            .set(
+                session_keys::JWT_ISSUED_AT,
+                &TypedValue::AsBytes(iat_str.as_bytes().to_vec()),
+            )
             .map_err(|e| {
                 eprintln!("[transport:session] Failed to store JWT issued-at: {:?}", e);
                 TransportError::session(crate::error::SessionError::StorageFailed(
@@ -238,23 +253,22 @@ fn get_stored_string(
             "[transport:session] Failed to retrieve {} from session: {:?}",
             field_name, e
         );
-        TransportError::session(crate::error::SessionError::StorageFailed(
-            format!("Failed to retrieve session {}", field_name),
-        ))
+        TransportError::session(crate::error::SessionError::StorageFailed(format!(
+            "Failed to retrieve session {}",
+            field_name
+        )))
     })?;
 
     match stored_value {
-        Some(TypedValue::AsBytes(bytes)) => {
-            String::from_utf8(bytes).map_err(|e| {
-                eprintln!(
-                    "[transport:session] Invalid UTF-8 in stored {}: {:?}",
-                    field_name, e
-                );
-                TransportError::session(crate::error::SessionError::StorageFailed(
-                    "Session identity data corrupted".to_string(),
-                ))
-            })
-        }
+        Some(TypedValue::AsBytes(bytes)) => String::from_utf8(bytes).map_err(|e| {
+            eprintln!(
+                "[transport:session] Invalid UTF-8 in stored {}: {:?}",
+                field_name, e
+            );
+            TransportError::session(crate::error::SessionError::StorageFailed(
+                "Session identity data corrupted".to_string(),
+            ))
+        }),
         Some(_) => {
             eprintln!(
                 "[transport:session] {} has wrong type in storage",
@@ -320,12 +334,10 @@ pub fn validate_session_identity(
 
     // Compare subjects
     if current_subject != stored_subject {
-        eprintln!(
-            "[transport:session] Session identity mismatch detected (subject)"
-        );
+        eprintln!("[transport:session] Session identity mismatch detected (subject)");
         return Err(TransportError::session(
             crate::error::SessionError::IdentityMismatch(
-                "JWT identity does not match session".to_string()
+                "JWT identity does not match session".to_string(),
             ),
         ));
     }
@@ -339,12 +351,10 @@ pub fn validate_session_identity(
         if let Some(curr_iss) = current_issuer
             && curr_iss != stored_issuer
         {
-            eprintln!(
-                "[transport:session] Session identity mismatch detected (issuer)"
-            );
+            eprintln!("[transport:session] Session identity mismatch detected (issuer)");
             return Err(TransportError::session(
                 crate::error::SessionError::IdentityMismatch(
-                    "JWT identity does not match session".to_string()
+                    "JWT identity does not match session".to_string(),
                 ),
             ));
         }

@@ -86,7 +86,10 @@ pub fn handle_inspect_routing(ctx: &MessageContext) -> Result<ServerResult, Erro
 }
 
 /// Build routing diagnostic output with conflict detection
-pub fn build_routing_diagnostic(config: &AggregatedConfig, all_tools: &[Tool]) -> RoutingDiagnostic {
+pub fn build_routing_diagnostic(
+    config: &AggregatedConfig,
+    all_tools: &[Tool],
+) -> RoutingDiagnostic {
     // Build effective rules map
     let mut effective_rules = HashMap::new();
     for (path, rule) in &config.path_rules {
@@ -142,7 +145,10 @@ fn detect_conflicts(config: &AggregatedConfig, all_tools: &[Tool]) -> Vec<Confli
                     tool_or_component: tool.name.clone(),
                     conflict: format!(
                         "Tool '{}' is whitelisted via {} (from {:?}) but blacklisted by {:?}",
-                        tool.name, whitelisted_via, rule.sources.whitelist_from, rule.sources.blacklist_from
+                        tool.name,
+                        whitelisted_via,
+                        rule.sources.whitelist_from,
+                        rule.sources.blacklist_from
                     ),
                     resolution: "DENIED (blacklist wins per Deny Trumps Allow rule)".to_string(),
                 });
@@ -154,7 +160,11 @@ fn detect_conflicts(config: &AggregatedConfig, all_tools: &[Tool]) -> Vec<Confli
 }
 
 /// Determine how a tool was whitelisted (by component ID or tool name).
-fn determine_whitelist_source(tool: &Tool, metadata: &ToolMetadata, whitelist: &[String]) -> String {
+fn determine_whitelist_source(
+    tool: &Tool,
+    metadata: &ToolMetadata,
+    whitelist: &[String],
+) -> String {
     if let Some(comp_id) = &metadata.component_id {
         if whitelist.contains(comp_id) {
             return format!("component '{}'", comp_id);

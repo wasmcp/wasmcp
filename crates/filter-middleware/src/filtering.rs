@@ -1,6 +1,8 @@
 use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
 use crate::config::find_most_specific_path_rule;
-use crate::metadata::{parse_tool_metadata, tool_is_blacklisted, tool_matches_tag_filters, tool_passes_whitelist};
+use crate::metadata::{
+    parse_tool_metadata, tool_is_blacklisted, tool_matches_tag_filters, tool_passes_whitelist,
+};
 use crate::types::{AggregatedConfig, AggregatedPathRule, ToolWithMetadata};
 use std::borrow::Cow;
 
@@ -20,10 +22,7 @@ impl<'a> FilteringPipeline<'a> {
     /// Pre-computes most specific matching path rule.
     pub fn new(config: &'a AggregatedConfig, current_path: String) -> Self {
         let path_rule = find_most_specific_path_rule(&current_path, config);
-        Self {
-            config,
-            path_rule,
-        }
+        Self { config, path_rule }
     }
 
     /// Apply all configured filters to tool list.
@@ -119,7 +118,11 @@ impl<'a> FilteringPipeline<'a> {
     /// Apply tag filters with cached metadata
     fn apply_tag_filters_cached(&self, tools_with_meta: Vec<&ToolWithMetadata>) -> Vec<Tool> {
         // Fast path: only global filters (no merge needed)
-        if self.path_rule.map(|r| r.tag_filters.is_empty()).unwrap_or(true) {
+        if self
+            .path_rule
+            .map(|r| r.tag_filters.is_empty())
+            .unwrap_or(true)
+        {
             // Use global filters directly without cloning
             if self.config.global_tag_filters.is_empty() {
                 // No filters at all - extract tools directly
@@ -129,7 +132,9 @@ impl<'a> FilteringPipeline<'a> {
             // Only global filters apply
             return tools_with_meta
                 .into_iter()
-                .filter(|twm| tool_matches_tag_filters(&twm.metadata, &self.config.global_tag_filters))
+                .filter(|twm| {
+                    tool_matches_tag_filters(&twm.metadata, &self.config.global_tag_filters)
+                })
                 .map(|twm| twm.tool.clone())
                 .collect();
         }
