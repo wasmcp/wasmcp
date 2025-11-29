@@ -51,14 +51,12 @@ pub fn handle_inspect_routing(ctx: &MessageContext) -> Result<ServerResult, Erro
     };
 
     // Get all tools from downstream to check for conflicts
-    let all_tools = match fetch_tools_from_downstream(
+    let all_tools = fetch_tools_from_downstream(
         ctx,
         RequestId::Number(INTERNAL_REQUEST_ID_VALUE),
         ListToolsRequest { cursor: None },
-    ) {
-        Ok(tools) => tools,
-        Err(_) => Vec::new(), // If we can't get tools, proceed without conflict detection
-    };
+    )
+    .unwrap_or_default(); // If we can't get tools, proceed without conflict detection
 
     // Build diagnostic output with conflict detection
     let diagnostic = build_routing_diagnostic(&config, &all_tools);

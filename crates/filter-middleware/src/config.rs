@@ -176,7 +176,7 @@ fn aggregate_global_tag_filters(
             let values = tag_filter_value_to_vec(tag_value);
             global_filters
                 .entry(tag_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .extend(values);
         }
     }
@@ -235,7 +235,7 @@ fn aggregate_path_rule(path: &str, configs: &[(String, RoutingConfig)]) -> Aggre
                 agg_rule
                     .tag_filters
                     .entry(tag_name.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .extend(values);
 
                 if !agg_rule.sources.tag_filters_from.contains(uri) {
