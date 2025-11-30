@@ -1,0 +1,9 @@
+package wasmcp:todo-list@0.1.0;
+
+world todo-list {
+    import wasmcp:mcp-v20250618/server-io@0.1.7;
+    import wasmcp:mcp-v20250618/sessions@0.1.7;
+    import wasmcp:auth/helpers@0.1.0;
+
+    export wasmcp:mcp-v20250618/tools@0.1.7;
+}

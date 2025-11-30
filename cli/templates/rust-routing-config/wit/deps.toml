@@ -1,0 +1,1 @@
+mcp-v20250618 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v{{wasmcp_version}}/wasmcp-mcp-v2025-06-18-{{wasmcp_version}}-source.tar.gz"

@@ -1,0 +1,6 @@
+package wasmcp:routing-config@0.1.0;
+
+world routing-config {
+    import wasmcp:mcp-v20250618/server-io@0.1.7;
+    export wasmcp:mcp-v20250618/resources@0.1.7;
+}
