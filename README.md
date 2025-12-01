@@ -17,7 +17,7 @@ See [releases](https://github.com/wasmcp/wasmcp/releases) for SBOMs etc.
 Or build from source:
 
 ```bash
-cargo install --git https://github.com/wasmcp/wasmcp
+cargo install --git https://github.com/wasmcp/wasmcp wasmcp
 ```
 
 Requires [`wasmtime`](https://wasmtime.dev/), [`wash`](https://github.com/wasmCloud/wash), [`spin`](https://github.com/spinframework/spin), or another component-capable runtime to run composed servers.
