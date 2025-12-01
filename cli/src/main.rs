@@ -159,6 +159,17 @@ enum Command {
         #[command(subcommand)]
         command: McpCommand,
     },
+
+    /// JWT testing utilities for local development
+    ///
+    /// Generate RSA keypairs and mint test JWT tokens with custom claims
+    /// for testing authentication and authorization patterns.
+    ///
+    /// ⚠️  WARNING: FOR LOCAL TESTING ONLY - DO NOT USE IN PRODUCTION
+    Jwt {
+        #[command(subcommand)]
+        command: commands::jwt::JwtCommand,
+    },
 }
 
 #[derive(Parser)]
@@ -864,6 +875,8 @@ async fn main() -> Result<()> {
                 commands::server::handle_server_command(args).await
             }
         },
+
+        Command::Jwt { command } => commands::jwt::handle_jwt_command(command).await,
     }
 }
 

@@ -1,0 +1,9 @@
+# Environment variables (contains sensitive JWT keys)
+.env
+
+# Build artifacts
+target/
+Cargo.lock
+
+# Spin runtime files
+.spin/

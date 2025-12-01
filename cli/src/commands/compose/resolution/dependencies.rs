@@ -53,6 +53,7 @@ fn map_interface_to_component(interface: &str) -> Option<&'static str> {
         "server-io" => Some(ComponentType::ServerIo.name()),
         "server-handler" => Some(ComponentType::MethodNotFound.name()),
         "server-auth" => Some(ComponentType::Authorization.name()),
+        "helpers" if interface.contains("auth") => Some(ComponentType::Authorization.name()),
         "tools" => Some(ComponentType::ToolsMiddleware.name()),
         "resources" => Some(ComponentType::ResourcesMiddleware.name()),
         "prompts" => Some(ComponentType::PromptsMiddleware.name()),
@@ -66,9 +67,7 @@ fn map_interface_to_component(interface: &str) -> Option<&'static str> {
 ///
 /// Analyzes the WIT imports of user-provided components to determine
 /// which framework dependencies are actually needed.
-pub fn discover_required_dependencies(
-    component_paths: &[PathBuf],
-) -> Result<HashSet<String>> {
+pub fn discover_required_dependencies(component_paths: &[PathBuf]) -> Result<HashSet<String>> {
     let mut required = HashSet::new();
 
     for component_path in component_paths {

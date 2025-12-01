@@ -1,0 +1,19 @@
+version = "1.0-override"
+
+# This config demonstrates conflict scenarios with the base routing-config
+
+# Override /mcp/math to DENY add (conflicts with base whitelist of calculator-rs)
+[path-rules."/mcp/math"]
+blacklist = ["add"]  # Deny add (base config whitelists calculator-rs which includes add)
+
+# Override /mcp/calc to allow todo tools in addition to calculator tools
+[path-rules."/mcp/calc"]
+whitelist = ["add_item", "list_items"]  # Add todo tools to calc path
+
+# New path not in base config
+[path-rules."/mcp/override-only"]
+whitelist = ["factorial"]
+
+# Global tag filter that affects all paths
+[tag-filters]
+tool-level = "foundational"  # Only foundational-level tools globally

@@ -435,3 +435,30 @@ jobs:
           response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server-stdio.wasm \
             --cli --transport stdio --method resources/read --uri "text://info")
           echo "$response" | grep -q "simple resources capability"
+
+      # Additional routing-config template test (Rust only)
+      - name: Create routing-config project
+        if: matrix.language == 'rust'
+        run: |
+          wasmcp new ci-test-routing-config --language rust --template-type routingconfig
+
+      - name: Build routing-config component
+        if: matrix.language == 'rust'
+        run: cd ci-test-routing-config && make
+
+      - name: Test routing-config with MCP Inspector
+        if: matrix.language == 'rust'
+        run: |
+          cd ci-test-routing-config
+          COMPONENT="target/wasm32-wasip2/release/ci_test_routing_config.wasm"
+          wasmcp compose server $COMPONENT --runtime wasmtime -o mcp-server.wasm
+
+          # Test with stdio (no server needed)
+          resources_list=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server.wasm \
+            --cli --transport stdio --method resources/list)
+          echo "$resources_list" | grep -q "config://routing-ci-test-routing-config"
+
+          response=$(npx @modelcontextprotocol/inspector@0.16.8 wasmtime run -Shttp -Skeyvalue -Scli mcp-server.wasm \
+            --cli --transport stdio --method resources/read --uri "config://routing-ci-test-routing-config")
+          echo "$response" | grep -q "version"
+          echo "$response" | grep -q "path-rules"

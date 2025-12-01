@@ -1,6 +1,6 @@
 [package]
 name = "wasmcp"
-version = "0.4.11"
+version = "0.4.12"
 edition = "2024"
 rust-version = "1.89"
 authors = ["wasmcp contributors"]
@@ -27,19 +27,24 @@ liquid = "0.26"
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 include_dir = "0.7"
-wac-graph = "0.8"
-wit-parser = "0.240"
-wit-component = "0.240"
-wasmparser = "0.240"
+wac-graph = "0.8.1"
+wit-parser = "0.242.0"
+wit-component = "0.242.0"
+wasmparser = "0.242.0"
 tokio = { version = "1", features = ["process", "rt", "rt-multi-thread", "macros", "fs", "io-util"] }
 dirs = "6.0"
-wasm-pkg-client = "0.12"
-wasm-pkg-common = "0.12"
-wasm-pkg-core = "0.12"
+wasm-pkg-client = "0.13"
+wasm-pkg-common = "0.13"
+wasm-pkg-core = "0.13"
 wit-deps = "0.5"
 futures-util = "0.3"
 serde_json = "1.0"
 toml = "0.9"
+jsonwebtoken = { version = "10.2.0", default-features = false, features = ["rust_crypto", "use_pem"] }
+rsa = "0.9"
+rand = "0.8"
+chrono = "0.4"
+base64 = "0.22"
 
 # MCP server support (always enabled)
 rmcp = { version = "0.8.3", features = ["server", "client", "transport-io", "transport-streamable-http-server", "transport-streamable-http-client", "transport-streamable-http-client-reqwest", "macros"] }
@@ -53,7 +58,7 @@ reqwest = { version = "0.12", features = ["rustls-tls"], default-features = fals
 
 # Daemon management (Unix only)
 daemonize = "0.5"
-nix = { version = "0.29", features = ["signal", "process"] }
+nix = { version = "0.30.1", features = ["signal", "process"] }
 
 [dev-dependencies]
 tempfile = "3"

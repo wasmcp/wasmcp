@@ -160,6 +160,9 @@ mod tests {
         assert!(TEMPLATES.get_dir("rust-resources").is_some());
         assert!(TEMPLATES.get_dir("python-resources").is_some());
         assert!(TEMPLATES.get_dir("typescript-resources").is_some());
+
+        // Verify that routing-config template is embedded
+        assert!(TEMPLATES.get_dir("rust-routing-config").is_some());
     }
 
     /// Test template path construction
@@ -173,6 +176,9 @@ mod tests {
 
         let path3 = format!("{}-{}", Language::TypeScript, TemplateType::Prompts);
         assert_eq!(path3, "typescript-prompts");
+
+        let path4 = format!("{}-{}", Language::Rust, TemplateType::RoutingConfig);
+        assert_eq!(path4, "rust-routing-config");
     }
 
     /// Test liquid context creation
@@ -250,6 +256,7 @@ mod tests {
         assert!(TEMPLATES.get_dir("rust-tools").is_some());
         assert!(TEMPLATES.get_dir("rust-resources").is_some());
         assert!(TEMPLATES.get_dir("rust-prompts").is_some());
+        assert!(TEMPLATES.get_dir("rust-routing-config").is_some());
     }
 
     /// Test all template types exist for Python

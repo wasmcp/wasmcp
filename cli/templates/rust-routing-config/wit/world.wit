@@ -1,0 +1,9 @@
+package wasmcp:{{project_name}}@0.1.0;
+
+/// {{project_name}} MCP routing configuration provider
+///
+/// This component exports the resources interface to provide routing configuration.
+/// The CLI will automatically wrap it with resources-middleware for composition.
+world {{project_name}} {
+    export wasmcp:mcp-v20250618/resources@{{wasmcp_version}};
+}
