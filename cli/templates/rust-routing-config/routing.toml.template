@@ -1,0 +1,133 @@
+version = "1.0"
+
+# Routing Configuration for filter-middleware
+#
+# This configuration defines path-based and tag-based filtering rules for MCP tools.
+# Works with filter-middleware to control which tools are accessible at different paths.
+#
+# Multi-Config Support:
+# - Multiple routing configs auto-discovered via config://routing-* pattern
+# - Whitelists merge (union) - any config can allow tools
+# - Blacklists merge (union) - any config can deny tools
+# - Deny Trumps Allow - blacklist always wins over whitelist
+#
+# See README.md for detailed documentation
+
+# ==============================================================================
+# GLOBAL TAG FILTERS (optional)
+# ==============================================================================
+# Apply to ALL tools on ALL paths
+# Uncomment to enable global filtering
+
+# [global-tag-filters]
+# tool-level = "foundational"  # Only allow foundational-level tools
+# category = "utilities"       # Only allow utility tools
+
+# ==============================================================================
+# PATH-BASED RULES
+# ==============================================================================
+# Rules are hierarchical - longest matching path wins
+# Example: /api/v1/admin matches before /api/v1 which matches before /api
+
+# Example 1: Component-level whitelist
+# Allow all tools from specific component(s)
+[path-rules."/api/admin"]
+whitelist = ["admin-tools"]  # Component ID from tool metadata
+# blacklist = []  # Optional: deny specific tools even if component is whitelisted
+
+# Example 2: Tool-level whitelist
+# Allow only specific tools by name
+[path-rules."/api/public"]
+whitelist = ["get_status", "health_check", "list_endpoints"]
+
+# Example 3: Blacklist specific tools
+# Allow all tools except these
+[path-rules."/api/restricted"]
+blacklist = ["delete_user", "modify_permissions", "admin_reset"]
+
+# Example 4: Mix component and tool whitelists
+[path-rules."/api/mixed"]
+whitelist = [
+    "safe-component",     # Allow entire component
+    "specific_tool",      # Plus individual tool
+]
+
+# Example 5: Tag-based filtering at path level
+# Only allow tools with specific tags
+[path-rules."/api/math"]
+tag-filters = { category = "math" }
+
+# Example 6: Multiple tag filters (AND logic)
+# Tool must match ALL specified tags
+[path-rules."/api/core"]
+tag-filters = { category = "utilities", tool-level = "foundational" }
+
+# Example 7: Hierarchical override
+# More specific path overrides parent path rules
+[path-rules."/api/admin/readonly"]
+whitelist = ["view_logs", "get_metrics"]  # More restrictive than /api/admin
+
+# ==============================================================================
+# RBAC EXAMPLES (OAuth2 Scopes & Roles)
+# ==============================================================================
+# Requires filter-middleware to receive JWT claims from auth middleware
+
+# Example 8: Scope-based access control
+# Require OAuth2 scopes for read-only access
+# [path-rules."/api/viewer"]
+# required-scopes = ["mcp:read"]
+# tag-filters = { category = "data" }
+
+# Example 9: Multiple scopes required (AND logic)
+# User must have ALL specified scopes
+# [path-rules."/api/contributor"]
+# required-scopes = ["mcp:read", "mcp:write"]
+# required-roles = ["contributor", "admin"]  # OR logic - needs ANY listed role
+
+# Example 10: Role-based restrictions with denials
+# Admin access with scope blacklisting
+# [path-rules."/api/admin"]
+# required-scopes = ["mcp:read", "mcp:write"]
+# required-roles = ["admin"]
+# denied-scopes = ["mcp:forbidden"]  # Deny trumps allow
+
+# Example 11: Denied roles (blacklist)
+# Allow access but exclude specific roles
+# [path-rules."/api/analyst"]
+# required-scopes = ["mcp:read", "mcp:write"]
+# denied-roles = ["viewer"]  # Block viewer role from this path
+
+# ==============================================================================
+# COMMON PATTERNS
+# ==============================================================================
+
+# Pattern: Allow everything (no rule needed)
+# Just don't define a path rule - filter-middleware allows all by default
+
+# Pattern: Deny everything
+# [path-rules."/blocked"]
+# whitelist = []  # Empty whitelist with path rule = deny all
+
+# Pattern: Public read, restricted write
+# [path-rules."/data"]
+# whitelist = ["read_data", "list_data"]
+# blacklist = ["write_data", "delete_data"]
+
+# ==============================================================================
+# METADATA TAGS REFERENCE
+# ==============================================================================
+# Tags are defined in tool metadata (tool.options.meta):
+# {
+#   "component_id": "my-component",
+#   "tags": {
+#     "category": "math",
+#     "tool-level": "foundational",
+#     "security-level": "public"
+#   }
+# }
+#
+# Common tag patterns:
+# - category: math, utilities, admin, data, system
+# - tool-level: foundational, advanced, expert
+# - security-level: public, internal, admin
+# - data-access: read-only, read-write, admin

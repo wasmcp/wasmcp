@@ -28,7 +28,7 @@ BUILD_DIR := target/$(TARGET)
 RELEASE_BIN := $(BUILD_DIR)/release/wasmcp
 DEBUG_BIN := $(BUILD_DIR)/debug/wasmcp
 
-.PHONY: all build release debug clean test check install
+.PHONY: all build release debug clean test check install cross
 
 # Default target
 work: release 
@@ -67,6 +67,12 @@ install: release
 	cargo install --path . --target $(TARGET)
 	@echo "✓ Installed: wasmcp"
 
+# Run clippy for Linux target (matches CI behavior)
+cross:
+	@echo "Running clippy for x86_64-unknown-linux-gnu (CI target)..."
+	cross clippy --all-targets --target x86_64-unknown-linux-gnu -- -D warnings
+	@echo "✓ Clippy passed for x86_64-unknown-linux-gnu"
+
 # Show detected configuration
 info:
 	@echo "Platform: $(UNAME_S) $(UNAME_M)"
@@ -84,6 +90,7 @@ help:
 	@echo "  make debug     - Build debug binary (faster)"
 	@echo "  make test      - Run tests"
 	@echo "  make check     - Run clippy and fmt checks"
+	@echo "  make cross     - Run clippy for x86_64-linux (matches CI)"
 	@echo "  make clean     - Remove build artifacts"
 	@echo "  make install   - Install to ~/.cargo/bin"
 	@echo "  make info      - Show platform and target info"

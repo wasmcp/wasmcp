@@ -2,7 +2,7 @@ version = "1.0"
 
 # Global tag filters - apply to ALL tools on ALL paths
 # (commented out by default for basic path filtering tests)
-# [tag-filters]
+# [global-tag-filters]
 # tool-level = "foundational"  # Only foundational-level tools
 
 # Math tools path - allow all calculator-rs tools except factorial
