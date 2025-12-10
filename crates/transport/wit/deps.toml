@@ -1,6 +1,5 @@
 io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.8.tar.gz"
 cli = "https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.8.tar.gz"
 http = "https://github.com/WebAssembly/wasi-http/archive/refs/tags/v0.2.8.tar.gz"
-# mcp-v20250618 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.7/wasmcp-mcp-v2025-06-18-0.1.7-source.tar.gz"
-mcp-v20250618 = { path = "../../../spec/2025-06-18/wit"}
+mcp-v20250618 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.8/wasmcp-mcp-v2025-06-18-0.1.8-source.tar.gz"
 auth = "https://github.com/wasmcp/wasmcp/releases/download/auth-v0.1.0/wasmcp-auth-0.1.0-source.tar.gz"
