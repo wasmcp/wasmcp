@@ -14,6 +14,8 @@ use bindings::exports::wasmcp::mcp_v20250618::resources::Guest;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
 use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
 
+const ROUTING_URI: &str = "config://routing-{{project_name}}";
+
 struct RoutingConfig;
 
 impl Guest for RoutingConfig {
@@ -23,7 +25,7 @@ impl Guest for RoutingConfig {
     ) -> Result<ListResourcesResult, ErrorCode> {
         Ok(ListResourcesResult {
             resources: vec![McpResource {
-                uri: "config://routing-{{project_name}}".to_string(),
+                uri: ROUTING_URI.to_string(),
                 name: "{{project_name}} Routing Configuration".to_string(),
                 options: Some(ResourceOptions {
                     size: None,
@@ -45,7 +47,7 @@ impl Guest for RoutingConfig {
         _ctx: MessageContext,
         request: ReadResourceRequest,
     ) -> Result<Option<ReadResourceResult>, ErrorCode> {
-        if request.uri == "config://routing-{{project_name}}" {
+        if request.uri == ROUTING_URI {
             // Embed routing.toml at compile time
             let config_toml = include_str!("../routing.toml");
 

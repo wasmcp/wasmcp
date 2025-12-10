@@ -19,7 +19,7 @@ version = "1.0"
 # Apply to ALL tools on ALL paths
 # Uncomment to enable global filtering
 
-# [tag-filters]
+# [global-tag-filters]
 # tool-level = "foundational"  # Only allow foundational-level tools
 # category = "utilities"       # Only allow utility tools
 
@@ -66,6 +66,36 @@ tag-filters = { category = "utilities", tool-level = "foundational" }
 # More specific path overrides parent path rules
 [path-rules."/api/admin/readonly"]
 whitelist = ["view_logs", "get_metrics"]  # More restrictive than /api/admin
+
+# ==============================================================================
+# RBAC EXAMPLES (OAuth2 Scopes & Roles)
+# ==============================================================================
+# Requires filter-middleware to receive JWT claims from auth middleware
+
+# Example 8: Scope-based access control
+# Require OAuth2 scopes for read-only access
+# [path-rules."/api/viewer"]
+# required-scopes = ["mcp:read"]
+# tag-filters = { category = "data" }
+
+# Example 9: Multiple scopes required (AND logic)
+# User must have ALL specified scopes
+# [path-rules."/api/contributor"]
+# required-scopes = ["mcp:read", "mcp:write"]
+# required-roles = ["contributor", "admin"]  # OR logic - needs ANY listed role
+
+# Example 10: Role-based restrictions with denials
+# Admin access with scope blacklisting
+# [path-rules."/api/admin"]
+# required-scopes = ["mcp:read", "mcp:write"]
+# required-roles = ["admin"]
+# denied-scopes = ["mcp:forbidden"]  # Deny trumps allow
+
+# Example 11: Denied roles (blacklist)
+# Allow access but exclude specific roles
+# [path-rules."/api/analyst"]
+# required-scopes = ["mcp:read", "mcp:write"]
+# denied-roles = ["viewer"]  # Block viewer role from this path
 
 # ==============================================================================
 # COMMON PATTERNS

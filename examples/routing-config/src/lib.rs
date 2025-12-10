@@ -9,6 +9,9 @@ use bindings::exports::wasmcp::mcp_v20250618::resources::Guest;
 use bindings::wasmcp::mcp_v20250618::mcp::*;
 use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
 
+const ROUTING_URI: &str = "config://routing-config";
+const ROUTING_OVERRIDE_URI: &str = "config://routing-team-override";
+
 struct RoutingConfig;
 
 impl Guest for RoutingConfig {
@@ -19,7 +22,7 @@ impl Guest for RoutingConfig {
         Ok(ListResourcesResult {
             resources: vec![
                 McpResource {
-                    uri: "config://routing".to_string(),
+                    uri: ROUTING_URI.to_string(),
                     name: "Routing Configuration".to_string(),
                     options: Some(ResourceOptions {
                         size: None,
@@ -31,7 +34,7 @@ impl Guest for RoutingConfig {
                     }),
                 },
                 McpResource {
-                    uri: "config://routing-team-override".to_string(),
+                    uri: ROUTING_OVERRIDE_URI.to_string(),
                     name: "Routing Configuration Override".to_string(),
                     options: Some(ResourceOptions {
                         size: None,
@@ -56,7 +59,7 @@ impl Guest for RoutingConfig {
         request: ReadResourceRequest,
     ) -> Result<Option<ReadResourceResult>, ErrorCode> {
         match request.uri.as_str() {
-            "config://routing" => {
+            ROUTING_URI => {
                 // Embed routing.toml at compile time
                 let config_toml = include_str!("../routing.toml");
 
@@ -72,7 +75,7 @@ impl Guest for RoutingConfig {
                     })],
                 }))
             }
-            "config://routing-team-override" => {
+            ROUTING_OVERRIDE_URI => {
                 // Embed routing-override.toml at compile time
                 let override_toml = include_str!("../routing-override.toml");
 
