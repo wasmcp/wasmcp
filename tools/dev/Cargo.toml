@@ -3,6 +3,7 @@ name = "dev-tools"
 version = "0.1.0"
 edition = "2024"
 publish = false
+autobins = false
 
 # Not a workspace member - builds natively for host platform
 [workspace]
@@ -10,7 +11,6 @@ publish = false
 [[example]]
 name = "dev-tools"
 path = "src/main.rs"
-# Binary only builds when enable-bin feature is active
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
