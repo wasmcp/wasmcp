@@ -8,9 +8,15 @@ autobins = false
 # Not a workspace member - builds natively for host platform
 [workspace]
 
+[features]
+default = []
+# Define a feature that gates the binary
+enable-bin = []
+
 [[bin]]
 name = "dev-tools"
 path = "src/main.rs"
+required-features = ["enable-bin"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
