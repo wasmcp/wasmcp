@@ -81,6 +81,7 @@ struct JsonImplementation {
 
 fn parse_protocol_version(s: &str) -> Result<ProtocolVersion, IoError> {
     match s {
+        "2025-11-25" => Ok(ProtocolVersion::V20251125),
         "2025-06-18" => Ok(ProtocolVersion::V20250618),
         "2025-03-26" => Ok(ProtocolVersion::V20250326),
         "2024-11-05" => Ok(ProtocolVersion::V20241105),

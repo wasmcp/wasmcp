@@ -1,9 +1,9 @@
+use crate::INTERNAL_REQUEST_ID_VALUE;
 use crate::bindings::exports::wasmcp::mcp_v20250618::server_handler::MessageContext;
 use crate::bindings::wasmcp::mcp_v20250618::mcp::*;
 use crate::bindings::wasmcp::mcp_v20250618::server_handler as downstream;
 use crate::helpers::to_downstream_ctx;
 use crate::types::*;
-use crate::INTERNAL_REQUEST_ID_VALUE;
 use std::collections::{HashMap, HashSet};
 
 /// Load and aggregate all routing configs from config:// resources.
@@ -89,10 +89,10 @@ pub fn discover_routing_configs(ctx: &MessageContext) -> Result<Vec<String>, Str
             }
 
             // Check MIME type if available
-            if let Some(opts) = &res.options {
-                if let Some(mime) = &opts.mime_type {
-                    return mime == "application/toml";
-                }
+            if let Some(opts) = &res.options
+                && let Some(mime) = &opts.mime_type
+            {
+                return mime == "application/toml";
             }
 
             // If no MIME type specified, assume it's valid (for backward compatibility)
@@ -124,7 +124,7 @@ pub fn read_config_from_uri(ctx: &MessageContext, uri: &str) -> Result<RoutingCo
             return Err(format!(
                 "Unexpected result type from resources/read for {}",
                 uri
-            ))
+            ));
         }
         Some(Err(e)) => return Err(format!("Resource read failed for {}: {:?}", uri, e)),
         None => return Err(format!("Resource not found: {}", uri)),
@@ -145,7 +145,7 @@ pub fn read_config_from_uri(ctx: &MessageContext, uri: &str) -> Result<RoutingCo
     let config_text = match &text_contents.text {
         TextData::Text(s) => s,
         TextData::TextStream(_) => {
-            return Err(format!("{} is streamed, expected inline text", uri))
+            return Err(format!("{} is streamed, expected inline text", uri));
         }
     };
 
@@ -296,19 +296,42 @@ pub fn tag_filter_value_to_vec(value: &TagFilterValue) -> Vec<String> {
 
 /// Find most specific (longest matching) path rule for given path.
 ///
-/// Uses longest-prefix matching algorithm:
+/// Uses longest-prefix matching algorithm with boundary validation:
 /// - "/mcp/calculator/advanced" matches "/mcp/calculator/advanced" over "/mcp/calculator"
+/// - "/mcp/calculator" matches "/mcp/calc" only if followed by '/'
+/// - Prevents "/mcp/calculator" from matching "/mcp/calc" (boundary check)
 /// - Returns None if no path rule matches
 #[must_use]
 pub fn find_most_specific_path_rule<'a>(
     path: &str,
     config: &'a AggregatedConfig,
 ) -> Option<&'a AggregatedPathRule> {
-    // Find all matching path rules (path starts with rule path)
+    // Find all matching path rules with boundary validation
     let mut matches: Vec<(&str, &AggregatedPathRule)> = config
         .path_rules
         .iter()
-        .filter(|(rule_path, _)| path.starts_with(rule_path.as_str()))
+        .filter(|(rule_path, _)| {
+            let rule = rule_path.as_str();
+
+            // Exact match always succeeds
+            if path == rule {
+                return true;
+            }
+
+            // Prefix match requires boundary validation
+            if path.starts_with(rule) {
+                // If rule ends with '/', prefix match is valid
+                if rule.ends_with('/') {
+                    return true;
+                }
+
+                // Otherwise, next character in path must be '/'
+                // This prevents "/mcp/calculator" from matching "/mcp/calc"
+                path.len() > rule.len() && path.as_bytes()[rule.len()] == b'/'
+            } else {
+                false
+            }
+        })
         .map(|(k, v)| (k.as_str(), v))
         .collect();
 
@@ -420,6 +443,103 @@ mod tests {
 
         let result = find_most_specific_path_rule("/api/tools", &config);
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_find_most_specific_path_rule_boundary_check() {
+        // Security test: Prevent "/mcp/calculator" from matching "/mcp/calc"
+        let mut config = AggregatedConfig {
+            path_rules: HashMap::new(),
+            global_tag_filters: HashMap::new(),
+            config_sources: vec![],
+        };
+
+        config.path_rules.insert(
+            "/mcp/calc".to_string(),
+            create_test_rule(vec!["calc_tool".to_string()], vec![]),
+        );
+
+        config.path_rules.insert(
+            "/mcp/calculator".to_string(),
+            create_test_rule(vec!["calculator_tool".to_string()], vec![]),
+        );
+
+        // "/mcp/calculator/advanced" should match "/mcp/calculator", NOT "/mcp/calc"
+        let result = find_most_specific_path_rule("/mcp/calculator/advanced", &config);
+        assert!(result.is_some());
+        assert_eq!(
+            result.unwrap().whitelist,
+            vec!["calculator_tool".to_string()]
+        );
+
+        // "/mcp/calc/simple" should match "/mcp/calc"
+        let result = find_most_specific_path_rule("/mcp/calc/simple", &config);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().whitelist, vec!["calc_tool".to_string()]);
+    }
+
+    #[test]
+    fn test_find_most_specific_path_rule_exact_match_priority() {
+        // Exact match should work even without trailing slash
+        let mut config = AggregatedConfig {
+            path_rules: HashMap::new(),
+            global_tag_filters: HashMap::new(),
+            config_sources: vec![],
+        };
+
+        config.path_rules.insert(
+            "/mcp/tools".to_string(),
+            create_test_rule(vec!["tool1".to_string()], vec![]),
+        );
+
+        // Exact match should succeed
+        let result = find_most_specific_path_rule("/mcp/tools", &config);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().whitelist, vec!["tool1".to_string()]);
+    }
+
+    #[test]
+    fn test_find_most_specific_path_rule_trailing_slash() {
+        // Rule with trailing slash should match prefix correctly
+        let mut config = AggregatedConfig {
+            path_rules: HashMap::new(),
+            global_tag_filters: HashMap::new(),
+            config_sources: vec![],
+        };
+
+        config.path_rules.insert(
+            "/mcp/".to_string(),
+            create_test_rule(vec!["tool1".to_string()], vec![]),
+        );
+
+        // Should match "/mcp/anything"
+        let result = find_most_specific_path_rule("/mcp/calculator", &config);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().whitelist, vec!["tool1".to_string()]);
+    }
+
+    #[test]
+    fn test_find_most_specific_path_rule_no_boundary_bypass() {
+        // Critical security test: Ensure no boundary bypass
+        let mut config = AggregatedConfig {
+            path_rules: HashMap::new(),
+            global_tag_filters: HashMap::new(),
+            config_sources: vec![],
+        };
+
+        config.path_rules.insert(
+            "/mcp".to_string(),
+            create_test_rule(vec!["mcp_tool".to_string()], vec![]),
+        );
+
+        // "/mcpx/tools" should NOT match "/mcp" (no boundary)
+        let result = find_most_specific_path_rule("/mcpx/tools", &config);
+        assert!(result.is_none());
+
+        // "/mcp/tools" SHOULD match "/mcp" (valid boundary)
+        let result = find_most_specific_path_rule("/mcp/tools", &config);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().whitelist, vec!["mcp_tool".to_string()]);
     }
 
     #[test]

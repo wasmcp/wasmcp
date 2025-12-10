@@ -1,10 +1,10 @@
+use crate::INTERNAL_REQUEST_ID_VALUE;
 use crate::bindings::exports::wasmcp::mcp_v20250618::server_handler::MessageContext;
 use crate::bindings::wasmcp::mcp_v20250618::mcp::*;
 use crate::config::load_and_aggregate_configs;
 use crate::helpers::fetch_tools_from_downstream;
-use crate::metadata::{parse_tool_metadata, tool_passes_whitelist};
+use crate::metadata::{parse_tool_metadata, tool_is_blacklisted, tool_passes_whitelist};
 use crate::types::*;
-use crate::INTERNAL_REQUEST_ID_VALUE;
 use std::collections::HashMap;
 
 /// Create the inspect_routing diagnostic tool
@@ -46,7 +46,7 @@ pub fn handle_inspect_routing(ctx: &MessageContext) -> Result<ServerResult, Erro
                 is_error: Some(true),
                 meta: None,
                 structured_content: None,
-            }))
+            }));
         }
     };
 
@@ -131,8 +131,8 @@ fn detect_conflicts(config: &AggregatedConfig, all_tools: &[Tool]) -> Vec<Confli
             // Check if tool would pass whitelist check
             let passes_whitelist = tool_passes_whitelist(tool, &metadata, &rule.whitelist);
 
-            // Check if tool is blacklisted
-            let is_blacklisted = rule.blacklist.contains(&tool.name);
+            // Check if tool is blacklisted (must use same logic as filtering.rs)
+            let is_blacklisted = tool_is_blacklisted(tool, &metadata, &rule.blacklist);
 
             // If tool would pass whitelist but is blacklisted -> conflict
             if passes_whitelist && is_blacklisted {
@@ -163,10 +163,160 @@ fn determine_whitelist_source(
     metadata: &ToolMetadata,
     whitelist: &[String],
 ) -> String {
-    if let Some(comp_id) = &metadata.component_id {
-        if whitelist.contains(comp_id) {
-            return format!("component '{}'", comp_id);
-        }
+    if let Some(comp_id) = &metadata.component_id
+        && whitelist.contains(comp_id)
+    {
+        return format!("component '{}'", comp_id);
     }
     format!("tool name '{}'", tool.name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{AggregatedConfig, AggregatedPathRule, ConfigSource, RuleSources};
+
+    #[test]
+    fn test_detect_conflicts_component_id_blacklist() {
+        // Critical regression test: Ensure conflict detection uses component_id blacklist logic
+        // This test would FAIL if diagnostic.rs only checks tool.name in blacklist
+
+        let mut config = AggregatedConfig {
+            path_rules: std::collections::HashMap::new(),
+            global_tag_filters: std::collections::HashMap::new(),
+            config_sources: vec![ConfigSource {
+                uri: "test://config".to_string(),
+                version: "1.0".to_string(),
+            }],
+        };
+
+        // Create rule that whitelists by component_id but blacklists by component_id too
+        let rule = AggregatedPathRule {
+            whitelist: vec!["evil-component".to_string()],
+            blacklist: vec!["evil-component".to_string()], // Same component_id
+            tag_filters: std::collections::HashMap::new(),
+            sources: RuleSources {
+                whitelist_from: vec!["config1".to_string()],
+                blacklist_from: vec!["config2".to_string()],
+                tag_filters_from: vec![],
+            },
+        };
+
+        config.path_rules.insert("/mcp".to_string(), rule);
+
+        // Tool with component_id that's both whitelisted AND blacklisted
+        let tools = vec![Tool {
+            name: "dangerous_tool".to_string(),
+            input_schema: "{}".to_string(),
+            options: Some(ToolOptions {
+                description: None,
+                title: None,
+                meta: Some(r#"{"component_id":"evil-component"}"#.to_string()),
+                annotations: None,
+                output_schema: None,
+            }),
+        }];
+
+        let conflicts = detect_conflicts(&config, &tools);
+
+        // MUST detect conflict because component_id is both whitelisted AND blacklisted
+        assert_eq!(
+            conflicts.len(),
+            1,
+            "Should detect conflict when component_id is whitelisted and blacklisted"
+        );
+        assert!(conflicts[0].conflict.contains("evil-component"));
+        assert!(conflicts[0].conflict.contains("whitelisted"));
+        assert!(conflicts[0].conflict.contains("blacklisted"));
+    }
+
+    #[test]
+    fn test_detect_conflicts_tool_name_and_component_id() {
+        // Test mixed scenario: whitelisted by name, blacklisted by component_id
+
+        let mut config = AggregatedConfig {
+            path_rules: std::collections::HashMap::new(),
+            global_tag_filters: std::collections::HashMap::new(),
+            config_sources: vec![],
+        };
+
+        let rule = AggregatedPathRule {
+            whitelist: vec!["useful_tool".to_string()], // Whitelist by tool name
+            blacklist: vec!["bad-component".to_string()], // Blacklist by component_id
+            tag_filters: std::collections::HashMap::new(),
+            sources: RuleSources {
+                whitelist_from: vec!["config1".to_string()],
+                blacklist_from: vec!["config2".to_string()],
+                tag_filters_from: vec![],
+            },
+        };
+
+        config.path_rules.insert("/mcp".to_string(), rule);
+
+        let tools = vec![Tool {
+            name: "useful_tool".to_string(),
+            input_schema: "{}".to_string(),
+            options: Some(ToolOptions {
+                description: None,
+                title: None,
+                meta: Some(r#"{"component_id":"bad-component"}"#.to_string()),
+                annotations: None,
+                output_schema: None,
+            }),
+        }];
+
+        let conflicts = detect_conflicts(&config, &tools);
+
+        // MUST detect this conflict
+        assert_eq!(
+            conflicts.len(),
+            1,
+            "Should detect conflict when tool name is whitelisted but component_id is blacklisted"
+        );
+    }
+
+    #[test]
+    fn test_detect_conflicts_no_conflict() {
+        // Test that non-conflicting tools don't report conflicts
+
+        let mut config = AggregatedConfig {
+            path_rules: std::collections::HashMap::new(),
+            global_tag_filters: std::collections::HashMap::new(),
+            config_sources: vec![],
+        };
+
+        let rule = AggregatedPathRule {
+            whitelist: vec!["safe-component".to_string()],
+            blacklist: vec!["dangerous_tool".to_string()],
+            tag_filters: std::collections::HashMap::new(),
+            sources: RuleSources {
+                whitelist_from: vec![],
+                blacklist_from: vec![],
+                tag_filters_from: vec![],
+            },
+        };
+
+        config.path_rules.insert("/mcp".to_string(), rule);
+
+        // Tool that passes whitelist and is NOT blacklisted
+        let tools = vec![Tool {
+            name: "safe_tool".to_string(),
+            input_schema: "{}".to_string(),
+            options: Some(ToolOptions {
+                description: None,
+                title: None,
+                meta: Some(r#"{"component_id":"safe-component"}"#.to_string()),
+                annotations: None,
+                output_schema: None,
+            }),
+        }];
+
+        let conflicts = detect_conflicts(&config, &tools);
+
+        assert_eq!(
+            conflicts.len(),
+            0,
+            "Should not detect conflict for safe tool"
+        );
+    }
 }

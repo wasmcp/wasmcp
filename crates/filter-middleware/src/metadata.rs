@@ -45,19 +45,33 @@ pub fn parse_tool_metadata(tool: &Tool) -> ToolMetadata {
 #[must_use]
 pub fn tool_passes_whitelist(tool: &Tool, metadata: &ToolMetadata, whitelist: &[String]) -> bool {
     // Check if component_id is whitelisted
-    if let Some(comp_id) = &metadata.component_id {
-        if whitelist.contains(comp_id) {
-            return true;
-        }
+    if let Some(comp_id) = &metadata.component_id
+        && whitelist.contains(comp_id)
+    {
+        return true;
     }
 
     // Check if tool name is whitelisted
     whitelist.contains(&tool.name)
 }
 
-/// Check if tool is explicitly blacklisted by name.
+/// Check if tool is explicitly blacklisted by component_id OR name.
+///
+/// Tool is blacklisted if:
+/// - Tool's component_id is in blacklist, OR
+/// - Tool's name is in blacklist
+///
+/// Symmetric with whitelist logic to prevent bypass via component_id.
 #[must_use]
-pub fn tool_is_blacklisted(tool: &Tool, blacklist: &[String]) -> bool {
+pub fn tool_is_blacklisted(tool: &Tool, metadata: &ToolMetadata, blacklist: &[String]) -> bool {
+    // Check if component_id is blacklisted
+    if let Some(comp_id) = &metadata.component_id
+        && blacklist.contains(comp_id)
+    {
+        return true;
+    }
+
+    // Check if tool name is blacklisted
     blacklist.contains(&tool.name)
 }
 
@@ -248,7 +262,7 @@ mod tests {
     }
 
     #[test]
-    fn test_tool_is_blacklisted_true() {
+    fn test_tool_is_blacklisted_by_name() {
         use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
 
         let tool = Tool {
@@ -257,9 +271,34 @@ mod tests {
             options: None,
         };
 
+        let metadata = ToolMetadata {
+            component_id: None,
+            tags: HashMap::new(),
+        };
+
         let blacklist = vec!["dangerous_tool".to_string()];
 
-        assert!(tool_is_blacklisted(&tool, &blacklist));
+        assert!(tool_is_blacklisted(&tool, &metadata, &blacklist));
+    }
+
+    #[test]
+    fn test_tool_is_blacklisted_by_component_id() {
+        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+
+        let tool = Tool {
+            name: "some_tool".to_string(),
+            input_schema: "{}".to_string(),
+            options: None,
+        };
+
+        let metadata = ToolMetadata {
+            component_id: Some("evil-component".to_string()),
+            tags: HashMap::new(),
+        };
+
+        let blacklist = vec!["evil-component".to_string()];
+
+        assert!(tool_is_blacklisted(&tool, &metadata, &blacklist));
     }
 
     #[test]
@@ -272,9 +311,66 @@ mod tests {
             options: None,
         };
 
+        let metadata = ToolMetadata {
+            component_id: Some("safe-component".to_string()),
+            tags: HashMap::new(),
+        };
+
         let blacklist = vec!["dangerous_tool".to_string()];
 
-        assert!(!tool_is_blacklisted(&tool, &blacklist));
+        assert!(!tool_is_blacklisted(&tool, &metadata, &blacklist));
+    }
+
+    #[test]
+    fn test_blacklist_bypass_prevention() {
+        // Critical security test: Tool whitelisted by component_id but blacklisted by name
+        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+
+        let tool = Tool {
+            name: "dangerous".to_string(),
+            input_schema: "{}".to_string(),
+            options: None,
+        };
+
+        let metadata = ToolMetadata {
+            component_id: Some("trusted-component".to_string()),
+            tags: HashMap::new(),
+        };
+
+        let whitelist = vec!["trusted-component".to_string()];
+        let blacklist = vec!["dangerous".to_string()];
+
+        // Tool passes whitelist via component_id
+        assert!(tool_passes_whitelist(&tool, &metadata, &whitelist));
+
+        // But MUST still be blocked by blacklist via name
+        assert!(tool_is_blacklisted(&tool, &metadata, &blacklist));
+    }
+
+    #[test]
+    fn test_blacklist_component_id_bypass_prevention() {
+        // Critical security test: Tool whitelisted by name but blacklisted by component_id
+        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+
+        let tool = Tool {
+            name: "useful_tool".to_string(),
+            input_schema: "{}".to_string(),
+            options: None,
+        };
+
+        let metadata = ToolMetadata {
+            component_id: Some("malicious-component".to_string()),
+            tags: HashMap::new(),
+        };
+
+        let whitelist = vec!["useful_tool".to_string()];
+        let blacklist = vec!["malicious-component".to_string()];
+
+        // Tool passes whitelist via name
+        assert!(tool_passes_whitelist(&tool, &metadata, &whitelist));
+
+        // But MUST still be blocked by blacklist via component_id
+        assert!(tool_is_blacklisted(&tool, &metadata, &blacklist));
     }
 
     #[test]

@@ -327,6 +327,7 @@ struct JsonCompleteResult {
 
 fn protocol_version_to_string(version: &ProtocolVersion) -> String {
     match version {
+        ProtocolVersion::V20251125 => "2025-11-25".to_string(),
         ProtocolVersion::V20250618 => "2025-06-18".to_string(),
         ProtocolVersion::V20250326 => "2025-03-26".to_string(),
         ProtocolVersion::V20241105 => "2024-11-05".to_string(),
