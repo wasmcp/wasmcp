@@ -7,16 +7,10 @@ publish = false
 # Not a workspace member - builds natively for host platform
 [workspace]
 
-[features]
-default = []
-# Feature gate for binary - prevents cargo install from building/installing this
-enable-bin = []
-
-[[bin]]
+[[example]]
 name = "dev-tools"
 path = "src/main.rs"
 # Binary only builds when enable-bin feature is active
-required-features = ["enable-bin"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
