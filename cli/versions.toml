@@ -9,7 +9,7 @@
 [versions]
 # WIT package versions for scaffolding new components
 # These are embedded in generated wit/deps.toml files
-mcp-v20250618 = "0.1.7"
+mcp-v20250618 = "0.1.8"
 
 # Component versions for downloading from registry
 transport = "0.1.5"
