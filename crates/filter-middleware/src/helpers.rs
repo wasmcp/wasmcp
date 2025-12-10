@@ -171,10 +171,7 @@ mod tests {
         assert_eq!(normalize_path("/mcp/admin?bypass=true"), "/mcp/admin");
         assert_eq!(normalize_path("/mcp/tools?param=value"), "/mcp/tools");
         assert_eq!(normalize_path("/mcp?"), "/mcp");
-        assert_eq!(
-            normalize_path("/mcp/calculator?a=1&b=2"),
-            "/mcp/calculator"
-        );
+        assert_eq!(normalize_path("/mcp/calculator?a=1&b=2"), "/mcp/calculator");
     }
 
     #[test]
@@ -202,7 +199,10 @@ mod tests {
             normalize_path("/mcp/admin?../../../etc/passwd"),
             "/mcp/admin"
         );
-        assert_eq!(normalize_path("/mcp/admin?user=admin#exploit"), "/mcp/admin");
+        assert_eq!(
+            normalize_path("/mcp/admin?user=admin#exploit"),
+            "/mcp/admin"
+        );
         assert_eq!(normalize_path("//mcp//admin?bypass"), "/mcp/admin");
     }
 }

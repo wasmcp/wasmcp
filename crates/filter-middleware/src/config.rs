@@ -467,7 +467,10 @@ mod tests {
         // "/mcp/calculator/advanced" should match "/mcp/calculator", NOT "/mcp/calc"
         let result = find_most_specific_path_rule("/mcp/calculator/advanced", &config);
         assert!(result.is_some());
-        assert_eq!(result.unwrap().whitelist, vec!["calculator_tool".to_string()]);
+        assert_eq!(
+            result.unwrap().whitelist,
+            vec!["calculator_tool".to_string()]
+        );
 
         // "/mcp/calc/simple" should match "/mcp/calc"
         let result = find_most_specific_path_rule("/mcp/calc/simple", &config);

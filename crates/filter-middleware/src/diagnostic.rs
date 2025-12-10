@@ -313,6 +313,10 @@ mod tests {
 
         let conflicts = detect_conflicts(&config, &tools);
 
-        assert_eq!(conflicts.len(), 0, "Should not detect conflict for safe tool");
+        assert_eq!(
+            conflicts.len(),
+            0,
+            "Should not detect conflict for safe tool"
+        );
     }
 }

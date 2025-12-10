@@ -264,9 +264,9 @@ mod tests {
         let pipeline = FilteringPipeline::new(&config, "/mcp".to_string());
 
         let tools = vec![
-            create_test_tool("tool1", None, vec![]),           // Whitelisted by name
-            create_test_tool("tool2", Some("comp2"), vec![]),  // Whitelisted by component_id
-            create_test_tool("tool3", Some("comp3"), vec![]),  // Not whitelisted
+            create_test_tool("tool1", None, vec![]), // Whitelisted by name
+            create_test_tool("tool2", Some("comp2"), vec![]), // Whitelisted by component_id
+            create_test_tool("tool3", Some("comp3"), vec![]), // Not whitelisted
         ];
 
         let result = pipeline.apply_filters(&tools);
@@ -298,7 +298,7 @@ mod tests {
         let pipeline = FilteringPipeline::new(&config, "/mcp".to_string());
 
         let tools = vec![
-            create_test_tool("tool1", None, vec![]),          // Whitelisted BUT blacklisted
+            create_test_tool("tool1", None, vec![]), // Whitelisted BUT blacklisted
             create_test_tool("tool2", Some("comp2"), vec![]), // Only whitelisted
         ];
 
@@ -317,13 +317,17 @@ mod tests {
         let pipeline = FilteringPipeline::new(&config, "/mcp".to_string());
 
         let tools = vec![
-            create_test_tool("tool1", None, vec![("category", "math")]),    // Matches
+            create_test_tool("tool1", None, vec![("category", "math")]), // Matches
             create_test_tool("tool2", None, vec![("category", "science")]), // Doesn't match
-            create_test_tool("tool3", None, vec![]),                        // No tags
+            create_test_tool("tool3", None, vec![]),                     // No tags
         ];
 
         let result = pipeline.apply_filters(&tools);
-        assert_eq!(result.len(), 1, "Should only include tools matching tag filters");
+        assert_eq!(
+            result.len(),
+            1,
+            "Should only include tools matching tag filters"
+        );
         assert!(result.iter().any(|t| t.name == "tool1"));
     }
 
@@ -357,7 +361,7 @@ mod tests {
         let pipeline = FilteringPipeline::new(&config, "/mcp".to_string());
 
         let tools = vec![
-            create_test_tool("tool1", None, vec![("category", "math")]),    // Would match global, but path overrides
+            create_test_tool("tool1", None, vec![("category", "math")]), // Would match global, but path overrides
             create_test_tool("tool2", None, vec![("category", "science")]), // Matches path override
         ];
 
@@ -400,9 +404,13 @@ mod tests {
         let pipeline = FilteringPipeline::new(&config, "/mcp".to_string());
 
         let tools = vec![
-            create_test_tool("tool1", None, vec![("category", "math")]),                      // Only has category
-            create_test_tool("tool2", None, vec![("level", "basic")]),                        // Only has level
-            create_test_tool("tool3", None, vec![("category", "math"), ("level", "basic")]),  // Has both - should match
+            create_test_tool("tool1", None, vec![("category", "math")]), // Only has category
+            create_test_tool("tool2", None, vec![("level", "basic")]),   // Only has level
+            create_test_tool(
+                "tool3",
+                None,
+                vec![("category", "math"), ("level", "basic")],
+            ), // Has both - should match
         ];
 
         let result = pipeline.apply_filters(&tools);
@@ -424,7 +432,11 @@ mod tests {
         path_rules.insert(
             "/mcp".to_string(),
             AggregatedPathRule {
-                whitelist: vec!["tool1".to_string(), "tool2".to_string(), "tool3".to_string()],
+                whitelist: vec![
+                    "tool1".to_string(),
+                    "tool2".to_string(),
+                    "tool3".to_string(),
+                ],
                 blacklist: vec!["tool2".to_string()],
                 tag_filters: HashMap::new(),
                 sources: RuleSources {
@@ -439,14 +451,18 @@ mod tests {
         let pipeline = FilteringPipeline::new(&config, "/mcp".to_string());
 
         let tools = vec![
-            create_test_tool("tool1", None, vec![("level", "basic")]),    // Pass all filters
-            create_test_tool("tool2", None, vec![("level", "basic")]),    // Blacklisted
+            create_test_tool("tool1", None, vec![("level", "basic")]), // Pass all filters
+            create_test_tool("tool2", None, vec![("level", "basic")]), // Blacklisted
             create_test_tool("tool3", None, vec![("level", "advanced")]), // Fails tag filter
-            create_test_tool("tool4", None, vec![("level", "basic")]),    // Not whitelisted
+            create_test_tool("tool4", None, vec![("level", "basic")]), // Not whitelisted
         ];
 
         let result = pipeline.apply_filters(&tools);
-        assert_eq!(result.len(), 1, "Should pass whitelist, blacklist, AND tag filters");
+        assert_eq!(
+            result.len(),
+            1,
+            "Should pass whitelist, blacklist, AND tag filters"
+        );
         assert!(result.iter().any(|t| t.name == "tool1"));
     }
 
@@ -475,13 +491,17 @@ mod tests {
         let pipeline = FilteringPipeline::new(&config, "/mcp".to_string()); // Different path
 
         let tools = vec![
-            create_test_tool("tool1", None, vec![("category", "math")]),    // Matches global
+            create_test_tool("tool1", None, vec![("category", "math")]), // Matches global
             create_test_tool("tool2", None, vec![("category", "science")]), // Doesn't match
             create_test_tool("blocked_tool", None, vec![("category", "math")]), // Would be blocked on /other, but allowed here
         ];
 
         let result = pipeline.apply_filters(&tools);
-        assert_eq!(result.len(), 2, "Should apply only global filters when path doesn't match");
+        assert_eq!(
+            result.len(),
+            2,
+            "Should apply only global filters when path doesn't match"
+        );
         assert!(result.iter().any(|t| t.name == "tool1"));
         assert!(result.iter().any(|t| t.name == "blocked_tool"));
     }
