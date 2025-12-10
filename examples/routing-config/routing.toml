@@ -1,0 +1,31 @@
+version = "1.0"
+
+# Global tag filters - apply to ALL tools on ALL paths
+# (commented out by default for basic path filtering tests)
+# [tag-filters]
+# tool-level = "foundational"  # Only foundational-level tools
+
+# Math tools path - allow all calculator-rs tools except factorial
+[path-rules."/mcp/math"]
+whitelist = ["calculator-rs"]
+blacklist = ["factorial"]
+
+# Math addition path - more specific, overrides /mcp/math
+[path-rules."/mcp/math/addition"]
+whitelist = ["add"]
+
+# Calculator path - only basic operations
+[path-rules."/mcp/calc"]
+whitelist = ["add", "subtract", "factorial"]
+
+# Todo list path - only todo tools
+[path-rules."/mcp/todo"]
+whitelist = ["todo-list-auth"]
+
+# Path with tag filters - only math category tools
+[path-rules."/mcp/math-only"]
+tag-filters = { category = "math" }
+
+# Path with multiple tag filters - math AND foundational
+[path-rules."/mcp/foundational-math"]
+tag-filters = { category = "math", tool-level = "foundational" }
