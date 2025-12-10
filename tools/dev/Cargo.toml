@@ -8,7 +8,7 @@ autobins = false
 # Not a workspace member - builds natively for host platform
 [workspace]
 
-[[example]]
+[[bin]]
 name = "dev-tools"
 path = "src/main.rs"
 
