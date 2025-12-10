@@ -1,4 +1,4 @@
-package wasmcp:sessions@0.1.3;
+package wasmcp:sessions@0.1.4;
 
 world sessions {
     // WASI imports for UUID generation / Elicitation
@@ -10,6 +10,6 @@ world sessions {
 
     // - sessions: User-facing data API (imported by tools/resources)
     // - session-manager: Transport-facing lifecycle API (imported by transports)
-    export wasmcp:mcp-v20250618/sessions@0.1.7;
-    export wasmcp:mcp-v20250618/session-manager@0.1.7;
+    export wasmcp:mcp-v20250618/sessions@0.1.8;
+    export wasmcp:mcp-v20250618/session-manager@0.1.8;
 }

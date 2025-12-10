@@ -7,20 +7,20 @@ world transport {
     include wasi:cli/command@0.2.8;
 
     // Import server-handler for middleware delegation
-    include wasmcp:mcp-v20250618/server-transport@0.1.7;
+    include wasmcp:mcp-v20250618/server-transport@0.1.8;
 
     // Import server-io for JSON-RPC parsing/serialization
-    import wasmcp:mcp-v20250618/server-io@0.1.7;
+    import wasmcp:mcp-v20250618/server-io@0.1.8;
 
     // Import session-manager for session lifecycle management
-    import wasmcp:mcp-v20250618/session-manager@0.1.7;
+    import wasmcp:mcp-v20250618/session-manager@0.1.8;
 
     // Import sessions for Session resource (used to bind identity)
-    import wasmcp:mcp-v20250618/sessions@0.1.7;
+    import wasmcp:mcp-v20250618/sessions@0.1.8;
 
     // Import OAuth helpers for JWT claim extraction
     import wasmcp:auth/helpers@0.1.0;
 
     // Import server-auth for JWT validation
-    import wasmcp:mcp-v20250618/server-auth@0.1.7;
+    import wasmcp:mcp-v20250618/server-auth@0.1.8;
 }

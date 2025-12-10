@@ -8,6 +8,7 @@ use crate::bindings::wasmcp::mcp_v20250618::server_io::MessageFrame;
 /// Parse protocol version string to enum
 pub fn parse_protocol_version(version: &str) -> Result<ProtocolVersion, String> {
     match version {
+        "2025-11-25" => Ok(ProtocolVersion::V20251125),
         "2025-06-18" => Ok(ProtocolVersion::V20250618),
         "2025-03-26" => Ok(ProtocolVersion::V20250326),
         "2024-11-05" => Ok(ProtocolVersion::V20241105),
@@ -21,6 +22,7 @@ pub fn protocol_version_to_string(version: ProtocolVersion) -> String {
         ProtocolVersion::V20241105 => "2024-11-05".to_string(),
         ProtocolVersion::V20250326 => "2025-03-26".to_string(),
         ProtocolVersion::V20250618 => "2025-06-18".to_string(),
+        ProtocolVersion::V20251125 => "2025-11-25".to_string(),
     }
 }
 

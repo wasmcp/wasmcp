@@ -146,18 +146,55 @@ fn handle_tools_call(
         return handle_inspect_routing(ctx);
     }
 
-    // Load allowed tools from session
+    // Load allowed tools from session, with auto-recovery if missing
     let allowed_tools = match load_tool_registry(ctx) {
         Ok(tools) => tools,
         Err(_) => {
-            // If no registry in session, allow call (tools/list may not have been called)
-            return delegate_to_downstream(ctx, request_id, ClientRequest::ToolsCall(req))
-                .unwrap_or_else(|| {
-                    Err(create_error(
-                        JSONRPC_METHOD_NOT_FOUND,
-                        "Method not found".to_string(),
-                    ))
-                });
+            // If NO session exists at all, allow bypass (stateless operation)
+            if ctx.session.is_none() {
+                return delegate_to_downstream(ctx, request_id, ClientRequest::ToolsCall(req))
+                    .unwrap_or_else(|| {
+                        Err(create_error(
+                            JSONRPC_METHOD_NOT_FOUND,
+                            "Method not found".to_string(),
+                        ))
+                    });
+            }
+
+            // Session exists but registry missing/corrupt - auto-recover by regenerating
+            eprintln!("Tool registry missing/corrupt - regenerating from tools/list");
+
+            // Fetch and filter tools (same logic as handle_tools_list)
+            let all_tools = fetch_tools_from_downstream(
+                ctx,
+                RequestId::Number(INTERNAL_REQUEST_ID_VALUE),
+                ListToolsRequest { cursor: None },
+            )?;
+
+            let config = load_and_aggregate_configs(ctx).map_err(|e| {
+                create_error(
+                    JSONRPC_INTERNAL_ERROR,
+                    format!("Failed to load routing configs: {}", e),
+                )
+            })?;
+
+            let current_path = extract_path(ctx);
+            let pipeline = FilteringPipeline::new(&config, current_path);
+            let mut filtered_tools = pipeline.apply_filters(&all_tools).into_owned();
+
+            // Include diagnostic tool in registry
+            filtered_tools.push(create_inspect_routing_tool());
+
+            // Store regenerated registry
+            store_tool_registry(ctx, &filtered_tools).map_err(|e| {
+                create_error(
+                    JSONRPC_INTERNAL_ERROR,
+                    format!("Failed to store regenerated tool registry: {}", e),
+                )
+            })?;
+
+            // Extract tool names for validation
+            filtered_tools.iter().map(|t| t.name.clone()).collect()
         }
     };
 

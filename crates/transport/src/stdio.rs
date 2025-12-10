@@ -23,7 +23,7 @@ impl Guest for StdioTransportGuest {
         let stdout = get_stdout();
 
         // Track protocol version from initialize (default to latest)
-        let mut protocol_version = ProtocolVersion::V20250618;
+        let mut protocol_version = ProtocolVersion::V20251125;
 
         // Event loop: read messages from stdin, process, write to stdout
         loop {
