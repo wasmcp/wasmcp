@@ -163,10 +163,10 @@ fn determine_whitelist_source(
     metadata: &ToolMetadata,
     whitelist: &[String],
 ) -> String {
-    if let Some(comp_id) = &metadata.component_id {
-        if whitelist.contains(comp_id) {
-            return format!("component '{}'", comp_id);
-        }
+    if let Some(comp_id) = &metadata.component_id
+        && whitelist.contains(comp_id)
+    {
+        return format!("component '{}'", comp_id);
     }
     format!("tool name '{}'", tool.name)
 }

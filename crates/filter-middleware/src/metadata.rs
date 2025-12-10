@@ -45,10 +45,10 @@ pub fn parse_tool_metadata(tool: &Tool) -> ToolMetadata {
 #[must_use]
 pub fn tool_passes_whitelist(tool: &Tool, metadata: &ToolMetadata, whitelist: &[String]) -> bool {
     // Check if component_id is whitelisted
-    if let Some(comp_id) = &metadata.component_id {
-        if whitelist.contains(comp_id) {
-            return true;
-        }
+    if let Some(comp_id) = &metadata.component_id
+        && whitelist.contains(comp_id)
+    {
+        return true;
     }
 
     // Check if tool name is whitelisted
@@ -65,10 +65,10 @@ pub fn tool_passes_whitelist(tool: &Tool, metadata: &ToolMetadata, whitelist: &[
 #[must_use]
 pub fn tool_is_blacklisted(tool: &Tool, metadata: &ToolMetadata, blacklist: &[String]) -> bool {
     // Check if component_id is blacklisted
-    if let Some(comp_id) = &metadata.component_id {
-        if blacklist.contains(comp_id) {
-            return true;
-        }
+    if let Some(comp_id) = &metadata.component_id
+        && blacklist.contains(comp_id)
+    {
+        return true;
     }
 
     // Check if tool name is blacklisted

@@ -89,10 +89,10 @@ pub fn discover_routing_configs(ctx: &MessageContext) -> Result<Vec<String>, Str
             }
 
             // Check MIME type if available
-            if let Some(opts) = &res.options {
-                if let Some(mime) = &opts.mime_type {
-                    return mime == "application/toml";
-                }
+            if let Some(opts) = &res.options
+                && let Some(mime) = &opts.mime_type
+            {
+                return mime == "application/toml";
             }
 
             // If no MIME type specified, assume it's valid (for backward compatibility)
