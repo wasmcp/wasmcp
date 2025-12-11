@@ -193,12 +193,14 @@ pub fn build_middleware_chain(
         let component_path = &component_paths[i];
 
         // Wire this component's server-handler import to the previous component's export
-        if let Err(e) = graph.set_instantiation_argument(inst, server_handler_interface, next_handler_export) {
+        if let Err(e) =
+            graph.set_instantiation_argument(inst, server_handler_interface, next_handler_export)
+        {
             // Get what version this component actually imports
-            let component_imports = check_component_imports(component_path)
-                .unwrap_or_default();
+            let component_imports = check_component_imports(component_path).unwrap_or_default();
 
-            let actual_import = component_imports.iter()
+            let actual_import = component_imports
+                .iter()
                 .find(|imp| imp.contains("server-handler"))
                 .map(|s| s.as_str())
                 .unwrap_or("unknown");
