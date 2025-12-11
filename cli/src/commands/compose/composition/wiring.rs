@@ -190,11 +190,31 @@ pub fn build_middleware_chain(
     for (i, pkg_id) in packages.user_ids.iter().enumerate().rev() {
         let inst = graph.instantiate(*pkg_id);
         let component_name = format!("component-{}", i);
+        let component_path = &component_paths[i];
 
         // Wire this component's server-handler import to the previous component's export
-        graph
-            .set_instantiation_argument(inst, server_handler_interface, next_handler_export)
-            .with_context(|| format!("Failed to wire component-{} server-handler import", i))?;
+        if let Err(e) = graph.set_instantiation_argument(inst, server_handler_interface, next_handler_export) {
+            // Get what version this component actually imports
+            let component_imports = check_component_imports(component_path)
+                .unwrap_or_default();
+
+            let actual_import = component_imports.iter()
+                .find(|imp| imp.contains("server-handler"))
+                .map(|s| s.as_str())
+                .unwrap_or("unknown");
+
+            anyhow::bail!(
+                "Version mismatch wiring server-handler to {}:\n  \
+                 • Component expects: {}\n  \
+                 • Trying to provide: {}\n\n  \
+                 This usually means the component was built against a different MCP WIT version.\n  \
+                 Original error: {}",
+                component_path.display(),
+                actual_import,
+                server_handler_interface,
+                e
+            );
+        }
 
         // Automatically wire ALL service dependencies based on component's imports
         wire_all_services(
@@ -209,7 +229,12 @@ pub fn build_middleware_chain(
         // This component's export becomes the next input
         next_handler_export = graph
             .alias_instance_export(inst, server_handler_interface)
-            .with_context(|| format!("Failed to get server-handler export from component-{}", i))?;
+            .with_context(|| {
+                format!(
+                    "Failed to get server-handler export from {}",
+                    component_path.display()
+                )
+            })?;
     }
 
     // Return the final handler export (from the first user component)
