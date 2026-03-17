@@ -3,8 +3,8 @@
 //! Handles adding and removing frame delimiters (prefix/suffix) from messages.
 //! Supports different transport protocols (stdio: '\n', SSE: 'data: ' prefix + '\n\n' suffix).
 
-use crate::bindings::exports::wasmcp::mcp_v20250618::server_io::{IoError, MessageFrame};
-use crate::bindings::wasmcp::mcp_v20250618::mcp::ServerMessage;
+use crate::bindings::exports::wasmcp::mcp_v20251125::server_io::{IoError, MessageFrame};
+use crate::bindings::wasmcp::mcp_v20251125::mcp::ServerMessage;
 
 /// Serialize a message to framed bytes WITHOUT writing to stream
 ///

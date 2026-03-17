@@ -8,10 +8,10 @@
 
 use crate::bindings::wasi::http::types::ResponseOutparam;
 use crate::bindings::wasi::io::streams::OutputStream;
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{
     ClientNotification, ClientRequest, ClientResult, ErrorCode, RequestId, ServerResult,
 };
-use crate::bindings::wasmcp::mcp_v20250618::server_handler::handle;
+use crate::bindings::wasmcp::mcp_v20251125::server_handler::handle;
 use crate::common;
 use crate::config::TransportConfig;
 use crate::error::TransportError;
@@ -31,11 +31,11 @@ pub fn handle_mcp_request(
     client_request: ClientRequest,
     protocol_version: String,
     session_id: Option<&str>,
-    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20251125::mcp::Identity>,
     output_stream: &OutputStream,
     frame: &common::MessageFrame,
     config: &TransportConfig,
-    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20251125::server_auth::HttpContext>,
 ) -> Result<(), TransportError> {
     // Parse protocol version
     let proto_ver =
@@ -103,7 +103,7 @@ pub fn handle_mcp_notification(
     protocol_version: String,
     session_id: Option<&str>,
     config: &TransportConfig,
-    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20251125::server_auth::HttpContext>,
 ) -> Result<(), TransportError> {
     // Parse protocol version
     let proto_ver =
@@ -151,7 +151,7 @@ pub fn handle_mcp_result(
     );
 
     // Create client message
-    let message = crate::bindings::wasmcp::mcp_v20250618::mcp::ClientMessage::Result((
+    let message = crate::bindings::wasmcp::mcp_v20251125::mcp::ClientMessage::Result((
         result_id,
         client_result,
     ));
@@ -188,7 +188,7 @@ pub fn handle_mcp_error(
 
     // Create client message
     let message =
-        crate::bindings::wasmcp::mcp_v20250618::mcp::ClientMessage::Error((error_id, error_code));
+        crate::bindings::wasmcp::mcp_v20251125::mcp::ClientMessage::Error((error_id, error_code));
 
     // Delegate to imported server-handler (should return None for errors from client)
     handle(&ctx, message);

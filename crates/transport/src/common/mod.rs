@@ -5,12 +5,12 @@ pub mod framing;
 pub mod protocol;
 
 use crate::bindings::wasi::io::streams::{InputStream, OutputStream};
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{
     ClientMessage, ClientNotification, ClientRequest, ErrorCode, ProtocolVersion, RequestId,
     ServerMessage, ServerResult,
 };
-use crate::bindings::wasmcp::mcp_v20250618::server_handler::handle;
-use crate::bindings::wasmcp::mcp_v20250618::server_io::{self, IoError, ReadLimit};
+use crate::bindings::wasmcp::mcp_v20251125::server_handler::handle;
+use crate::bindings::wasmcp::mcp_v20251125::server_io::{self, IoError, ReadLimit};
 
 // Re-export commonly used items
 pub use capability::discover_capabilities_for_init;
@@ -20,7 +20,7 @@ pub use framing::{
 pub use protocol::{create_message_context, log_level_to_string, parse_protocol_version};
 
 // Re-export MessageFrame so it's public
-pub use crate::bindings::wasmcp::mcp_v20250618::server_io::MessageFrame;
+pub use crate::bindings::wasmcp::mcp_v20251125::server_io::MessageFrame;
 
 // =============================================================================
 // MESSAGE TYPES
@@ -33,11 +33,11 @@ pub enum McpMessage {
     Notification(ClientNotification),
     Result(
         RequestId,
-        crate::bindings::wasmcp::mcp_v20250618::mcp::ClientResult,
+        crate::bindings::wasmcp::mcp_v20251125::mcp::ClientResult,
     ),
     Error(
         Option<RequestId>,
-        crate::bindings::wasmcp::mcp_v20250618::mcp::ErrorCode,
+        crate::bindings::wasmcp::mcp_v20251125::mcp::ErrorCode,
     ),
 }
 
@@ -109,11 +109,11 @@ pub fn delegate_to_middleware(
     client_request: ClientRequest,
     protocol_version: ProtocolVersion,
     session_id: Option<&str>,
-    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20251125::mcp::Identity>,
     bucket_name: String,
     output_stream: &OutputStream,
     frame: &MessageFrame,
-    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20251125::server_auth::HttpContext>,
 ) -> Result<ServerResult, ErrorCode> {
     // Create message context
     let ctx = create_message_context(
@@ -134,7 +134,7 @@ pub fn delegate_to_middleware(
         Some(Ok(result)) => Ok(result),
         Some(Err(e)) => Err(e),
         None => Err(ErrorCode::InternalError(
-            crate::bindings::wasmcp::mcp_v20250618::mcp::Error {
+            crate::bindings::wasmcp::mcp_v20251125::mcp::Error {
                 code: -32603,
                 message: "Handler returned None for request".to_string(),
                 data: None,
@@ -150,7 +150,7 @@ pub fn delegate_notification(
     session_id: Option<&str>,
     bucket_name: String,
     frame: &MessageFrame,
-    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20251125::server_auth::HttpContext>,
 ) -> Result<(), ErrorCode> {
     // Create message context (no client-stream for notifications - they're one-way)
     let ctx = create_message_context(

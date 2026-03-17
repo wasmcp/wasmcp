@@ -2,8 +2,8 @@
 //!
 //! Handles the main dispatch for ServerMessage variants to JSON-RPC format.
 
-use crate::bindings::exports::wasmcp::mcp_v20250618::server_io::IoError;
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{ErrorCode, RequestId, ServerMessage};
+use crate::bindings::exports::wasmcp::mcp_v20251125::server_io::IoError;
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{ErrorCode, RequestId, ServerMessage};
 use crate::serializer;
 
 /// Serialize server-message variant to JSON-RPC

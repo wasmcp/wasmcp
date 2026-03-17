@@ -9,10 +9,10 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::tools::Guest;
-use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::server_io;
-use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
+use bindings::exports::wasmcp::mcp_v20251125::tools::Guest;
+use bindings::wasmcp::mcp_v20251125::mcp::*;
+use bindings::wasmcp::mcp_v20251125::server_io;
+use bindings::wasmcp::mcp_v20251125::server_handler::MessageContext;
 
 struct Calculator;
 
@@ -40,6 +40,7 @@ impl Guest for Calculator {
                         annotations: None,
                         description: Some("Add two numbers together".to_string()),
                         output_schema: None,
+                        icons: None,
                         title: Some("Add".to_string()),
                     }),
                 },
@@ -76,6 +77,7 @@ impl Guest for Calculator {
                         annotations: None,
                         description: Some("Calculate factorial with progress updates".to_string()),
                         output_schema: None,
+                        icons: None,
                         title: Some("Factorial".to_string()),
                     }),
                 },

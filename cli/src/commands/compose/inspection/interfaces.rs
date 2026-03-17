@@ -16,7 +16,7 @@ use crate::versioning::VersionResolver;
 use anyhow::Result;
 
 /// MCP protocol spec version
-pub const DEFAULT_SPEC_VERSION: &str = "mcp-v20250618";
+pub const DEFAULT_SPEC_VERSION: &str = "mcp-v20251125";
 
 /// Namespace prefix for all wasmcp components and interfaces
 pub const WASMCP_NAMESPACE: &str = "wasmcp";
@@ -75,14 +75,14 @@ impl InterfaceType {
 
     /// Build the full interface name with version
     ///
-    /// Format: wasmcp:mcp-v20250618/interface-name@version
+    /// Format: wasmcp:mcp-v20251125/interface-name@version
     ///
     /// # Examples
     ///
     /// ```
     /// # use wasmcp::commands::compose::inspection::interfaces::InterfaceType;
-    /// let interface = InterfaceType::ServerHandler.interface_name("mcp-v20250618", "0.1.4");
-    /// assert_eq!(interface, "wasmcp:mcp-v20250618/server-handler@0.1.4");
+    /// let interface = InterfaceType::ServerHandler.interface_name("mcp-v20251125", "0.1.4");
+    /// assert_eq!(interface, "wasmcp:mcp-v20251125/server-handler@0.1.4");
     /// ```
     pub fn interface_name(&self, spec_version: &str, version: &str) -> String {
         format!(
@@ -96,7 +96,7 @@ impl InterfaceType {
 
     /// Build an interface name prefix for matching (without version)
     ///
-    /// Format: wasmcp:mcp-v20250618/interface-name@
+    /// Format: wasmcp:mcp-v20251125/interface-name@
     ///
     /// This is used for finding interfaces in component exports/imports when the
     /// exact version is unknown and needs to be discovered.
@@ -105,8 +105,8 @@ impl InterfaceType {
     ///
     /// ```
     /// # use wasmcp::commands::compose::inspection::interfaces::InterfaceType;
-    /// let prefix = InterfaceType::ServerHandler.interface_prefix("mcp-v20250618");
-    /// assert_eq!(prefix, "wasmcp:mcp-v20250618/server-handler@");
+    /// let prefix = InterfaceType::ServerHandler.interface_prefix("mcp-v20251125");
+    /// assert_eq!(prefix, "wasmcp:mcp-v20251125/server-handler@");
     /// ```
     pub fn interface_prefix(&self, spec_version: &str) -> String {
         format!("{}:{}/{}@", WASMCP_NAMESPACE, spec_version, self.name())
@@ -229,7 +229,7 @@ impl ComponentType {
 /// ```
 /// # use wasmcp::commands::compose::inspection::interfaces::server_handler;
 /// let interface = server_handler("0.1.4");
-/// assert_eq!(interface, "wasmcp:mcp-v20250618/server-handler@0.1.4");
+/// assert_eq!(interface, "wasmcp:mcp-v20251125/server-handler@0.1.4");
 /// ```
 pub fn server_handler(version: &str) -> String {
     InterfaceType::ServerHandler.interface_name(DEFAULT_SPEC_VERSION, version)
@@ -274,20 +274,20 @@ mod tests {
 
     #[test]
     fn test_interface_name_construction() {
-        let interface = InterfaceType::ServerHandler.interface_name("mcp-v20250618", "0.1.4");
-        assert_eq!(interface, "wasmcp:mcp-v20250618/server-handler@0.1.4");
+        let interface = InterfaceType::ServerHandler.interface_name("mcp-v20251125", "0.1.4");
+        assert_eq!(interface, "wasmcp:mcp-v20251125/server-handler@0.1.4");
 
-        let tools_interface = InterfaceType::Tools.interface_name("mcp-v20250618", "0.1.4");
-        assert_eq!(tools_interface, "wasmcp:mcp-v20250618/tools@0.1.4");
+        let tools_interface = InterfaceType::Tools.interface_name("mcp-v20251125", "0.1.4");
+        assert_eq!(tools_interface, "wasmcp:mcp-v20251125/tools@0.1.4");
     }
 
     #[test]
     fn test_interface_prefix() {
-        let prefix = InterfaceType::ServerHandler.interface_prefix("mcp-v20250618");
-        assert_eq!(prefix, "wasmcp:mcp-v20250618/server-handler@");
+        let prefix = InterfaceType::ServerHandler.interface_prefix("mcp-v20251125");
+        assert_eq!(prefix, "wasmcp:mcp-v20251125/server-handler@");
 
-        let tools_prefix = InterfaceType::Tools.interface_prefix("mcp-v20250618");
-        assert_eq!(tools_prefix, "wasmcp:mcp-v20250618/tools@");
+        let tools_prefix = InterfaceType::Tools.interface_prefix("mcp-v20251125");
+        assert_eq!(tools_prefix, "wasmcp:mcp-v20251125/tools@");
     }
 
     #[test]
@@ -340,13 +340,13 @@ mod tests {
     #[test]
     fn test_server_handler_convenience() {
         let interface = server_handler("0.1.4");
-        assert_eq!(interface, "wasmcp:mcp-v20250618/server-handler@0.1.4");
+        assert_eq!(interface, "wasmcp:mcp-v20251125/server-handler@0.1.4");
     }
 
     #[test]
     fn test_tools_convenience() {
         let interface = tools("0.1.4");
-        assert_eq!(interface, "wasmcp:mcp-v20250618/tools@0.1.4");
+        assert_eq!(interface, "wasmcp:mcp-v20251125/tools@0.1.4");
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 use crate::config::find_most_specific_path_rule;
 use crate::metadata::{
     parse_tool_metadata, tool_is_blacklisted, tool_matches_tag_filters, tool_passes_whitelist,
@@ -164,7 +164,7 @@ impl<'a> FilteringPipeline<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bindings::wasmcp::mcp_v20250618::mcp::{Tool, ToolOptions};
+    use crate::bindings::wasmcp::mcp_v20251125::mcp::{Tool, ToolOptions};
     use crate::types::{AggregatedConfig, AggregatedPathRule, ConfigSource, RuleSources};
     use std::collections::HashMap;
 

@@ -1,4 +1,4 @@
-use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 use crate::types::ToolMetadata;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_tool_passes_whitelist_by_component_id() {
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 
         let tool = Tool {
             name: "multiply".to_string(),
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn test_tool_passes_whitelist_by_tool_name() {
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 
         let tool = Tool {
             name: "multiply".to_string(),
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn test_tool_passes_whitelist_not_in_list() {
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 
         let tool = Tool {
             name: "divide".to_string(),
@@ -263,7 +263,7 @@ mod tests {
 
     #[test]
     fn test_tool_is_blacklisted_by_name() {
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 
         let tool = Tool {
             name: "dangerous_tool".to_string(),
@@ -283,7 +283,7 @@ mod tests {
 
     #[test]
     fn test_tool_is_blacklisted_by_component_id() {
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 
         let tool = Tool {
             name: "some_tool".to_string(),
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn test_tool_is_blacklisted_false() {
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 
         let tool = Tool {
             name: "safe_tool".to_string(),
@@ -324,7 +324,7 @@ mod tests {
     #[test]
     fn test_blacklist_bypass_prevention() {
         // Critical security test: Tool whitelisted by component_id but blacklisted by name
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 
         let tool = Tool {
             name: "dangerous".to_string(),
@@ -350,7 +350,7 @@ mod tests {
     #[test]
     fn test_blacklist_component_id_bypass_prevention() {
         // Critical security test: Tool whitelisted by name but blacklisted by component_id
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 
         let tool = Tool {
             name: "useful_tool".to_string(),
@@ -375,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_parse_tool_metadata_with_tags() {
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::{Tool, ToolOptions};
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::{Tool, ToolOptions};
 
         let tool = Tool {
             name: "add".to_string(),
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_parse_tool_metadata_no_meta() {
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
 
         let tool = Tool {
             name: "add".to_string(),
@@ -417,7 +417,7 @@ mod tests {
 
     #[test]
     fn test_parse_tool_metadata_invalid_json() {
-        use crate::bindings::wasmcp::mcp_v20250618::mcp::{Tool, ToolOptions};
+        use crate::bindings::wasmcp::mcp_v20251125::mcp::{Tool, ToolOptions};
 
         let tool = Tool {
             name: "add".to_string(),
