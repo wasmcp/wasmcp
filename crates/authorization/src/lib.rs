@@ -99,34 +99,6 @@ impl Guest for Component {
 
 // === OAuth Interface Implementations ===
 
-// Errors interface
-impl bindings::exports::wasmcp::auth::errors::Guest for Component {
-    fn error_code_to_string(code: bindings::exports::wasmcp::auth::errors::ErrorCode) -> String {
-        oauth::errors::error_code_to_string(&code)
-    }
-
-    fn parse_error_code(
-        error_string: String,
-    ) -> Option<bindings::exports::wasmcp::auth::errors::ErrorCode> {
-        oauth::errors::parse_error_code(&error_string)
-    }
-
-    fn create_bearer_challenge(
-        realm: Option<String>,
-        error: Option<bindings::exports::wasmcp::auth::errors::ErrorCode>,
-        error_description: Option<String>,
-        scope: Vec<String>,
-    ) -> String {
-        oauth::errors::create_bearer_challenge(realm, error, error_description, scope)
-    }
-
-    fn create_token_error_response(
-        error: bindings::exports::wasmcp::auth::errors::OauthError,
-    ) -> String {
-        oauth::errors::create_token_error_response(&error)
-    }
-}
-
 // Bearer interface
 impl bindings::exports::wasmcp::auth::bearer::Guest for Component {
     fn extract_bearer_token(
@@ -176,6 +148,108 @@ impl bindings::exports::wasmcp::auth::introspection::Guest for Component {
             &request,
             &client_credentials,
         )
+    }
+}
+
+// Resource metadata interface
+impl bindings::exports::wasmcp::auth::resource_metadata::Guest for Component {
+    fn fetch_metadata(
+        resource_url: String,
+    ) -> Result<bindings::exports::wasmcp::auth::resource_metadata::ProtectedResourceMetadata, String>
+    {
+        oauth::resource_metadata::fetch_metadata(&resource_url)
+    }
+
+    fn validate_metadata(
+        metadata: bindings::exports::wasmcp::auth::resource_metadata::ProtectedResourceMetadata,
+        expected_resource: String,
+    ) -> Result<(), String> {
+        oauth::resource_metadata::validate_metadata(&metadata, &expected_resource)
+    }
+
+    fn parse_www_authenticate_metadata(www_authenticate_header: String) -> Option<String> {
+        oauth::resource_metadata::parse_www_authenticate_metadata(&www_authenticate_header)
+    }
+}
+
+// Authorization server discovery interface (RFC 8414 / OIDC Discovery 1.0)
+impl bindings::exports::wasmcp::auth::authorization_server_discovery::Guest for Component {
+    fn fetch_authorization_server_metadata(
+        issuer: String,
+    ) -> Result<
+        bindings::exports::wasmcp::auth::authorization_server_discovery::AuthorizationServerMetadata,
+        String,
+    >{
+        oauth::authorization_server_discovery::fetch_authorization_server_metadata(&issuer)
+    }
+
+    fn fetch_openid_configuration(
+        issuer: String,
+    ) -> Result<
+        bindings::exports::wasmcp::auth::authorization_server_discovery::AuthorizationServerMetadata,
+        String,
+    >{
+        oauth::authorization_server_discovery::fetch_openid_configuration(&issuer)
+    }
+
+    fn validate_metadata(
+        metadata: bindings::exports::wasmcp::auth::authorization_server_discovery::AuthorizationServerMetadata,
+        expected_issuer: String,
+    ) -> Result<(), String> {
+        oauth::authorization_server_discovery::validate_metadata(&metadata, &expected_issuer)
+    }
+}
+
+// Client registration interface (RFC 7591 / MCP SEP-991)
+impl bindings::exports::wasmcp::auth::client_registration::Guest for Component {
+    fn fetch_client_metadata(
+        client_id_url: String,
+    ) -> Result<bindings::exports::wasmcp::auth::client_registration::OauthClientMetadata, String>
+    {
+        oauth::client_registration::fetch_client_metadata(&client_id_url)
+    }
+
+    fn validate_client_metadata(
+        metadata: bindings::exports::wasmcp::auth::client_registration::OauthClientMetadata,
+        expected_client_id: String,
+    ) -> Result<(), String> {
+        oauth::client_registration::validate_client_metadata(&metadata, &expected_client_id)
+    }
+}
+
+// Errors interface — also wire the new incremental scope consent function
+impl bindings::exports::wasmcp::auth::errors::Guest for Component {
+    fn error_code_to_string(code: bindings::exports::wasmcp::auth::errors::ErrorCode) -> String {
+        oauth::errors::error_code_to_string(&code)
+    }
+
+    fn parse_error_code(
+        error_string: String,
+    ) -> Option<bindings::exports::wasmcp::auth::errors::ErrorCode> {
+        oauth::errors::parse_error_code(&error_string)
+    }
+
+    fn create_bearer_challenge(
+        realm: Option<String>,
+        error: Option<bindings::exports::wasmcp::auth::errors::ErrorCode>,
+        error_description: Option<String>,
+        scope: Vec<String>,
+    ) -> String {
+        oauth::errors::create_bearer_challenge(realm, error, error_description, scope)
+    }
+
+    fn create_token_error_response(
+        error: bindings::exports::wasmcp::auth::errors::OauthError,
+    ) -> String {
+        oauth::errors::create_token_error_response(&error)
+    }
+
+    fn create_scope_consent_challenge(
+        realm: Option<String>,
+        resource_uri: Option<String>,
+        additional_scopes: Vec<String>,
+    ) -> String {
+        oauth::errors::create_scope_consent_challenge(realm, resource_uri, additional_scopes)
     }
 }
 
