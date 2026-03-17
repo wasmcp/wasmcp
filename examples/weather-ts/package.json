@@ -11,8 +11,8 @@
     "componentize": "jco componentize build/bundled.js --wit wit --world-name weather -o dist/weather.wasm"
   },
   "devDependencies": {
-    "@bytecodealliance/componentize-js": "^0.18.5",
-    "@bytecodealliance/jco": "^1.15.0",
+    "@bytecodealliance/componentize-js": "^0.19.3",
+    "@bytecodealliance/jco": "^1.17.0",
     "ts-loader": "^9.5.4",
     "typescript": "^5.3.0",
     "webpack": "^5.89.0",

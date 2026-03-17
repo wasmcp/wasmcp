@@ -45,6 +45,7 @@ class StringsTools(exports.Tools):
                         description="Extract substring by start/end indices (Python slicing)",
                         output_schema=None,
                         title="Slice",
+                        icons=None,
                     ),
                 ),
             ],
@@ -60,7 +61,19 @@ class StringsTools(exports.Tools):
         if not request.arguments:
             return error_result("Missing tool arguments")
 
-        log = lambda message: server_io.notify(ctx.messages, mcp.ServerNotification_Log(value=mcp.LoggingMessageNotification(data=message, level=mcp.LogLevel.INFO, logger="python-tools")))
+        def log(message):
+            if ctx.client_stream is not None:
+                notification = mcp.ServerNotification_Log(value=mcp.LoggingMessageNotification(
+                    data=message, level=mcp.LogLevel.INFO, logger="python-tools"
+                ))
+                try:
+                    server_io.send_message(
+                        ctx.client_stream,
+                        mcp.ServerMessage_Notification(notification),
+                        ctx.frame,
+                    )
+                except Exception:
+                    pass  # Don't let logging failures break tool execution
 
         try:
             args = json.loads(request.arguments)
