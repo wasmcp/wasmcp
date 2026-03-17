@@ -23,12 +23,12 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::tools::Guest;
+use bindings::exports::wasmcp::mcp_v20251125::tools::Guest;
 use bindings::wasmcp::auth::types::JwtClaims;
 use bindings::wasmcp::keyvalue::store::TypedValue;
-use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
-use bindings::wasmcp::mcp_v20250618::sessions::Session;
+use bindings::wasmcp::mcp_v20251125::mcp::*;
+use bindings::wasmcp::mcp_v20251125::server_handler::MessageContext;
+use bindings::wasmcp::mcp_v20251125::sessions::Session;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -67,6 +67,7 @@ impl Guest for TodoListAuth {
                     meta: Some(r#"{"component_id":"todo-list-auth","tags":{"category":"productivity","tool-level":"foundational"}}"#.to_string()),
                     annotations: None,
                     output_schema: None,
+                    icons: None,
                 }),
             },
             Tool {
@@ -82,6 +83,7 @@ impl Guest for TodoListAuth {
                     meta: Some(r#"{"component_id":"todo-list-auth","tags":{"category":"productivity","tool-level":"foundational"}}"#.to_string()),
                     annotations: None,
                     output_schema: None,
+                    icons: None,
                 }),
             },
             Tool {
@@ -102,6 +104,7 @@ impl Guest for TodoListAuth {
                     meta: Some(r#"{"component_id":"todo-list-auth","tags":{"category":"productivity","tool-level":"foundational"}}"#.to_string()),
                     annotations: None,
                     output_schema: None,
+                    icons: None,
                 }),
             },
             Tool {
@@ -119,6 +122,7 @@ impl Guest for TodoListAuth {
                     meta: Some(r#"{"component_id":"todo-list-auth","tags":{"category":"productivity","tool-level":"foundational"}}"#.to_string()),
                     annotations: None,
                     output_schema: None,
+                    icons: None,
                 }),
             },
         ];

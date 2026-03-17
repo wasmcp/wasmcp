@@ -5,9 +5,9 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::resources::Guest;
-use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
+use bindings::exports::wasmcp::mcp_v20251125::resources::Guest;
+use bindings::wasmcp::mcp_v20251125::mcp::*;
+use bindings::wasmcp::mcp_v20251125::server_handler::MessageContext;
 
 const ROUTING_URI: &str = "config://routing-config";
 const ROUTING_OVERRIDE_URI: &str = "config://routing-team-override";
@@ -31,6 +31,7 @@ impl Guest for RoutingConfig {
                         mime_type: Some("application/toml".to_string()),
                         annotations: None,
                         meta: None,
+                        icons: None,
                     }),
                 },
                 McpResource {
@@ -46,6 +47,7 @@ impl Guest for RoutingConfig {
                         mime_type: Some("application/toml".to_string()),
                         annotations: None,
                         meta: None,
+                        icons: None,
                     }),
                 },
             ],
