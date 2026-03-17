@@ -10,12 +10,12 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::server_handler::{Guest, MessageContext};
+use bindings::exports::wasmcp::mcp_v20251125::server_handler::{Guest, MessageContext};
 use bindings::wasmcp::keyvalue::store::TypedValue;
-use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
-use bindings::wasmcp::mcp_v20250618::server_io;
-use bindings::wasmcp::mcp_v20250618::sessions::Session;
+use bindings::wasmcp::mcp_v20251125::mcp::*;
+use bindings::wasmcp::mcp_v20251125::server_handler as downstream;
+use bindings::wasmcp::mcp_v20251125::server_io;
+use bindings::wasmcp::mcp_v20251125::sessions::Session;
 
 struct Counter;
 
@@ -81,6 +81,7 @@ fn handle_list_tools(
             ),
             output_schema: None,
             title: Some("Get Call Count".to_string()),
+            icons: None,
         }),
     };
 

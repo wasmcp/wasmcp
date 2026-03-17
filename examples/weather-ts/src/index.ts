@@ -16,9 +16,9 @@ import type {
   ServerNotification,
   LoggingMessageNotification,
   LogLevel,
-} from 'wasmcp:mcp-v20250618/mcp@0.1.8';
-import type { RequestCtx } from 'wasmcp:mcp-v20250618/tools@0.1.8';
-import { sendMessage } from 'wasmcp:mcp-v20250618/server-io@0.1.8';
+} from 'wasmcp:mcp-v20251125/mcp@0.1.0';
+import type { RequestCtx } from 'wasmcp:mcp-v20251125/tools@0.1.0';
+import { sendMessage } from 'wasmcp:mcp-v20251125/server-io@0.1.0';
 
 // Tool input schemas
 const GetWeatherSchema = z.object({
