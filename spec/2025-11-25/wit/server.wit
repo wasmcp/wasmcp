@@ -23,7 +23,7 @@ interface server-handler {
     };
 
     /// Incoming message from the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.0)
     record message-context {
         /// Output stream for sending messages to the client
         client-stream: option<borrow<output-stream>>,
@@ -41,7 +41,7 @@ interface server-handler {
     }
 
     /// Handle an incoming message from the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.0)
     handle: func(
         ctx: message-context,
         message: client-message,
@@ -51,7 +51,7 @@ interface server-handler {
 /// Streaming I/O for MCP servers
 ///
 /// This interface enables servers to parse and send MCP messages over streams.
-@since(version = 0.1.4)
+@since(version = 0.1.0)
 interface server-io {
     use wasi:io/streams@0.2.8.{
         input-stream,
@@ -64,7 +64,7 @@ interface server-io {
     };
 
     /// Errors that can occur when sending messages to the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.0)
     variant io-error {
         /// An I/O error occurred writing to the output stream
         %stream(stream-error),
@@ -79,7 +79,7 @@ interface server-io {
     }
 
     /// When to stop reading an input stream
-    @since(version = 0.1.4)
+    @since(version = 0.1.0)
     variant read-limit {
         /// Delimiter chars
         delimiter(list<u8>),
@@ -88,7 +88,7 @@ interface server-io {
     }
 
     /// The prefix and suffix bytes to frame outgoing messages with
-    @since(version = 0.1.4)
+    @since(version = 0.1.0)
     record message-frame {
         /// The prefix bytes to frame outgoing messages with
         prefix: list<u8>,
@@ -97,7 +97,7 @@ interface server-io {
     }
 
     /// Read and deserialize an incoming message from the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.0)
     parse-message: func(
         /// Input stream to read the bytes from
         input: borrow<input-stream>,
@@ -108,7 +108,7 @@ interface server-io {
     ) -> result<client-message, io-error>;
 
     /// Serialize and write an outgoing message to the client
-    @since(version = 0.1.4)
+    @since(version = 0.1.0)
     send-message: func(
         /// Output stream to send the request over
         output: borrow<output-stream>,
@@ -119,7 +119,7 @@ interface server-io {
     ) -> result<_, io-error>;
 
     /// Flush buffered messages to the stream (buffered mode only)
-    @since(version = 0.1.4)
+    @since(version = 0.1.0)
     flush-buffer: func(
         /// Output stream to flush to
         output: borrow<output-stream>,
@@ -127,7 +127,7 @@ interface server-io {
 }
 
 /// Decode and validate a JWT
-@since(version = 0.1.4)
+@since(version = 0.1.0)
 interface server-auth {
     use wasmcp:auth/types@0.1.0.{jwt, jwt-claims};
     use mcp.{
@@ -153,7 +153,7 @@ interface server-auth {
     /// Returns the decoded structured claims if successful.
     ///
     /// If the token or its signature is invalid or the claims fail validation, it will return an error.
-    @since(version = 0.1.4)
+    @since(version = 0.1.0)
     decode: func(
         /// JWT from the Authorization header
         jwt: jwt,
@@ -161,7 +161,7 @@ interface server-auth {
 
     /// Authorize a request based on the provided claims.
     /// Returns true if the request is authorized.
-    @since(version = 0.1.4)
+    @since(version = 0.1.0)
     authorize: func(
         /// The incoming message
         request: client-message,
@@ -176,7 +176,7 @@ interface server-auth {
 
 /// MCP tools feature
 ///
-/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
+/// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/server/tools>
 @since(version = 0.1.0)
 interface tools {
     use streams.{
@@ -211,7 +211,7 @@ interface tools {
 
 /// MCP resources feature
 ///
-/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
+/// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/server/resources>
 @since(version = 0.1.0)
 interface resources {
     use streams.{
@@ -254,7 +254,7 @@ interface resources {
 
 /// MCP prompts feature
 ///
-/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>
+/// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/server/prompts>
 @since(version = 0.1.0)
 interface prompts {
     use streams.{
@@ -288,7 +288,7 @@ interface prompts {
 
 /// MCP completions feature
 ///
-/// Spec: <https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/completion>
+/// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/server/utilities/completion>
 @since(version = 0.1.0)
 interface completions {
     use streams.{
