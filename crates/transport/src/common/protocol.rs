@@ -1,9 +1,9 @@
 //! Protocol version and message context utilities
 
 use crate::bindings::wasi::io::streams::OutputStream;
-use crate::bindings::wasmcp::mcp_v20250618::mcp::ProtocolVersion;
-use crate::bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
-use crate::bindings::wasmcp::mcp_v20250618::server_io::MessageFrame;
+use crate::bindings::wasmcp::mcp_v20251125::mcp::ProtocolVersion;
+use crate::bindings::wasmcp::mcp_v20251125::server_handler::MessageContext;
+use crate::bindings::wasmcp::mcp_v20251125::server_io::MessageFrame;
 
 /// Parse protocol version string to enum
 pub fn parse_protocol_version(version: &str) -> Result<ProtocolVersion, String> {
@@ -27,8 +27,8 @@ pub fn protocol_version_to_string(version: ProtocolVersion) -> String {
 }
 
 /// Convert LogLevel enum to string
-pub fn log_level_to_string(level: crate::bindings::wasmcp::mcp_v20250618::mcp::LogLevel) -> String {
-    use crate::bindings::wasmcp::mcp_v20250618::mcp::LogLevel;
+pub fn log_level_to_string(level: crate::bindings::wasmcp::mcp_v20251125::mcp::LogLevel) -> String {
+    use crate::bindings::wasmcp::mcp_v20251125::mcp::LogLevel;
 
     match level {
         LogLevel::Debug => "debug".to_string(),
@@ -46,8 +46,8 @@ pub fn log_level_to_string(level: crate::bindings::wasmcp::mcp_v20250618::mcp::L
 pub fn create_session(
     session_id: Option<&str>,
     store_id: &str,
-) -> Option<crate::bindings::wasmcp::mcp_v20250618::mcp::Session> {
-    session_id.map(|id| crate::bindings::wasmcp::mcp_v20250618::mcp::Session {
+) -> Option<crate::bindings::wasmcp::mcp_v20251125::mcp::Session> {
+    session_id.map(|id| crate::bindings::wasmcp::mcp_v20251125::mcp::Session {
         session_id: id.to_string(),
         store_id: store_id.to_string(),
     })
@@ -60,10 +60,10 @@ pub fn create_message_context<'a>(
     client_stream: Option<&'a OutputStream>,
     protocol_version: ProtocolVersion,
     session_id: Option<&str>,
-    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20251125::mcp::Identity>,
     bucket_name: &str,
     frame: &MessageFrame,
-    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20251125::server_auth::HttpContext>,
 ) -> MessageContext<'a> {
     MessageContext {
         client_stream,

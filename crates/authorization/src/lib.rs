@@ -19,9 +19,9 @@ mod oauth;
 mod policy;
 mod utils;
 
-use bindings::exports::wasmcp::mcp_v20250618::server_auth::{Guest, HttpContext};
+use bindings::exports::wasmcp::mcp_v20251125::server_auth::{Guest, HttpContext};
 use bindings::wasmcp::auth::types::{Jwt, JwtClaims};
-use bindings::wasmcp::mcp_v20250618::mcp::{ClientMessage, Session};
+use bindings::wasmcp::mcp_v20251125::mcp::{ClientMessage, Session};
 use std::sync::OnceLock;
 
 static CONFIG: OnceLock<config::Config> = OnceLock::new();

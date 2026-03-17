@@ -3,7 +3,7 @@
 //! This module handles conversion from WIT types to JSON-RPC 2.0 format
 //! with support for both HTTP (SSE) and stdio (newline-delimited) transports.
 
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{
     Annotations, BlobData, CallToolResult, CompleteResult, ContentBlock, ErrorCode,
     GetPromptResult, Implementation, InitializeResult, ListPromptsResult,
     ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, McpResource, Prompt,
@@ -335,7 +335,7 @@ fn protocol_version_to_string(version: &ProtocolVersion) -> String {
 }
 
 fn convert_server_capabilities(caps: &ServerCapabilities) -> JsonServerCapabilities {
-    use crate::bindings::wasmcp::mcp_v20250618::mcp::{ServerLists, ServerSubscriptions};
+    use crate::bindings::wasmcp::mcp_v20251125::mcp::{ServerLists, ServerSubscriptions};
 
     JsonServerCapabilities {
         completions: caps
@@ -677,7 +677,7 @@ pub fn convert_content_block(block: &ContentBlock) -> Result<JsonContentBlock, S
             mime_type: link.options.as_ref().and_then(|o| o.mime_type.clone()),
         })),
         ContentBlock::EmbeddedResource(embedded) => {
-            use crate::bindings::wasmcp::mcp_v20250618::mcp::ResourceContents;
+            use crate::bindings::wasmcp::mcp_v20251125::mcp::ResourceContents;
             match &embedded.resource {
                 ResourceContents::Text(text_res) => {
                     let text = convert_text_data(&text_res.text)?;

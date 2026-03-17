@@ -7,7 +7,7 @@
 //! - Sets Mcp-Session-Id header if session created
 
 use crate::bindings::wasi::http::types::{OutgoingBody, ResponseOutparam};
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{
     ClientRequest, Implementation, InitializeResult, RequestId, ServerMessage, ServerResult,
 };
 use crate::common;
@@ -20,7 +20,7 @@ pub fn handle_initialize_request(
     request_id: RequestId,
     _client_request: ClientRequest,
     protocol_version: String,
-    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20251125::mcp::Identity>,
     response_out: ResponseOutparam,
     session_config: &TransportConfig,
 ) {
@@ -96,6 +96,8 @@ pub fn handle_initialize_request(
             name: "wasmcp-server".to_string(),
             title: Some("wasmcp Universal Transport Server".to_string()),
             version: env!("CARGO_PKG_VERSION").to_string(),
+            description: None,
+            icons: None,
         },
         capabilities,
         protocol_version: proto_ver,
@@ -106,7 +108,7 @@ pub fn handle_initialize_request(
     let server_message = ServerMessage::Result((request_id, ServerResult::Initialize(init_result)));
 
     // Use server-io to write the message with plain JSON framing
-    use crate::bindings::wasmcp::mcp_v20250618::server_io;
+    use crate::bindings::wasmcp::mcp_v20251125::server_io;
     if let Err(e) = server_io::send_message(
         &output_stream,
         server_message,

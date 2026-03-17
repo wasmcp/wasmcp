@@ -15,7 +15,7 @@ pub mod message_handlers;
 pub mod sse_mode;
 
 use crate::bindings::wasi::http::types::{IncomingRequest, ResponseOutparam};
-use crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest;
+use crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest;
 use crate::common;
 use crate::config::{AuthMode, TransportConfig};
 use crate::error::TransportError;
@@ -58,10 +58,10 @@ pub async fn handle_post(
             match validation::extract_authorization_header(&request) {
                 Ok(Some(jwt)) => {
                     // Import server-auth for JWT validation
-                    use crate::bindings::wasmcp::mcp_v20250618::server_auth;
+                    use crate::bindings::wasmcp::mcp_v20251125::server_auth;
 
                     match server_auth::decode(&jwt) {
-                        Ok(claims) => Some(crate::bindings::wasmcp::mcp_v20250618::mcp::Identity {
+                        Ok(claims) => Some(crate::bindings::wasmcp::mcp_v20251125::mcp::Identity {
                             jwt,
                             claims,
                         }),
@@ -255,7 +255,7 @@ pub async fn handle_post(
 /// Build HTTP context for authorization
 fn build_http_context(
     request: &IncomingRequest,
-) -> crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext {
+) -> crate::bindings::wasmcp::mcp_v20251125::server_auth::HttpContext {
     // Extract HTTP method
     let method = match request.method() {
         crate::bindings::wasi::http::types::Method::Get => "GET",
@@ -297,7 +297,7 @@ fn build_http_context(
         }
     }
 
-    crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext {
+    crate::bindings::wasmcp::mcp_v20251125::server_auth::HttpContext {
         method,
         path,
         headers,
