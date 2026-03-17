@@ -18,7 +18,7 @@ const WRAPPED_COMPONENT_PREFIX: &str = ".wrapped-";
 /// Discover the server-handler interface that a middleware component exports
 ///
 /// Inspects a middleware component's exports to find the server-handler interface version.
-/// For example, tools-middleware exports wasmcp:mcp-v20250618/server-handler@VERSION.
+/// For example, tools-middleware exports wasmcp:mcp-v20251125/server-handler@VERSION.
 fn discover_server_handler_interface(middleware_path: &Path) -> Result<String> {
     use wit_component::DecodedWasm;
 
@@ -59,7 +59,7 @@ fn discover_server_handler_interface(middleware_path: &Path) -> Result<String> {
                         .unwrap_or_else(|| "0.0.0".to_string())
                 );
 
-                if full_name.starts_with("wasmcp:mcp-v20250618/server-handler@") {
+                if full_name.starts_with("wasmcp:mcp-v20251125/server-handler@") {
                     return Ok(full_name);
                 }
             }
@@ -75,7 +75,7 @@ fn discover_server_handler_interface(middleware_path: &Path) -> Result<String> {
 /// Discover the capability interface that a middleware component expects
 ///
 /// Inspects a middleware component's imports to find which capability interface it wraps.
-/// For example, tools-middleware imports wasmcp:mcp-v20250618/tools@VERSION.
+/// For example, tools-middleware imports wasmcp:mcp-v20251125/tools@VERSION.
 fn discover_capability_interface(middleware_path: &Path, prefix: &str) -> Result<String> {
     use wit_component::DecodedWasm;
 
@@ -207,7 +207,7 @@ pub async fn wrap_capabilities(
             .to_string();
 
         // Discover the capability interface this middleware wraps
-        let interface_prefix = format!("wasmcp:mcp-v20250618/{}@", capability_name);
+        let interface_prefix = format!("wasmcp:mcp-v20251125/{}@", capability_name);
         let capability_interface = discover_capability_interface(&path, &interface_prefix)
             .with_context(|| {
                 format!(
@@ -329,7 +329,7 @@ pub fn discover_required_middleware(
         })?;
 
         // Check if any component exports this capability
-        let interface_prefix = format!("wasmcp:mcp-v20250618/{}@", capability_name);
+        let interface_prefix = format!("wasmcp:mcp-v20251125/{}@", capability_name);
 
         for path in component_paths {
             // Check all exports of this component
@@ -589,10 +589,10 @@ mod tests {
         let prompts = interfaces::prompts(DEFAULT_WASMCP_VERSION);
 
         // Verify format
-        assert!(server_handler.starts_with("wasmcp:mcp-v20250618/server-handler@"));
-        assert!(tools.starts_with("wasmcp:mcp-v20250618/tools@"));
-        assert!(resources.starts_with("wasmcp:mcp-v20250618/resources@"));
-        assert!(prompts.starts_with("wasmcp:mcp-v20250618/prompts@"));
+        assert!(server_handler.starts_with("wasmcp:mcp-v20251125/server-handler@"));
+        assert!(tools.starts_with("wasmcp:mcp-v20251125/tools@"));
+        assert!(resources.starts_with("wasmcp:mcp-v20251125/resources@"));
+        assert!(prompts.starts_with("wasmcp:mcp-v20251125/prompts@"));
     }
 
     /// Test verbose message formats for component detection

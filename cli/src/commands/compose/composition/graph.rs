@@ -230,7 +230,7 @@ pub async fn build_handler_composition(
     }
 
     let mut graph = CompositionGraph::new();
-    let version = version_resolver.get_version("mcp-v20250618")?;
+    let version = version_resolver.get_version("mcp-v20251125")?;
     let server_handler_interface = interfaces::server_handler(&version);
 
     // Load and register all components
@@ -407,8 +407,8 @@ mod tests {
         let version = "0.1.0";
         let interface = interfaces::server_handler(version);
 
-        assert_eq!(interface, "wasmcp:mcp-v20250618/server-handler@0.1.0");
-        assert!(interface.starts_with("wasmcp:mcp-v20250618/server-handler@"));
+        assert_eq!(interface, "wasmcp:mcp-v20251125/server-handler@0.1.0");
+        assert!(interface.starts_with("wasmcp:mcp-v20251125/server-handler@"));
     }
 
     /// Test error context for component loading
