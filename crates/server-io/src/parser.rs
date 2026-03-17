@@ -3,8 +3,8 @@
 //! This module handles parsing JSON-RPC requests into WIT types.
 //! Serde handles validation automatically.
 
-use crate::bindings::exports::wasmcp::mcp_v20250618::server_io::IoError;
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{
+use crate::bindings::exports::wasmcp::mcp_v20251125::server_io::IoError;
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{
     Annotations, Blob, BlobData, CallToolRequest, CancelledNotification, ClientCapabilities,
     ClientNotification, ClientRequest, ClientResult, CompleteRequest, CompletionArgument,
     CompletionContext, CompletionPromptReference, CompletionReference, ContentBlock,
@@ -93,7 +93,7 @@ fn parse_protocol_version(s: &str) -> Result<ProtocolVersion, IoError> {
 }
 
 fn convert_client_capabilities(caps: JsonClientCapabilities) -> ClientCapabilities {
-    use crate::bindings::wasmcp::mcp_v20250618::mcp::ClientLists;
+    use crate::bindings::wasmcp::mcp_v20251125::mcp::ClientLists;
 
     ClientCapabilities {
         elicitation: caps
@@ -108,7 +108,13 @@ fn convert_client_capabilities(caps: JsonClientCapabilities) -> ClientCapabiliti
             .roots
             .and_then(|r| r.list_changed)
             .and_then(|lc| if lc { Some(ClientLists::ROOTS) } else { None }),
-        sampling: caps.sampling.and_then(|v| serde_json::to_string(&v).ok()),
+        sampling: caps.sampling.map(|v| {
+            use crate::bindings::wasmcp::mcp_v20251125::mcp::SamplingCapabilities;
+            SamplingCapabilities {
+                tools: v.get("tools").and_then(|t| t.as_bool()),
+                context: v.get("context").and_then(|c| c.as_bool()),
+            }
+        }),
     }
 }
 
@@ -117,6 +123,8 @@ fn convert_implementation(impl_info: JsonImplementation) -> Implementation {
         name: impl_info.name,
         title: impl_info.title,
         version: impl_info.version,
+        description: None,
+        icons: None,
     }
 }
 
@@ -986,8 +994,8 @@ fn parse_annotations(annot: &Value) -> Result<Annotations, IoError> {
 /// Wraps parse_client_response and extracts just the result variant
 pub fn parse_client_result(
     json: &Value,
-) -> Result<ClientResult, crate::bindings::exports::wasmcp::mcp_v20250618::server_io::IoError> {
-    use crate::bindings::exports::wasmcp::mcp_v20250618::server_io::IoError;
+) -> Result<ClientResult, crate::bindings::exports::wasmcp::mcp_v20251125::server_io::IoError> {
+    use crate::bindings::exports::wasmcp::mcp_v20251125::server_io::IoError;
 
     match parse_client_response(json) {
         Ok(Ok(result)) => Ok(result),
@@ -1004,10 +1012,10 @@ pub fn parse_client_result(
 pub fn parse_error(
     json: &Value,
 ) -> Result<
-    crate::bindings::wasmcp::mcp_v20250618::mcp::ErrorCode,
-    crate::bindings::exports::wasmcp::mcp_v20250618::server_io::IoError,
+    crate::bindings::wasmcp::mcp_v20251125::mcp::ErrorCode,
+    crate::bindings::exports::wasmcp::mcp_v20251125::server_io::IoError,
 > {
-    use crate::bindings::exports::wasmcp::mcp_v20250618::server_io::IoError;
+    use crate::bindings::exports::wasmcp::mcp_v20251125::server_io::IoError;
 
     match parse_client_response(json) {
         Ok(Err(error_code)) => Ok(error_code),

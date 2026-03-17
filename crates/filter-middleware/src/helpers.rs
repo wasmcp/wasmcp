@@ -1,6 +1,6 @@
-use crate::bindings::exports::wasmcp::mcp_v20250618::server_handler::MessageContext;
-use crate::bindings::wasmcp::mcp_v20250618::mcp::*;
-use crate::bindings::wasmcp::mcp_v20250618::server_handler as downstream;
+use crate::bindings::exports::wasmcp::mcp_v20251125::server_handler::MessageContext;
+use crate::bindings::wasmcp::mcp_v20251125::mcp::*;
+use crate::bindings::wasmcp::mcp_v20251125::server_handler as downstream;
 
 /// Convert exported MessageContext to imported MessageContext
 pub fn to_downstream_ctx<'a>(ctx: &'a MessageContext<'a>) -> downstream::MessageContext<'a> {

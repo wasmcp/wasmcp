@@ -3,8 +3,8 @@
 //! Provides a unified error type for all transport-layer operations,
 //! eliminating the need for repeated error handling boilerplate.
 
-use crate::bindings::wasmcp::mcp_v20250618::mcp::ErrorCode;
-use crate::bindings::wasmcp::mcp_v20250618::server_io::IoError;
+use crate::bindings::wasmcp::mcp_v20251125::mcp::ErrorCode;
+use crate::bindings::wasmcp::mcp_v20251125::server_io::IoError;
 
 /// Session-specific error types
 #[derive(Debug, Clone, PartialEq, Eq)]

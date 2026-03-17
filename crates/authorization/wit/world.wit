@@ -6,7 +6,7 @@ world authorization {
     import wasmcp:keyvalue/store@0.1.0;
 
     // MCP-required interface (now uses structured jwt-claims)
-    export wasmcp:mcp-v20250618/server-auth@0.1.8;
+    export wasmcp:mcp-v20251125/server-auth@0.1.0;
 
     // OAuth 2.1 Resource Server interfaces
     export wasmcp:auth/errors@0.1.0;

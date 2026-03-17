@@ -10,7 +10,7 @@
 //! After that point, errors cannot use send_error! (response_out consumed).
 
 use crate::bindings::wasi::http::types::{OutgoingBody, ResponseOutparam};
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{Error, ErrorCode, RequestId, ServerMessage};
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{Error, ErrorCode, RequestId, ServerMessage};
 use crate::common;
 use crate::config::TransportConfig;
 use crate::http::{post::message_handlers, response};
@@ -25,15 +25,15 @@ use crate::send_error;
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_sse_streaming_mode(
     request_id: RequestId,
-    client_request: crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest,
+    client_request: crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest,
     protocol_version: String,
     session_id: Option<&str>,
-    identity: Option<&crate::bindings::wasmcp::mcp_v20250618::mcp::Identity>,
+    identity: Option<&crate::bindings::wasmcp::mcp_v20251125::mcp::Identity>,
     input_stream: crate::bindings::wasi::io::streams::InputStream,
     body_stream: crate::bindings::wasi::http::types::IncomingBody,
     response_out: ResponseOutparam,
     config: &TransportConfig,
-    http_context: Option<crate::bindings::wasmcp::mcp_v20250618::server_auth::HttpContext>,
+    http_context: Option<crate::bindings::wasmcp::mcp_v20251125::server_auth::HttpContext>,
 ) {
     let response = match response::ResponseBuilder::new()
         .status(200)
@@ -84,7 +84,7 @@ pub async fn handle_sse_streaming_mode(
             data: None,
         });
         let error_message = ServerMessage::Error((Some(request_id), error_code));
-        let _ = crate::bindings::wasmcp::mcp_v20250618::server_io::send_message(
+        let _ = crate::bindings::wasmcp::mcp_v20251125::server_io::send_message(
             &output_stream,
             error_message,
             &common::http_sse_frame(),

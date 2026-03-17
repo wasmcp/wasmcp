@@ -24,8 +24,8 @@ mod bindings {
 
 mod session;
 
-use bindings::exports::wasmcp::mcp_v20250618::session_manager::Guest as SessionManagerGuest;
-use bindings::exports::wasmcp::mcp_v20250618::sessions::Guest as SessionsGuest;
+use bindings::exports::wasmcp::mcp_v20251125::session_manager::Guest as SessionManagerGuest;
+use bindings::exports::wasmcp::mcp_v20251125::sessions::Guest as SessionsGuest;
 
 struct Component;
 
@@ -42,7 +42,7 @@ impl SessionsGuest for Component {
 impl SessionManagerGuest for Component {
     fn initialize(
         store_id: String,
-    ) -> Result<String, bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError>
+    ) -> Result<String, bindings::exports::wasmcp::mcp_v20251125::session_manager::SessionError>
     {
         session::SessionManager::initialize(store_id)
     }
@@ -50,7 +50,7 @@ impl SessionManagerGuest for Component {
     fn validate(
         session_id: String,
         store_id: String,
-    ) -> Result<bool, bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError> {
+    ) -> Result<bool, bindings::exports::wasmcp::mcp_v20251125::session_manager::SessionError> {
         session::SessionManager::validate(session_id, store_id)
     }
 
@@ -58,14 +58,14 @@ impl SessionManagerGuest for Component {
         session_id: String,
         store_id: String,
         reason: Option<String>,
-    ) -> Result<(), bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError> {
+    ) -> Result<(), bindings::exports::wasmcp::mcp_v20251125::session_manager::SessionError> {
         session::SessionManager::mark_terminated(session_id, store_id, reason)
     }
 
     fn delete_session(
         session_id: String,
         store_id: String,
-    ) -> Result<(), bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError> {
+    ) -> Result<(), bindings::exports::wasmcp::mcp_v20251125::session_manager::SessionError> {
         session::SessionManager::delete_session(session_id, store_id)
     }
 
@@ -73,7 +73,7 @@ impl SessionManagerGuest for Component {
         session_id: String,
         store_id: String,
         expires_at: u64,
-    ) -> Result<(), bindings::exports::wasmcp::mcp_v20250618::session_manager::SessionError> {
+    ) -> Result<(), bindings::exports::wasmcp::mcp_v20251125::session_manager::SessionError> {
         session::SessionManager::set_expiration(session_id, store_id, expires_at)
     }
 }

@@ -21,9 +21,9 @@ const JSONRPC_METHOD_NOT_FOUND: i64 = -32601;
 // Internal request ID for middleware's own requests
 const INTERNAL_REQUEST_ID_VALUE: i64 = 0;
 
-use bindings::exports::wasmcp::mcp_v20250618::server_handler::{Guest, MessageContext};
-use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
+use bindings::exports::wasmcp::mcp_v20251125::server_handler::{Guest, MessageContext};
+use bindings::wasmcp::mcp_v20251125::mcp::*;
+use bindings::wasmcp::mcp_v20251125::server_handler as downstream;
 
 use config::load_and_aggregate_configs;
 use diagnostic::{create_inspect_routing_tool, handle_inspect_routing};

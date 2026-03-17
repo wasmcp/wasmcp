@@ -7,7 +7,7 @@
 //! - Session requirement enforcement for non-initialize requests
 
 use crate::bindings::wasi::http::types::IncomingRequest;
-use crate::bindings::wasmcp::mcp_v20250618::session_manager::{
+use crate::bindings::wasmcp::mcp_v20251125::session_manager::{
     SessionError, initialize as manager_initialize, mark_terminated as manager_mark_terminated,
     validate as manager_validate,
 };
@@ -109,12 +109,12 @@ pub fn delete_session_by_id(
 /// Returns Ok(()) if all claims were successfully stored, Err otherwise.
 pub fn bind_identity_to_session(
     session_id: &str,
-    identity: &crate::bindings::wasmcp::mcp_v20250618::mcp::Identity,
+    identity: &crate::bindings::wasmcp::mcp_v20251125::mcp::Identity,
     session_config: &TransportConfig,
 ) -> Result<(), TransportError> {
     use crate::bindings::wasmcp::auth::helpers;
     use crate::bindings::wasmcp::keyvalue::store::TypedValue;
-    use crate::bindings::wasmcp::mcp_v20250618::sessions::Session;
+    use crate::bindings::wasmcp::mcp_v20251125::sessions::Session;
 
     let bucket = session_config.get_session_bucket();
 
@@ -207,7 +207,7 @@ pub fn bind_identity_to_session(
             })?;
 
         // Set session expiration to match JWT expiration
-        use crate::bindings::wasmcp::mcp_v20250618::session_manager;
+        use crate::bindings::wasmcp::mcp_v20251125::session_manager;
         session_manager::set_expiration(session_id, bucket, exp).map_err(|e| {
             eprintln!(
                 "[transport:session] Failed to set session expiration: {:?}",
@@ -242,7 +242,7 @@ pub fn bind_identity_to_session(
 ///
 /// Helper to reduce nested Option handling when retrieving string values from session storage.
 fn get_stored_string(
-    session: &crate::bindings::wasmcp::mcp_v20250618::sessions::Session,
+    session: &crate::bindings::wasmcp::mcp_v20251125::sessions::Session,
     key: &str,
     field_name: &str,
 ) -> Result<String, TransportError> {
@@ -306,11 +306,11 @@ fn get_stored_string(
 /// - Err(TransportError::SessionIdentityMismatch) if identity doesn't match
 pub fn validate_session_identity(
     session_id: &str,
-    identity: &crate::bindings::wasmcp::mcp_v20250618::mcp::Identity,
+    identity: &crate::bindings::wasmcp::mcp_v20251125::mcp::Identity,
     session_config: &TransportConfig,
 ) -> Result<(), TransportError> {
     use crate::bindings::wasmcp::auth::helpers;
-    use crate::bindings::wasmcp::mcp_v20250618::sessions::Session;
+    use crate::bindings::wasmcp::mcp_v20251125::sessions::Session;
 
     let bucket = session_config.get_session_bucket();
 

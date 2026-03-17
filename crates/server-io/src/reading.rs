@@ -3,7 +3,7 @@
 //! Provides optimized reading for both single-byte (stdio '\n') and
 //! multi-byte (SSE '\n\n') delimiters with proper boundary handling.
 
-use crate::bindings::exports::wasmcp::mcp_v20250618::server_io::IoError;
+use crate::bindings::exports::wasmcp::mcp_v20251125::server_io::IoError;
 use crate::bindings::wasi::io::streams::InputStream;
 use crate::stream_reader::{self, StreamConfig};
 use std::cell::RefCell;

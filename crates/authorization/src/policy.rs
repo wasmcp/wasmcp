@@ -1,7 +1,7 @@
 //! Policy-based authorization using Regorous (Rego interpreter)
 
 use crate::bindings::wasmcp::auth::types::JwtClaims;
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{ClientMessage, Session};
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{ClientMessage, Session};
 use crate::error::{AuthError, Result};
 use regorus::{Engine, Value};
 use serde_json::json;
@@ -41,7 +41,7 @@ impl PolicyEngine {
         request: &ClientMessage,
         _session: Option<&Session>,
         http_context: Option<
-            &crate::bindings::exports::wasmcp::mcp_v20250618::server_auth::HttpContext,
+            &crate::bindings::exports::wasmcp::mcp_v20251125::server_auth::HttpContext,
         >,
     ) -> Result<bool> {
         // Build the input for policy evaluation
@@ -78,7 +78,7 @@ fn build_policy_input(
     jwt_claims: &JwtClaims,
     request: &ClientMessage,
     http_context: Option<
-        &crate::bindings::exports::wasmcp::mcp_v20250618::server_auth::HttpContext,
+        &crate::bindings::exports::wasmcp::mcp_v20251125::server_auth::HttpContext,
     >,
 ) -> Result<Value> {
     // Extract MCP context from ClientMessage
@@ -159,63 +159,63 @@ fn extract_mcp_context(message: &ClientMessage) -> serde_json::Value {
         ClientMessage::Request((_, req)) => {
             // Extract method and params from the request variant
             match req {
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::Initialize(_) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::Initialize(_) => {
                     json!({ "method": "initialize" })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::Ping(_) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::Ping(_) => {
                     json!({ "method": "ping" })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::ToolsList(_) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::ToolsList(_) => {
                     json!({ "method": "tools/list" })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::ToolsCall(call) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::ToolsCall(call) => {
                     json!({
                         "method": "tools/call",
                         "tool": call.name,
                         "arguments": parse_json_string(&call.arguments)
                     })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::ResourcesList(_) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::ResourcesList(_) => {
                     json!({ "method": "resources/list" })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::ResourcesTemplatesList(_) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::ResourcesTemplatesList(_) => {
                     json!({ "method": "resources/templates/list" })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::ResourcesRead(read) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::ResourcesRead(read) => {
                     json!({
                         "method": "resources/read",
                         "uri": read.uri
                     })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::ResourcesSubscribe(uri) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::ResourcesSubscribe(uri) => {
                     json!({
                         "method": "resources/subscribe",
                         "uri": uri
                     })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::ResourcesUnsubscribe(uri) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::ResourcesUnsubscribe(uri) => {
                     json!({
                         "method": "resources/unsubscribe",
                         "uri": uri
                     })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::PromptsList(_) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::PromptsList(_) => {
                     json!({ "method": "prompts/list" })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::PromptsGet(get) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::PromptsGet(get) => {
                     json!({
                         "method": "prompts/get",
                         "name": get.name,
                         "arguments": parse_json_string(&get.arguments)
                     })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::LoggingSetLevel(level) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::LoggingSetLevel(level) => {
                     json!({
                         "method": "logging/setLevel",
                         "level": format!("{:?}", level)
                     })
                 }
-                crate::bindings::wasmcp::mcp_v20250618::mcp::ClientRequest::CompletionComplete(complete) => {
+                crate::bindings::wasmcp::mcp_v20251125::mcp::ClientRequest::CompletionComplete(complete) => {
                     json!({
                         "method": "completion/complete",
                         "ref": format!("{:?}", complete.ref_)
@@ -230,21 +230,21 @@ fn extract_mcp_context(message: &ClientMessage) -> serde_json::Value {
             json!({ "type": "error" })
         }
         ClientMessage::Notification(notif) => match notif {
-            crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::Initialized(_) => {
+            crate::bindings::wasmcp::mcp_v20251125::mcp::ClientNotification::Initialized(_) => {
                 json!({ "method": "notifications/initialized" })
             }
-            crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::RootsListChanged(
+            crate::bindings::wasmcp::mcp_v20251125::mcp::ClientNotification::RootsListChanged(
                 _,
             ) => {
                 json!({ "method": "notifications/roots/list_changed" })
             }
-            crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::Cancelled(cancel) => {
+            crate::bindings::wasmcp::mcp_v20251125::mcp::ClientNotification::Cancelled(cancel) => {
                 json!({
                     "method": "notifications/cancelled",
                     "request_id": format!("{:?}", cancel.request_id)
                 })
             }
-            crate::bindings::wasmcp::mcp_v20250618::mcp::ClientNotification::Progress(progress) => {
+            crate::bindings::wasmcp::mcp_v20251125::mcp::ClientNotification::Progress(progress) => {
                 json!({
                     "method": "notifications/progress",
                     "progress_token": format!("{:?}", progress.progress_token),

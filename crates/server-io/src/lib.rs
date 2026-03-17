@@ -33,11 +33,11 @@ mod writing;
 #[cfg(test)]
 mod tests;
 
-use bindings::exports::wasmcp::mcp_v20250618::server_io::{
+use bindings::exports::wasmcp::mcp_v20251125::server_io::{
     Guest, IoError, MessageFrame, ReadLimit,
 };
 use bindings::wasi::io::streams::{InputStream, OutputStream};
-use bindings::wasmcp::mcp_v20250618::mcp::*;
+use bindings::wasmcp::mcp_v20251125::mcp::*;
 
 struct ServerIo;
 

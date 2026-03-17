@@ -1,12 +1,12 @@
 //! Capability discovery for MCP servers
 
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{
     ClientMessage, ClientRequest, CompleteRequest, CompletionArgument, CompletionPromptReference,
     CompletionReference, ErrorCode, ListPromptsRequest, ListResourcesRequest, ListToolsRequest,
     ProtocolVersion, RequestId, ServerCapabilities, ServerLists, ServerResult,
 };
-use crate::bindings::wasmcp::mcp_v20250618::server_handler::handle;
-use crate::bindings::wasmcp::mcp_v20250618::server_io::MessageFrame;
+use crate::bindings::wasmcp::mcp_v20251125::server_handler::handle;
+use crate::bindings::wasmcp::mcp_v20251125::server_io::MessageFrame;
 use crate::common::protocol::create_message_context;
 
 /// Request ID for internal capability discovery probes

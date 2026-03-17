@@ -4,7 +4,7 @@
 //! - Buffered mode (plain JSON): Accumulate all writes in memory, flush at end
 //! - Streaming mode (SSE/stdio): Write immediately with async yielding
 
-use crate::bindings::exports::wasmcp::mcp_v20250618::server_io::{IoError, MessageFrame};
+use crate::bindings::exports::wasmcp::mcp_v20251125::server_io::{IoError, MessageFrame};
 use crate::bindings::wasi::io::streams::OutputStream;
 use std::cell::RefCell;
 

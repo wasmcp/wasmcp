@@ -2,7 +2,7 @@
 //!
 //! Handles serialization of all MCP notification types to JSON-RPC format.
 
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{
     LogLevel, NotificationOptions, ProgressToken, ServerNotification,
 };
 use crate::serialization::server_messages::serialize_request_id;
@@ -79,6 +79,12 @@ pub fn serialize_server_notification(
 
             ("notifications/progress", serde_json::Value::Object(params))
         }
+        ServerNotification::ElicitationComplete(elicitation_complete) => (
+            "notifications/elicitation/complete",
+            serde_json::json!({
+                "elicitationId": elicitation_complete.elicitation_id,
+            }),
+        ),
     }
 }
 

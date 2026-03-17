@@ -121,7 +121,7 @@ pub struct ConflictReport {
 /// Caching metadata avoids re-parsing during multi-stage filtering.
 pub struct ToolWithMetadata<'a> {
     /// Reference to original tool from downstream handler
-    pub tool: &'a crate::bindings::wasmcp::mcp_v20250618::mcp::Tool,
+    pub tool: &'a crate::bindings::wasmcp::mcp_v20251125::mcp::Tool,
     /// Cached metadata extracted from tool.options.meta JSON
     pub metadata: ToolMetadata,
 }

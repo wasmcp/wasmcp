@@ -4,7 +4,7 @@
 //! Implements both user-facing data access (sessions interface) and
 //! transport-layer lifecycle management (session-manager interface).
 
-use crate::bindings::exports::wasmcp::mcp_v20250618::sessions::{
+use crate::bindings::exports::wasmcp::mcp_v20251125::sessions::{
     ElicitRequest, ElicitResult, GuestFutureElicitResult, GuestSession, Session, SessionError,
 };
 use crate::bindings::wasi::io::poll::Pollable;
@@ -380,7 +380,7 @@ impl GuestSession for SessionImpl {
         _client: &OutputStream,
         _elicitation: ElicitRequest,
     ) -> Result<
-        crate::bindings::exports::wasmcp::mcp_v20250618::sessions::FutureElicitResult,
+        crate::bindings::exports::wasmcp::mcp_v20251125::sessions::FutureElicitResult,
         SessionError,
     > {
         // MVP: Not implemented yet
