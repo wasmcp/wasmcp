@@ -1,4 +1,4 @@
-package wasmcp:auth@0.1.0;
+package wasmcp:auth@0.1.1;
 
 /// Core JWT types for authentication and authorization.
 /// This package provides structured access to JWT claims and can be
