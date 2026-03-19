@@ -1,7 +1,7 @@
 /// A WebAssembly component development kit for the Model Context Protocol (MCP) version 2025-11-25.
 ///
 /// <https://modelcontextprotocol.io/specification/2025-11-25>
-package wasmcp:mcp-v20251125@0.1.0;
+package wasmcp:mcp-v20251125@0.1.1;
 
 /// Model Context Protocol (MCP) types and messages.
 ///
