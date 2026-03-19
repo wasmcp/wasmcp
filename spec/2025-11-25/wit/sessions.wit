@@ -26,7 +26,7 @@ interface sessions {
         elicit-request,
         elicit-result,
     };
-    use wasmcp:auth/types@0.1.0.{jwt-claims};
+    use wasmcp:auth/types@0.1.1.{jwt-claims};
 
     /// Errors that can occur during session operations
     @since(version = 0.1.0)

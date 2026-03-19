@@ -11,7 +11,7 @@ interface mcp {
     use wasi:io/streams@0.2.8.{
         input-stream,
     };
-    use wasmcp:auth/types@0.1.0.{jwt, jwt-claims};
+    use wasmcp:auth/types@0.1.1.{jwt, jwt-claims};
 
     /// Opaque pagination cursor.
     @since(version = 0.1.0)
