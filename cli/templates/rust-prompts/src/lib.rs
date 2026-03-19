@@ -9,9 +9,9 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::prompts::Guest;
-use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
+use bindings::exports::wasmcp::mcp_v20251125::prompts::Guest;
+use bindings::wasmcp::mcp_v20251125::mcp::*;
+use bindings::wasmcp::mcp_v20251125::server_handler::MessageContext;
 
 struct ExamplePrompts;
 
@@ -26,6 +26,7 @@ impl Guest for ExamplePrompts {
                     name: "code-review".to_string(),
                     options: Some(PromptOptions {
                         meta: None,
+                        icons: None,
                         arguments: Some(vec![
                             PromptArgument {
                                 name: "language".to_string(),
@@ -48,6 +49,7 @@ impl Guest for ExamplePrompts {
                     name: "greeting".to_string(),
                     options: Some(PromptOptions {
                         meta: None,
+                        icons: None,
                         arguments: Some(vec![
                             PromptArgument {
                                 name: "name".to_string(),

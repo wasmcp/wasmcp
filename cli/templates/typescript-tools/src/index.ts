@@ -11,8 +11,8 @@ import type {
   CallToolRequest,
   CallToolResult,
   Tool,
-} from 'wasmcp:mcp-v20250618/mcp@{{wasmcp_version}}';
-import type { RequestCtx } from 'wasmcp:mcp-v20250618/tools@{{wasmcp_version}}';
+} from 'wasmcp:mcp-v20251125/mcp@{{wasmcp_version}}';
+import type { RequestCtx } from 'wasmcp:mcp-v20251125/tools@{{wasmcp_version}}';
 
 // Tool input schemas
 const ExampleToolSchema = z.object({
