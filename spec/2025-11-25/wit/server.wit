@@ -129,7 +129,7 @@ interface server-io {
 /// Decode and validate a JWT
 @since(version = 0.1.0)
 interface server-auth {
-    use wasmcp:auth/types@0.1.0.{jwt, jwt-claims};
+    use wasmcp:auth/types@0.1.1.{jwt, jwt-claims};
     use mcp.{
         client-message,
         session,
