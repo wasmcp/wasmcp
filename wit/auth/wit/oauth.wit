@@ -1,4 +1,4 @@
-package wasmcp:auth@0.1.0;
+package wasmcp:auth@0.1.1;
 
 /// Complete OAuth 2.1 error taxonomy covering all error scenarios
 /// from RFC 6749, RFC 6750, RFC 7591, RFC 8414, RFC 9728
@@ -218,6 +218,31 @@ interface errors {
     /// - error_description SHOULD be brief and SHOULD NOT include sensitive information
     /// - In production, consider omitting error_description or using generic messages
     create-token-error-response: func(error: oauth-error) -> string;
+
+    /// Create incremental scope consent WWW-Authenticate challenge
+    ///
+    /// Used when a token is valid but the client needs to request additional scopes.
+    /// Generates a `Bearer` challenge with `error="insufficient_scope"` and
+    /// only the incremental scopes required, not the full set already granted.
+    ///
+    /// Per MCP spec (SEP-835), servers MAY include a `resource` parameter
+    /// (RFC 9728) to identify which resource requires the additional scopes.
+    ///
+    /// Example output:
+    /// ```
+    /// Bearer realm="https://api.example.com",
+    ///        error="insufficient_scope",
+    ///        scope="admin write:users",
+    ///        resource="https://api.example.com"
+    /// ```
+    create-scope-consent-challenge: func(
+        /// Protection space identifier
+        realm: option<string>,
+        /// Resource identifier requiring the additional scopes (RFC 9728)
+        resource-uri: option<string>,
+        /// Additional scopes the client needs to request (incremental, not full set)
+        additional-scopes: list<string>,
+    ) -> string;
 }
 
 /// OAuth 2.0 Bearer Token Usage (RFC 6750)
@@ -921,6 +946,168 @@ interface resource-metadata {
     ) -> option<string>;
 }
 
+/// OAuth 2.0 Authorization Server Metadata (RFC 8414)
+/// with OpenID Connect Discovery 1.0 support
+///
+/// Enables clients to discover authorization server endpoints and capabilities.
+/// Supports both RFC 8414 (/.well-known/oauth-authorization-server) and
+/// OpenID Connect Discovery (/.well-known/openid-configuration).
+///
+/// Spec: https://www.rfc-editor.org/rfc/rfc8414
+/// OIDC: https://openid.net/specs/openid-connect-discovery-1_0.html
+interface authorization-server-discovery {
+    /// OAuth 2.0 / OpenID Connect authorization server metadata
+    ///
+    /// Contains all endpoints and capabilities advertised by the authorization server.
+    /// Fields from RFC 8414 §2, extended with OIDC Discovery 1.0 fields.
+    record authorization-server-metadata {
+        /// REQUIRED: Issuer identifier (HTTPS URL, no query or fragment)
+        issuer: string,
+
+        /// URL of the authorization endpoint (RFC 6749 §3.1)
+        authorization-endpoint: option<string>,
+
+        /// URL of the token endpoint (RFC 6749 §3.2)
+        token-endpoint: option<string>,
+
+        /// URL of the JWK Set document for verifying tokens
+        jwks-uri: option<string>,
+
+        /// URL of the dynamic client registration endpoint (RFC 7591)
+        registration-endpoint: option<string>,
+
+        /// Scope values the server supports
+        scopes-supported: list<string>,
+
+        /// response_type values supported at the authorization endpoint
+        response-types-supported: list<string>,
+
+        /// grant_type values supported at the token endpoint
+        grant-types-supported: list<string>,
+
+        /// Client authentication methods supported at the token endpoint
+        token-endpoint-auth-methods-supported: list<string>,
+
+        /// URL of the token revocation endpoint (RFC 7009)
+        revocation-endpoint: option<string>,
+
+        /// URL of the token introspection endpoint (RFC 7662)
+        introspection-endpoint: option<string>,
+
+        /// PKCE code challenge methods supported (RFC 7636)
+        code-challenge-methods-supported: list<string>,
+
+        /// Pushed Authorization Request endpoint (RFC 9126)
+        pushed-authorization-request-endpoint: option<string>,
+
+        /// OpenID Connect: userinfo endpoint
+        userinfo-endpoint: option<string>,
+
+        /// OpenID Connect: subject identifier types supported
+        subject-types-supported: list<string>,
+
+        /// OpenID Connect: ID token signing algorithms supported
+        id-token-signing-alg-values-supported: list<string>,
+    }
+
+    /// Fetch OAuth 2.0 Authorization Server Metadata (RFC 8414)
+    ///
+    /// Performs HTTP GET to {issuer}/.well-known/oauth-authorization-server
+    /// and returns the parsed metadata.
+    fetch-authorization-server-metadata: func(
+        issuer: string,
+    ) -> result<authorization-server-metadata, string>;
+
+    /// Fetch OpenID Connect Discovery document
+    ///
+    /// Performs HTTP GET to {issuer}/.well-known/openid-configuration
+    /// and returns the parsed metadata.
+    fetch-openid-configuration: func(
+        issuer: string,
+    ) -> result<authorization-server-metadata, string>;
+
+    /// Validate authorization server metadata
+    ///
+    /// Verifies that the issuer in the metadata matches the expected issuer
+    /// and that the metadata is well-formed per RFC 8414 §3.3.
+    validate-metadata: func(
+        metadata: authorization-server-metadata,
+        expected-issuer: string,
+    ) -> result<_, string>;
+}
+
+/// OAuth Client ID Metadata Document support (RFC 7591)
+///
+/// In MCP, the client_id is a URL. Fetching that URL returns the client's
+/// metadata document, allowing servers to discover client configuration
+/// without requiring out-of-band registration.
+///
+/// Spec: https://www.rfc-editor.org/rfc/rfc7591
+/// MCP: SEP-991 / PR #1296
+interface client-registration {
+    /// OAuth 2.0 client metadata (RFC 7591 §2)
+    record oauth-client-metadata {
+        /// Allowed redirect URIs for authorization code and implicit flows
+        redirect-uris: list<string>,
+
+        /// Human-readable client name for display to end-users
+        client-name: option<string>,
+
+        /// Client home page URI
+        client-uri: option<string>,
+
+        /// Logo URI for display to end-users
+        logo-uri: option<string>,
+
+        /// Space-separated list of scopes the client may request
+        scope: option<string>,
+
+        /// Contact email addresses for the client
+        contacts: list<string>,
+
+        /// Terms of service URI
+        tos-uri: option<string>,
+
+        /// Privacy policy URI
+        policy-uri: option<string>,
+
+        /// JWKS endpoint URI containing the client's public keys
+        jwks-uri: option<string>,
+
+        /// Client authentication method at the token endpoint
+        token-endpoint-auth-method: option<string>,
+
+        /// Grant types the client will use
+        grant-types: list<string>,
+
+        /// Response types the client expects from the authorization endpoint
+        response-types: list<string>,
+
+        /// Unique identifier for the client software (not per-deployment)
+        software-id: option<string>,
+
+        /// Version of the client software
+        software-version: option<string>,
+    }
+
+    /// Fetch client metadata from the client ID URL
+    ///
+    /// Performs HTTP GET to the client_id URL and returns the parsed metadata.
+    /// Per MCP spec (SEP-991), servers SHOULD fetch and cache this document
+    /// to discover client configuration dynamically.
+    fetch-client-metadata: func(
+        client-id-url: string,
+    ) -> result<oauth-client-metadata, string>;
+
+    /// Validate client metadata against the expected client ID
+    ///
+    /// Verifies the metadata is well-formed and the client_id URL is HTTPS.
+    validate-client-metadata: func(
+        metadata: oauth-client-metadata,
+        expected-client-id: string,
+    ) -> result<_, string>;
+}
+
 /// Complete OAuth 2.1 Resource Server implementation.
 ///
 /// Use this world for components that implement OAuth-protected
@@ -932,6 +1119,8 @@ interface resource-metadata {
 /// - introspection: RFC 7662 token introspection
 /// - resource-metadata: RFC 9728 resource server metadata
 /// - errors: OAuth error codes and WWW-Authenticate challenges
+/// - authorization-server-discovery: RFC 8414 / OIDC Discovery
+/// - client-registration: RFC 7591 client metadata documents
 ///
 /// Example use cases:
 /// - OAuth 2.1 resource servers
@@ -943,4 +1132,6 @@ world oauth {
     export introspection;
     export resource-metadata;
     export errors;
+    export authorization-server-discovery;
+    export client-registration;
 }
