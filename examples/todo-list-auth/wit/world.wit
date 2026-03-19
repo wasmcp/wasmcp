@@ -1,9 +1,9 @@
 package wasmcp:todo-list@0.1.0;
 
 world todo-list {
-    import wasmcp:mcp-v20251125/server-io@0.1.0;
-    import wasmcp:mcp-v20251125/sessions@0.1.0;
-    import wasmcp:auth/helpers@0.1.0;
+    import wasmcp:mcp-v20251125/server-io@0.1.1;
+    import wasmcp:mcp-v20251125/sessions@0.1.1;
+    import wasmcp:auth/helpers@0.1.1;
 
-    export wasmcp:mcp-v20251125/tools@0.1.0;
+    export wasmcp:mcp-v20251125/tools@0.1.1;
 }

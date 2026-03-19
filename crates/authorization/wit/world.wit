@@ -6,18 +6,18 @@ world authorization {
     import wasmcp:keyvalue/store@0.1.0;
 
     // MCP-required interface (now uses structured jwt-claims)
-    export wasmcp:mcp-v20251125/server-auth@0.1.0;
+    export wasmcp:mcp-v20251125/server-auth@0.1.1;
 
     // OAuth 2.1 Resource Server interfaces
-    export wasmcp:auth/errors@0.1.0;
-    export wasmcp:auth/bearer@0.1.0;
-    export wasmcp:auth/introspection@0.1.0;
-    export wasmcp:auth/resource-metadata@0.1.0;
+    export wasmcp:auth/errors@0.1.1;
+    export wasmcp:auth/bearer@0.1.1;
+    export wasmcp:auth/introspection@0.1.1;
+    export wasmcp:auth/resource-metadata@0.1.1;
 
     // Authorization server and client discovery (RFC 8414 / OIDC / RFC 7591)
-    export wasmcp:auth/authorization-server-discovery@0.1.0;
-    export wasmcp:auth/client-registration@0.1.0;
+    export wasmcp:auth/authorization-server-discovery@0.1.1;
+    export wasmcp:auth/client-registration@0.1.1;
 
     // JWT claim helper functions
-    export wasmcp:auth/helpers@0.1.0;
+    export wasmcp:auth/helpers@0.1.1;
 }

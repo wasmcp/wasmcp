@@ -46,9 +46,9 @@ export default {
   },
   externalsType: "module",
   externals: {
-    "wasmcp:mcp-v20251125/mcp@0.1.0": "wasmcp:mcp-v20251125/mcp@0.1.0",
-    "wasmcp:mcp-v20251125/tools@0.1.0": "wasmcp:mcp-v20251125/tools@0.1.0",
-    "wasmcp:mcp-v20251125/server-io@0.1.0": "wasmcp:mcp-v20251125/server-io@0.1.0",
+    "wasmcp:mcp-v20251125/mcp@0.1.1": "wasmcp:mcp-v20251125/mcp@0.1.1",
+    "wasmcp:mcp-v20251125/server-handler@0.1.1": "wasmcp:mcp-v20251125/server-handler@0.1.1",
+    "wasmcp:mcp-v20251125/server-io@0.1.1": "wasmcp:mcp-v20251125/server-io@0.1.1",
     "wasi:http/outgoing-handler@0.2.8": "wasi:http/outgoing-handler@0.2.8",
   },
   optimization: {

@@ -1,7 +1,7 @@
 package wasmcp:filter-middleware@0.1.1;
 
 world filter-middleware {
-    include wasmcp:mcp-v20251125/server-middleware@0.1.0;
-    import wasmcp:mcp-v20251125/sessions@0.1.0;
-    import wasmcp:mcp-v20251125/server-io@0.1.0;
+    include wasmcp:mcp-v20251125/server-middleware@0.1.1;
+    import wasmcp:mcp-v20251125/sessions@0.1.1;
+    import wasmcp:mcp-v20251125/server-io@0.1.1;
 }
