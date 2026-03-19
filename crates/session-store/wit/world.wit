@@ -1,4 +1,4 @@
-package wasmcp:sessions@0.1.4;
+package wasmcp:sessions@0.1.5;
 
 world sessions {
     // WASI imports for UUID generation / Elicitation

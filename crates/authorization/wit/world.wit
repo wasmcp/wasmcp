@@ -1,4 +1,4 @@
-package wasmcp:authorization@0.1.1;
+package wasmcp:authorization@0.1.2;
 
 world authorization {
     import wasi:cli/environment@0.2.8;
