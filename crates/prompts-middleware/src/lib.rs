@@ -16,10 +16,10 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::server_handler::{Guest, MessageContext};
-use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::prompts;
-use bindings::wasmcp::mcp_v20250618::server_handler as downstream;
+use bindings::exports::wasmcp::mcp_v20251125::server_handler::{Guest, MessageContext};
+use bindings::wasmcp::mcp_v20251125::mcp::*;
+use bindings::wasmcp::mcp_v20251125::prompts;
+use bindings::wasmcp::mcp_v20251125::server_handler as downstream;
 
 struct PromptsMiddleware;
 

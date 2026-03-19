@@ -155,7 +155,7 @@ pub fn get_interface_details(component_path: &Path, interface_name: &str) -> Res
 /// Find an interface export from a component by prefix pattern
 ///
 /// Inspects the component binary to find an export matching the given prefix.
-/// For example, prefix "wasmcp:mcp-v20250618/server-handler@" will match "wasmcp:mcp-v20250618/server-handler@0.1.0".
+/// For example, prefix "wasmcp:mcp-v20251125/server-handler@" will match "wasmcp:mcp-v20251125/server-handler@0.1.0".
 ///
 /// Returns the full interface name if found.
 pub fn find_component_export(component_path: &Path, prefix: &str) -> Result<String> {

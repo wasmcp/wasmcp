@@ -229,7 +229,14 @@ async fn compose_server(options: ComposeOptions) -> Result<()> {
             DownloadConfig::new(&overrides, &version_resolver, &required_middleware);
         download_dependencies(&component_paths, &download_config, &deps_dir, &client).await?
     } else {
-        required_deps.clone()
+        // skip_download: still need structural components that download_dependencies would add
+        let mut deps = required_deps.clone();
+        deps.insert("session-store".to_string());
+        deps.insert("kv-store".to_string());
+        for mw in &required_middleware {
+            deps.insert(mw.clone());
+        }
+        deps
     };
 
     // Resolve transport component
@@ -483,11 +490,11 @@ mod tests {
     fn test_interface_names() {
         assert_eq!(
             inspection::interfaces::server_handler("0.1.0"),
-            "wasmcp:mcp-v20250618/server-handler@0.1.0"
+            "wasmcp:mcp-v20251125/server-handler@0.1.0"
         );
         assert_eq!(
             inspection::interfaces::tools("0.1.0"),
-            "wasmcp:mcp-v20250618/tools@0.1.0"
+            "wasmcp:mcp-v20251125/tools@0.1.0"
         );
         // Note: WASI interface versions now come from VersionResolver, not constants
         // These would require a resolver instance to test properly
@@ -658,7 +665,7 @@ mod tests {
         assert!(
             options
                 .version_resolver
-                .get_version("mcp-v20250618")
+                .get_version("mcp-v20251125")
                 .is_ok()
         );
     }
@@ -679,7 +686,7 @@ mod tests {
         assert!(
             options
                 .version_resolver
-                .get_version("mcp-v20250618")
+                .get_version("mcp-v20251125")
                 .is_ok()
         );
         assert_eq!(

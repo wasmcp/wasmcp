@@ -1,1 +1,2 @@
-mcp-v20250618 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-06-18-v0.1.8/wasmcp-mcp-v2025-06-18-0.1.8-source.tar.gz"
+io = "https://github.com/WebAssembly/wasi-io/archive/refs/tags/v0.2.8.tar.gz"
+mcp-v20251125 = "https://github.com/wasmcp/wasmcp/releases/download/mcp-v2025-11-25-v0.1.1/wasmcp-mcp-v2025-11-25-0.1.1-source.tar.gz"

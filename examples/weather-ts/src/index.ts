@@ -16,9 +16,9 @@ import type {
   ServerNotification,
   LoggingMessageNotification,
   LogLevel,
-} from 'wasmcp:mcp-v20250618/mcp@0.1.8';
-import type { RequestCtx } from 'wasmcp:mcp-v20250618/tools@0.1.8';
-import { sendMessage } from 'wasmcp:mcp-v20250618/server-io@0.1.8';
+} from 'wasmcp:mcp-v20251125/mcp@0.1.1';
+import type { MessageContext } from 'wasmcp:mcp-v20251125/server-handler@0.1.1';
+import { sendMessage } from 'wasmcp:mcp-v20251125/server-io@0.1.1';
 
 // Tool input schemas
 const GetWeatherSchema = z.object({
@@ -36,7 +36,7 @@ type GetWeatherArgs = z.infer<typeof GetWeatherSchema>;
 type MultiWeatherArgs = z.infer<typeof MultiWeatherSchema>;
 
 function listTools(
-  _ctx: RequestCtx,
+  _ctx: MessageContext,
   _request: ListToolsRequest
 ): ListToolsResult {
   const tools: Tool[] = [
@@ -70,7 +70,7 @@ function listTools(
 }
 
 async function callTool(
-  ctx: RequestCtx,
+  ctx: MessageContext,
   request: CallToolRequest
 ): Promise<CallToolResult | undefined> {
   const log = (message: string) => {

@@ -9,7 +9,7 @@
 use crate::bindings::exports::wasi::cli::run::Guest;
 use crate::bindings::wasi::cli::stdin::get_stdin;
 use crate::bindings::wasi::cli::stdout::get_stdout;
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{
     ClientRequest, ErrorCode, ProtocolVersion, ServerResult,
 };
 use crate::common;
@@ -131,8 +131,8 @@ impl Guest for StdioTransportGuest {
 
                 common::McpMessage::Result(result_id, client_result) => {
                     // Bidirectional MCP: handle result from client
-                    use crate::bindings::wasmcp::mcp_v20250618::mcp::ClientMessage;
-                    use crate::bindings::wasmcp::mcp_v20250618::server_handler::handle;
+                    use crate::bindings::wasmcp::mcp_v20251125::mcp::ClientMessage;
+                    use crate::bindings::wasmcp::mcp_v20251125::server_handler::handle;
 
                     let ctx = common::create_message_context(
                         None,
@@ -150,8 +150,8 @@ impl Guest for StdioTransportGuest {
 
                 common::McpMessage::Error(error_id, error_code) => {
                     // Bidirectional MCP: handle error from client
-                    use crate::bindings::wasmcp::mcp_v20250618::mcp::ClientMessage;
-                    use crate::bindings::wasmcp::mcp_v20250618::server_handler::handle;
+                    use crate::bindings::wasmcp::mcp_v20251125::mcp::ClientMessage;
+                    use crate::bindings::wasmcp::mcp_v20251125::server_handler::handle;
 
                     let ctx = common::create_message_context(
                         None,
@@ -175,8 +175,8 @@ impl Guest for StdioTransportGuest {
 /// Returns the negotiated protocol version
 fn handle_initialize(
     stdout: &crate::bindings::wasi::io::streams::OutputStream,
-    request_id: crate::bindings::wasmcp::mcp_v20250618::mcp::RequestId,
-    init_req: &crate::bindings::wasmcp::mcp_v20250618::mcp::InitializeRequest,
+    request_id: crate::bindings::wasmcp::mcp_v20251125::mcp::RequestId,
+    init_req: &crate::bindings::wasmcp::mcp_v20251125::mcp::InitializeRequest,
 ) -> Result<ProtocolVersion, ()> {
     // Use client's requested protocol version (for now, we only support one version)
     let protocol_version = init_req.protocol_version;
@@ -187,12 +187,14 @@ fn handle_initialize(
 
     // Create initialize result
     let result = ServerResult::Initialize(
-        crate::bindings::wasmcp::mcp_v20250618::mcp::InitializeResult {
+        crate::bindings::wasmcp::mcp_v20251125::mcp::InitializeResult {
             meta: None,
-            server_info: crate::bindings::wasmcp::mcp_v20250618::mcp::Implementation {
+            server_info: crate::bindings::wasmcp::mcp_v20251125::mcp::Implementation {
                 name: "wasmcp-server".to_string(),
                 title: None,
                 version: env!("CARGO_PKG_VERSION").to_string(),
+                description: None,
+                icons: None,
             },
             capabilities,
             protocol_version,
@@ -211,11 +213,11 @@ fn handle_initialize(
 /// Write JSON-RPC error to stdout
 fn write_error(
     stdout: &crate::bindings::wasi::io::streams::OutputStream,
-    id: Option<crate::bindings::wasmcp::mcp_v20250618::mcp::RequestId>,
+    id: Option<crate::bindings::wasmcp::mcp_v20251125::mcp::RequestId>,
     error: ErrorCode,
 ) {
-    use crate::bindings::wasmcp::mcp_v20250618::mcp::ServerMessage;
-    use crate::bindings::wasmcp::mcp_v20250618::server_io;
+    use crate::bindings::wasmcp::mcp_v20251125::mcp::ServerMessage;
+    use crate::bindings::wasmcp::mcp_v20251125::server_io;
 
     let message = ServerMessage::Error((id, error));
     if let Err(e) = server_io::send_message(stdout, message, &common::stdio_frame()) {

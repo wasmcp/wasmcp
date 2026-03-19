@@ -1,6 +1,6 @@
 //! Message framing configuration for different transport types
 
-use crate::bindings::wasmcp::mcp_v20250618::server_io::{MessageFrame, ReadLimit};
+use crate::bindings::wasmcp::mcp_v20251125::server_io::{MessageFrame, ReadLimit};
 
 /// Maximum size for HTTP request bodies (10MB)
 const HTTP_MAX_REQUEST_SIZE: u64 = 10 * 1024 * 1024;

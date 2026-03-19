@@ -2,9 +2,10 @@
 //!
 //! Handles serialization of all MCP server request types to JSON-RPC format.
 
-use crate::bindings::wasmcp::mcp_v20250618::mcp::{
-    ContentBlock, IncludeContext, ModelPreferences, NumberSchemaType, PrimitiveSchemaDefinition,
-    ProgressToken, RequestedSchema, Role, SamplingMessage, ServerRequest, StringSchemaFormat,
+use crate::bindings::wasmcp::mcp_v20251125::mcp::{
+    BlobData, ElicitRequest, EnumSchema, IncludeContext, ModelPreferences, NumberSchemaType,
+    PrimitiveSchemaDefinition, ProgressToken, RequestedSchema, Role, SamplingContentBlock,
+    SamplingMessage, ServerRequest, StringSchemaFormat, TextData, ToolResultContentBlock,
 };
 use crate::serializer;
 
@@ -14,13 +15,9 @@ use crate::serializer;
 /// Serialize server request to method name and params
 pub fn serialize_server_request(request: &ServerRequest) -> (&'static str, serde_json::Value) {
     match request {
-        ServerRequest::ElicitationCreate(elicit_req) => (
-            "elicitation/create",
-            serde_json::json!({
-                "message": elicit_req.message,
-                "requestedSchema": serialize_requested_schema(&elicit_req.requested_schema),
-            }),
-        ),
+        ServerRequest::ElicitationCreate(elicit_req) => {
+            ("elicitation/create", serialize_elicit_request(elicit_req))
+        }
         ServerRequest::RootsList(roots_req) => {
             let mut params = serde_json::Map::new();
             if let Some(ref token) = roots_req.progress_token {
@@ -70,6 +67,21 @@ pub fn serialize_server_request(request: &ServerRequest) -> (&'static str, serde
             }
             ("ping", serde_json::Value::Object(params))
         }
+    }
+}
+
+/// Serialize elicit request (form or url variant)
+fn serialize_elicit_request(req: &ElicitRequest) -> serde_json::Value {
+    match req {
+        ElicitRequest::Form(form) => serde_json::json!({
+            "message": form.message,
+            "requestedSchema": serialize_requested_schema(&form.requested_schema),
+        }),
+        ElicitRequest::Url(url_req) => serde_json::json!({
+            "elicitationId": url_req.elicitation_id,
+            "message": url_req.message,
+            "url": url_req.url,
+        }),
     }
 }
 
@@ -178,39 +190,98 @@ pub fn serialize_primitive_schema(schema: &PrimitiveSchemaDefinition) -> serde_j
             }
             serde_json::Value::Object(obj)
         }
-        PrimitiveSchemaDefinition::EnumSchema(e) => {
+        PrimitiveSchemaDefinition::EnumSchema(e) => serialize_enum_schema(e),
+    }
+}
+
+/// Serialize enum schema (now a variant with 4 cases)
+fn serialize_enum_schema(e: &EnumSchema) -> serde_json::Value {
+    match e {
+        EnumSchema::UntitledSingleSelect(s) => {
             let mut obj = serde_json::Map::new();
             obj.insert(
                 "enum".to_string(),
                 serde_json::Value::Array(
-                    e.enum_
+                    s.enum_
                         .iter()
-                        .map(|s| serde_json::Value::String(s.clone()))
+                        .map(|v| serde_json::Value::String(v.clone()))
                         .collect(),
                 ),
             );
-            if let Some(ref desc) = e.description {
+            if let Some(ref d) = s.default {
+                obj.insert("default".to_string(), serde_json::Value::String(d.clone()));
+            }
+            if let Some(ref d) = s.description {
                 obj.insert(
                     "description".to_string(),
-                    serde_json::Value::String(desc.clone()),
+                    serde_json::Value::String(d.clone()),
                 );
             }
-            if let Some(ref title) = e.title {
+            serde_json::Value::Object(obj)
+        }
+        EnumSchema::TitledSingleSelect(s) => {
+            let mut obj = serde_json::Map::new();
+            obj.insert(
+                "oneOf".to_string(),
+                serde_json::Value::Array(
+                    s.one_of
+                        .iter()
+                        .map(
+                            |opt| serde_json::json!({"const": opt.const_value, "title": opt.title}),
+                        )
+                        .collect(),
+                ),
+            );
+            if let Some(ref d) = s.default {
+                obj.insert("default".to_string(), serde_json::Value::String(d.clone()));
+            }
+            if let Some(ref d) = s.description {
                 obj.insert(
-                    "title".to_string(),
-                    serde_json::Value::String(title.clone()),
+                    "description".to_string(),
+                    serde_json::Value::String(d.clone()),
                 );
             }
-            if let Some(ref enum_names) = e.enum_names {
+            if let Some(ref t) = s.title {
+                obj.insert("title".to_string(), serde_json::Value::String(t.clone()));
+            }
+            serde_json::Value::Object(obj)
+        }
+        EnumSchema::UntitledMultiSelect(s) => {
+            let mut obj = serde_json::Map::new();
+            obj.insert(
+                "type".to_string(),
+                serde_json::Value::String("array".to_string()),
+            );
+            obj.insert(
+                "items".to_string(),
+                serde_json::json!({"enum": s.enum_.iter().map(|v| serde_json::Value::String(v.clone())).collect::<Vec<_>>()}),
+            );
+            if let Some(ref d) = s.description {
                 obj.insert(
-                    "enumNames".to_string(),
-                    serde_json::Value::Array(
-                        enum_names
-                            .iter()
-                            .map(|s| serde_json::Value::String(s.clone()))
-                            .collect(),
-                    ),
+                    "description".to_string(),
+                    serde_json::Value::String(d.clone()),
                 );
+            }
+            serde_json::Value::Object(obj)
+        }
+        EnumSchema::TitledMultiSelect(s) => {
+            let mut obj = serde_json::Map::new();
+            obj.insert(
+                "type".to_string(),
+                serde_json::Value::String("array".to_string()),
+            );
+            obj.insert(
+                "items".to_string(),
+                serde_json::json!({"oneOf": s.one_of.iter().map(|opt| serde_json::json!({"const": opt.const_value, "title": opt.title})).collect::<Vec<_>>()}),
+            );
+            if let Some(ref d) = s.description {
+                obj.insert(
+                    "description".to_string(),
+                    serde_json::Value::String(d.clone()),
+                );
+            }
+            if let Some(ref t) = s.title {
+                obj.insert("title".to_string(), serde_json::Value::String(t.clone()));
             }
             serde_json::Value::Object(obj)
         }
@@ -224,25 +295,54 @@ fn serialize_sampling_message(msg: &SamplingMessage) -> serde_json::Value {
             Role::User => "user",
             Role::Assistant => "assistant",
         },
-        "content": serialize_content_block(&msg.content)
+        "content": serialize_sampling_content_block(&msg.content)
     })
 }
 
-/// Serialize content block using serializer module
-fn serialize_content_block(content: &ContentBlock) -> serde_json::Value {
-    // Use serializer module for full content block serialization
-    // This handles all content types including streams
-    match serializer::convert_content_block(content) {
-        Ok(json_block) => serde_json::to_value(json_block).unwrap_or_else(|e| {
-            serde_json::json!({
-                "type": "text",
-                "text": format!("[error serializing content: {}]", e)
-            })
-        }),
-        Err(e) => serde_json::json!({
-            "type": "text",
-            "text": format!("[error converting content: {}]", e)
-        }),
+/// Serialize sampling content block (text, image, audio, tool-use, tool-result)
+fn serialize_sampling_content_block(content: &SamplingContentBlock) -> serde_json::Value {
+    match content {
+        SamplingContentBlock::Text(t) => {
+            let text_str = match &t.text {
+                TextData::Text(s) => s.clone(),
+                TextData::TextStream(_) => "[stream]".to_string(),
+            };
+            serde_json::json!({"type": "text", "text": text_str})
+        }
+        SamplingContentBlock::Image(img) => {
+            let data_b64 = blob_data_to_base64(&img.data);
+            serde_json::json!({"type": "image", "data": data_b64, "mimeType": img.mime_type})
+        }
+        SamplingContentBlock::Audio(audio) => {
+            let data_b64 = blob_data_to_base64(&audio.data);
+            serde_json::json!({"type": "audio", "data": data_b64, "mimeType": audio.mime_type})
+        }
+        SamplingContentBlock::ToolUse(tu) => {
+            let input_val = serde_json::from_str::<serde_json::Value>(&tu.input).ok();
+            serde_json::json!({"type": "tool_use", "id": tu.id, "name": tu.name, "input": input_val})
+        }
+        SamplingContentBlock::ToolResult(tr) => {
+            let content_arr: Vec<serde_json::Value> = tr.content.iter().map(|block| {
+                match block {
+                    ToolResultContentBlock::Text(t) => {
+                        let s = match &t.text { TextData::Text(s) => s.clone(), TextData::TextStream(_) => "[stream]".to_string() };
+                        serde_json::json!({"type": "text", "text": s})
+                    }
+                    ToolResultContentBlock::Image(img) => serde_json::json!({"type": "image", "data": blob_data_to_base64(&img.data), "mimeType": img.mime_type}),
+                    ToolResultContentBlock::Audio(audio) => serde_json::json!({"type": "audio", "data": blob_data_to_base64(&audio.data), "mimeType": audio.mime_type}),
+                }
+            }).collect();
+            serde_json::json!({"type": "tool_result", "toolUseId": tr.tool_use_id, "content": content_arr})
+        }
+    }
+}
+
+/// Extract base64-encoded string from BlobData (inline only; streams return empty string)
+fn blob_data_to_base64(data: &BlobData) -> String {
+    use base64::Engine as _;
+    match data {
+        BlobData::Blob(bytes) => base64::engine::general_purpose::STANDARD.encode(bytes),
+        BlobData::BlobStream(_) => String::new(),
     }
 }
 

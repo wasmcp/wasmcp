@@ -259,7 +259,7 @@ mod tests {
         assert!(
             options
                 .version_resolver
-                .get_version("mcp-v20250618")
+                .get_version("mcp-v20251125")
                 .is_ok()
         );
     }
@@ -278,7 +278,7 @@ mod tests {
         assert!(
             options
                 .version_resolver
-                .get_version("mcp-v20250618")
+                .get_version("mcp-v20251125")
                 .is_ok()
         );
         assert_eq!(

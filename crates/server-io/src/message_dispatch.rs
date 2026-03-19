@@ -6,8 +6,8 @@
 //! - Result (has "id" + "result")
 //! - Error (has "id" + "error")
 
-use crate::bindings::exports::wasmcp::mcp_v20250618::server_io::IoError;
-use crate::bindings::wasmcp::mcp_v20250618::mcp::ClientMessage;
+use crate::bindings::exports::wasmcp::mcp_v20251125::server_io::IoError;
+use crate::bindings::wasmcp::mcp_v20251125::mcp::ClientMessage;
 use crate::parser;
 
 /// Parse JSON into client-message variant

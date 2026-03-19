@@ -1,7 +1,7 @@
-use crate::bindings::exports::wasmcp::mcp_v20250618::server_handler::MessageContext;
+use crate::bindings::exports::wasmcp::mcp_v20251125::server_handler::MessageContext;
 use crate::bindings::wasmcp::keyvalue::store::TypedValue;
-use crate::bindings::wasmcp::mcp_v20250618::mcp::Tool;
-use crate::bindings::wasmcp::mcp_v20250618::sessions;
+use crate::bindings::wasmcp::mcp_v20251125::mcp::Tool;
+use crate::bindings::wasmcp::mcp_v20251125::sessions;
 
 /// Maximum size for tool registry JSON in session storage (1MB)
 const MAX_REGISTRY_SIZE: usize = 1_024 * 1_024;

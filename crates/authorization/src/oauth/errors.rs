@@ -107,6 +107,35 @@ pub fn create_bearer_challenge(
     }
 }
 
+/// Create incremental scope consent WWW-Authenticate challenge (SEP-835)
+///
+/// Generates a `Bearer` challenge with `error="insufficient_scope"` and only
+/// the additional scopes needed, not the full set already granted.
+/// Optionally includes a `resource` parameter per RFC 9728.
+pub fn create_scope_consent_challenge(
+    realm: Option<String>,
+    resource_uri: Option<String>,
+    additional_scopes: Vec<String>,
+) -> String {
+    let mut params = Vec::new();
+
+    if let Some(realm) = realm {
+        params.push(format!("realm=\"{}\"", realm));
+    }
+
+    params.push("error=\"insufficient_scope\"".to_string());
+
+    if !additional_scopes.is_empty() {
+        params.push(format!("scope=\"{}\"", additional_scopes.join(" ")));
+    }
+
+    if let Some(uri) = resource_uri {
+        params.push(format!("resource=\"{}\"", uri));
+    }
+
+    format!("Bearer {}", params.join(", "))
+}
+
 /// Create JSON error response for token endpoint
 pub fn create_token_error_response(error: &OauthError) -> String {
     let mut json = serde_json::json!({
