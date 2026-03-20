@@ -42,6 +42,7 @@ class StringsTools(exports.Tools):
                         annotations=None,
                         description="Convert text to uppercase",
                         output_schema=None,
+                        icons=None,
                         title="Uppercase",
                     ),
                 ),
