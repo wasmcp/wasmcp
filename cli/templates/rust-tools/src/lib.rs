@@ -9,9 +9,9 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::tools::Guest;
-use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
+use bindings::exports::wasmcp::mcp_v20251125::tools::Guest;
+use bindings::wasmcp::mcp_v20251125::mcp::*;
+use bindings::wasmcp::mcp_v20251125::server_handler::MessageContext;
 
 struct Calculator;
 
@@ -35,6 +35,7 @@ impl Guest for Calculator {
                     .to_string(),
                     options: Some(ToolOptions {
                         meta: None,
+                        icons: None,
                         annotations: None,
                         description: Some("Add two numbers together".to_string()),
                         output_schema: None,

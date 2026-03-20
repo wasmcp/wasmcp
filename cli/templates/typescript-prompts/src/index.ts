@@ -16,8 +16,8 @@ import type {
   Role,
   ContentBlock,
   TextData,
-} from 'wasmcp:mcp-v20250618/mcp@{{wasmcp_version}}';
-import type { RequestCtx } from 'wasmcp:mcp-v20250618/prompts@{{wasmcp_version}}';
+} from 'wasmcp:mcp-v20251125/mcp@{{wasmcp_version}}';
+import type { RequestCtx } from 'wasmcp:mcp-v20251125/prompts@{{wasmcp_version}}';
 
 function listPrompts(
   _ctx: RequestCtx,

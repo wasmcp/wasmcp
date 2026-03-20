@@ -10,9 +10,9 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::resources::Guest;
-use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
+use bindings::exports::wasmcp::mcp_v20251125::resources::Guest;
+use bindings::wasmcp::mcp_v20251125::mcp::*;
+use bindings::wasmcp::mcp_v20251125::server_handler::MessageContext;
 
 const ROUTING_URI: &str = "config://routing-{{project_name}}";
 

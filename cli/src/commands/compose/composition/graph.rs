@@ -404,10 +404,10 @@ mod tests {
     fn test_server_handler_interface_construction() {
         use crate::commands::compose::inspection::interfaces;
 
-        let version = "0.1.0";
+        let version = "0.1.1";
         let interface = interfaces::server_handler(version);
 
-        assert_eq!(interface, "wasmcp:mcp-v20251125/server-handler@0.1.0");
+        assert_eq!(interface, "wasmcp:mcp-v20251125/server-handler@0.1.1");
         assert!(interface.starts_with("wasmcp:mcp-v20251125/server-handler@"));
     }
 

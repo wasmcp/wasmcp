@@ -12,8 +12,8 @@ import type {
   ListResourceTemplatesRequest,
   ListResourceTemplatesResult,
   McpResource,
-} from 'wasmcp:mcp-v20250618/mcp@{{wasmcp_version}}';
-import type { RequestCtx } from 'wasmcp:mcp-v20250618/resources@{{wasmcp_version}}';
+} from 'wasmcp:mcp-v20251125/mcp@{{wasmcp_version}}';
+import type { RequestCtx } from 'wasmcp:mcp-v20251125/resources@{{wasmcp_version}}';
 
 function listResources(
   _ctx: RequestCtx,

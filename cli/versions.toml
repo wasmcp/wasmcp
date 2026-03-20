@@ -9,19 +9,19 @@
 [versions]
 # WIT package versions for scaffolding new components
 # These are embedded in generated wit/deps.toml files
-mcp-v20251125 = "0.1.0"
+mcp-v20251125 = "0.1.1"
 
 # Component versions for downloading from registry
-transport = "0.1.6"
-server-io = "0.1.5"
-authorization = "0.1.1"
-kv-store = "0.1.1"
-session-store = "0.1.4"
-method-not-found = "0.1.9"
-tools-middleware = "0.1.9"
-resources-middleware = "0.1.9"
-prompts-middleware = "0.1.9"
-filter-middleware = "0.1.1"
+transport = "0.1.7"
+server-io = "0.1.6"
+authorization = "0.1.2"
+kv-store = "0.1.2"
+session-store = "0.1.6"
+method-not-found = "0.1.10"
+tools-middleware = "0.1.10"
+resources-middleware = "0.1.10"
+prompts-middleware = "0.1.10"
+filter-middleware = "0.1.2"
 
 [wasi]
 # WASI interface versions for transport exports

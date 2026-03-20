@@ -9,9 +9,9 @@ mod bindings {
     });
 }
 
-use bindings::exports::wasmcp::mcp_v20250618::resources::Guest;
-use bindings::wasmcp::mcp_v20250618::mcp::*;
-use bindings::wasmcp::mcp_v20250618::server_handler::MessageContext;
+use bindings::exports::wasmcp::mcp_v20251125::resources::Guest;
+use bindings::wasmcp::mcp_v20251125::mcp::*;
+use bindings::wasmcp::mcp_v20251125::server_handler::MessageContext;
 
 struct TextResources;
 
@@ -28,6 +28,7 @@ impl Guest for TextResources {
                     options: Some(ResourceOptions {
                         size: None,
                         title: Some("Greeting".to_string()),
+                        icons: None,
                         description: Some("A friendly greeting message".to_string()),
                         mime_type: Some("text/plain".to_string()),
                         annotations: None,
@@ -40,6 +41,7 @@ impl Guest for TextResources {
                     options: Some(ResourceOptions {
                         size: None,
                         title: Some("Info".to_string()),
+                        icons: None,
                         description: Some("Information about this resource provider".to_string()),
                         mime_type: Some("text/plain".to_string()),
                         annotations: None,
